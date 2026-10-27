@@ -1,1212 +1,926 @@
-# Increment 3 — Chat mit Jon im Browser (RELEASENTWURF 2026-10-25)
+# Increment 4 — Schreib-Pinning und der Datei-Bereich (nur der aktive Zyklus)
 
-> **Only this top section is the binding work order.** `aifactory/docs/**` is the SOLL and belongs to Jon:
-> no agent reads-and-fixes, rewords or renames anything under it. UC/rule ids are quoted, never reworded,
-> and **no agent invents an id** — the marker on a test is the doc heading's id, copied (`AGENTS-DEV.md:21-27`).
-> Increment 1 and 2 are built, accepted and committed; the Inc-2 record lives in
-> `aifactory/peon-plan/overview-done-2026-10-25-23-07.md` (archived evidence — read §2.1/§2.7/§2.8 there for
-> the build facts and the TABU style, do not re-open it as a task list).
->
-> **File rule for the dev agent:** each increment appends its own short execution log as `## 3a-E` … `## 3e-E`
-> **inside this section**, directly after its own §. This file is never replaced by a build log.
+> **Diese Datei trägt nur den laufenden Zyklus.** Inc 3f (3a–3e, 3-H1/H2, 3f-1…3f-5-H, 3f-Review — gebaut,
+> abgenommen, committed) liegt vollständig in `peon-plan/overview-inc3f-done-2026-10-26.md`, der Zyklus davor in
+> `peon-plan/overview-done-2026-10-25-23-07.md`. Beides ist read-only-Beleg, keine Zeile davon wird bearbeitet.
+> Grund der Trennung: der Plan-Agent bekommt diese Datei als Standing Order — ist sie zu groß, ist keine
+> Planung mehr möglich (Context-Grenze, es wird nie gekürzt).
+> **Stand dieses Kopfs:** Entwurf 2026-10-26; Abnahmefragen §4.11 **beantwortet 2026-10-26 (Jon)**, nichts
+> offen. Dieser Kopf ist der einzige Einstieg der Datei und trägt die **einzige H1**.
+> Baselines vor dem ersten Edit: Core **1386/0/0**, Fabrik **96/0/0**, UI **22 Tests / 3 Dateien**, lint 0/0,
+> `lintDocsAndTests` (`UC-WP-\d+`) **UC 42/42; test IDs 67/32; findings 10**, VERWAIST 0. Branch `web-factory`.
 
-Repo root `/Users/sterlp/dev/workset/peon-ai`, branch `web-factory`. Core module
-`/Users/sterlp/dev/workset/peon-ai/org.sterl.llmpeon.core`, backend
-`/Users/sterlp/dev/workset/peon-ai/aifactory/factory-backend`, UI
-`/Users/sterlp/dev/workset/peon-ai/aifactory/factory-ui`.
+> **Only this section is the binding work order for Inc 4.** `aifactory/docs/**` is the SOLL and belongs to
+> Jon: no agent reads-and-fixes, rewords or renames anything under it; UC/rule ids are quoted, never reworded;
+> **no agent invents an id** — the marker on a test is the doc heading's id, copied (`AGENTS-DEV.md:21-33`).
+> **Archive is not in this file.** Inc 3f (`## 3.0` … `## 3f-Review` — 3a–3e, 3-H1/H2, 3f-1…3f-5-H,
+> 3f-Review) is built, accepted, committed and lives read-only in `peon-plan/overview-inc3f-done-2026-10-26.md`;
+> the cycle before it in `peon-plan/overview-done-2026-10-25-23-07.md`. Neither file is edited — not one line.
+> **File rule:** each increment appends its own short execution log as `### 4a-1-E` … `### 4b-2-E` **directly
+> after its own §**, inside this section. This file is never replaced by a build log.
+> **Planner scope:** only `aifactory/peon-plan/*`. **Dev-agent scope:** core (only-add, R6), factory
+> backend + UI as listed below; commit per increment with the actually-run gate numbers (`AGENTS-DEV.md:55-59`).
 
-## 3.0 Slice — five increments, one polarity each (all only-add)
+Repo root `/Users/sterlp/dev/workset/peon-ai`, branch `web-factory`. Core
+`/Users/sterlp/dev/workset/peon-ai/org.sterl.llmpeon.core`, plugin `org.sterl.llmpeon` +
+`org.sterl.llmpeon.test`, backend `/Users/sterlp/dev/workset/peon-ai/aifactory/factory-backend`, UI
+`/Users/sterlp/dev/workset/peon-ai/aifactory/factory-ui`. Baseline HEAD = `ab1966ad` + `### 3f-5-E`
+(Härtung). Green before the first edit: core **1386 tests / 0 Fehler**, factory **96 / 0 / 0 BUILD SUCCESS**,
+UI **22 tests / 3 files**, lint „Found 0 warnings and 0 errors." (20 files),
+`lintDocsAndTests` (`UC-WP-\d+`) **gemessen 2026-10-26:** `UC definitions: 42/42; test IDs: 67/32;
+findings: 10`, **VERWAIST 0**. (Der Stand ist ein Befund, keine Zahl aus dem 3f-Archiv: das Doc hat seit
+3f-5-E eine weitere UC-Definition bekommen, und `aifactory/docs/adr/002-origin-in-core-display-in-factory.md`
+ist neu, nimmt am Lint aber nicht teil — kein `idPrefix`. Die zehn UNBELEGT sind UC-WP-**8, 9, 10, 18, 19,
+42** (= Inc 4) und UC-WP-11/12/13 + UC-WP-25 (`web-prototype.md:416`) (= Inc 5/6).)
 
-| Inc | Polarity | Lands (running software) | UC ids carried |
+**What this increment is about:** R-WP-6 (Schreib-Pinning auf Projekt-Root + TMP) und R-WP-13 (TMP ist
+Arbeitsverzeichnis, kein Unterordner je Projekt) sind im Core seit Inc 3 **gebaut**, aber **unbelegt**;
+R-WP-14 (Datei-Bereich: Checkout und TMP lesbar, Ausbruchsversuch abgewiesen) ist gar nicht gebaut. Dazu ist
+die Core-Regel **R6** in `org.sterl.llmpeon.core/docs/write-path-validator.md:118-134` die einzige dort noch
+mit ❌ stehende Regel: der Pfad-Scope im System-Prompt kommt aus einer Konstanten, nicht vom Validator.
+Dieses Increment schließt **UC-WP-8, UC-WP-9, UC-WP-10, UC-WP-18, UC-WP-19, UC-WP-42** und **R6**.
+
+## 4.0 Slice — fünf Schritte, je eine Polarität
+
+| Schritt | Polarität | Läuft danach (laufende Software) | UC-ids / Regeln |
 |---|---|---|---|
-| **3a** | only-add | Backend `chat` component: the three HTTP edges of the arch doc — `GET/POST /api/projects/{id}/messages`, `GET /api/projects/{id}/events` (SSE) — with one `ProjectRuntime` (Jon + team) per project. Provable by curl against a local `MockLlmServer`. | **UC-WP-5, UC-WP-6, UC-WP-7, UC-WP-17, UC-WP-20** (all three GIVENs) |
-| **3b** | only-add | The Chat-View becomes real: history, composer, live SSE lines; opening a project opens the Chat-View. | **UC-WP-5, UC-WP-6, UC-WP-7** (the browser halves) |
-| **3c** | only-add (test-led) | A second input during a running turn provably lands in the Core queue of the same Jon — no second turn on the same memory. | **UC-WP-14, UC-WP-22** |
-| **3d** | only-add + **one named deviation** | The chat survives a real server restart from the Core history store; exactly one chat per project, shared by every caller; the runtime is dropped when its project is removed. | **UC-WP-15, UC-WP-16, UC-WP-21** |
-| **3e** | only-add | The **next** turn uses a value changed in *Einstellungen* (config is read per turn, not per runtime) — closes the last open GIVEN of UC-WP-24. | **UC-WP-24** GIVEN 3 only |
+| **4a-1** | **nur Messung**, kein Produktionscode | Eine Tabelle „Was ist heute schon dicht?" — gemessen gegen `MockLlmServer`, nicht vermutet. Ihr Ergebnis entscheidet, was 4a-3 wirklich beweisen muß. | — (Nachweis, keine neue id) |
+| **4a-2** | core **nur-hinzufügen** + **eine** ersetzte Zeile | Der Validator sagt selbst, welcher Pfad-Scope gilt; Jons Prompt nennt ihn daraus. Plugin-Prompts bleiben **byte-identisch**. | Core **R6** (Core-Docs tragen keine UC-ids) |
+| **4a-3** | factory nur-hinzufügen + **eine** Verschärfung | Jon **und** Da Mek können nur noch in Projekt-Root und System-TMP schreiben; **Jons** Ablehnung ist eine Werkzeug-Zeile und steht **nicht** im wiederhergestellten Verlauf, die eines Mitglieds endet beim Modell (A1). | **UC-WP-8, UC-WP-9, UC-WP-10, UC-WP-18** |
+| **4b-1** | factory nur-hinzufügen | `GET /api/projects/{id}/files?root=checkout\|tmp&path=…` liest Verzeichnis oder Datei; `..`, absolute Pfade und ausbrechende Symlinks werden abgewiesen; Schreiben gibt es nicht. | **UC-WP-19, UC-WP-42** (Server-Hälfte) |
+| **4b-2** | ui nur-hinzufügen | Im Chat öffnet ein Knopf den Datei-Bereich als Slide-Over mit Checkout/TMP-Umschalter; ein Ausbruchsversuch zeigt einen Text statt Inhalt. | **UC-WP-19, UC-WP-42** (Browser-Hälften) |
 
-Order: **3a → 3b → 3c → 3d → 3e**. 3a is the only hard prerequisite; 3b/3c/3d/3e are independent of each
-other but all need 3a. Each increment is fully green on its own gates before the next starts.
+Reihenfolge **4a-1 → 4a-2 → 4a-3 → 4b-1 → 4b-2**. 4a-1 ist Voraussetzung für 4a-3 (es liefert die Wahrheit,
+gegen die getestet wird). 4b-1 und 4b-2 sind unabhängig von 4a, brauchen aber ein grünes 4a-3 (Gate-Stand).
 
-**Not in this increment (do not touch, but do not build anything that has to be re-made later):**
-UC-WP-8/9/10 write pinning = Inc 4 (3a *sets* both roots, it does not prove the denials); UC-WP-11/12/13
-tiles + Clear/Compact = Inc 5 (3a builds the real team + `PoDelegateTool`, so `getTeam()` and `clear()`
-already work); UC-WP-25 user name = Inc 6 (no user concept anywhere in Inc 3 — nothing in the request, DTO
-or state carries one, so adding it later is additive); `askUser`, workspace memory, real plan tools, static
-context text = own stories (`aifactory/docs/aifactory-architektur.md:139-151`).
+**Zwei Verschärfungen sind Teil des Auftrags und hier ausdrücklich benannt** (sie sind keine stillen
+Nebenwirkungen): (1) die eine Prompt-Bau-Zeile in `AiPoAgent.getSystemPrompt()` wird **ersetzt**, nicht
+dazugeschrieben — R6 verlangt genau das; (2) **Da Mek wird festgenagelt** — heute hat er gar keinen Validator
+(`AiDevAgent` überschreibt `getWriteValidator()` **nicht** ⇒ `ALLOW_ALL`, `agent/AiAgent.java:75-77`), kann
+also überallhin schreiben. UC-WP-8/9 schreiben „Jon **oder ein Team-Mitglied**" ⇒ ohne diese Zeile ist die
+Regel nicht erfüllbar. Siehe A3.
 
-**Doc ids used, verbatim from `aifactory/docs/web-prototype.md`** — heading = test name, marker is a pure ID
-line on its own line above the test:
+**Nicht in diesem Increment (nicht bauen, nichts bauen, was später umgemacht werden muß):** Kacheln /
+Clear / Compact / per-Agent-Transkripte = Inc 5 (UC-WP-11/12/13); Nutzer-Name auf `user`-Zeilen = Inc 6
+(UC-WP-25); `askUser`, Jon-Light, Story-/Plan-Werkzeuge = eigene Geschichten. Der Datei-Bereich bekommt
+**keinen** Schreibknopf, keinen Editor, keinen Download und keinen Download-Pfad (R-WP-14 nennt nur *lesen*).
 
-| UC | doc heading = test name | rule | increment |
-|---|---|---|---|
-| UC-WP-5 | `openProjectBindsWorkDir` | R-WP-3 | 3a (tool work dir) + 3b (Chat-View opens) |
-| UC-WP-6 | `chatAlwaysGoesToJon` | R-WP-4 | 3a (server) + 3b (no switcher in the UI) |
-| UC-WP-7 | `streamingUpdatesChatWithoutReload` | R-WP-5 | 3a (server) + 3b (browser) |
-| UC-WP-14 | `secondInputDuringTurnQueues` | R-WP-10 | 3c |
-| UC-WP-15 | `registryAndChatSurviveRestart` | R-WP-11 | 3d |
-| UC-WP-16 | `oneChatPerProject` | R-WP-11 | 3d |
-| UC-WP-17 | `allCoreToolsNoEclipseTools` | R-WP-12 | 3a |
-| UC-WP-20 | `configReadFromFactoryOwnStore` | R-WP-9 | 3a (GIVEN 1+2+3) |
-| UC-WP-21 | `secondUserSeesSameProjectChat` | R-WP-15 | 3d |
-| UC-WP-22 | `inputOnBusyProjectQueuesNotParallel` | R-WP-15 | 3c |
-| UC-WP-24 | `settingsOverrideNeverWritesSharedStore` | R-WP-16 | 3e (GIVEN 3 — "nutzt der **nächste** Turn den neuen Wert") |
+## 4.1 Ground truth (zuerst lesen, nur-lesend — Pfade sind gecacht, nicht erneut suchen)
 
-## 3.1 Ground truth (read first, read-only — paths are cached, do not re-search during the build)
+* `aifactory/docs/web-prototype.md` — **R-WP-6** `:207` (Schreib-Zugriffe nur Projekt-Root + TMP, **kein
+  neuer Mechanismus**, dieselbe Wurzel für Jon und sein Team, Scope steht im Prompt) mit **UC-WP-8** `:213`,
+  **UC-WP-9** `:217`, **UC-WP-10** `:221`; **R-WP-13** `:321` mit **UC-WP-18** `:327`; **R-WP-14** `:331` mit
+  **UC-WP-19** `:336` und **UC-WP-42** `:341`; **R-WP-11** `:289-296` (Werkzeug-Zeilen **nur live**, **kein
+  zweiter Speicher**); **R-WP-4** / **UC-WP-40** (Interna eines Mitglieds sind **nie** sichtbar).
+* `aifactory/docs/aifactory-architektur.md:113-141` — „**Datei-Bereich: eine Lese-Kante im `project`, kein
+  vierter Chat-Pfad (Design für Inc 4b)**": Kante, Wurzel-Regel, Guard in der Fassade, **kein**
+  `WriteValidator` im Leseweg, UI-Komponente `project.project.files` + `files.client`, **Slot aus `app` in
+  die Chat-Seite**, `chat` importiert nichts aus `project`. Diese Zeilen sind bindend, nicht negotiierbar.
+* `org.sterl.llmpeon.core/docs/write-path-validator.md` — **R6 `:118-134`** (❌ offen): `pathScopePrompt()`
+  als `default` mit leerem Text; `DOCS` liefert den bisherigen Text; `DENY_ALL` sagt „nur lesen";
+  `DynamicRootsWriteValidator` nennt **seine** Wurzeln zur Prompt-Zeit; `AiPoAgent` benutzt **nur** diesen
+  Text; `ALLOW_ALL` ⇒ **kein** Scope-Absatz, Plugin-Agenten unverändert. R1–R5, R7–R10 sind ✅ (nicht
+  umzubauen). Core-Docs tragen **keine** UC-ids ⇒ Core-Tests bekommen **keine** Marker.
+* `AGENTS.md` → skill `component-architecture`; `AGENTS-DEV.md` — **`:17-20` Plugin-Gate nach jeder
+  Core-Änderung** (`mvn -o -pl org.sterl.llmpeon,releng/llmpeon-target -am package -DskipTests`, danach
+  `org.sterl.llmpeon` **und** `org.sterl.llmpeon.test` refreshen + bauen), `:21-33` Marker- und
+  Lint-Regeln, `:34-35` Umfang niemals still erweitern, `:55-59` Gate-Zahlen im Commit;
+  `aifactory/AGENTS-DEV.md` (pnpm auf dem Pfad, **kein** `-parameters`, `TestRestTemplate` offline
+  unbrauchbar, `spring-boot:run` braucht vorher `install`); skills `test-honesty`, `peon-build-test`,
+  `repo-api-traps`.
 
-* `aifactory/docs/aifactory-architektur.md` — **§Turn (Sequenz)** `:51-66`, **§Chat: HTTP-Kanten und SSE**
-  `:68-99` (three edges, no fourth path; the turn belongs to the project, not the connection; POST returns
-  `202`; one `ProjectRuntime` per project; `ChatStreamRegistry` holds **no** messages; history is read from
-  `home.stateDir(id)`; `chat` may ask `config` and `project`), **§Verantwortung und Grenzen** `:40-49`,
-  **§Abbildung Core → Factory** `:102-112`, **§Invarianten** `:153-165` (one turn per project; write
-  boundary at the choke point; runtime state never inside the checkout; no `org.eclipse`; keys never leave
-  the server in clear text; `shared` knows no component).
-* `aifactory/docs/web-prototype.md` — Ziel `:9-17`, R-WP-3 `:136`, R-WP-4 `:145`, R-WP-5 `:155`, R-WP-10
-  `:237`, R-WP-11 `:246`, R-WP-12 `:264`, R-WP-15 `:298`, R-WP-9 `:205`, R-WP-16 `:312`, R-WP-13 `:278`,
-  R-WP-22 `:41` (delivery), R-WP-1 `:31` (exactly three views).
-* `aifactory/docs/adr/001-factory-shares-core-disk-only.md` — shared core, disk tools only, core stays
-  Eclipse-free, web-only logic in the core is a violation.
-* `AGENTS.md` → skill `component-architecture`; `AGENTS-DEV.md:15-60` (marker rule `:21-27`, never widen
-  scope `:34-35`, doc input vs. HEAD `:36-39`, docs/ADR ride with the commit `:40-44`, root sets tested at
-  the composition root `:45-50`, commit message carries the gate result `:55-59`);
-  `aifactory/AGENTS-DEV.md` (aifactory build facts — pnpm on PATH, no `-parameters`, `TestRestTemplate`
-  unusable offline, `spring-boot:run` needs `install` first, `gitea.sterl.co` does not resolve);
-  skill `test-honesty`.
+**Pre-flight ( vor der ersten Zeile von 4a-1) — blockierend:**
+1. `git status --porcelain`, `git log -1 -- aifactory/docs/web-prototype.md
+   aifactory/docs/aifactory-architektur.md` und `git log -1 --
+   org.sterl.llmpeon.core/docs/write-path-validator.md`. Liegen die zitierten Doc-Zeilen **uncommittet** im
+   Arbeitsbaum: beide Listings melden und **stoppen** — die Doc-Eingabe darf nicht das Increment werden.
+   Staging einer Doc-Datei braucht eine frische, ausdrücklich **diesen** Increment nennende Freigabe.
+2. `git log -1` → HEAD als „green before" in den 4a-1-Report.
+3. `~/.peon`: rekursive Prüfsumme **vor** dem Increment; der Report nennt das Paar (byte-identisch erwartet;
+   kein Test darf diese Datei lesen oder schreiben).
+4. Baselines laufen lassen und Zahlen melden: core `clean test` (1386/0/0), factory `clean verify`
+   (96/0/0), UI `test|lint|build` (22/3), `lintDocsAndTests` (**10** Befunde, VERWAIST 0 — die sechs
+   Inc-4-ids darunter).
+5. Build-Falle (mehrfach gemessen): nach Eclipse-Editaten liegen Lombok-blankierte Fehler-Stümpfe in
+   `target/classes` ⇒ **jeder** Maven-Lauf mit `clean`; nach jeder Core-Änderung
+   `mvn -o -pl org.sterl.llmpeon.core install -DskipTests` **vor** dem Fabrik-Bau.
 
-**Pre-flight (before the first line of 3a, `AGENTS-DEV.md:36-44`) — blocking:**
-1. `git status --porcelain` and `git log -1 -- aifactory/docs/aifactory-architektur.md
-   aifactory/docs/web-prototype.md`. The §Chat section of the architecture doc is what this increment is
-   built against; if it is **uncommitted**, report both listings to the PO and stop — the doc input itself
-   must not become the increment. Staging a doc file needs a fresh, explicit PO authorization for *this*
-   increment; Inc 2's authorization was for 2b only and is spent.
-2. `git log -1` → record HEAD in the 3a report as the "green before" baseline.
-3. `mvn -f aifactory/pom.xml clean verify` (baseline from Inc 2c) and `pnpm -C aifactory/factory-ui
-   test|lint|build`; both must be green **before** the first edit (`test-honesty`).
-4. If a test cannot import `org.sterl.llmpeon.mock.MockLlmServer` (see §3.3 F): the artifact in `~/.m2` is
-   stale → `mvn -o -pl org.sterl.llmpeon.core install -DskipTests`, then refresh. No core **source** change
-   is planned or allowed in Inc 3.
+## 4.2 Verifizierte Fakten (2026-10-26 von Platten gelesen — vertrauen, Nachlesen ist Verschwendung)
 
-## 3.2 Verified facts (read from disk 2026-10-25 — trust these, re-reading is a waste)
+**Core** (`org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/`):
 
-**Factory today (all paths under `aifactory/factory-backend/src/main/java/org/sterl/open/aifactory/`):**
-* `shared/FactoryHome.java` — `stateDir(projectId)` = `<home>/state/<id>` `:65`; `configFile()` `:73`;
-  the single test seam `FactoryHome.of(Path)` `:46`; property `aifactory.home`, env `AIFACTORY_HOME`.
-* `shared/TmpRoots.systemTmp()` — the second write root (R-WP-13), already absolute + normalized.
-* `shared/ApiError.java` + `shared/ApiExceptionHandler.java` — `@RestControllerAdvice` **without package
-  scoping**: `IllegalArgumentException`→400, `IllegalStateException`→409, `ResponseStatusException`→its
-  status. No Bean Validation starter on the classpath → validate by hand.
-* `project/ProjectExceptionHandler.java` — also a global advice, so a `ProjectNotFoundException` thrown
-  from **any** component answers 404. Reuse it; do not add a second advice.
-* `project/ProjectService.find(String id)` `:90` → `Optional<Project>`; `Project(String id, String name,
-  String gitUrl, Path localPath, ProjectState state)`; `remove(String)` `:153` (entry + checkout).
-* `config/FactoryConfigService` — `load()` `:54` = `pin(LlmConfigLoader.load(store()))`, `pin()` `:132`
-  forces `configDir = home.root()` and `diskToolsEnabled = true`; hand-written validation style with
-  static, value-free hint constants (`:30-33`) — copy that style for the new turn check.
-* `ui/ResourceUIConfig.java` + `ui/SpaIndexController.java` — `/ui/**` delivery, `/` → 302. Untouched.
-* `pom.xml:41` comment claims the core is "used from the `agent` and `config` packages" — there is no
-  `agent` package; 3a updates that comment to `config` **and** `chat`. That comment line is the only
-  allowed edit to `factory-backend/pom.xml`: **no dependency is added in Inc 3** (see §3.3 E).
-* Guards: `ComponentArchitectureTest` (`ApplicationModules` verify, `sharedKnowsNoComponent`,
-  `onlyConfigReadsTheFactorysOwnConfig` = no dependency on `LlmConfigLoader`/`FileLlmConfigStore` outside
-  `config`) and `ArchitectureGuardTest` (no `org.eclipse..`, no `Eclipse*` / `PeonAiService` /
-  `SharedToolsComponent` / `AgentContextComponent` / `BuildPoAgentComponent` / `AskUserTool` /
-  `WorkspaceMemoryTool` / `PlanTool` / `PlanReadTool` / `StaticContextItem` / `AgentsMdContextItem`;
-  `productionClasses()` imports main only, ArchUnit arrives transitively via `spring-modulith-core`,
-  `@ArchTest` is unavailable offline).
-* UI today: `factory-ui/src/App.tsx` (`onOpen` sets `selected` but **stays on the projects view** — the
-  3b gap), `views/ChatView.tsx` (placeholder "Noch kein Agent"), `api/client.ts` (`request<T>` +
-  `ApiRequestError`), `api/projects.ts`, `api/settings.ts`, `test/` helpers, jsdom pinned to 26.1.0.
+* `tool/WriteValidator.java` — `JON_PATH_SCOPE_PROMPT` **`:9-10`** (Text über `docs/…`, `*.md`);
+  `void validate(String)` **`:15`** (einzige abstrakte Methode ⇒ funktionales Interface);
+  `ALLOW_ALL` **`:18`** (Lambda); `DOCS = new AllowlistWriteValidator("*/docs/*","*.md")` **`:21`**;
+  `DENY_ALL` **`:24-27`** (Lambda). ⇒ `default String pathScopePrompt()` ist **nur-hinzufügen** und läßt alle
+  Lambda-Implementierungen unverändert kompilieren; `DENY_ALL` muß eine kleine benannte Implementierung
+  werden, damit es den Text liefern kann.
+* `tool/AllowlistWriteValidator.java:13-31` — **einzige** Baustelle im ganzen Repo ist
+  `WriteValidator.java:21` (das Plugin baut keine) ⇒ der Scope-Text darf hier einziehen.
+* `tool/DynamicRootsWriteValidator.java:21-61` — Ctor `(Path configDir, Supplier<List<Path>> additionalRoots)`;
+  `validate` **`:32-39`** wirft `IllegalArgumentException` mit
+  `„Write denied: '<eingabe>' resolves to '<ziel>' which is outside this agent's allowed roots [<wurzeln>].
+  You may only write to those roots."`; `private allowedRoots()` **`:52-57`** = `configDir` +
+  `additionalRoots.get()`, **zur Aufrufzeit** gelesen ⇒ `pathScopePrompt()` muß dieselbe Quelle benutzen
+  (sonst wäre der Prompt eine zweite, abweichende Wahrheit).
+* `poagent/AiPoAgent.java` — `getSystemPrompt()` **`:97-102`** = `BASE_PROMPT` + NL + NL +
+  `WriteValidator.JON_PATH_SCOPE_PROMPT` + NL + `DELEGATION_PROMPT`; `getWriteValidator()` **`:104-107`** =
+  `DOCS`; `NAME = "Peon-PO"`; `getTeam()` `:90-95`. **Kein Core-Test referenziert
+  `JON_PATH_SCOPE_PROMPT`** (grep = leer) ⇒ das Paritäts-Pin ist neu, nichts muß umgeschrieben werden.
+* `agent/AiAgent.java:75-77` — `default getWriteValidator() = ALLOW_ALL`; `agent/AiDevAgent.java` — **keine**
+  Überschreibung ⇒ **Da Mek schreibt heute überallhin**. `agent/AbstractAgent.java:339` liest
+  `.writeValidator(getWriteValidator())` in `doCall` ⇒ **pro Turn**, eine Überschreibung genügt.
+  `ai/AiScaffoldAgent.java:54` nutzt `ALLOW_ALL` und bleibt unbeteiligt.
+* `tool/component/SmartToolExecutor.java:37-67` — der Lauf fängt die `IllegalArgumentException` des
+  Validators, `reportProblem` **`:63-67`** kürzt die **Nutzer-Kopie auf 180 Zeichen + „…"** und ruft
+  `monitor.onProblem(name + ": " + msg)`; **das an das Modell zurückgegebene Ergebnis ist ungekürzt**.
+  `shared/AiMonitor.java:90-100` — `onProblem` baut eine `PROBLEM`-`SimpleMessage` ⇒ `onChatResponse` ⇒
+  Fabrik bildet sie auf die SSE-`tool`-Zeile ab. **Der Ablehnungs-Text ist also live sichtbar, und die
+  Lange der Zeile ist nicht der volle Text** — Assertions nur am stabilen Präfix
+  `diskWriteFile: Write denied:`.
+* `shared/FileUtils.java:83-88` — `resolve(base, path)`: absolut **und bereits vorhanden** ⇒ absolut
+  normalisiert übernommen, sonst `base.resolve(path)` + `normalizeSegments` (`:29-45`). Die
+  `Files.exists`-Bedingung im Absolut-Zweig ist überraschend, ist aber für die Traversal-Betrachtung ohne
+  Gewinn: `normalizeSegments` entfernt `..` vor dem Vergleich.
+* **`ShellTool` ruft den Validator nicht auf.** Aufrufer von `validateWrite` sind
+  `DiskFileWriteTool.resolve`, `WebGetTool` und `EclipseWorkspaceWriteFileTool` — **nicht** `ShellTool`.
+  ⇒ R-WP-6 ist über die Shell **nicht** dicht; ein Kern-Fix wäre eine Verhaltensänderung fürs Plugin
+  (PR-3) ⇒ **melden, nicht bauen** (A2). `tool/tools/AgentsTool.java:33` bleibt „Paul WIP — don't touch".
 
-**Core seams (module `org.sterl.llmpeon.core`, package → file):**
-* `poagent/AiPoAgent.java` — ctors `:50/:55/:59`; `NAME = "Peon-PO"` `:39`;
-  `AiPoAgent(ConfiguredChatModel, ToolService, Path historyStateDir, List<NamedAgent> slaves)` — the
-  4-arg form is Jon **with** a persistent history; `getTeam()` `:90` prepends `Da Boss`;
-  `getWriteValidator()` `:105` returns `WriteValidator.DOCS` (must be overridden — see D5); `clear()` `:141`
-  clears the delegate tool's plan/dev/review; `setStaticContext` `:69` forwards the naming to every slave.
-* `agent/AbstractAgent.java` — `historyFile(stateDir, agentName)` `:85` = `<stateDir>/<safeName>-history.jsonl`
-  and it is **protected** (the factory must not re-derive that name — see D4); `call(String, AiMonitor)`
-  `:229`: `working.compareAndSet(false,true)` fails ⇒ `messageQueue.add(msg)` and **return null** — this is
-  the only serialization the factory needs; `doCall` `:312` adds the user message to the memory, then
-  `monitor.onCallStart`; `queuedMarker` `:307` writes `[Queued Message] (HH:mm): <text>` into the memory.
-* `queuedmessages/UserMessageQueue.java` — default batch window **10 000 ms** and burst-merge up to 300
-  chars ⇒ two quick sends may become **one** queue entry; `setMessageQueue` is package-private, so a test
-  cannot shrink the window. Every queue test must therefore be written so it holds for merged **and**
-  unmerged payloads (§3.6).
-* `ai/ConfiguredChatModel.java` — `ConfiguredChatModel(LlmConfig)` `:26`; `updateConfig(LlmConfig)` `:96`
-  (null → NPE, equal → nothing, changed → resets the built model) — this is the whole "next turn uses the
-  new value" mechanism (3e); `modelFor(AgentConfig)` `:64` builds a **separate** model when an agent has
-  its own url/apiKey — the factory file carries no `llm.agent.*` keys, so every agent stays `isBase()`.
-* `ai/LlmConfig.java` — `stateDirectory()` `:110` = `configDir/state`; defaults: `model`/`url`/`apiKey`
-  null, `timeout` 180 s (`LlmConfigLoader:33`), `autoCompactAfter` 80 000, `configDir` `~/.peon` (pinned
-  away by `config`), `diskToolsEnabled` false (pinned to true).
-* `ai/AiProvider.java` — nine names, `parse()` **silently coerces an unknown name to OLLAMA** → never use
-  it; `AiProvider.valueOf` semantics via the existing `isProviderName` pattern
-  (`config/FactoryConfigService.java:117`).
-* `provider/OpenAiProvider.buildModel` `:35` passes `.apiKey(c.getApiKey())` straight into langchain4j, and
-  `OllamaProvider.DEFAULT_BASE_URL` is `http://localhost:11434` — an unset key/url is a provider-internal
-  failure, which is exactly why UC-WP-20 GIVEN 3 demands a factory-side rejection **before** the build.
-  There is **no** `requiresApiKey` in the core; the two key-free providers are `OLLAMA` and `LM_STUDIO`
-  (R-WP-9 / UC-WP-20 GIVEN 3 name them), so that policy is factory knowledge and lives in `config` (D7).
-* `tool/ToolService.java` — `ToolService(boolean withDefaults)` `:83` registers `WebFetchTool`,
-  `WebSearchTool`, `SearchAgentTool(this)`, `ShellTool`, `CompactSessionTool`; `addTool`, `getTool(Class)`,
-  `removeTool`, `toolSpecifications()`, `activeNames(classFilter, nameFilter)`.
-* `tool/tools/ShellTool.java:49` `setDefaultWorkingDir(Supplier<Path>)` (call-time read, R3); `isEditTool()`
-  is true, so a read-only slave never sees it — Jon and Da Mek do.
-* `tool/tools/DiskFileWriteTool.java:22`, `DiskFileReadTool`, `DiskGrepTool` — all take a `Path workingDir`
-  in the ctor and expose `setWorkingDir`; `docslinter/DocsLinterTool(Path)` +
-  `docslinter/DocsIdTool(DocsLinterTool)`; `tool/web/WebGetTool()` no-arg.
-* `tool/DynamicRootsWriteValidator.java:26` `(Path configDir, Supplier<List<Path>> additionalRoots)` —
-  resolves with `FileUtils.resolve`, normalizes (kills `..`), allows `configDir` or any additional root,
-  otherwise throws `IllegalArgumentException` naming the roots; roots are read at **validate time**.
-* `shared/AiMonitor.java` — `onStreamingChunk(OnPartialAiResponse)` (every token, default no-op),
-  `onChatResponse(SimpleMessage)` (the one abstract method; `onTool`/`onProblem`/`onFileUpdate` funnel into
-  it), `onCallStart(String)`, `onCallCompleted(ChatResponse, Duration)`, `onTokenUsage`,
-  `onCompactCompleted`, `isCanceled()`.
-* `shared/OnPartialAiResponse.java` — `record (Type type, String value, Instant startedAt, long
-  tokenPhaseStart)`, `Type = START | THINK | ANSWER | TOOL | END`.
-* `tool/model/SimpleMessage.java` — `record (Type role, String message)`,
-  `Type = AI | USER | PROBLEM | TOOL | THINK | QUESTION | DIFF`.
-* `memory/FileAgentHistoryStore.java:26 load()` is **read-only** (missing file → `List.of()`, corrupt file →
-  deleted + empty); `ThreadSafeMemory(FileAgentHistoryStore)` loads in its constructor — building Jon costs
-  no writes, which 3a asserts (§3.4 T6).
-* Team: `AiPlanAgent`/`AiDevAgent`/`AiReviewAgent` each have a **2-arg ctor = RAM-only memory** (ADR-0024,
-  and exactly R-WP-11's "sein Team beginnt leer"); `AiPlanAgent.classFilter()` drops edit tools,
-  `AiReviewAgent.getWriteValidator()` is `DENY_ALL` (core parity, see Q5);
-  `poagent/tools/PoDelegateTool.java:105`
-  `(NamedAgent plan, NamedAgent review, NamedAgent dev, Function<NamedAgent,List<ContextItem>> ordersFor,
-  IntSupplier autoCompactAfter)`; `agent/NamedAgent` is a record `(String uiName, AiAgent agent)`.
-* **Test double, already in the core's `src/main`** (so it is on the factory's *test* classpath through the
-  `llmpeon-core` jar, no new dependency): `mock/MockLlmServer.java` — `start()` binds port 0 and serves
-  `/v1/chat/completions` (OpenAI SSE, text split into several chunks), `/v1/models`, `/v1/messages`
-  (Anthropic), `/api/chat` (Ollama NDJSON); `getUrl()` = `http://127.0.0.1:<port>/v1`;
-  `newConfig(String model)` → `OPEN_AI` + that url + 30 s; `queueResponse(String)` and
-  `queueResponse(AiMessage)` (an `AiMessage` carrying `ToolExecutionRequest`s is answered as
-  `finish_reason: tool_calls`, so a scripted tool turn needs no fake model class); `setNonStreaming(true)`;
-  `getCapturedTools()` / `getCapturedTool(name)` (name + params of every tool spec the agent actually
-  sent); `getLastRequestBody()` (raw JSON — contains `"model":"…"`, the proof for 3e);
-  `getCapturedMessages()`; `reset()`; `stop()`. **An empty queue answers a default line instead of
-  blocking**, so a sub-agent call (`SearchAgentTool`) can never hang a test.
-## 3.3 Design (gilt für alle fünf Increments — Änderungen daran sind Plan-Änderungen, keine Implementierungs-Entscheidungen)
+**Fabrik** (`aifactory/factory-backend/src/main/java/org/sterl/open/aifactory/`):
 
-### 3.3.1 Komponenten und Abhängigkeitsrichtung
+* `project/` **existiert** und trägt schon `ProjectController` (`@RequestMapping("/api/projects")`, nur
+  `GET`/`POST`/`DELETE`), `Project(String id, String name, String gitUrl, Path localPath, ProjectState state)`,
+  `ProjectService.find(String) : Optional<Project>`, `ProjectNotFoundException` +
+  `ProjectExceptionHandler` (global ⇒ 404), `ProjectRemoved`, `dto/`. ⇒ 4b-1 legt `ProjectFilesController`
+  **in dieses Paket**, kein vielter Chat-Pfad, kein neues Paket.
+* `shared/ApiExceptionHandler.java` — `IllegalArgumentException`→400, `IllegalStateException`→409,
+  `ResponseStatusException`→sein Status; **kein** zweiter Advice erlaubt. `shared/TmpRoots.systemTmp()`
+  `:14-16` = `java.io.tmpdir`, absolut + normalisiert, **pro Aufruf** gelesen.
+* `chat/ProjectRuntime.java:62-98` — `JonToolSet.forProject(root)` → Plan/Review/**Dev ohne Validator** →
+  `addDelegateTool` → anonyme `AiPoAgent`-Unterklasse mit `getWriteValidator()` (**nur Jon**) →
+  `AgentNames` → `SseTurnMonitor`; `history()` überspringt **jedes** `ToolExecutionResultMessage` ohne
+  Delegations-Attribute ⇒ **eine Schreib-Ablehnung ist live-only und erscheint nie im wiederhergestellten
+  Verlauf** — genau R-WP-11, und genau das, was 4a-1 mißt.
+* `chat/JonToolSet.java:43-78` — `forProject` baut
+  `new DynamicRootsWriteValidator(root, () -> List.of(TmpRoots.systemTmp()))`, `writeValidator()` `:76`;
+  **JavaDoc `:71-75` behauptet, der Validator gelte „for Jon and Da Mek" — das ist seit der ersten Zeile
+  halb wahr** und wird in 4a-3 mit der Da-Mek-Zeile wahr (oder die Zeile wird korrigiert).
+* Test-Vorbilder, pfadgecacht (`aifactory/factory-backend/src/test/java/org/sterl/open/aifactory/`):
+  `project/FakeGitConfig.java` (`@TestConfiguration`, `@Primary GitService`, legt `<target>/.git` an,
+  merkt `cloneTargets`) — Projekte werden in Tests über `POST /api/projects` angelegt;
+  `chat/ChatTurnTest.java` (Drehbuch-Werkzeug-Turn, `RestTemplate` + `@LocalServerPort` +
+  `NoOpResponseErrorHandler`, JDK-`HttpClient` für SSE), `chat/DelegatedAnswerTest.java`
+  (`twoDelegationsInOneTurnProduceOneLineEach` = ein `AiMessage` mit **zwei** `ToolExecutionRequest`s —
+  das Vorbild für „Mitglied schreibt"), `chat/ChatRestartTest.java` (zwei selbst gebootete Kontexte,
+  festes Home unter `target/`, **kein** `@TempDir`), `ArchitectureGuardTest.java`,
+  `ComponentArchitectureTest.java`, `chat/OneChatPerProjectTest.java`, `chat/SharedProjectChatTest.java`.
 
-Neues Modulith-Modul `org.sterl.open.aifactory.chat`. Layout wie in Inc 2: DTOs nach `chat/dto`, der Rest
-modulwurzelnahe, **keine** Sub-Package-Chain.
+**UI** (`aifactory/factory-ui/`): `src/app/app.shell.tsx:30` rendert `<ChatPage project={selected}/>`
+(genau hier sitzt der `files`-Slot); `src/chat/chat.page.tsx` hält den Zustand und leert in `applyHistory`
+`live`, `toolLines`, `teamAnswers`; `src/project/project.client.ts` benutzt `shared/api.client`
+(`request<T>`, `errorMessage`); `src/project/project.page.tsx` ist die Projektseite; Tests in
+`test/{chat,config,project,shared}/` mit `test/shared/fixtures.ts` (`project()`-Helfer) und `test/setup.ts`;
+CSS in `src/styles.css`. Ein `test/app/` existiert nicht (der UC-WP-1-Test rendert die Shell aus einem
+anderen Ordner) — 4b-2s UC-WP-19-Test rendert die **Shell** aus `test/project/`.
+
+**`MockLlmServer` (Core `src/main`, im Fabrik-Testklassenpfad):** `queueResponse(String)`,
+`queueResponse(AiMessage)` (`AiMessage` mit `ToolExecutionRequest` ⇒ `finish_reason: tool_calls`),
+`getCapturedMessages()` (nur Rollen `user`/`tool`, **nie** `system`/`assistant`), `getCapturedTools()`,
+`getLastRequestBody()`, `reset()`, `stop()`; **`getRequestCount()` gibt es nicht**; leere Warteschlange
+antwortet eine Standard-Zeile statt zu blockieren.
+
+## 4.3 Design (Änderungen daran sind Plan-Änderungen, keine Implementierungs-Entscheidungen)
+
+### 4.3.1 Grundregel: der **Validator** ist die Wahrheit, der **Prompt** zitiert sie
+
+R6 ist keine Schönheitskorrektur, sondern die Beseitigung einer zweiten Wahrheit: heute steht der erlaubte
+Pfad-Bereich an zwei Stellen — hart im `WriteValidator` und als Konstante im Prompt. Die Fabrik weiß das
+schon heute nicht anders zu bauen (`JonToolSet` weiß die Wurzeln, der Core-Prompt rät). Also:
 
 ```mermaid
-flowchart LR
-  subgraph chat["chat (neu, Inc 3a)"]
-    CC["ChatController<br/>External Facade, nur DTOs"]
-    PRR["ProjectRuntimeRegistry<br/>@Component, 1 Runtime je Projekt"]
-    PR["ProjectRuntime<br/>plain class, kein Bean"]
-    STM["SseTurnMonitor<br/>AiMonitor -> ChatEvent"]
-    CSR["ChatStreamRegistry<br/>ChatEvent -> SSE, nur Zuhörer"]
-    JT["JonToolSet<br/>ToolService je Projekt"]
-    DTO["chat/dto<br/>ChatMessageDto, SendMessageRequest"]
-  end
-  subgraph proj["project (unverändert)"]
-    PS["ProjectService, Project, ProjectNotFoundException"]
-  end
-  subgraph cfg["config (Inc 2)"]
-    FCS["FactoryConfigService"]
-  end
-  subgraph shared["shared (unverändert)"]
-    FH["FactoryHome, TmpRoots, ApiError/Handler"]
-  end
-  subgraph core["llmpeon-core (unverändert)"]
-    PO["AiPoAgent + Team + ToolService + Memory"]
-  end
-  CC --> PRR
-  CC --> DTO
-  PRR --> PR
-  PR --> STM
-  STM --> CSR
-  PR --> JT
-  PR --> PO
-  CC --> PS
-  PR --> PS
-  PRR --> FCS
-  PR --> FH
-  chat --> shared
+classDiagram
+  class WriteValidator {
+    <<interface>>
+    +validate(String)
+    +pathScopePrompt() String
+    ALLOW_ALL
+    DOCS
+    DENY_ALL
+    JON_PATH_SCOPE_PROMPT
+  }
+  class AllowlistWriteValidator {
+    -String[] patterns
+    +pathScopePrompt() String
+  }
+  class DenyAllWriteValidator {
+    +pathScopePrompt() String
+  }
+  class DynamicRootsWriteValidator {
+    -Path configDir
+    -Supplier~List~Path~~ additionalRoots
+    -allowedRoots() List~Path~
+    +pathScopePrompt() String
+  }
+  class AiPoAgent {
+    +getSystemPrompt() String
+    #getWriteValidator() WriteValidator
+  }
+  WriteValidator <|.. AllowlistWriteValidator
+  WriteValidator <|.. DenyAllWriteValidator
+  WriteValidator <|.. DynamicRootsWriteValidator
+  WriteValidator <-- AllowlistWriteValidator : DOCS nutzt
+  AiPoAgent ..> WriteValidator : promptZitiert()
 ```
 
-**Abhängigkeiten zeigen nach innen auf `chat` als Besitzer des Turn-Wissens; `project` und `config`
-kennen `chat` nicht.** `chat` → `project` (Pfad, 404-Fall), `chat` → `config` (Konfiguration pro Turn),
-`chat` → `shared` (Wurzeln, Fehlerformat). Kein Pfad `project → chat`, `config → chat`, `chat → LlmConfigLoader/FileLlmConfigStore`
-(`ComponentArchitectureTest.onlyConfigReadsTheFactorysOwnConfig`, `:87-101`, greift bereits).
+* `default String pathScopePrompt()` liefert **`""`** ⇒ `ALLOW_ALL` und jede Plugin-Implementierung (16
+  Monitor-, mehrere Validator-Nutzer) bleiben unangetastet; die Schnittstelle behält genau **eine**
+  abstrakte Methode (PR-3).
+* `AllowlistWriteValidator` trägt den bisherigen `JON_PATH_SCOPE_PROMPT`-Text **wortgleich** ⇒ `DOCS`
+  verhält sich bitgenau wie heute (GIVEN „Plugin-Agenten unverändert").
+* `DENY_ALL` wird eine kleine benannte Implementierung mit „read-only"-Hinweis (Lambda kann keinen Text
+  tragen). **Kein** Aufrufer ändert sich, weil das Feld gleich bleibt.
+* `DynamicRootsWriteValidator` rendert **seine** Wurzeln aus `allowedRoots()` — dieselbe Methode, dieselbe
+  Supplier-Quelle, also auch dieselbe Frische pro Turn.
+* `AiPoAgent.getSystemPrompt()` **ersetzt** die Konstante durch `getWriteValidator().pathScopePrompt()` und
+  läßt den Absatz **bei leerem Text ganz weg** (kein Leerblock ⇒ `ALLOW_ALL`-Prompt unverändert).
+  Der Text wird **nicht** umgeschrieben, nicht übersetzt, nicht gekürzt.
 
-Kapselung — was jede Klasse weiß und verbirgt:
+**Warum nicht „Prompt-Text ins Fabrik-Statische-Kontext-Feld"?** Das wäre ein dritter Ort für dieselbe
+Tatsache und ein zweiter, stiller Vertrag über Jons Prompt — genau das, was R6 schließen will.
 
-| Klasse | Weiß | Verbirgt | Warum |
-|---|---|---|---|
-| `ChatController` | Routen, Statuscodes, DTO-Form | dass es Agenten, Turns, Queues gibt | Arch-Doc `:45` „ProjectRuntime darf kein HTTP/JSON"; der Turn-Wechsel soll keine Route ändern |
-| `ProjectRuntime` | ein Projekt, sein Pfad, sein `state/<id>`, ein `AiPoAgent`, ein `ToolService`, Serialisierung | Dateinamen des History-Stores, SSE-Formate | ein Wechsel des Core-Formats betrifft eine Klasse |
-| `ProjectRuntimeRegistry` | Erzeugen/Verwerfen der Runtime je Projekt, der gemeinsame Executor | Turn-Mechanik | Lebenszyklus ≠ Turn-Ablauf; nur hier darf „wegwerfen" stehen |
-| `SseTurnMonitor` | Übersetzung `AiMonitor` → `ChatEvent` | HTTP, Emitters, JSON | die Core→Chat-Tabelle ist der einzige Ort, der den Core-Callback kennt |
-| `ChatStreamRegistry` | Zuhörer je Projekt, Broadcast, Aufräumen toter Emitters, SSE-Drahtformat | Agenten, Turns, Verläufe | Arch-Doc `:94-96`: hält **keine** Nachrichten |
-| `JonToolSet` | welche Tools Jon + Team bekommen und mit welchem Root | Turn, Konfiguration | UC-WP-17 ist eine Aussage über diese Klasse, nicht über den Agenten |
-
-### 3.3.2 Turn (Sequenz, konkret)
+### 4.3.2 Der Weg einer Ablehnung (gemessen, nicht angenommen)
 
 ```mermaid
 sequenceDiagram
   autonumber
-  participant B as Browser (3b) / curl (3a)
-  participant C as ChatController
-  participant R as ProjectRuntimeRegistry
-  participant PR as ProjectRuntime
-  participant M as SseTurnMonitor
-  participant K as ChatStreamRegistry
-  participant J as AiPoAgent (Core)
-  B->>C: GET /api/projects/{id}/events
-  C->>K: subscribe(id) -> SseEmitter(0L)
-  B->>C: POST /api/projects/{id}/messages {text}
-  C->>R: runtime(id)  (computeIfAbsent: Pfad von project, Supplier aus config)
-  C->>PR: submit(text)
-  PR->>PR: model.updateConfig(configSupplier.get())   // Konfiguration pro Turn
-  PR-->>C: zurück (Feuer-und-Vergessen)
-  C-->>B: 202 Accepted
-  PR->>J: executor.submit( () -> agent.call(text, M) )
-  J-->>M: onStreamingChunk(THINK|ANSWER)
-  M-->>K: Partial(kind,text)
-  K-->>B: SSE partial
-  J-->>M: onChatResponse(TOOL|PROBLEM)
-  M-->>K: ToolLine(text)
-  K-->>B: SSE tool
-  J-->>M: onCallCompleted(resp, duration)
-  M-->>K: Done(millis)
-  K-->>B: SSE done
-  B->>C: GET /api/projects/{id}/messages   (Verlauf neu lesen)
+  participant M as Modell (Mock dreht das Drehbuch)
+  participant TS as core/ToolService + SmartToolExecutor
+  participant V as core/DynamicRootsWriteValidator
+  participant OM as core/OriginMonitor(Jon)
+  participant ST as chat/SseTurnMonitor
+  participant B as Browser / curl
+  M->>TS: diskWriteFile {filePath:"/tmp/…/x.txt"}
+  TS->>V: validate(abs)
+  V-->>TS: IllegalArgumentException „Write denied: … allowed roots […]"
+  TS->>OM: onProblem("diskWriteFile: Write denied: …")  (Kopie auf 180 Z gekürzt)
+  OM->>ST: onChatResponse(PROBLEM, origin = Peon-PO)
+  ST-->>B: SSE tool  ← die „Werkzeug-Zeile" aus UC-WP-9
+  TS-->>M: Ergebnis-Text **ungekürzt** („Write denied: …")
+  Note over TS,B: Kein Persistenz-Zweig: history() überspringt dieses<br/>ToolExecutionResultMessage ⇒ nach Reload steht die Zeile NICHT drin
 ```
 
-Der Turn gehört dem Projekt, nicht der Verbindung: `POST` kehrt sofort zurück, der Anrufer-Thread wird
-nie für einen Turn benutzt. Kein Zuhörer ⇒ der Turn läuft trotzdem zu Ende und der Verlauf ist danach
-vollständig (curl-Beweis in §3.4 T3).
-
-### 3.3.3 Die drei Kanten und der SSE-Vertrag
-
-| Kante | Antwort | Fehler |
-|---|---|---|
-| `GET /api/projects/{id}/messages` | `200 [ {role,text}, … ]` Rollen nur `user` \| `jon` | Projekt unbekannt → `ProjectNotFoundException` → 404 (`project/ProjectExceptionHandler`, global) |
-| `POST /api/projects/{id}/messages` | **`202`** immer (auch bei „Jon beschäftigt" — die Core-Queue übernimmt) | `text` blank → `IllegalArgumentException` → 400 (`shared/ApiExceptionHandler`); Projekt unbekannt → 404 |
-| `GET /api/projects/{id}/events` | `200`, `text/event-stream`, `SseEmitter(0L)` (0 = kein Timeout, sonst killt Tomcats Async-Timeout von 30 s jeden langen Turn), Header `Cache-Control: no-cache`, `X-Accel-Buffering: no` | Projekt unbekannt → 404 **bevor** der Emitter erzeugt wird |
-
-`SseEmitter`-Import: `org.springframework.web.servlet.mvc.method.annotation.SseEmitter` — liegt in Boot 4
-weiter in `spring-webmvc` (`spring-boot-starter-web` → `spring-boot-starter-webmvc`, `factory-backend/pom.xml:29`); **keine neue Abhängigkeit.**
-
-SSE-Ereignisse (Namen wie im Arch-Doc `:85` „partial · tool · done"; `data` ist jeweils ein JSON-Objekt,
-`id:` wird **nicht** gesetzt — es gibt kein Replay über die Leitung, §3.3.5):
-
-| `event:` | `data` | Quelle im Core | Lebensdauer |
-|---|---|---|---|
-| `partial` | `{"kind":"think"\|"answer","text":"<delta>"}` | `onStreamingChunk(OnPartialAiResponse)` mit `Type.THINK`/`ANSWER` | **nur live** |
-| `tool` | `{"text":"<Zeile>"}` | `onChatResponse` mit Rolle `TOOL` **und** `PROBLEM` | nur live |
-| `done` | `{"millis":n}` | `onCallCompleted(resp, duration)` — **je beantworteter Eingabe**, nicht je `call(…)` (`AbstractAgent:340` im `doCall`); eine gewartete Eingabe liefert ihr eigenes `done` | nur live |
-| `error` | `{"message":"…"}` | `onCallCompleted` mit `resp == null` **oder** jede Exception im Turn-Körper | nur live |
-
-`OnPartialAiResponse.Type.START`/`END` werden verworfen (anonym, kein Wert). **Der fertige Antwort-Text ist
-kein SSE-Ereignis:** nach `done` liest der Client `GET …/messages` neu — eine Wahrheit, zwei Kanäle
-vermeidet der Arch-Doc-Verweis `:92-93` („Ein Browser-Reload verliert **nur** Live-Zeilen").
-Konsequenz für 3b: der **eigene** Nutzereingabe-Entwurf bleibt im UI stehen, bis er im Verlauf erscheint
-(`AbstractAgent.doCall:312` schreibt sie erst zu Turn-Beginn in die Memory; eine **wartende** Eingabe ist
-solange nicht im Verlauf — bekannte, ehrliche Grenze, §3.6).
-
-`ChatEvent` ist die innere Sprache zwischen `SseTurnMonitor` und `ChatStreamRegistry`, damit das Draht-
-format nur das Registry kennt:
-
-```java
-// chat/ChatEvent.java  (neu, versiegelt — die vollständige Übersetzungstabelle)
-sealed interface ChatEvent {
-  record Partial(String kind, String text) implements ChatEvent {}   // think | answer
-  record ToolLine(String text) implements ChatEvent {}               // Tool-/Problem-Zeile
-  record Done(long millis) implements ChatEvent {}
-  record Failed(String message) implements ChatEvent {}
-}
-```
-
-### 3.3.4 Skizzen (Signatur-Ebene, mehr nicht)
-
-```java
-// chat/ChatController.java — External Facade, hält nur Registry + ProjectService
-@GetMapping("/api/projects/{id}/messages")  List<ChatMessageDto> messages(@PathVariable String id)
-@PostMapping(value = "/api/projects/{id}/messages", status = 202)  void send(@PathVariable String id, @RequestBody SendMessageRequest req)
-@GetMapping(value = "/api/projects/{id}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-SseEmitter events(@PathVariable String id)
-
-// chat/ProjectRuntimeRegistry.java — @Component; Lebenszyklus, nicht Turn-Mechanik
-SseEmitter subscribe(String projectId)                 // wirft ProjectNotFoundException bei unbekanntem Projekt
-void submit(String projectId, String text)             // 404 bei unbekanntem Projekt, sonst IllegalArgumentException
-List<ChatMessageDto> history(String projectId)         // Filterung -> DTO
-@EventListener void onProjectRemoved(ProjectRemoved e) // nur mit Q3-Beschluss, §3.7
-private final Map<String, ProjectRuntime> runtimes = new ConcurrentHashMap<>();
-private final ExecutorService turns = Executors.newVirtualThreadPerTaskExecutor();  // Java 21 (Root-pom.xml:13)
-
-// chat/ProjectRuntime.java — BEWUSST kein Bean: der Konstruktor ist die Test-Naht
-ProjectRuntime(String projectId, Path projectRoot, Path stateDir,
-               Supplier<LlmConfig> configSupplier, ChatStreamRegistry streams, ExecutorService turns)
-void submit(String text)             // updateConfig -> turns.submit(call); Exception -> ChatEvent.Failed
-List<ChatMessage> history()          // jon.getHistory() — siehe D4
-AiPoAgent jon()                      // für Inc 5 (Kacheln/Clear) ohne Umbau erreichbar
-
-// chat/SseTurnMonitor.java — die Übersetzungstabelle, ein Exemplar je Projekt (nicht je Turn!)
-SseTurnMonitor(String projectId, ChatStreamRegistry streams) implements AiMonitor
-default String toOutput() -> ""      // onChatResponse muss nichts zurückgeben: Antwort geht an die Memory
-
-// chat/ChatStreamRegistry.java — @Component; Draht, keine Inhalte
-SseEmitter subscribe(String projectId)      // emitter.onCompletion/onTimeout/onError -> abmelden
-void publish(String projectId, ChatEvent e) // pro Projekt synchronisiert; toter Emitter -> still abmelden
-int listenerCount(String projectId)         // für Tests
-```
-
-Ein Monitor **je Projekt**, nicht je Turn: sonst verliert die Queue-Zusammenfassung (`UserMessageQueue:137`)
-ihre Streaming-Ereignisse, weil der zweite Drain denselben Agent-Monitor weiterverwendet.
-
-### 3.3.5 Entscheidungen (D1 … D10)
-
-* **D1 — neues Modul `chat`, Runtime als gewöhnliche Klasse.** Nur `ChatController`, `ProjectRuntimeRegistry`
-  und `ChatStreamRegistry` sind Beans; `ProjectRuntime`, `SseTurnMonitor`, `ChatEvent` und `JonToolSet` sind
-  einfache Klassen. Grund: die Queue- und Neustart-Tests (§3.6, §3.7) brauchen eine Runtime mit *eigenem*,
-  langsamem bzw. vorbelegtem Tool—das ist über eine Spring-Bean mit `@Autowired`-Konfiguration nicht
-  erreichbar, ohne Produktionscode zu verbiegen.
-* **D2 — `POST` antwortet immer 202, die Queue ist nicht die unsere.** Arch-Doc `:80` „prüft nichts über
-  den Turn hinaus" + `AbstractAgent.call:229-233` (beschäftigt → `messageQueue.add`, Rückgabe `null`).
-  Eine zweite Fabrik-Queue wäre ein zweiter Serialisierungsort → genau der Verstoß gegen R-WP-10/R-WP-15,
-  den UC-WP-22 beweisen soll.
-* **D3 — Ereignistabelle wie in §3.3.3, `ChatEvent` dazwischen.** Grund: `AiMonitor` ist Core-Sprache,
-  SSE-Namen sind Browser-Vertrag; beide in einer Klasse zu verknoten macht UC-WP-7 unverfolgbar.
-  Abgewichen wird bewußt von der naheliegenden Variante „fertige Antwort als SSE-Event": der Verlauf ist
-  die einzige Wahrheit (Arch-Doc `:94-96`), und R-WP-11 verlangt explizit, daß nach dem Reload **keine**
-  Duplikate entstehen.
-* **D4 — Verlauf über die Core-Memory, nie über einen Dateinamen.** `ProjectRuntime.history()` liefert
-  `jon.getHistory()` (`AbstractAgent:149`): die Memory ist beim Bau aus `FileAgentHistoryStore` geladen
-  (`AiPoAgent:61-63`), der Store bleibt die einzige Persistenz — **und** `chat` kennt den Dateinamen nicht
-  (`AbstractAgent.historyFile` ist `protected`, eine Rekonstruktion `Peon-PO-history.jsonl` im Fabrik-Code
-  wäre ein zweiter, stiller Vertrag). Beweist UC-WP-15 ohne neuen Lese-Pfad.
-  Filter: `UserMessage` → nur Textteile → `user`; `AiMessage` **ohne** Tool-Aufrufe und mit Text → `jon`;
-  alles andere (`SystemMessage`, `ToolExecutionResultMessage`, `CustomMessage`, Tool-Rufe, leere Texte) →
-  übersprungen. Wartende Eingaben erscheinen mit dem Core-Marker `[Queued Message] (HH:mm): ` — Tests
-  prüfen `contains`, nicht Gleichheit (Q6).
-* **D5 — Schreib-Wurzeln je Agent, nicht global.** `JonToolSet` setzt pro Projekt
-  `new DynamicRootsWriteValidator(projectRoot, () -> List.of(TmpRoots.systemTmp()))` und Jon **und** Da Mek
-  bekommen ihn per Überschreibung von `getWriteValidator()` (`AiPoAgent.java:104-107` liefert `WriteValidator.DOCS` —
-  ohne Überschreibung wäre die halbe Projekt-Root tabu, R-WP-6). Da Thinka (Plan) und Da Dok (Review)
-  behalten ihre Core-Validatoren: Plan filtert Editier-Werkzeuge (`AiPlanAgent.classFilter():70-72`), Review
-  ist `DENY_ALL` (`AiReviewAgent.java:80-83`) — Core-Parität, Q5. Die Wurzeln sind **nicht** die
-  UC-WP-8/9/10-Nachweisung (Inc 4); 3a stellt sie nur.
-* **D6 — Team jetzt, Kacheln später.** `new AiPoAgent(model, tools, home.stateDir(id), List.of(new NamedAgent("Da Thinka", plan), new NamedAgent("Da Mek", dev), new NamedAgent("Da Dok", review)))`,
-  die drei Slaves mit dem **2-Argument-Konstruktor** = RAM-Memory (`AiPlanAgent:21`, `AiDevAgent:17`,
-  `AiReviewAgent:26`; ADR-0024) — genau R-WP-11 „sein Team beginnt leer". `PoDelegateTool(plan, review, dev, n -> List.of(), config::getAutoCompactAfter)`
-  (`PoDelegateTool.java:105-112`) kommt auf den `ToolService`; benennender Kontext über
-  `jon.setStaticContext(List.of(ContextItem.of("Your name is Da Boss.")))` — die Slave-Namen ergänzt der
-  Core selbst (`AiPoAgent.java:68-76`), und zwar **nie** über `StaticContextItem` (ArchGuard).
-  Mit `getTeam()` und `clear()` ist Inc 5 ohne Umbau möglich; die benannte Abweichung: keine Stand-Aufträge
-  (`ordersFor = n -> List.of()`), weil Auftrags-Texte ein eigenes Story-Feld sind.
-* **D7 — „bereit für den Turn" gehört zu `config`.** `FactoryConfigService` bekommt
-  `LlmConfig loadForTurn()` : `load()` plus Prüfung, daß ein Modell gesetzt ist und ein Schlüssel existiert —
-  außer `OLLAMA` und `LM_STUDIO` sind schlüsselfrei (R-WP-9 / UC-WP-20 GIVEN 3 nennen sie; im Core gibt es
-  **kein** `requiresApiKey`, §3.2). Bei Verstoß: neue **einfache** Exception in `config`, deren Botschaft das
-  fehlende Feld nennt; `shared/ApiExceptionHandler` bleibt unverändert (sie ist kein 400-Fall, sondern ein
-  `error`-Ereignis, Q1). Der Anbietername wird nach dem vorhandenen `isProviderName`-Muster geprüft
-  (`config/FactoryConfigService.java:117`), **nie** über `AiProvider.parse()` (unbekannt → still OLLAMA).
-  Die Prüfung liegt **vor** `ConfiguredChatModel`/`buildModel` (`provider/OpenAiProvider.java:35`) — sonst
-  scheitert der Turn im Anbieter, und GIVEN 3 ist nicht nachweisbar.
-* **D8 — Jon-Werkzeuge = Core-Standard + Disk/Dokument-/Web-Werkzeuge mit Projekt-Root.**
-  `new ToolService(true)` (registriert `WebFetchTool`, `WebSearchTool`, `SearchAgentTool`, `ShellTool`,
-  `CompactSessionTool`), dazu je Projekt-Instanz `DiskFileReadTool(root)`, `DiskFileWriteTool(root)`,
-  `DiskGrepTool(root)`, `DocsLinterTool(root)` + `DocsIdTool(linter)`, `WebGetTool()`;
-  `toolService.getTool(ShellTool.class).ifPresent(t -> t.setDefaultWorkingDir(() -> root))` —
-  Lieferant, also zur Aufrufzeit gelesen (`ShellTool.java:49`, R3). `isEditTool()` von `ShellTool` ist wahr,
-  also bleibt es Da Thinka vorenthalten und ist Da Dok erlaubt (`AiReviewAgent.classFilter():75-78`, R-TF-1) —
-  beides Core-Parität, nichts Fabrik-Eigenes. **Kein `SkillTool`, kein `AskUserTool`** (Q3).
-* **D9 — eine neue ArchRegel, damit die Grenze nicht zerläuft.** In `ComponentArchitectureTest`:
-  „nur `chat` darf Agenten-Instanzen halten" — keine Klasse außerhalb `..chat..` abhängig von
-  `AiPoAgent`, `AiPlanAgent`, `AiDevAgent`, `AiReviewAgent`, `ConfiguredChatModel` (Arch-Doc `:99`).
-  Bestehende Regeln bleiben unverändert.
-* **D10 — `factory-backend/pom.xml:41` Kommentar auf `config` **und** `chat` korrigieren** (der Text nennt
-  ein `agent`-Paket, das es nicht gibt). **Keine** Abhängigkeit wird hinzugefügt — siehe E.
-
-### 3.3.6 E — Testnaht: `MockLlmServer` statt eigener Modell-Attrappe
-
-Entschieden: Integrations-Tests schreiben in die `aifactory.home`-Test-Datei
-`providerType=OPEN_AI`, `model=<name>`, `url=http://127.0.0.1:<Port>/v1` (Schlüssel: `test-key`, wo nötig)
-und starten den **echten** `AiPoAgent` gegen `org.sterl.llmpeon.mock.MockLlmServer` (§3.2 unten). Alles
-andere bleibt echt: Entscheidungs-Werkzeug-Schleife, Memory, History-Datei, `AiMonitor`-Kette, SSE-Leitung.
-
-* **SSE-Leser im Test:** JDK `java.net.http.HttpClient` + `BodyHandlers.ofLines()`, Zeilen `data:`/`event:`
-  zählen, `Future.get(timeout)` bzw. `assertTimeoutPreemptively` — eine SSE-Antwort endet nie von selbst.
-  Verworfen: `TestRestTemplate` (offline unbrauchbar, `aifactory/AGENTS-DEV.md`), `WebTestClient`/`WebClient`
-  (erfordern `spring-webflux`, nicht im Klassenpfad, offline-feindlich), nur-Registry-Tests (beweisen das
-  Drahtformat nicht).
-* **Abgewiesen: eigene `StreamingChatModel`-Attrappe.** Sie überspringt die Werkzeug-Schleife und die
-  Queue des Cores — UC-WP-14/17/22 wären dann nicht falsifizierbar. Ebenso abgewiesen: Mockito-Stubs auf
-  `AiPoAgent` (dann wird die Fabrik gegen ihre eigenen Doubles getestet, Verstöße gegen R-WP-4/10 bleiben
-  unsichtbar).
-* **Grenzfall, der im Plan stehen muß:** die Queue des Cores hat ein 10-s-Bündelfenster und verschmilzt
-  Kurz-Texte (§3.2). Tests prüfen deshalb **nicht** die Anzahl der Queue-Einträge, sondern: genau eine
-  Anfrage zur gleichen Zeit beim Anbieter, und beide Texte erreichen das Modell irgendwann (§3.6).
-
-### 3.3.7 F — was `MockLlmServer` für die einzelnen Nachweise liefert
-
-`queueResponse(String)` (Text), `queueResponse(AiMessage mit ToolExecutionRequest)` (Werkzeug-Turn ohne
-Fake-Klasse), `getCapturedTools()` / `getCapturedTool(name)` (Welche Werkzeuge Jon wirklich sendet — UC-WP-17),
-`getLastRequestBody()` (enthält `"model":"…"` — der Beweis, daß die Fabrik-Konfiguration im Modell ankam, UC-WP-20/24),
-`getCapturedMessages()` (was das Modell sah), `getRequestCount()` (UC-WP-20 GIVEN 3: **0** Anfragen; UC-WP-22: genau 1),
-`reset()`, `stop()`. Leere Antwort-Warteschlange liefert eine Standard-Zeile statt zu blockieren — ein
-`SearchAgentTool`-Unterlauf kann keinen Test aufhängen. `model` heißt im Core-Feld `model`, in der Antwort
-`"model"`; der Wert kommt unverändert an.
-
-## 3.4 Increment 3a — Backend `chat`: drei Kanten, ein `ProjectRuntime` je Projekt
-
-**Läuft danach:** ein Projekt kann über HTTP einen Turn mit Jon starten; der Antwort-Text und jede
-Werkzeug-Zeile erscheinen live auf einer SSE-Verbindung; der Verlauf liegt danach in
-`<home>/state/<id>/` und ist über `GET …/messages` lesbar. Beweisbar mit curl gegen eine lokale Fabrik —
-**ohne** Browser (UI bleibt 3b, Q2). UCs: **UC-WP-5** (Werkzeug-Arbeitsverzeichnis), **UC-WP-6** (Server-Hälfte),
-**UC-WP-7** (Server-Hälfte), **UC-WP-17**, **UC-WP-20** (alle drei GIVEN). Kein Nutzerbegriff, keine Kacheln,
-kein Schreib-Pinning-Nachweis.
-
-### 3.4.1 Dateien
-
-Neu (`factory-backend/src/main/java/org/sterl/open/aifactory/chat/`): `ChatController.java`,
-`ProjectRuntimeRegistry.java`, `ProjectRuntime.java`, `ChatStreamRegistry.java`, `ChatEvent.java`,
-`SseTurnMonitor.java`, `JonToolSet.java`, `dto/ChatMessageDto.java`, `dto/SendMessageRequest.java` — Genau die
-sieben + zwei DTOs aus §3.3.4; keine weiteren Klassen, kein Unter-Paket außer `dto`.
-
-Geändert (nur-hinzufügen, jeweils begründet):
-
-| Datei | Änderung | Warum |
-|---|---|---|
-| `config/FactoryConfigService.java` | neue Methode `LlmConfig loadForTurn()` (delegiert an `load()`, prüft dann), Feld-Konstanten statisch + wertfrei wie `:30-33` | D7; der Turn-Leser darf die Validierung nicht duplizieren |
-| `config/TurnNotConfiguredException.java` (neu) | einfache `RuntimeException`, Botschaft nennt das Feld | Parität zu `project/ProjectNotFoundException`; wird **nicht** in `shared/ApiExceptionHandler` behandelt (Q1) |
-| `factory-backend/pom.xml` | **nur** der Kommentar in Zeile 41: `config` **und** `chat` | D10; keine Abhängigkeit |
-| `src/test/.../ComponentArchitectureTest.java` | eine Regel mehr: `onlyChatHoldsAgentInstances` | D9; bestehende Regeln bleiben unangetastet |
-
-Unverändert: `project/**`, `shared/**`, `ui/**`, `AifactoryApplication`, jede Core-Datei.
-
-### 3.4.2 Bauschritte (Reihenfolge, jeder Schritt kompiliert)
-
-1. `dto` + `ChatEvent` + `ChatStreamRegistry` (+ `ChatStreamRegistryTest`, kein UC-marker).
-2. `JonToolSet` (+ `JonToolSetTest`) — Werkzeugätze und Wurzeln sind unabhängig vom Turn.
-3. `config.loadForTurn()` + Exception + Unit-Test in `FactoryConfigServiceTest`.
-4. `SseTurnMonitor` (Tabelle aus §3.3.3) + `ProjectRuntime` (Bau von Jon + Team nach D6, `submit`, `history` nach D4).
-5. `ProjectRuntimeRegistry` + `ChatController` (drei Kanten, §3.3.3).
-6. `ChatTurnTest` gegen `MockLlmServer`.
-7. ArchRegel D9 + `pom.xml`-Kommentar + grüne Gates.
-
-`ProjectRuntime`-Bau (Schritt 4, exakt so): `new ConfiguredChatModel(configSupplier.get())` →
-`JonToolSet.forProject(projectRoot)` → drei Slaves mit 2-Argument-Konstruktoren →
-`new PoDelegateTool(new NamedAgent("Da Thinka", plan), new NamedAgent("Da Dok", review), new NamedAgent("Da Mek", dev), n -> List.of(), () -> configAutoCompactAfter)`
-auf den `ToolService` → `new AiPoAgent(model, tools, stateDir, List.of(...))` als anonyme Unterklasse mit
-`getWriteValidator()` nach D5 → `jon.setStaticContext(List.of(ContextItem.of("Your name is Da Boss.")))`.
-Reihenfolge wichtig: `PoDelegateTool` **vor** dem Agenten registrieren, sonst sieht Jon die Delegation im
-ersten Turn nicht; `autoCompactAfter` liest die **aktuelle** Konfiguration bei jedem Aufruf (kein Zwischenpuffern).
-Beim Bau wird **nichts** geschrieben (`FileAgentHistoryStore.load()` liest nur, fehlende Datei ⇒ leer) — das
-assertiert Schritt 4 direkt: nach dem Bau existieren weder `state/<id>/` noch Dateien darin (R-WP-11).
-
-### 3.4.3 Tests (Marker = Doc-Überschrift, eine Zeile `// UC-WP-n` über der Methode)
-
-| Datei | Marker | Test | THEN-Zeile des Docs — Beweis |
-|---|---|---|---|
-| `chat/ChatTurnTest.java` (`@SpringBootTest(RANDOM_PORT)`, `@Import(FakeGitConfig.class)`, statisches Home per `@DynamicPropertySource`, `MockLlmServer` in `@BeforeAll`, Projekt über `POST /api/projects`) | `// UC-WP-5` | `openProjectBindsWorkDir` | „… wird das Tool in diesem Verzeichnis ausgeführt": Turn 1 skriptet `shellRunCommand {"command":"pwd"}` (`ShellTool.java:67-85`), SSE-`tool`-Zeile **und** die vom Modell gesehene Werkzeug-Antwort enthalten `cwd=<absolute localPath>` (`ShellTool.java:109`); Turn 2 skriptet `diskWriteFile {"filePath":"notes/marker.txt","content":"…"}` → Datei liegt unter `<localPath>/notes/marker.txt`, `tool`-Zeile nennt den absoluten Pfad (`DiskFileWriteTool.java:81`). Zusätzlich in diesem Test: `mock.getCapturedTool("diskWriteFile")` und `("shellRunCommand")` sind vorhanden (beweist die Werkzeug-Liste auf dem Draht, §3.2) |
-| ″ | `// UC-WP-6` | `chatAlwaysGoesToJon` | „… geht die Eingabe immer an Jon": `SendMessageRequest.class(recordComponents)` = genau `text` (kein Feld kann Adressat sein), zwei Turns auf zwei HTTP-Verbindungen liefern **dieselbe** Runtime und `jon().getName()` = `AiPoAgent.NAME` (= „Peon-PO"), die gesendete Nachricht enthält eine System-Nachricht (Jons Prompt) + den User-Text — kein zweiter Agent erreichbar |
-| ″ | `// UC-WP-7` | `streamingUpdatesChatWithoutReload` | „… erscheinen die Antwort-Texte live im Chat, ohne die Seite neu zu laden": ein Subscriber vor dem `POST`; ≥ 2 `partial`-Ereignisse (`kind:"answer"`, der Mock zerlegt den Text), ≥ 1 `tool`-Ereignis, genau ein `done`; danach endet `GET …/messages` mit `{role:"jon",text:<Mock-Text>}`; ein **zweiter**, nach dem Turn geöffneteer Subscriber erhält von diesem Turn **nichts** (kein Replay, keine Duplikate) |
-| ″ | `// UC-WP-20` | `configReadFromFactoryOwnStore` | GIVEN 1 zitiert `config/FactoryConfigServiceTest.configFileLivesInFactoryHome` (bereits grün, nicht duplizieren); GIVEN 2: `mock.getLastRequestBody()` enthält `"model":"<name aus der Home-Datei>"` ⇒ die Fabrik-Konfiguration hat das Modell erreicht, nicht `~/.peon`; GIVEN 3: Home-Datei auf `providerType=OPEN_AI` + `apiKey` leer schreiben → `POST` liefert **202**, `error`-Ereignis nennt `apiKey`, Anfragenzähler des Mocks steigt **nicht**; Kontrollzweig: `providerType=OLLAMA` + leerer Schlüssel passiert die Prüfung (Anfragenzähler steigt). **Kein Test liest oder schreibt `~/.peon`** (AGENTS-DEV-Poisoning-Regel) |
-| `chat/JonToolSetTest.java` (ohne Spring, `@TempDir`) | `// UC-WP-17` | `allCoreToolsNoEclipseTools` | „Jon nutzt die Core-Werkzeuge, kein Eclipse-Werkzeug": `getTool(Class)` liefert je eine Instanz von `DiskFileReadTool`, `DiskFileWriteTool`, `DiskGrepTool`, `DocsLinterTool`, `DocsIdTool`, `WebGetTool`, `ShellTool`, `WebFetchTool`, `WebSearchTool`, `SearchAgentTool`, `CompactSessionTool`, `PoDelegateTool`; **jede** registrierte Tool-Klasse liegt in `org.sterl.llmpeon.tool`/`.docslinter`/`.tool.web` und kein Name enthält `Eclipse` oder beginnt mit `org.sterl.llmpeon.parts`; alle Root-bezogenen Werkzeuge zeigen auf den Projekt-Root (`getWorkingDir()`), `ShellTool` liefert beim Aufruf denselben Root |
-| ″ | — (intern) | `writeRootsAreProjectAndTmp` | D5-Naht: Validator aus D5 erlaubt `<root>/a/b.md` und `<tmp>/x.md`, wirft `IllegalArgumentException` (nennt die Wurzeln) für `/etc/hosts` und für `<root>/../../escape` |
-| `chat/ChatStreamRegistryTest.java` | — (intern) | `deadSubscriberStopsBeingAddressed` | R-WP-5-Halfte „Reload verliert nur Live-Zeilen": emitter `complete()`en bzw. `IOException` simulieren → `publish` wirft nicht nach außen, `listenerCount` fällt auf 0, ein zweiter Subscriber bleibt gemeldet |
-| `ComponentArchitectureTest.java` | — (intern) | `onlyChatHoldsAgentInstances` | Arch-Doc `:99` „Niemand sonst hält Agenten-Instanzen": `noClasses().that().resideOutsideOfPackage("..chat..").should().dependOnClassesThat().areAssignableTo(...)` für `AiPoAgent`, `AiPlanAgent`, `AiDevAgent`, `AiReviewAgent`, `ConfiguredChatModel` |
-
-**Test-Hygiene, die in diesem Increment verbindlich ist:** keine `Thread.sleep`-Taktung — Latch oder
-Deadline-Schleife (max. 10 s, Vorschau 25 ms) und `@Timeout(30)` auf jeder SSE-Klasse; der SSE-Leser endet
-nie von selbst, also jede Zeilenaufnahme mit `Future.get(timeout)`/`assertTimeoutPreemptively`
-(`java.net.http.HttpClient` + `BodyHandlers.ofLines()`, §3.3.6); jeder Test mit eigenem Mock-`reset()`,
-Reihenfolge-unabhängig; `RestTemplate` + `@LocalServerPort` + `NoOpResponseErrorHandler` für Statuscodes
-(wie `config/SettingsControllerTest.java:46-…`).
-
-### 3.4.4 Mutations-Nachweis (nur so ist der Test falsifizierbar)
-
-| Absichtlicher Defekt | Muß fallen |
-|---|---|
-| `ShellTool`/Disk-Werkzeuge mit festem Root (TMP oder Prozess-CWD) | `openProjectBindsWorkDir` |
-| `POST` führt den Turn synchron aus (antwortet erst nach der Antwort) | `streamingUpdatesChatWithoutReload` (kein `partial` vor dem Answer), später UC-22 |
-| Fertig-Text als zusätzliches SSE-Ereignis statt Verlauf | `streamingUpdatesChatWithoutReload` (Duplikat-/Replay-Assertion) |
-| Konfiguration einmal beim Runtime-Bau gelesen | `configReadFromFactoryOwnStore` GIVEN 3 (neuer, unvollständiger Wert würde durchgewinkt) |
-| `AiProvider.parse()` statt `isProviderName` | GIVEN 3 mit Tippfehler-Anbieter fiele durch, ohne Fehlermeldung (stille Ollama-Umwandlung) |
-| History-Dateiname in `chat` rekonstruiert statt `jon.getHistory()` | `chatAlwaysGoesToJon`/spätestens UC-15; dazu D9-Regel als mechanische Schranke |
-| `getWriteValidator()` nicht überschrieben (Core `WriteValidator.DOCS`) | `writeRootsAreProjectAndTmp` und der `notes/marker.txt`-Fall aus UC-WP-5 |
-
-### 3.4.5 Risiken und Fallen
-
-* **SSE-Hang:** ein Test, der auf ein `done` wartet, das nie kommt (Mock-Antwort-Vorrat leer, Tool-Schleife
-  läuft weiter) — jede Warteschleife hat eine Deadline und **der** Fehler ist ein roter Test, kein Hänger.
-* **Zwei Advices, eine Regel:** keine `chat`-eigene `@RestControllerAdvice` (§3.2); die neue
-  `TurnNotConfiguredException` wird bewußt **nicht** in `shared` behandelt (Q1), sonst wird aus einem
-  Live-Fehler ein HTTP-Code, den der Arch-Doc nicht kennt.
-* **Mock-Antwort-Vorrat:** ein Werkzeug-Turn braucht **zwei** `queueResponse`-Einträge (Ruf, dann Folge-Antwort),
-  sonst antwortet der Mock die Standard-Zeile und der Test „beweist" etwas anderes. Vorrat pro Test leer starten.
-* **`state/<id>`-Verzeichnis** wird erst beim ersten Speichern angelegt; `Files.createDirectories` ist **nicht**
-  Sache von `chat` (der Core schreibt), 3a erfindet keinen Pfad.
-* **Port 8080 belegt** → `mvn clean verify`-Lauf nicht parallel zum laufenden Dev-Server.
-
-### 3.4.6 Gates 3a
-
-1. `eclipseBuildProject factory-backend`, dann `export PATH=~/.nvm/versions/node/v22.12.0/bin:$PATH && mvn -f aifactory/pom.xml clean verify`.
-2. `pnpm -C aifactory/factory-ui test` / `lint` / `build` (unverändert, aber grün).
-3. `lintDocsAndTests` (Wurzeln + `idPattern` wie §3.9) und die echte `findings: N`-Zeile melden; ab jetzt tragen
-   `allCoreToolsNoEclipseTools`, `configReadFromFactoryOwnStore` ihre ids in Java.
-4. Laufender Nachweis: `mvn -f aifactory/pom.xml install -DskipTests`, dann
-   `AIFACTORY_HOME=/tmp/aifactory-inc3a mvn -f aifactory/pom.xml -pl factory-backend spring-boot:run`;
-   Projekt anlegen (`POST /api/projects`, `https://github.com/spring-projects/spring-petclinic.git`),
-   Konfiguration in den Home-Ordner schreiben, dann: `curl -N -H 'accept: text/event-stream' /api/projects/<id>/events`
-   in einem Terminal, `curl -i -X POST …/messages -H 'content-type: application/json' -d '{"text":"…"}'`
-   ⇒ `202`, Live-Zeilen im anderen Terminal, danach `GET …/messages` mit der Jon-Antwort;
-   `~/.peon` byte-identisch; Port 8080 danach frei. Ist kein erreichbares Modell konfiguriert, wird dieser
-   Nachweis als **nicht gelaufen** gemeldet — kein Erfinden eines Ersatzmodells (`test-honesty`).
-5. Commit: `feat(chat): HTTP-Kanten und ProjectRuntime für den Factory-Chat (UC-WP-5,6,7,17,20)` — Meldung der
-   Gates im Text; `AGENTS*.md`, `CHANGELOG.md`, `aifactory/peon-plan/**` bleiben unbeteilt.
-
-### 3a-E — Ausführungsnachweis (gebaut 2026-10-26, Commit `88de42fb`, Baseline `50a35210`)
-
-Gelaufen und grün: `mvn -f aifactory/pom.xml clean verify` **70 Tests, 0 Fehler** (Baseline 55) ·
-`pnpm -C aifactory/factory-ui test` **14** / `lint` **0** / `build` ✓ · `lintDocsAndTests` →
-`UC definitions: 38/38; test IDs: 50/25; findings: 13`, **VERWAIST 0** (Baseline 18; neu belegt:
-UC-WP-5, 6, 7, 17, 20; offen bleiben 8/9/10, 11/12/13, 14, 16, 18/19, 21/22, 25).
-Mutationsnachweis §3.4.4 — jede Mutation einzeln rot auf dem geplanten Test: festes Arbeitsverzeichnis →
-`openProjectBindsWorkDir`; synchroner Turn → `streamingUpdatesChatWithoutReload`; Fertig-Text als SSE →
-derselbe Test; Konfiguration nur einmal gelesen → `configReadFromFactoryOwnStore`; `AiProvider.parse` statt
-`isProviderName` → `aTurnNeverAcceptsAProviderTheCoreCannotBuild`; `getWriteValidator` nicht überschrieben →
-`openProjectBindsWorkDir`. Laufender Nachweis **mit echtem Modell** (Ollama `qwen3.5:4b`, Home
-`/tmp/aifactory-inc3a`): 202 ohne Body, 154 `partial`-, 3 `tool`-Zeilen (Arbeitsverzeichnis = Checkout), ein
-`done{millis}`, danach `user` + `jon` in `GET …/messages`; Home enthält genau `state/<id>/Peon-PO-history.jsonl`;
-Port 8080 frei; `~/.peon` byte-identisch (124 Dateien).
-
-Abweichungen, die der Planstext noch nicht hatte (alle im Code begründet, keine ändert eine UC-Aussage):
-`MockLlmServer` hat **kein** `getRequestCount()` ⇒ gezählt wird über die gefangene Roh-Anfrage (betrifft auch
-3c: „genau 1 Anfrage" muß dort genauso gemessen werden); `jon.getHistory()` existiert nicht ⇒
-`jon.getMemory().getCopy()` (D4 bleibt erfüllt); neues `chat/ChatLine` als Lesemodell, damit die interne Fassade
-kein DTO zurückgibt (Inc-2c-Vorbild `SettingsUpdate`); `ProjectRuntime` nimmt **zwei** Konfigurations-Lieferanten
-(Bau `config::load`, Turn `config::loadForTurn`) — sonst wäre UC-WP-20 GIVEN 3 ein 500 statt 202 + `error`;
-Spring 7: kein `status`-Attribut an `@PostMapping` ⇒ `@ResponseStatus`; `AiMonitor` hat kein `toOutput()`;
-UC-WP-17-Paketliste des Plans muß `org.sterl.llmpeon.poagent.tools` (`PoDelegateTool`) enthalten; die zitierte
-Inc-2-Prüfung heißt wirklich `FactoryConfigServiceTest#configDirIsAlwaysTheFactoryHome`.
-Q8 gemessen, nicht entschieden: Jons Prompt nennt weiter `docs/*.md` (`WriteValidator.JON_PATH_SCOPE_PROMPT`),
-der Fabrik-Validator läßt `src/main/java/Demo.java` zu — Divergenz bestätigt, Entscheidung bleibt Inc 4.
-Für 3b/3c/3d vorgemerkt: der Composer sollte nach `done` und vor dem Neu-Laden den eigenen Text **nicht**
-zweifach zeigen (die Memory enthält ihn bereits — scharfe Grenze in §3.5.2); die 404-Kante nach
-Projekt-Entfernen ist in 3a nur für das unbekannte Projekt bewiesen, der Rest bleibt bei 3d.
-
-## 3.5 Increment 3b — die Chat-Ansicht wird echt (Verlauf, Eingabe, Live-Zeilen)
-
-**Läuft danach:** Projekt öffnen ⇒ Chat-Ansicht des Projekts, Verlauf aus `GET …/messages`, Eingabe per
-Composer ⇒ `POST`, Antwort-Texte wachsen live, Werkzeug-Zeilen als eigene Zeilen, `done` ⇒ Verlauf neu
-gelesen. Browser-Hälften von **UC-WP-5, UC-WP-6, UC-WP-7**. Kein Nutzerbegriff, keine Kacheln, kein
-Agenten-Wechsler.
-
-### 3.5.1 Dateien
-
-| Datei | Änderung |
-|---|---|
-| `factory-ui/src/api/chat.ts` (neu) | `listMessages(projectId)`, `sendMessage(projectId, text)`, `openChatStream(projectId, handlers, signal)`; Typen `ChatMessage {role:'user'\|'jon', text:string}`, `ChatStreamEvent` (`partial`/`tool`/`done`/`error`). Dieselbe Basis-URL und derselbe Fehler-Typ wie `src/api/client.ts` (`request<T>`, `ApiRequestError`) — der Stream benutzt **nicht** `request<T>` (JSON, einmalig), sondern `fetch` + `ReadableStream`; Pfad-cached: `src/api/client.ts`, `src/api/projects.ts` |
-| `factory-ui/src/views/ChatView.tsx` (neu geschrieben; ersetzt den Platzhalter „Noch kein Agent") | Verlauf + Live-Zeilen + Composer; `data-testid`: `chat-log`, `chat-line-<role>`, `chat-live`, `chat-tool-line`, `chat-input`, `chat-send`, `chat-error` |
-| `factory-ui/src/App.tsx` | `onOpen` bleibt zusätzlich zu `setSelected` eine Zeile: `setView('chat')` — genau die Lücke, die §3.2 als 3b notiert hat; mehr nicht |
-| `factory-ui/src/test/chatView.test.tsx` (neu) | die drei Browser-Tests, Marker wie in 3a (dieselben ids, Praxis aus Inc 2: `src/test/projectView.test.tsx` trägt `settingsAreMaskedOnRead`) |
-
-### 3.5.2 Entscheidungen 3b
-
-* **Stream lesen per `fetch` + eigener SSE-Parser, nicht `EventSource`.** Begründung: `EventSource` ist in
-  jsdom nicht vorhanden (Tests bräuchten einen Fake, und das Parsen läge im Browser, also außerhalb jeder
-  Nachweisung); `fetch`/`ReadableStream` sind in Node 22 global. Parser-Regeln, die der Test abdeckt:
-  Ereignis-Grenze = leere Zeile, `event:`- und mehrzeiliges `data:`, Chunk-Grenze **mitten** in einem
-  Ereignis, `:comment`-Zeilen (Keep-Alive) ignorieren. Abgewichen wird bewusst von „`EventSource` wäre
-  weniger Code" — die Auto-Reconnect-Fähigkeit wird unten durch eine eigene, nachweisbare Regel ersetzt.
-* **Eine Regel für Verbindung und Neuladen:** `(Wieder-)Verbindung ⇒ Verlauf neu lesen; Live-Ereignisse nur
-  anhängen.` Bricht der Stream ab, öffnet die View ihn nach 500 ms neu (solange sie montiert ist) und liest
-  dabei den Verlauf — derselbe Code-Pfad deckt R-WP-11 („Reload verliert **nur** Live-Zeilen") und
-  UC-WP-7 ab. Kein zweiter Puffer, kein Ereignis-Gedächtnis.
-* **Der eigene Entwurf bleibt, bis der Verlauf ihn enthält.** `doCall:319-322` schreibt die User-Nachricht
-  erst zu Turn-Beginn in die Memory, eine **wartende** Eingabe ist vor dem Drain nicht im Verlauf — sonst
-  verschwände die gerade getippte Zeile. Regel im Code: Entwurf entfernen, sobald ein Verlaufseintrag mit
-  gleichem Text erscheint (oder nach `done` + Neu-Laden).
-* **Fehler aus dem `error`-Ereignis** erscheinen als Zeile in `chat-error` (Composer bleibt benutzbar) —
-  Q1. Kein Alarm-Dialog, kein Toast.
-* **Kein Agent-Auswahl-Element** im DOM (UC-WP-6, Browser-Hälfte): es gibt nichts, was man verwechseln kann.
-
-### 3.5.3 Tests (`src/test/chatView.test.tsx`, Vitest + Testing Library, `fetch` gestubbt)
-
-| Marker | Test | THEN — Beweis |
-|---|---|---|
-| `// UC-WP-5` | `openProjectBindsWorkDir` | „… öffnet die Fabrik die Chat-Ansicht des Projekts": Klick auf das Projekt ⇒ Chat-View im DOM (`chat-log` da), `fetch`-Aufruf auf `/api/projects/<id>/messages`, Eingabefeld fokussiert; die Projekt-Projektseite ist nicht mehr sichtbar |
-| `// UC-WP-6` | `chatAlwaysGoesToJon` | „… geht die Eingabe immer an Jon": `POST`-Body ist exakt `{"text":"…"}` (parsen, Feldmenge vergleichen), Ziel-URL `/api/projects/<id>/messages`, und im DOM existiert kein Bedienelement zum Wechseln des Agenten (`queryByTestId('agent-switcher')` null, kein `<select>`) |
-| `// UC-WP-7` | `streamingUpdatesChatWithoutReload` | „… erscheinen die Antwort-Texte live im Chat, ohne die Seite neu zu laden": vor dem Senden Stream geöffnet; zwei `partial`-Chunks (bewusst über zwei `encoder.encode()`-Aufrufe mit Grenze **mitten** im JSON verteilt) ⇒ Text wächst im DOM, **ohne** dass ein zweiter `messages`-Request läuft; `tool`-Ereignis ⇒ `chat-tool-line`; `done` ⇒ genau **ein** `messages`-Reload, die Live-Zeile verschwindet zugunsten der Verlaufszeile |
-| — (intern) | `droppedStreamReopensAndReadsHistory` | Stream endet unerwartet ⇒ nach ≤ 1 s zweiter Stream-Aufbau **und** ein Verlaufs-Reload, keine Duplikate im Log (R-WP-11) |
-
-`jsdom` bleibt auf 26.1.0 gepinnt; `AbortController` beim Unmount abbrechen (kein hängender Test,
-`@testing-library`-Aufräumregel der vorhandenen `src/test/`-Helfer nutzen).
-
-### 3.5.4 Gates 3b
-
-`pnpm -C aifactory/factory-ui test` / `lint` / `build` (alle drei), danach `mvn -f aifactory/pom.xml clean verify`
-unverändert grün; `lintDocsAndTests` melden; Laufender Nachweis wie §3.4.6 ( jetzt im Browser: Projekt öffnen ⇒
-Chat, Eingabe, wachsender Text; reload während eines Turns ⇒ keine Duplikate). Commit:
-`feat(ui): Chat-Ansicht liest Verlauf, sendet an Jon und folgt dem Stream (UC-WP-5,6,7)`.
-### 3b-E — Ausführungsnachweis (gebaut 2026-10-26, Commit `48636970`, Baseline `88de42fb`)
-
-Neu `factory-ui/src/api/chat.ts` (`listMessages`, `sendMessage`, `openChatStream` mit eigenem
-SSE-Parser über `fetch` + `ReadableStream`), `views/ChatView.tsx` neu geschrieben (Verlauf, Live-Zeile,
-Werkzeug-Zeilen, Composer, Fehlerzeile), `App.tsx` öffnet die Chat-Ansicht, `styles.css` ergänzt.
-Tests: 18 (3 Dateien) grün, `lint` 0/0, `build` ✓, `mvn -f aifactory/pom.xml clean verify` 70/0/0,
-`lintDocsAndTests` → `UC definitions: 38/38; test IDs: 53/25; findings: 13`, VERWAIST 0 (nach 3a 50 → 53).
-Mutationen, jede einzeln rot auf dem geplanten Test: Live-Zeile weicht nicht / kein Reconnect / halbe
-Zeile an der Chunk-Grenze / Projekt-öffnen lässt die Liste offen / Request nennt einen Adressaten /
-Denk-Zeilen in der Antwort / `error` läuft ins Leere / `error`-Name auf dem Draht unbekannt.
-
-Laufender Nachweis im echten Browser (headless Chrome 155 über CDP, Skript nur in `/tmp`, nichts
-comittet; Fabrik mit echtem Modell Ollama `qwen3.5:4b`, Home `/tmp/aifactory-inc3b`): Projekt öffnen ⇒
-Chat-View, Eingabe fokussiert, Projektliste weg; eigene Zeile sofort sichtbar, bevor der Verlauf sie
-trägt; Reload **während** eines laufenden Turns ⇒ nur Live-Zeilen verloren, Eingabe genau einmal im
-Verlauf, Turn liefert danach seine Antwort; zweiter Turn mit wachsendem Text (Live-Längen 18 → 40 → 61 →
-91); ruhiger Zustand: sechs Zeilen, jede Eingabe genau einmal, keine Live-/Werkzeug-Reste; kein
-`select`, kein Agent-Switcher, keine Zeit, kein Autorenname. Port 8080 frei, `~/.peon` byte-identisch.
-
-Abweichungen: Browser-Tests in `src/views/ChatView.test.tsx` (Konvention der bestehenden drei
-View-Tests) statt `src/test/chatView.test.tsx`; `client.ts` liest einen leeren Body als Text (ein 202
-ohne `Content-Length` würde sonst beim JSON-Parsen scheitern); zwei Tests ohne id ergänzt, weil der
-Plan sie als Regel nennt (Denk-Zeilen unsichtbar; `error` als Chat-Zeile bei benutzbarem Composer).
-
-Für 3c/3d notiert: der Core schreibt bei einem Denk-only-Anlauf eine **eigene** User-Zeile in die
-History („Your last response contained only internal reasoning with no output…") — im Browser sichtbar
-wie in 3a entschieden (Q6: zeigen, nicht filtern); 3d muß diese Zeile bei „derselbe Verlauf nach dem
-Neustart" also mitzählen dürfen. Die View merkt sich die Ansicht nicht über einen Reload (kein Routing,
-R-WP-1: genau drei Ansichten) — nach einem Reload öffnet der Nutzer das Projekt erneut; die Chat-Daten
-selbst sind vollständig, nur die Live-Zeilen fehlen (R-WP-11).
-
-
-## 3.6 Increment 3c — zweite Eingabe während eines laufenden Turns (test-geführt)
-
-**Läuft danach:** nachweisbar, daß eine Eingabe während eines laufenden Turns **nicht** parallel läuft und
-**nicht** einen zweiten Turn auf derselben Memory erzeugt, sondern in der Queue **desselben** Jon landet und
-von ihm beantwortet wird. UCs: **UC-WP-14**, **UC-WP-22**. Kein neuer Produktionscode geplant — dieser
-Increment **zeigt**, was 3a schon tut; findet er einen echten Fehler, ist die Korrektur eine kleine
-`chat`-Änderung, **niemals** eine Core-Änderung.
-
-### 3.6.1 Core-Realität, gegen die getestet wird (verifiziert 2026-10-25, nicht erneut suchen)
-
-* `AbstractAgent.call:229-277`: beschäftigt ⇒ `messageQueue.add(text)` und `return null`; der **laufende**
-  `call` holt nach jedem `doCall` die nächste Queue-Eingabe (`pollNext:258`) und beantwortet sie in derselben
-  Schleife — der Drain ist **kein** Timer, das 10-s-Fenster betrifft nur das **Zusammenfassen** mehrerer
-  Sendungen (`UserMessageQueue:27`, `add` verschmilzt Kurz-Texte bis 300 Zeichen).
-* `doCall:340` sendet `onCallCompleted` je beantworteter Eingabe ⇒ **zwei** `done`-Ereignisse bei zwei
-  Eingaben, und `onCallStart:322` läuft erst **nach** dem Memory-Eintrag.
-* Wirft der Turn, verschiebt `handleAbortAndDrain:280-288` die Wartenden in die Memory
-  („N queued message(s) preserved …") — sie sind also auch im Fehlerfall nicht verloren. Das Fabrik-`error`
-  aus §3.3.3 verdeckt sie nicht.
-* `setMessageQueue` ist paketprivat (`:215`) ⇒ Fenster ist im Fabrik-Test **nicht** verkleinerbar.
-  Folge: **höchstens zwei** Sendungen pro Test, deren Zahlen geprüft werden, und wo der Wortlaut geprüft
-  wird, `contains` statt Gleichheit (Verschmelzung ist zulässiges Core-Verhalten).
-
-### 3.6.2 Test `chat/ChatQueueTest.java` (`@SpringBootTest(RANDOM_PORT)`, `@Import(FakeGitConfig.class)`, `MockLlmServer`)
-
-Langsamer Turn ohne erfundene Klasse: Turn 1 skriptet `shellRunCommand {"command":"sleep 3","timeout":20}`
-(echtes Werkzeug, echtes Kind, Arbeitsverzeichnis = Projekt-Root ⇒ derselbe Nachweis wie in UC-WP-5).
-Der Mock braucht für den ganzen Ablauf **drei** `queueResponse`-Einträge: (1) `tool_calls` für `sleep 3`,
-(2) Folge-Antwort, die den Werkzeug-Loop beendet, (3) Antwort auf die gewartete Eingabe.
-
-| Marker | Test | THEN — Beweis |
-|---|---|---|
-| `// UC-WP-14` | `secondInputDuringTurnQueues` | „… wird die zweite Eingabe gewartet und von demselben Jon beantwortet": `POST` #1 ⇒ `202`, `jon().isWorking()` wahr (Deadline 2 s), dann `POST` #2 ⇒ `202`; **während** Turn 1 läuft gilt `jon().getQueuedMessageCount() == 1` (`AiAgent:139`) und `mock.getRequestCount() == 1`; nach Ablauf (Deadline 20 s) enthält `mock.getCapturedMessages()` den Text #2, `GET …/messages` enthält **beide** User-Texte und beide Jon-Antworten, und der zweite Text kam mit dem Core-Marker `[Queued Message]` an (`contains`, nie Gleichheit — Q6) |
-| `// UC-WP-22` | `inputOnBusyProjectQueuesNotParallel` | R-WP-15/UC-WP-22 sinngemäß: nicht parallel, sondern in der Queue desselben Jon — Messung des `POST` #2 `< 1000 ms` (Queue statt Blocker), während des gesamten Turn 1 **nie** zwei gleichzeitige Anfragen beim Anbieter (`getRequestCount()` wächst erst nach `done` #1), und es gibt genau **eine** Jon-Instanz je Projekt (`runtime(id)` identisch, `getName()` = `Peon-PO`) — dieselbe Memory, also kein zweiter Turn darauf |
-| — (intern) | `twoSendsWhileBusyAreBothAnswered` | zwei Sendungen während eines `sleep 3`-Turns: beide Texte landen beim Anbieter (verschmolzen **oder** getrennt), `done`-Ereignisse ≥ 2, kein dritter Turn; dokumentiert die Verschmelzungs-Grenze für alle künftigen Queue-Tests |
-
-Zeitverhalten: kein Test wartet länger als 25 s (`@Timeout(30)` an der Klasse, `@Timeout` pro Methode);
-gewartet wird mit Deadline-Schleife (25 ms Vorschau) oder Latch, **nie** mit `Thread.sleep` als Synchronisation
-(`sleep` ist nur der Inhalt des skripteten Shell-Kommandos).
-
-### 3.6.3 Risiken 3c
-
-* Fällt `getQueuedMessageCount() == 1` durch Verschmelzung oder Timing, ist der **Zeitpunkt** der zweiten
-  Sendung schuld, nicht die Fabrik: erst senden, wenn `isWorking()` wahr ist (Deadline-Schleife), sonst ist
-  die zweite Eingabe einfach der nächste Turn.
-* Ein zweites `done` wird vom UI bereits pro beantworteter Eingabe ausgewertet (§3.5.2) — 3c ändert nichts am
-  UI; würde 3c ein drittes `done` erzeugen, wäre die Annahme in §3.3.3 falsch → Plan melden, nicht Code biegen.
-* Ist die Queue nach dem Turn **nicht** leer und wurde sie **nicht** beantwortet, ist das ein Core-Befund:
-  melden (`test-honesty`), nicht umgehen.
-
-### 3.6.4 Gates 3c
-
-`mvn -f aifactory/pom.xml clean verify` (die neue Klasse zählt), `lintDocsAndTests` (ab jetzt tragen
-`secondInputDuringTurnQueues` und `inputOnBusyProjectQueuesNotParallel` ihre ids), UI-Gates unverändert grün.
-Laufender Nachweis: ein `curl`-Turn mit `sleep`-Werkzeug ist ohne echtes Modell nicht skriptbar — der
-Nachweis wird mit zwei schnellen `curl -X POST` auf dasselbe Projekt geführt (beide `202`, Antworten
-nacheinander im SSE, Verlauf enthält beide) und die **Zahlen** bleiben den Tests überlassen; das im Report
-so benennen. Commit: `test(chat): Wartende Eingabe auf demselben Jon nachgewiesen (UC-WP-14,22)`.
-
-### 3c-E — Ausführungsnachweis (gebaut 2026-10-26, Commits `e3638dce` (Core-Fix) + `683748ae` (3c), Baseline `48636970`)
-
-**Vorweg: 3c hat einen echten Core-Defekt gefunden und – nach Freigabe des PO – repariert.**
-`AbstractAgent.call` prüfte den CAS-Erfolg nur in der Warteweile (`:229-236`), das gemeinsame
-`finally` setzte `working.set(false)` unbedingt (`:274-276`): eine **wartende** `call()` löschte den
-Flag des **laufenden** Turns. Folge: der nächste Anrufer gewinnt den CAS und schickt einen zweiten
-Anbieter-Request auf dieselbe Memory — parallel statt gewartet, ohne `[Queued Message]`-Marke
-(Join-Pfad `:242-244`). `compact()` (`:407-413`) und `AbstractAgentTest:574-580` zeigen/dokumentieren
-die richtige Form längst; für `call()` fehlte sie. Plugin berührt den Pfad nie (UI meldet über
-`queueMessage()` an), die `AbstractAgentTest`-Queue-Tests ebenfalls nicht ⇒ jahrelang unsichtbar.
-Diff-Umfang: **10 geänderte Zeilen in einer Methode** (`+7/-3`) + 59 Zeilen Test.
-
-Gelaufen und grün: Core `mvn -f org.sterl.llmpeon.core/pom.xml clean test` **1376 Tests, 0 Fehler**
-(vorher 1375, +1 neuer Test `callWhileWorkingKeepsRunningTurnsWorkingFlag`; Mutation
-`acquired`-Prüfung raus ⇒ **rot in 7 ms**, kein Zeitrennen) · Fabrik `mvn -f aifactory/pom.xml
-clean verify` **73 Tests, 0 Fehler** (70 → 73, zweimal hintereinander grün) · `pnpm -C
-aifactory/factory-ui test` **18** / `lint` **0/0** / `build` ✓ · 3c-Klasse **dreimal hintereinander
-grün** (3/3, 3/3, 3/3 — 12,67 s / 12,82 s / 12,69 s) · `lintDocsAndTests` (root = Repo, docRoots
-`aifactory/docs`, testRoots backend/src/test + ui/src/test + ui/src/views,
-idPattern `UC-[A-Z]+-\d+[a-z]?`) → `UC definitions: 48/48; test IDs: 55/27; findings: 21`,
-**VERWAIST 0** (3b meldete 53 ids / 13 Befunde bei engerer Doc-Wurzel: **+2 ids** = UC-WP-14,
-UC-WP-22; die 10 UC-JL-Befunde aus `jon-light-stories.md` zählen hier mit, sie sind nicht Inc-3-Stoff).
-Laufender Nachweis mit echtem Modell (Ollama `qwen3.5:4b`, Home `/tmp/aifactory-inc3c`, **Port 8099**,
-Projekt `spring-petclinic-c2cea48`): zwei schnelle POST — beide **202** in 5 ms / 2 ms; eine vorher
-geöffnete SSE-Leitung zählt **162 `partial`, 1 `tool`, 2 `done` in Reihenfolge, 0 `error`**; Verlauf
-danach `user APFEL` / `jon APFEL` / `user [Queued Message] (05:00): … BIRNE` / `jon BIRNE`; Home genau
-`state/<id>/Peon-PO-history.jsonl`; `~/.peon` byte-identisch (124 Dateien, gleiche Sammel-Prüfsumme).
-**Port 8080 ist auf dieser Maschine von der IDE belegt** (`SpringToolsForEclipse`, PID 77931) —
-Nachweis lief auf 8099, IDE-Prozess nicht angefasst.
-
-Mutationsbatterie gegen die grüne Klasse (jede einzeln): Busy-Flag ohne `acquired` (Core, wieder
-eingebaut) ⇒ `twoSendsWhileBusyAreBothAnswered` rot (2/2, Marker fehlt im Anbieter-Payload) · Runtime
-bei jedem Zugriff neu gebaut ⇒ alle drei rot auf „Queue desselben Jon" · `submit` meldet nur an
-(`queueMessage` statt `call`) ⇒ alle drei rot auf „Jon arbeitet" · `done` nur einmal je Projekt ⇒
-`secondInputDuringTurnQueues` + `twoSendsWhileBusyAreBothAnswered` rot.
-
-Abweichungen und Funde, die der Planstext nicht hatte (keine ändert eine UC-Aussage):
-* **Der Core-Defekt war die Ursache der im Vorgängerlauf gemessenen Flaky-Klasse** — nicht ein
-  Timing-Test-Bug. Nach dem Fix ist die Klasse deterministisch (3× grün) und **falsifizierbar**:
-  mit dem Defekt zweimal hintereinander rot.
-* Die beiden **UC-Tests allein falsifizieren den Core-Defekt nicht** (zwei Sendungen erkennen ihn
-  strukturell nicht). Neu aufgenommen in `twoSendsWhileBusyAreBothAnswered`: die
-  `UserMessageQueue.QUEUED_MARKER_PREFIX`-Marke im Anbieter-Payload — ein überholender Turn nimmt den
-  Join-Pfad **ohne** Marke. Das ist der schärfste verfügbare Beweis und ersetzt das fehlende
-  `MockLlmServer.getRequestCount()`.
-* **`ChatTurnTest.streamingUpdatesChatWithoutReload` (3a) hatte einen Meß-Wettlauf:** nach zwei
-  `partial` wurde der Fertig-Text mit `isEqualTo` geprüft. Unter der Last der neuen Klasse lief der
-  Leser hinterher (voller Reaktor rot, allein 5/5 grün). Jetzt: Präfix + „der Strom wächst" am
-  Zwischenpunkt, exakter Fertig-Text am deterministischen Anker nach `done`. Keine Aussage fehlt,
-  keine ist weicher; die Plan-Mutationen „POST synchron" und „Fertig-Text als SSE-Ereignis" bleiben rot.
-* Surefire meldet im grünen Fabriklauf `The exit has elapsed 30 seconds after System.exit(0)` —
-  ein nicht-daemon Thread aus einem der Chat-Tests verlängert den Build um 30 s. **Vorbestehend, nicht
-  angefasst** (außerhalb 3c), hier nur notiert.
-* Nach Projekt-Neuanlage mit gleicher URL liegt der Checkout wieder unter `<home>/projects/…` — der
-  Home-Ordner enthält also den Checkout; `find <home> -type f` ist als Home-Beweis unbrauchbar,
-  `find <home>/state` ist der richtige Schnitt (für 3d relevant: `restartNeedsNoSecondStore`).
-
-Für 3d/3e vorgemerkt: `ProjectRuntimeRegistry.runtime(String)` ist **paketprivat** — 3d kann
-`runtime(id)`-Identität wie hier testen, braucht dafür aber Testklassen im Paket `chat`. Der
-`[Queued Message]`-Text steht jetzt auch im **Live-Verlauf** eines zweiten Nutzers (UC-WP-21: B sieht
-die Marke, Q6 gilt). `updateConfig` pro Turn (3e) ist unabhängig vom Fix, aber dieselbe
-`isWorking()`-Semantik gilt jetzt auch für 3e-Assertions.
-
-## 3.7 Increment 3d — Neustart, genau ein Chat je Projekt, Chat für alle
-
-**Läuft danach:** ein echtes Neu-Starten zeigt Projekt **und** Chat; es gibt keine zweite Möglichkeit, ein
-Gespräch zu einem Projekt zu beginnen; zwei HTTP-Clients sehen und schreiben dasselbe Gespräch; wird ein
-Projekt entfernt, verschwindet seine Runtime. UCs: **UC-WP-15**, **UC-WP-16**, **UC-WP-21** — plus die
-**eine benannte Abweichung** dieses Increments (Entfernen wirft die Runtime weg; dafür muß `project` ein
-Tatsachen-Ereignis melden).
-
-### 3.7.1 Die benannte Abweichung: `project` meldet das Entfernen, `chat` verwirft die Runtime
+Drei Tatsachen, die 4a-3 zusammennimmt und die 4a-1 **zuerst mißt**: (1) die Ablehnung erreicht den Monitor
+als `PROBLEM`-Zeile und wird auf dem Draht zu `tool`; (2) sie erreicht **das Modell ungekürzt** — der Modell-
+Text ist der scharfe Beweis, nicht die Live-Zeile (180-Zeichen-Kürzung!); (3) sie ist **nicht** im
+wiederhergestellten Verlauf. UC-WP-9 sagt „steht als Tool-Zeile im Chat" — die Fabrik-Realität ist
+**live**, gedeckt durch R-WP-11 („Werkzeug-Zeilen nur live"); der Test prüft beide Hälften und erfindet
+keine Persistenz. Für ein **Mitglied** gilt zusätzlich R-WP-4/UC-WP-40: seine Ablehnung wird gefiltert und
+darf **nicht** als Zeile erscheinen — **A1 beantwortet 2026-10-26:** zweistufig, zwei Tests in §4.6.
+
+### 4.3.3 Die Lese-Kante des Datei-Bereichs (4b)
 
 ```mermaid
 sequenceDiagram
+  autonumber
+  participant B as Browser (project.files.tsx)
+  participant FC as project/ProjectFilesController
   participant PS as project/ProjectService
-  participant AP as ApplicationEventPublisher
-  participant RR as chat/ProjectRuntimeRegistry
-  PS->>AP: publishEvent(new ProjectRemoved(projectId))
-  AP->>RR: @EventListener onProjectRemoved(e)
-  RR->>RR: runtimes.remove(e.projectId())
+  participant FS as Dateisystem
+  B->>FC: GET /api/projects/{id}/files?root=checkout&path=src/main
+  FC->>PS: find(id)  → 404 bei unbekanntem Projekt
+  FC->>FC: rootReal = root().toRealPath()
+  FC->>FS: candidate = rootReal.resolve(normalisieren(rel)).toRealPath()
+  alt candidate beginnt nicht mit rootReal
+    FC-->>B: 400 „…" (shared/ApiExceptionHandler, Botschaft nennt die Wurzel)
+  else Datei
+    FC->>FS: lesen (max. 64 KiB), NUL in den ersten 8 KiB ⇒ binary
+    FC-->>B: 200 {kind:"file", root, path, text, size, binary, truncated}
+  else Verzeichnis
+    FC->>FS: Einträge (max. 500), Ordner zuerst, dann Name
+    FC-->>B: 200 {kind:"directory", root, path, entries[], truncated}
+  end
 ```
 
-* **Warum ein Ereignis und kein direkter Aufruf:** `chat` fragt `project` bereits, die Gegenrichtung ist
-  verboten (Arch-Doc `:97-99`, `ApplicationModules`-Grenze). `ProjectService` publiziert eine **Tatsache über
-  sich selbst** und kennt `chat` nicht.
-* **Warum ein reines Spring-Ereignis:** Modulith-Events brauchen `spring-modulith-events-api` = neue
-  Abhängigkeit (TABU). `ApplicationEventPublisher` ist `spring-context`, vorhanden.
-* **Neue Datei, eine Zeile Nutzung:** `project/ProjectRemoved.java` — `record ProjectRemoved(String projectId)`.
-  In `ProjectService.remove(String)` (`:153`) wird der Publisher-Feld + ein `publishEvent` nach erfolgreichem
-  Entfernen ergänzt: **nur-hinzufügen**, kein geändertes Verhalten, keine Signatur-Änderung.
-* **Was 3d ausdrücklich nicht tut:** keinen laufenden Turn abbrechen und `state/<id>` **nicht** löschen —
-  `remove` nennt in R-WP-19 genau zwei Dinge (Eintrag + Checkout); ein drittes wäre erfunden (Q3).
-  Die Runtime wird nur abgemeldet; ein laufender Turn schreibt seine History zu Ende, die Fabrik hält
-  danach nichts mehr.
+**Die `macOS`-Falle ist durch die Reihenfolge entschieden, nicht durch einen Trick:** verglichen wird
+**ausschließlich** `candidate.toRealPath()` gegen `root.toRealPath()` — **beide** aufgelöst, niemals ein
+roher Root gegen einen echten Pfad. Damit ist `/var → /private/var` auf dem Mac symmetrisch und die
+Gleichheit behauptet nirgends einen echten Pfad. Der Test beweist die Richtung mit **zwei** `@TempDir`-
+Bäumen (`root` und `outside`) plus **einem** Symlink **in** `root`, **nach** `outside` zeigend: der muß
+abgewiesen werden; **ein zweiter** Symlink in `root` auf eine Datei **innerhalb** von `root` muß **erfolgreich**
+lesen (Sonst wäre der Guard ein Fehlalarm-Generator, und ein Test, der nur das Scheitern prüft, ist nicht
+falsifizierbar). Der **System-TMP wird nie als Ausbruch-Ziel** benutzt (er ist selbst eine Wurzel).
 
-### 3.7.2 Tests
+**Vertrag der Kante** (Arch-Doc `:113-141`, DTO-Namen sind Fabrik-Entscheidung, das Feld `kind` ist der
+Diskriminator):
 
-| Datei | Marker | Test | THEN aus dem Doc — Beweis |
-|---|---|---|---|
-| `chat/ChatRestartTest.java` (kein `@SpringBootTest` — die Klasse bootet **zwei** Kontexte selbst) | `// UC-WP-15` | `registryAndChatSurviveRestart` | „… ist das Projekt in der Liste und der Chat enthält wieder dieselben Nachrichten": `new SpringApplicationBuilder(AifactoryApplication.class).properties("aifactory.home="+HOME,"server.port=0")` ⇒ Kontext 1, Projekt anlegen (`MockLlmServer`), Turn senden, Antwort abwarten, `ctx.close()`; Kontext 2 mit **derselben** Home auf **neuem** Port ⇒ `GET /api/projects` enthält das Projekt, `GET …/messages` liefert exakt dieselben `{role,text}`-Folgen; der Mock wird dafür **nicht** mehr gebraucht (reines Lesen = die History-Datei war die Wahrheit). Danach: Team-Parität aus R-WP-11 — `runtime.jon().getTeam()` hat die vier Mitglieder und **jede** Slave-Memory ist leer („sein Team beginnt leer") |
-| ″ (zweite Methode derselben Klasse) | — (intern) | `restartNeedsNoSecondStore` | Nach dem Neu-Start enthält das Home-Verzeichnis **nur** `projects.json`, `config.properties` und `state/…` — keine zweite Chat-Datei, keine Sidecar (R-WP-11 „kein zweiter Speicher") |
-| `chat/OneChatPerProjectTest.java` | `// UC-WP-16` | `oneChatPerProject` | „… existiert keine Möglichkeit, ein zweites Gespräch zum selben Projekt zu beginnen": **keine** Reflection auf Methoden-Parameter-Namen (`aifactory/AGENTS-DEV.md`: kein `-parameters` — Namen wären `arg0`). Stattdessen: (a) alle Routen des Handlers aus den Annotations-Werten (`@GetMapping`/`@PostMapping`, zur Laufzeit lesbar) — im `chat` existieren genau die drei Kanten, jede mit genau **einem** `{id}` und keinem zweiten Pfad-Segment; (b) Feldmengen der `chat`-DTOs über `RecordComponent`-Namen (die stehen unabhängig von `-parameters` in der Klasse) — kein Feld heißt `chatId`/`sessionId`/`threadId`/`conversationId`; (c) `@PathVariable`-Anzahl je Handler-Methode == 1, kein `@RequestParam`; (d) zwei Subscriber auf derselben Projekt-Route teilen `runtime(id)` (identische Instanz); (e) keine Route im `chat` löscht oder legt einen Verlauf an |
-| `factory-ui/src/test/chatView.test.tsx` (bestehende Datei, Erweiterung) | `// UC-WP-16` | `oneChatPerProject` | Browser-Hälfte: die View kennt kein „neues Gespräch"-Bedienelement und zeigt nach Aus- und Wiedereinblenden **dasselbe** Log (derselbe Verlaufs-Request, keine zweite Liste) |
-| `chat/SharedProjectChatTest.java` | `// UC-WP-21` | `secondUserSeesSameProjectChat` | „… sieht B dieselben Nachrichten und sendet in denselben Gesprächsverlauf": zwei unabhängige `RestTemplate`-Clienten (kein Cookie, kein Nutzerbegriff) — A sendet, B liest denselben Text; B sendet, A sieht dieselben Zeilen und dieselben Jon-Antworten; `runtime(id)` beider Anfragen ist **dieselbe** Instanz, `jon().getName()` = „Peon-PO". Ein Namens-/Nutzer-Feld darf in keiner Antwort erscheinen (Feldmengen der DTOs prüfen) |
-| `chat/ProjectRemovalTest.java` | — (intern, Abweichung) | `removedProjectLosesItsRuntime` | Nach `DELETE /api/projects/{id}`: `GET …/messages` ⇒ **404**, `GET …/events` ⇒ 404, `POST …/messages` ⇒ 404, `ProjectRuntimeRegistry`-Zähler 0; `state/<id>` bleibt erhalten (Q3), ein erneutes Anlegen derselben URL findet den alten Chat wieder — genau R-WP-11 „genau **ein** Chat je Projekt" |
+| Kante | Antwort | Fehler |
+|---|---|---|
+| `GET /api/projects/{id}/files?root=checkout\|tmp&path=<relativ>` | `200` genau **eine** von zwei Formen: `directory {kind,root,path,entries[{name,directory,size}],truncated}` oder `file {kind,root,path,text,size,binary,truncated}` | Projekt unbekannt → 404; Datei/Verzeichnis fehlt → 404 (`ResponseStatusException`); `path` bricht aus / `root` unbekannt / `path` absolut → 400 (`IllegalArgumentException` über `shared/ApiExceptionHandler`) |
+| `PUT`/`POST`/`PATCH`/`DELETE` auf dieselbe Route | **405** (assertiert, nicht behauptet) | — |
 
-Neue Produktionsdateien in 3d: `project/ProjectRemoved.java` + eine Zeile `publishEvent` + `@EventListener`
-in `ProjectRuntimeRegistry`. **Kein** neuer Controller, kein neuer Pfad, kein neues Feld.
+Grenzen: `MAX_ENTRIES = 500` (dann `truncated = true`), `MAX_TEXT_BYTES = 65536` (dann `truncated = true`),
+`binary = true` bei `NUL` in den ersten 8 KiB (dann `text = null`). **Die Antwort enthält ausschließlich
+relative Namen** — ein neuer Leck-Kanal für absolute Pfade wäre eine neue Fläche (UC-WP-42 dreht genau
+daran). Kein `WriteValidator` im Leseweg (Arch-Doc), kein Cache, kein zweiter Speicher.
 
-**Fallen 3d:** der zweite Kontext braucht `spring.main.banner-mode=off` und `logging.level.root=WARN` (sonst
-liest der Report nichts); `ctx.close()` vor dem zweiten Start ist Pflicht (Port- und Lock-Freigabe);
-der Test darf den TestContext-Cache nicht anfassen (deshalb kein `@SpringBootTest` in dieser Klasse);
-der Pfad `HOME` ist ein **fester** Pfad unter `target/inc3d-home`, am Anfang gelöscht — **kein**
-`@TempDir`, weil zwei Klassen sich eine Directory nicht teilen können (Lebensdauer, Reihenfolge).
+### 4.3.4 UI-Slot: `app` weiß von beiden, `chat` von keinem
 
-### 3d-E — Ausführungsnachweis (gebaut 2026-10-26, Commit `565ec1b9`, Baseline `dd26ccec`, 3c = `683748ae`)
+```mermaid
+flowchart LR
+  APP["app/app.shell.tsx<br/>kennt project UND chat"]
+  PF["project/project.files.tsx<br/>Slide-Over, eigener Knopf"]
+  FC["project/files.client.ts<br/>readFiles(projectId, root, path)"]
+  CP["chat/chat.page.tsx<br/>files?: ReactNode"]
+  SH["shared/api.client.ts"]
+  APP -->|„files als Prop"| CP
+  APP --> PF
+  PF --> FC --> SH
+  CP -.->|zeichnet nur, importiert nichts aus project| PF
+```
 
-Produktionscode ist **genau** die benannte Abweichung, sonst nichts: neu
-`project/ProjectRemoved.java` (record, 10 Zeilen); `ProjectService.java` Publisher-Feld + `publishEvent` in
-`remove(String)` **nach** `deleteTree(checkout)`; `ProjectRuntimeRegistry.java` `@EventListener
-onProjectRemoved` → `runtimes.remove(id)` (+13). Kein neuer Controller, kein neuer Pfad, kein neues Feld,
-kein Core-Quellcode, keine Abhängigkeit. `state/<id>` wird **nicht** gelöscht (Q3), ein laufender Turn wird
-nicht abgebrochen.
+`ChatPage` bekommt **ein** optionales `ReactNode` und malt es; er importiert **nichts** aus `project`
+(Abhängigkeitsrichtung: `app → project`, `app → chat`, `chat ↛ project`). Der Datei-Bereich ist **kein**
+vierte Ansicht (R-WP-1: genau drei Ansichten), sondern ein Slide-Over innerhalb der Chat-Ansicht, und er
+hat **kein** Schreib-Bedienelement. Der `files-open`-Knopf gehört zur Komponente selbst — sonst müßte
+`chat` einen Knopf für `project` erfinden.
 
-Zuordnung Test → id: UC-WP-15 `chat/ChatRestartTest#registryAndChatSurviveRestart` (zwei Kontexte
-derselben Application über `target/inc3d-home`, zweiter Port) + intern `restartNeedsNoSecondStore`;
-UC-WP-16 `chat/OneChatPerProjectTest#oneChatPerProject` **und** Browser-Hälfte
-`views/ChatView.test.tsx#oneChatPerProject`; UC-WP-21 `chat/SharedProjectChatTest#secondUserSeesSameProjectChat`;
-intern `chat/ProjectRemovalTest#removedProjectLosesItsRuntime` + `project/ProjectServiceTest#removeAnnouncesTheFactAndNothingElse`.
+### 4.3.5 Entscheidungen (D1 … D8)
 
-Gates: `mvn -f aifactory/pom.xml clean verify` → **79 Tests, 0 Fehler, 0 Fehlermeldungen, BUILD SUCCESS**
-(70 → 73 → 79); der vorbestehende Hinweis „The exit has elapsed 30 seconds after System.exit(0)" bleibt
-unangefasst (3c-E). `pnpm -C aifactory/factory-ui test` → **19 passed (3 files)**, `lint` → „Found 0 warnings
-and 0 errors.", `build` ✓. `lintDocsAndTests` (docRoots `aifactory/docs`; testRoots backend/src/test +
-ui/src/test + ui/src/views; idPattern `UC-[A-Z]+-\d+[a-z]?`) → `UC definitions: 50/50; test IDs: 59/29;
-findings: 21`, **VERWAIST 0** (3c: 48/48; 55/27; 21 — **+4 ids** = UC-WP-15, UC-WP-16, UC-WP-21 und die
-Browser-Hälfte von 16); mit den §3.9-Wurzeln `UC definitions: 251/251; test IDs: 59/29; findings: 222`, ebenso
-VERWAIST 0. **Neu UNBELEGT: UC-WP-39, UC-WP-40** („Wer hat geschrieben?" / Team-Antworten) — Zugaben aus
-Jons eigenen Doc-Edits, kein 3d-Stoff, nach §3.9.1 unangetastet (❌-Marker bleiben ihm).
+* **D1 — R6 als `default`-Methode, nicht als neue abstrakte.** 62 `AiMonitor`-, viele Validator-Nutzer;
+  eine abstrakte Ergänzung bricht das Plugin (PR-3). Leerer Default = „kein Scope zu sagen".
+* **D2 — `DENY_ALL` wird eine benannte Implementierung.** Ein Lambda kann `pathScopePrompt()` nicht
+  Override-en; verworfen: „DENY_ALL bleibt Lambda, Text kommt aus einer Konstanten" = genau der Fehler,
+  den R6 heilt. Feld-Typ und -Name bleiben, kein Aufrufer ändert sich.
+* **D3 — `AiPoAgent` läßt den leeren Scope-Absatz **komplett** weg.** Sonst bekäme `ALLOW_ALL` einen
+  Geisterblock (Leerzeile) und GIVEN 3 („Plugin-Agenten unverändert") wäre nicht meßbar erfüllt.
+* **D4 — Da Mek bekommt denselben Zwei-Wurzeln-Validator wie Jon** (anonyme `AiDevAgent`-Unterklasse,
+  Muster `ProjectRuntime.java:81-87`; `AbstractAgent.java:339` liest ihn pro Turn). Da Thinka hat keine
+  Editier-Werkzeuge (`AiPlanAgent.java:69-72`), Da Dok ist `DENY_ALL` (`AiReviewAgent.java:80-83`) ⇒
+  **deren** Verhalten bleibt, Core-Parität (Q5 aus Inc 3).
+* **D5 — Ablehnung wird dreifach bewiesen, nicht einmal.** Live-`tool`-Zeile am Präfix, voller
+  „Write denied"-Text im **nächsten** Anbieter-Payload (`mock.getCapturedMessages()`), Datei existiert
+  **nicht** auf der Platte — plus die Gegenprüfung „kein Verlaufseintrag nach `done`". Einzeln wäre jede
+  Aussage halb (180-Zeichen-Kürzung, R-WP-11, Tool-Erfolg ≠ Datei).
+* **D6 — Der Datei-Guard vergleicht nur reate Pfade beider Seiten** und lehnt mit `IllegalArgumentException`
+  über die **bestehende** Fassade (400), Botschaft nennt die **Wurzel**, nie den aufgelösten Ziel-Pfad.
+  Verworfen: eigener Advice (TABU), 403 (erfordert ein Nutzer-/Rollen-Konzept, das es nicht gibt),
+  stilles Leeren der Antwort (verschleiert UC-WP-42).
+* **D7 — Datei-Bereich als Slot, nicht als vierte Ansicht und nicht als Chat-Import.** Der Arch-Doc gibt
+  Richtung und Ort vor; `chat` bleibt unabhängig von `project`, `app` verdrahtet.
+* **D8 — Der Shell-Bypass wird gemeldet, nicht gebaut.** `ShellTool` ruft den Validator nicht auf; ein
+  Kern-Fix wäre ein Verhaltenswechsel für Plugin-Nutzer (PR-3) und gehört in eine eigene Geschichte mit
+  eigener Doc-Regel. 4a-3 pinnt **nur** den `disk*`-Pfad und sagt das im Test-JavaDoc.
 
-Mutationsbatterie, jede einzeln rot auf dem geplanten Test, danach zurück (grep `MUTATION` = leer):
-`@EventListener` weg → `removedProjectLosesItsRuntime` (runtimeCount 1 statt 0) · `state/<id>` als drittes
-Löschziel → ebenda („kein drittes Ziel") · `AiPoAgent` ohne `stateDir` (RAM) → `registryAndChatSurviveRestart`
-(„derselbe Chat") · History nach `home.root()/chat/<id>` → **beide** `ChatRestartTest`-Methoden · Runtime bei
-jedem Zugriff neu → `oneChatPerProject` + `secondUserSeesSameProjectChat` · vierte Kante `@DeleteMapping
-…/messages` → `oneChatPerProject` · `@RequestParam` am messages-Handler → `oneChatPerProject` (Meldung nennt
-`arg1`, belegt zugleich die `-parameters`-Freiheit) · `publishEvent` vor die Existenzprüfung →
-`removeAnnouncesTheFactAndNothingElse` (2 statt 1) · UI-Button „Neues Gespräch" → Browser-Hälfte rot
-(`['Senden','Neues Gespräch']`), 18 übrigen UI-Tests grün.
+## 4.4 Schritt 4a-1 — erst gemessen, dann gebaut (kein Produktionscode)
 
-Laufender Nachweis mit **echtem Modell** (Ollama `qwen3.5:4b`, Home `/tmp/aifactory-inc3d`, **Port 8099** —
-8080 gehört weiter der IDE, nie angefasst; Projekt `spring-petclinic-c2cea48`): **Chat für alle** — A `POST`
-202 in 0,143 s, Antwort nach 40 s, Verlauf `user`/`jon` (APFEL); B auf eigener Verbindung liest dieselben zwei
-Zeilen; B `POST` 202 in 0,002 s, nach 3 s vier Zeilen (APFEL/APFEL/BIRNE/BIRNE), A sieht Bs Eingabe samt
-Antwort; `state/<id>/Peon-PO-history.jsonl` = einzige Datei (858 byte, shasum `d3af498e9c65da70`).
-**Echter Neustart** — Prozess getötet, Port frei, neue JVM, gleiches Home (bereit nach 6 s): Projekt READY,
-`GET …/messages` **byte-identisch** (diff leer, 4 Zeilen), History-Prüfsumme unverändert (reines Lesen), Home
-= `config.properties`, `projects`, `projects.json`, `state` — keine Sidecar. **Genau ein Chat** — `DELETE
-…/messages` 405, `POST …/events` 405, `GET …/chat` 404, `?chat=zwei` liefert denselben Inhalt, unbekanntes
-Projekt 404. **Entfernen** — `DELETE` 204, danach `GET …/messages`, `GET …/events`, `POST …/messages` je 404;
-Checkout weg, `state/<id>` bleibt; gleiche URL neu angelegt → **dieselbe id** und derselbe Vier-Zeilen-Verlauf.
-Danach Port 8099 frei, 8080 frei, `~/.peon` byte-identisch (124 Dateien, Quersumme `d85195f206ce723d`).
+**Freigabe-Bindung:** dieser Schritt läuft **vor** jeder Änderung an einer Hauptquelle. Er schreibt nur
+Test-Klassen und den Report.
 
-Abweichungen, keine ändert eine UC-Aussage: (a) **`ProjectService`-Konstruktor** bekam den
-`ApplicationEventPublisher` — der Plan sagte „keine Signatur-Änderung", gemein war `remove`; Direct-Caller
-des Konstruktors ist nur `ProjectServiceTest`. (b) Browser-Hälfte liegt in `src/views/ChatView.test.tsx`
-(3b-Konvention) statt `src/test/chatView.test.tsx`. (c) `runtime()`/`runtimeCount()` bleiben paketprivat und
-werden aus `chat`-Tests genutzt (3c-Vormerkung). (d) `aifactory/docs/open-points.md` und
-`aifactory/docs/web-prototype.md` (Jons eigene Edits, offener Punkt 5 + UC-WP-39/40) ritten auf seine
-ausdrückliche Freigabe in diesem Chat mit; `AGENTS*.md`/`CHANGELOG.md` unangetastet.
+**Läuft danach:** eine Tabelle „heute schon dicht?" mit gemessenen Zahlen statt Vermutung, und die
+Ablehnungs-Realität ist dokumentiert (Jon live ja, **Mitglied live nein**, Verlauf nein, 180-Zeichen-Kürzung ja).
 
-Build-Falle, gemessen, nicht vermutet: nach `eclipseBuildProject`/`eclipseEditFile` kann `target/classes`
-Lombok-blankierte **Fehler-Stümpfe** enthalten — der Maven-Lauf ohne `clean` hielt sie für aktuell und der
-laufende Server antwortete `POST` mit **500 „Unresolved compilation problems"** (`JonToolSet.addDelegateTool`,
-`model.getConfig`). Eclipse meldet überdies **alle** Lombok-Getter von `LlmConfig`/`ConfiguredChatModel` als
-„undefined" (Lombok läuft nicht in JDT) — **Maven ist die Wahrheit**, Chat-Tests immer mit `clean`.
-(Doku gehöre in `AGENTS-DEV.md`, das ich nicht editiere.)
+**Bauschritte:**
+1. Baselines nach Pre-flight 4 — Zahlen in den Report.
+2. Neuanlage `chat/WritePinningProbeTest.java` (**paketprivat, gleiche Klasse wie 4a-3 oder eigene; sie wird
+   in 4a-3 zur eigentlichen Testklasse ausgebaut — keine Wegwerf-Klasse, kein zweiter Satz Drehbücher**):
+   `@SpringBootTest(RANDOM_PORT)`, `@Import(FakeGitConfig.class)`, `aifactory.home` per
+   `@DynamicPropertySource` auf ein `@TempDir`, ein `MockLlmServer` je Klasse, Projekt über
+   `POST /api/projects`; Werkzeug-Turn per `queueResponse(AiMessage` mit
+   `ToolExecutionRequest("diskWriteFile", {"filePath":…, "content":…}))`, danach Folge-Antwort.
+3. **Fünf Messungen, jede mit dem echten Ergebnis im Report (auch wenn sie anders ausfällt als erwartet):**
+   * (M1) relative Datei innerhalb der Projekt-Root ⇒ Datei da? (`UC-WP-8`-Halbheit Jon)
+   * (M2) absolute Datei **außerhalb** beider Wurzeln ⇒ Live-`tool`-Zeile? voller Text im nächsten
+     Anbieter-Payload? Datei **nicht** da? Verlauf nach `done`? (`UC-WP-9`)
+   * (M3) `../../`-Pfand und absolute Datei unter einer **dritten** Wurzel ⇒ abgewiesen? (`UC-WP-10`)
+   * (M4) absolute Datei direkt unter `TmpRoots.systemTmp()` ⇒ liegt sie **direkt** im System-TMP und
+     **nicht** unter einem Projekt-Unterordner? (`UC-WP-18`) — Datei im `finally` löschen.
+   * (M5) **Mitglieds-Ablehnung (A1, beantwortet 2026-10-26):** Delegation per `askDev`, das Mitglied ruft
+     `diskWriteFile` außerhalb beider Wurzeln ⇒ erscheint **irgendeine** Zeile auf dem Draht? (erwartet:
+     **nein**, R-WP-4/UC-WP-40 filtern) Liegt der volle `Write denied …`-Text **ungekürzt** im nächsten
+     Provider-Payload? Fehlt die Datei? Steht sie im wiederhergestellten Verlauf? — das ist die Wahrheit,
+     gegen die 4a-3s Mitglieds-Hälfte behauptet; fällt sie anders aus, wird sie gemeldet (A1-Beweis wäre
+     dann umzustellen, nicht die Messung).
+4. Report-Tabellenzeile je Messung: erwartet / gemessen / Tests, die es schon zeigen / Lücke.
 
-Für 3e vorgemerkt: `ProjectRuntime.submit` ruft pro Turn `model.updateConfig(configSupplier.get())` — die
-3e-These ist im Code, sie fehlt nur der Beweis; `isWorking()`-Semantik seit `e3638dce` unverändert;
-`ChatTurnTest`/`ChatQueueTest` laufen nur mit `clean` deterministisch. **3e nicht begonnen.**
+**Harte Regel für diesen Schritt:** fällt eine Messung **anders** aus als hier angenommen, wird sie
+**gemeldet**, nicht der Test passend gebogen (`test-honesty`). Eine M2-Messung „Ablehnung steht doch im
+Verlauf" wäre ein Fund über `history()` und wäre zu melden, kein Testumbau.
 
+**Konsequenz:** 4a-2 ist unabhängig von den Messwerten (R6 steht in den Core-Docs); 4a-3 baut nur die
+Lücken, die 4a-1 gezeigt hat — vorhandene, scharfe Tests werden **zitiert, nicht dupliziert**.
 
-## 3.8 Increment 3e — der **nächste** Turn nutzt den neuen Wert (UC-WP-24 GIVEN 3)
+**Commit:** keiner — **A6 beantwortet 2026-10-26:** 4a-1 bleibt ein eigener Schritt **ohne** Commit (nur
+Testentwurf, wenn überhaupt grün); sein Report gehört in den Commit-Text von 4a-3.
 
-**Läuft danach:** eine Änderung in den Einstellungen wirkt auf den nächsten Turn, ohne Neustart, ohne
-zweite Runtime. Das ist der letzte offene GIVEN von **UC-WP-24**; GIVEN 1 und 2 sind seit Inc 2 grün
-(`configFileLivesInFactoryHome`, `configFileWinsOverEnvironment`, `settingsAreMaskedOnRead`) und werden im
-Test **zitiert, nicht dupliziert**. Kein UI-Änderung, kein Produktionscode neu — der Mechanismus ist
-§3.3.2 Schritt 4:
-`ProjectRuntime.submit` ruft pro Turn `model.updateConfig(configSupplier.get())`
-(`ConfiguredChatModel:96`: `null` ⇒ NPE, gleich ⇒ nichts, geändert ⇒ gebauter Modell-Zustand wird zurückgesetzt).
+### 4a-1-E — Ausführungs-Log (gemessen 2026-10-26, HEAD `acab5b20`, Branch `web-factory`)
 
-### 3.8.1 Test `chat/ChatConfigTurnTest.java` (`@SpringBootTest(RANDOM_PORT)`, `@Import(FakeGitConfig.class)`, `MockLlmServer`)
+Kein Commit (A6). Kein Produktionscode berührt; neu allein
+`factory-backend/src/test/java/org/sterl/open/aifactory/chat/WritePinningProbeTest.java` (5 Tests — sie bleibt
+liegen und wird in 4a-3 zur `WritePinningTest` ausgebaut). Fabrik `clean verify`: **101 Tests / 0 Fehler /
+0 Fehlermeldungen** = 96 Baseline + 5 Probe. `~/.peon` vorher/nachher identisch. Kern- und UI-Gates nicht
+gelaufen (kein Kern-, kein UI-Touch).
+
+| Messung | Befund |
+|---|---|
+| M1 Jon relativ im Projekt-Root | grün: Datei da, Inhalt korrekt, keine Ablehnung — Jon ist auf dem `disk*`-Pfad **schon dicht** (`ChatTurnTest#openProjectBindsWorkDir:175-187`) |
+| M2 Jon absolut außerhalb beider Wurzeln | grün: Draht-Zeile `Write denied` (209 Zeichen JSON, innerer Text 180 + `…`), **Modell-Payload 437 Zeichen voll** inkl. `allowed roots [...]`, Datei fehlt, **kein** „Write denied" im wiederhergestellten Verlauf → D5-Prämisse gemessen bestätigt |
+| M3 `..` + absolute Datei unter dritter Wurzel | absolute Datei außerhalb TMP: abgewiesen, Datei fehlt ✓. **Meßfund macOS:** das Test-Projekt liegt selbst **unter** `java.io.tmpdir`, also bleibt `..` innerhalb einer erlaubten Wurzel → `..` ist in dieser Konfiguration **nicht trennscharf** |
+| M4 Direktwrite unter `TmpRoots.systemTmp()` | grün: `getParent() == systemTmp()`, kein `state/<id>/tmp`, keine Ablehnung |
+| M5 Mitglied (Da Mek) schreibt außerhalb beider Wurzeln | **Gap bestätigt (F1):** Datei **existiert**, keine Ablehnung auf Draht/Verlauf/Modell, nur `Da Mek start:` / `Da Mek done.` — Da Mek ist `ALLOW_ALL` |
+| Abweichung | `@TempDir` taugt auf macOS nicht als „außerhalb" (liegt selbst im TMP); outside-Wurzel war `TmpRoots.systemTmp().resolveSibling(…)` |
+
+**Für 4a-3 mitzunehmen** (deshalb Vorbedingung in §4.6): die Probe setzt `aifactory.home` auf `@TempDir` — in
+4a-3 umstellen auf `target/inc4-home` **außerhalb** von `java.io.tmpdir`; outside-Wurzel bleibt
+`TmpRoots.systemTmp().resolveSibling(…)` bzw. `target/inc4-outside`, **kein** `@TempDir` als outside.
+
+## 4.5 Schritt 4a-2 — Core R6: der Validator sagt seinen Pfad-Scope
+
+**Freigabe-Bindung (PO 2026-10-26):** Kern-Gates laufen **vor** den Fabrik-Gates; danach
+`install -DskipTests`; das **Plugin-Gate aus `AGENTS-DEV.md:17-20` ist Pflicht** und seine Zahl im Report —
+„das Plugin ist unberührt" soll gemessen sein, nicht behauptet (Da Doks Punkt E/9 aus dem 3f-Review).
+
+**Läuft danach:** Jons System-Prompt nennt den Schreibbereich aus dem Validator; jeder Validator sagt selbst,
+was er zuläßt; `ALLOW_ALL` sagt nichts.
+
+**Dateien (alle `org.sterl.llmpeon.core/src/`):**
+
+| Datei | Änderung |
+|---|---|
+| `main/.../tool/WriteValidator.java` | **nur-hinzufügen**: `default String pathScopePrompt()` ⇒ `""`; `DENY_ALL` bekommt eine benannte Implementierung (Feldname/-typ bleiben) |
+| `main/.../tool/AllowlistWriteValidator.java` | `pathScopePrompt()` liefert den bisherigen `JON_PATH_SCOPE_PROMPT`-Text **wortgleich** |
+| `main/.../tool/DynamicRootsWriteValidator.java` | `pathScopePrompt()` rendert **seine** Wurzeln aus `allowedRoots()` (dieselbe Quelle wie `validate`) |
+| `main/.../poagent/AiPoAgent.java` | **eine ersetzte Zeile** in `getSystemPrompt()` (`:97-102`): Validator-Text statt Konstante, Absatz **nur bei nicht-leerem** Text |
+| `test/.../tool/WriteValidatorPathScopePromptTest.java` | **neu** |
+| `test/.../poagent/AiPoAgentPromptParityTest.java` | **neu** (Paritäts-Pin, scharf auf exakter Konkatenation) |
+
+**Nicht angefaßt:** `JON_PATH_SCOPE_PROMPT` bleibt als Feld erhalten (`DOCS`-Text-Quelle, Referenz der
+Paritäts-Tests); `AiScaffoldAgent`, `AiDevAgent`, `AiReviewAgent`, `AiPlanAgent`; jede Plugin-Datei; jede
+Signatur. JavaDoc nur für den Nicht-Selbstverständlichen Grund („Prompt zitiert den Validator, damit die
+Erlaubnis eine Quelle hat") — `AGENTS.md:2`.
+
+**Tests (Kern-Tests tragen **keine** UC-id — `AGENTS-DEV.md:21-33`):**
+
+| Test | Behauptung |
+|---|---|
+| `WriteValidatorPathScopePromptTest#allowAllSaysNothing` | `ALLOW_ALL.pathScopePrompt()` ist leer |
+| `…#denyAllNamesItsReadOnlyScope` | `DENY_ALL.pathScopePrompt()` nennt „read only", **keinen** beschreibbaren Pfad |
+| `…#docsValidatorKeepsTheKnownText` | `DOCS.pathScopePrompt()` **isEqualTo** `JON_PATH_SCOPE_PROMPT` (wortgleich) |
+| `…#dynamicRootsNamesExactlyItsOwnRoots` | der Text nennt **genau** die beiden Wurzeln dieses Exemplars und **keine** weiteren; eine **andere** Supplier-Lieferung ändert den Text (Pro-Turn-Frische) |
+| `AiPoAgentPromptParityTest#pluginPromptIsByteIdentical` | `getSystemPrompt()` eines Agenten mit `DOCS` == exakte alte Konkatenation (`BASE + NL + NL + JON_PATH_SCOPE_PROMPT + NL + DELEGATION`) — Pin auf Gleichheit, kein `contains` |
+| `…#allowAllPromptHasNoScopeParagraph` | Validator mit `ALLOW_ALL` ⇒ Prompt **ohne** den `DOCS`-Satz und **ohne** zusätzlichen Leerbblock (Anzahl der `\n\n`-Fugen verglichen) |
+
+**Mutations-Nachweis (je einzeln, danach zurück):** `DynamicRootsWriteValidator` gibt `""` zurück ⇒
+`dynamicRootsNamesExactlyItsOwnRoots` rot · die Wurzel-Liste wird hart kopiert statt aus `allowedRoots()`
+gelesen ⇒ derselbe Test rot (Frische-Zweig) · `AiPoAgent` hängt den Text auch bei leerer Zeichenkette an ⇒
+`allowAllPromptHasNoScopeParagraph` rot · `AiPoAgent` nutzt weiter die Konstante ⇒ `pluginPromptIsByteIdentical`
+**grün und damit wertlos** — deshalb prüft der Test zusätzlich einen `DynamicRoots`-Träger (Prompt nennt die
+beiden Wurzeln, die Konstante kann das nicht) — **die scharfe Form, sie ist Pflicht**.
+
+**Gates:** `mvn -f org.sterl.llmpeon.core/pom.xml clean test` (Baseline 1386, +neue Tests) →
+`mvn -o -pl org.sterl.llmpeon.core install -DskipTests` → **Plugin-Gate**
+`mvn -o -pl org.sterl.llmpeon,releng/llmpeon-target -am package -DskipTests` + Eclipse-Refresh/+Build von
+`org.sterl.llmpeon` und `org.sterl.llmpeon.test` → erst danach Fabrik-Gates (§4.8) — die müssen
+**unverändert grün** sein.
+
+**Commit:** `feat(core): Pfad-Scope des Prompts kommt vom Validator (R6)` — Gate-Zahlen inkl. Plugin-Gate.
+
+### 4a-2-E — Ausführungs-Log (gebaut 2026-10-26, Commit `dc5343ee`, Branch `web-factory`)
+
+Gebaut wie beschrieben; Kern **1393/0/0 BUILD SUCCESS** (1386 + 7 neue), `install -DskipTests` grün,
+**Plugin-Gate BUILD SUCCESS** (4 Module, Plugin-Jar gebaut), Fabrik `clean verify` **101/0/0** gegen das
+neue Core-Artefakt. `~/.peon`: keine Datei mit mtime heute (neueste 2026-10-25 11:09) — kein Test liest
+oder schreibt dort. Kern-Docs `write-path-validator.md` + `index.md` **unverändert committet** (Jons
+Freigabe für diesen Commit), **R6 steht weiter auf ❌**.
+
+| Punkt | Befund |
+|---|---|
+| Kern-Tests | `WriteValidatorPathScopePromptTest` 4/0/0 · `AiPoAgentPromptParityTest` 3/0/0 (dritter Test `dynamicRootsCarrierNamesItsOwnRootsInThePrompt` = die vom Plan verlangte scharfe Form, als eigener Test statt als Teil von `pluginPromptIsByteIdentical`) |
+| Mutation M1 (`pathScopePrompt()` ⇒ `""`) | rot: `dynamicRootsNamesExactlyItsOwnRoots` **und** `dynamicRootsCarrierNamesItsOwnRootsInThePrompt` |
+| Mutation M2 (Wurzeln hart kopiert) | rot: `dynamicRootsNamesExactlyItsOwnRoots` (Frische-Zweig greift) |
+| Mutation M3 (Prompt weiter Konstante) | `pluginPromptIsByteIdentical` **grün und wertlos** — die anderen beiden rot; M3 ist damit als Pflichtform belegt |
+| Mutation M4 (Absatz auch bei leerem Text) | rot: `allowAllPromptHasNoScopeParagraph` — **während der Entwicklung real aufgetreten und gemessen**, nicht nur nachgestellt |
+| Abweichung 1 | §4.5 will für `allowAllPromptHasNoScopeParagraph` die „Anzahl der `\n\n`-Fugen verglichen". **Gemessen:** `BASE_PROMPT` endet selbst auf einen Zeilenumbruch, diese Zählung ist dort blind (sie zählte Gleichheit, wo ein Geisterblock stand). Der Test prüft **exakte Gleichheit** mit `BASE + NL + DELEGATION` — die schärfere Form desselben Beweises; die Fugen-Zählung ist entfallen. |
+| Abweichung 2 | §4.5/§4.9 verlangen Eclipse-Refresh/+Build von `org.sterl.llmpeon` **und** `org.sterl.llmpeon.test`: **nicht gelaufen** — beide Projekte sind in diesem Workspace nicht geöffnet (`eclipseList`: `llmpeon-parent`, `llmpeon-core`, `aifactory-parent`, `factory-backend`, `factory-ui`). Compile-Beweis für PR-3 ist der Maven-Plugin-Gate. |
+| Abweichung 3 | Versuch, das Plugin-**Test**modul per Maven zu bauen (`mvn -o -pl org.sterl.llmpeon.test -am package -DskipTests`): scheitert im Tycho `validate-classpath` an der p2-Referenz `download.eclipse.org/releases/2026-09` (offline nicht gecacht). Per Stash **bisectiert**: identischer Fehler ohne meinen Diff ⇒ umgebungsbedingt, nicht die Folge dieses Commits. |
+
+**Für 4a-3 mitzunehmen:** Jons Prompt nennt jetzt, was `JonToolSet.writeValidator()` wirklich erlaubt —
+`jonsPromptNamesBothRootsNotTheDocsSentence` kann direkt auf `jon().getSystemPrompt()` prüfen, der
+`DOCS`-Satz ist im Core nicht mehr hartverdrahtet.
+
+## 4.6 Schritt 4a-3 — die Fabrik nagelt Jon **und** Da Mek fest
+
+**Läuft danach:** UC-WP-8, UC-WP-9, UC-WP-10 und UC-WP-18 sind durch laufende Software belegt; ein
+Team-Mitglied schreibt nicht mehr außerhalb der beiden Wurzeln; Jons Prompt nennt beide Wurzeln und keinen
+`docs/`-Satz (schließt Q8 aus Inc 3).
+
+**Vorbedingung aus 4a-1-E — blockierend, keine Fußnote:** das Fabrik-Home aller 4a-3-Tests liegt **nicht**
+unter `java.io.tmpdir`, gesetzt auf `<factory-backend>/target/inc4-home` (von `mvn clean` mitgenommen).
+Begründung ist gemessen, nicht vermutet: lag die Projekt-Root unter TMP (4a-1 mit `@TempDir`), bleibt jede
+`..`-Variante **innerhalb** einer erlaubten Wurzel und **UC-WP-10 ist nicht beweisbar**. Mit Home außerhalb
+TMP gilt `<home>/projects/<name>/..` → `<home>/projects` = außerhalb beider Wurzeln ⇒ der `..`-Fall ist der
+**scharfe** Beweis; der absolute Dritt-Wurzeln-Pfad bleibt als zweiter Fall daneben.
+
+**Polarität — 4a-3 pinnt, es baut nichts an Jon um (M1/M2/M4 sind grün gemessen):** UC-WP-8/9/10/18 halten für
+**Jons** `disk*`-Pfad bereits heute; 4a-3 legt die **Tests** darüber, weil die ids sonst unbelegt bleiben, und
+erfindet kein Jon-Verhalten neu — kein zweiter Jon-Pfad, keine zweite Jon-Hälfte, keine Umbauten an
+`JonToolSet` (JavaDoc ausgenommen). Neu entsteht **allein**: (a) Da Mek wird festgenagelt, (b) **M5 dreht
+sich um** — heute existiert die Mitglieds-Datei und es gibt keine Ablehnung, danach existiert sie nicht,
+(c) R6 aus 4a-2 macht Jons Prompt erst wahr. Zeigt eine 4a-1-Probe dieselbe Aussage schon, wird sie **zur**
+4a-3-Test umgebaut (`WritePinningProbeTest.java` → `WritePinningTest.java`), nicht dupliziert.
+
+**Dateien (Fabrik, `factory-backend/src/main/java/org/sterl/open/aifactory/chat/`):**
+
+| Datei | Änderung |
+|---|---|
+| `ProjectRuntime.java` | Da Mek wird wie Jon gebaut: anonyme `AiDevAgent`-Unterklasse mit `getWriteValidator() → toolSet.writeValidator()` (Muster `:81-87`). **Kein** neuer Pfad, **keine** Abhängigkeit |
+| `JonToolSet.java` | **nur JavaDoc** `:71-75` — der Satz wird wahr statt halb |
+
+**Tests** — `chat/WritePinningTest.java` (aus der 4a-1-Probe `WritePinningProbeTest.java` herausgebaut,
+`@SpringBootTest(RANDOM_PORT)`, `@Import(FakeGitConfig.class)`, Home auf `target/inc4-home` **außerhalb** von
+`java.io.tmpdir` — Vorbedingung oben, `@TempDir` verbietet sich, es liegt auf dem Mac unter TMP;
+`MockLlmServer`, `@Timeout(30)`, Deadline-Schleife
+25 ms / max. 10 s, **kein** `Thread.sleep` als Synchronisation; Kurzpfade, damit das 180-Zeichen-Präfix
+überlebt — M2 hat die Kürzung auf dem Draht gemessen, Assertions bleiben am Präfix):
 
 | Marker | Test | THEN aus dem Doc — Beweis |
 |---|---|---|
-| `// UC-WP-24` | `settingsOverrideNeverWritesSharedStore` | GIVEN 3 „… nutzt der **nächste** Turn den neuen Wert": Home-Datei trägt `model=inc3e-first` ⇒ Turn, `mock.getLastRequestBody()` enthält `"model":"inc3e-first"`; Wert **über die Einstellungs-Route** (Inc 2, `config/SettingsController`) auf `inc3e-second` gesetzt ⇒ zweiter Turn, `getLastRequestBody()` enthält `"model":"inc3e-second"`; beides **ohne** Neustart: dieselbe `ApplicationContext`, **dieselbe** `ProjectRuntime`- und `ConfiguredChatModel`-Instanz (`assertThat(after).isSameAs(before)`) — der Beweis, daß die Konfiguration **pro Turn** und nicht pro Runtime gelesen wird; dritter Turn mit unveränderter Konfiguration läuft unverändert (kein Dauer-Neubau). GIVEN 1 (Datei der Factory, Plugin-Bestand byte-identisch) bleibt beim Gate-Nachweis (`~/.peon`-Vergleich vor/nach, §3.9) und wird hier **nicht** angefaßt |
+| `// UC-WP-8` | `writeInsideProjectRootAllowed` | Jon ruft `diskWriteFile {"filePath":"notes/marker.txt"}` (relativ) ⇒ Datei liegt unter `<localPath>/notes/marker.txt`, ihr Inhalt ist der geschickte Text, die Live-`tool`-Zeile nennt den Schreibvorgang, und der nächste Anbieter-Payload enthält **kein** „Write denied". **Zweite Hälfte (Team):** dasselbe Drehbuch mit Delegation — `AiMessage` mit `ToolExecutionRequest("askDev", …)`, im Mitglieder-Call `diskWriteFile`; gemessen wird die Datei unter der Projekt-Root und Jons `delegated`-Zeile mit der Mitglieder-Antwort; die Mitglieder-**Werkzeug**-Zeile erscheint bewusst **nicht** (R-WP-4/UC-WP-40, A1) |
+| `// UC-WP-9` | `writeOutsideBothRootsRejected` | **A1-Stufe 1 (Jons eigene Zeile):** absolute Datei außerhalb beider Wurzeln ⇒ **drei** Behauptungen aus D5: (a) Live-`tool`-Zeile beginnt mit `diskWriteFile: Write denied:`, (b) der nächste Anbieter-Payload enthält den vollen Hinweis `… allowed roots …` (Länge > 180 ⇒ beweist zugleich, dass die Modell-Kopie ungekürzt ist), (c) die Datei existiert **nicht**; **und** nach `done` + `GET …/messages` steht **keine** Zeile mit „Write denied" im Verlauf (R-WP-11, Gegenprüfung gegen erfundene Persistenz) |
+| `// UC-WP-9` | `memberRejectionStopsAtTheModel` | **A1-Stufe 2 (beantwortet 2026-10-26):** ein Mitglied schreibt per Delegation außerhalb beider Wurzeln ⇒ **keine** `tool`-Zeile auf dem Draht (Zählung über die ganze gesammelte SSE-Leitung; R-WP-4/UC-WP-40), der volle `Write denied … allowed roots …`-Text liegt **ungekürzt** im nächsten Provider-Payload, die Datei existiert **nicht**, und nach `done` steht **keine** Ablehnungs-Zeile im wiederhergestellten Verlauf — er wartet **nicht** auf Jons Nachschärfung des UC-WP-9-Wortlauts, sondern belegt beide jetzt geltenden Doc-Aussagen, ohne ein Mitglieds-Internum durch den Filter zu reichen |
+| `// UC-WP-10` | `traversalDoesNotEscapePinning` | zwei Pfade: `"../../escape-<marker>.txt"` (wirkt **nur** mit Home außerhalb TMP — Vorbedingung oben, M3 ist mit TMP-Home nicht trennscharf) und eine absolute Datei unter einer **dritten** Wurzel (`target/inc4-outside` bzw. `TmpRoots.systemTmp().resolveSibling(…)`, **kein** `@TempDir` — das liegt unter TMP, 4a-1-E) ⇒ beide abgewiesen, **keine** Datei an beiden Orten, weder unter `<root>` noch außerhalb; die Live-Zeile nennt die Wurzeln |
+| `// UC-WP-18` | `tmpWritesLandInSystemTempDir` | absolute Datei **direkt** unter `TmpRoots.systemTmp()` mit eindeutigem Markernamen ⇒ Datei liegt **in** `TmpRoots.systemTmp()` (Prüfung über `getParent`-Gleichheit, nicht über einen umständlich aufgebauten Pfad) und **nicht** unter `<localPath>`; keine `<home>/state/<id>/tmp`-Spur; Datei im `finally` gelöscht, Lösch-Erfolg behauptet |
+| — (intern) | `memberWritesArePinnedToo` | der Da-Mek-Festnagel-Test **ohne** Umweg über die Delegation: `runtime.jon()`-Team ansprechen oder direkt über den skripteten Mitglieder-Turn ⇒ Schreiben außerhalb beider Wurzeln abgewiesen; ohne die `ProjectRuntime`-Zeile **rot** (die scharfe Seite von D4) |
+| — (intern) | `jonsPromptNamesBothRootsNotTheDocsSentence` | `jon().getSystemPrompt()` nennt die Projekt-Root **und** `TmpRoots.systemTmp()`, enthält **nicht** den `DOCS`-Satz und enthält beide Wurzeln **nach einer Konfigurationsänderung** nicht veraltet (Pro-Turn-Lesen, R6-GIVEN 2) |
 
-**Warum der Modellname der Beweis ist:** Jon nutzt `poAgentConfig()` und fällt ohne eigenen `llm.agent.po.model`-
-Wert auf `cfg.getModel()` zurück (`AiPoAgent:126-129`); die Datei der Factory trägt keine
-`llm.agent.*`-Schlüssel, also ist der gesendete `"model"`-Wert genau der geänderte. Ein zweiter Anbieter im
-Test wäre ein zweiter Beweis für dieselbe Sache — weglassen.
+**MockDrehbuch (wird mehrfach gebraucht, deshalb hier):** 1) `AiMessage` mit `ToolExecutionRequest(name,
+argumentsJson)`; 2) Folge-Antwort (Text) beendet den Werkzeug-Loop; Delegation = `askDev` +
+Mitglieder-Antwort. Der Mitglieds-Call geht an **denselben** Mock (die Fabrik-Datei trägt keine
+`llm.agent.*`-Schlüssel). Zahlen über `getCapturedMessages()` / `getLastRequestBody()`, nie über ein
+nicht existentes `getRequestCount()`.
 
-**Fallen 3e:** Der Core prüft `updateConfig` gegen den **alten** Wert — ein Test, der die Datei von Hand
-schreibt und **danach** die Einstellungs-Route nutzt, kann den Wert zweimal schreiben; Reihenfolge wie oben.
-Und: die Einstellungs-Route validiert (`config`), ein leerer Modellwert wird abgewiesen — der Test setzt einen
-vollständigen Wert.
+**Mutations-Nachweis:** Da-Mek-Überschreibung weglassen ⇒ `memberWritesArePinnedToo` rot (und die
+Team-Hälfte von `writeInsideProjectRootAllowed` bleibt grün — der Test ist also nicht dekorativ) ·
+`DynamicRootsWriteValidator` durch `ALLOW_ALL` ersetzt ⇒ UC-WP-9/10 rot · Wurzel-Lieferant liefert
+`List.of()` ⇒ UC-WP-18 rot (TMP fiele aus den Wurzeln) · `TmpRoots`-Wurzel durch `<home>/state/<id>` ersetzt
+⇒ UC-WP-18 rot (die Datei läge im Projekt-Unterordner — genau der UC-WP-18-Fehlerfall) ·
+`validate` **vor** `normalizeSegments` ⇒ UC-WP-10 **grün und wertlos** ⇒ deshalb prüft der Test den
+`..`-Pfand **und** den absoluten Pfad; die `..`-Variante ist die, die ohne Normalisierung durchrutscht. · Mitglieds-Filter (R-WP-4) aus ⇒
+`memberRejectionStopsAtTheModel` rot (die Ablehnung erschiene live auf dem Draht — genau A1s Verbot).
 
-### 3.8.2 Gates 3e
+**Konsequenzen:** R-WP-6 ist für die `disk*`-Werkzeuge dicht und gemessen; über die Shell bleibt die Lücke
+(A2). R-WP-13 ist erfüllt für Schreib-Pfade. R-WP-4 bleibt 🚧 (Inc 5).
 
-`mvn -f aifactory/pom.xml clean verify`; `lintDocsAndTests` — ab jetzt ist `settingsOverrideNeverWritesSharedStore`
-in Java markiert und **kein** id des Increments 3 steht mehr ohne Test; UI-Gates grün (keine UI-Änderung).
-Laufender Nachweis: Server starten, Modellname in den Einstellungen ändern, zweiter `curl`-Turn, im
-Anbieter-Log/der Antwort sehen, daß der neue Wert benutzt wird; `~/.peon` vorher/nachher vergleichen
-(`diff -r` byte-identisch) und das Ergebnis im Report nennen — das ist GIVEN 1s echtes Gegenstück, kein Test
-darf diese Datei lesen. Commit: `feat(chat): Konfiguration pro Turn — der nächste Turn nutzt den neuen Wert (UC-WP-24)`.
-### 3e-E — Ausführungsnachweis (gebaut 2026-10-26, Commit `eacf02ac`, Baseline `86360177`, 3d = `565ec1b9`)
+**Commit:** `feat(chat): Schreib-Pinning für Jon und sein Team — Wurzeln Projekt und TMP (UC-WP-8,9,10,18)`.
 
-**Kein neuer Mechanismus, nur der Beweis.** Der Leser pro Turn stand seit 3a in
-`ProjectRuntime.submit`; neu sind genau zwei Dinge: der paketprivate Leser `ProjectRuntime.model()`
-(+8 Zeilen, Vorbild `jon()`) als Test-Naht für „dasselbe Modell-Objekt", und `chat/ChatConfigTurnTest`
-(1 Test, Marker `// UC-WP-24`, `settingsOverrideNeverWritesSharedStore`). Kein UI, kein neuer Pfad, kein
-Core-Quellcode, keine Abhängigkeit.
+### 4a-3-E — Ausführungs-Log (gebaut 2026-10-26, Commit `d9f38eb1`, Branch `web-factory`)
 
-Messwerte des Tests (derselbe laufende Kontext, kein Neu-Start): Turn 1 → Draht `model=inc3e-first`;
-`PUT /api/settings` 200 in 11 ms mit vollständigem Wert → Antwort der Route ist der frisch gelesene Stand
-(`model=inc3e-second`, `keySet=true`) und die Datei der Fabrik trägt den neuen Wert; Turn 2 → Draht
-`model=inc3e-second`, `runtime` **isSameAs**, `ConfiguredChatModel` **isSameAs**, gebautes Modell
-**isNotSameAs** (genau einmal getauscht); Turn 3 ohne Änderung → gleicher Wert, **dasselbe** gebaute Modell
-(kein Dauer-Neubau); Verlauf sechs Zeilen in einer Reihenfolge, `runtimeCount` 1, gleiche
-`ApplicationContext`. GIVEN 1+2 sind zitiert, nicht dupliziert; `~/.peon` liest kein Test.
+Produktionscode (Fabrik, zwei Dateien): `chat/ProjectRuntime.java` — Da Mek wird als anonyme
+`AiDevAgent`-Unterklasse mit `getWriteValidator() → toolSet.writeValidator()` gebaut (dasselbe
+Validator-Exemplar wie Jon, keine neue Abhängigkeit, kein neuer Pfad); `chat/JonToolSet.java` — nur
+JavaDoc. Tests: die 4a-1-Probe ist **zur** `chat/WritePinningTest.java` ausgebaut (Probe gelöscht, kein
+zweiter Drehbuch-Satz), 7 Tests — `writeInsideProjectRootAllowed` (`// UC-WP-8`, Jon-Hälfte +
+Team-Hälfte über `askDev`), `writeOutsideBothRootsRejected` (`// UC-WP-9`, A1-Stufe 1: live-Präfix,
+voller Text > 180 Z im Anbieter-Payload inkl. beider Wurzeln, Datei fehlt, keine Zeile im Verlauf),
+`memberRejectionStopsAtTheModel` (`// UC-WP-9`, A1-Stufe 2: keine Zeile auf der ganzen Leitung, voller
+Text ungekürzt beim Modell, Datei fehlt, kein Verlaufseintrag), `traversalDoesNotEscapePinning`
+(`// UC-WP-10`, `../../` **und** absolute Dritt-Wurzel in einem `AiMessage`-Zwillings-Call),
+`tmpWritesLandInSystemTempDir` (`// UC-WP-18`, `getParent`-Gleichheit, kein `state/<id>/tmp`, `finally`
+mit Lösch-Behauptung), `memberWritesArePinnedToo` (intern, direkter Call an Da Mek **ohne** Delegation,
+plus Gegenprüfung „innerhalb der Wurzel schreibt er"), `jonsPromptNamesBothRootsNotTheDocsSentence`
+(intern, beide Wurzeln, **kein** `JON_PATH_SCOPE_PROMPT`, Frische nach `java.io.tmpdir`-Änderung).
+Home: `target/inc4-home`, outside: `target/inc4-outside` — beide außerhalb `java.io.tmpdir`, kein
+`@TempDir` (Vorbedingung §4.6, erfüllt).
 
-Gates: `mvn -f aifactory/pom.xml clean verify` → **80 Tests, 0 Fehler, 0 Fehlermeldungen, BUILD SUCCESS**
-(79 → 80; vorbestehender Surefire-Hinweis bleibt). `pnpm -C aifactory/factory-ui test` → **19 passed
-(3 files)**, `lint` → „Found 0 warnings and 0 errors.", `build` ✓. `lintDocsAndTests` (docRoots
-`aifactory/docs`; testRoots backend/src/test + ui/src/test + ui/src/views; idPattern wie §3.9) →
-`UC definitions: 50 / 50; test IDs: 60 / 29; findings: 21`, **VERWAIST 0** (3d: 50/50; 59/29; 21 — **+1 id**);
-mit den §3.9-Doc-Wurzeln → `UC definitions: 251 / 251; test IDs: 60 / 29; findings: 222`, ebenso VERWAIST 0.
-**UC-WP-24 ist nicht mehr UNBELEGT — keine id von Increment 3 steht damit ohne Test.** Offen und nicht
-Inc-3-Stoff: UC-WP-8/9/10, 11/12/13, 18/19, 25, **39/40 (= 3f, Jons Plan)**, zehn UC-JL.
-
-Mutationsbatterie, jede einzeln rot auf dem geplanten Punkt, alle zurück (grep `MUTATION` = leer):
-Konfiguration je Runtime statt je Turn (`updateConfig(model.getConfig())`) → GIVEN 3, erwartet
-`inc3e-second`, erhalten `inc3e-first` · `updateConfig` weggelassen (gelesen, niemandem gegeben) → derselbe
-Punkt · nach `updateConfig` `setChatModel(null)` → „kein Dauer-Neubau" (Zeile 183) · cachelose Runtime
-(jeder Zugriff baut einen eigenen Jon) → „dieselbe Runtime" (Zeile 163) — **die gefährliche Mutation**, denn
-eine zweite Runtime liest den neuen Wert beim Bau und ließe GIVEN 3 grün aussehen; getroffen wird sie nur
-durch die Instanz-Identität · Route nimmt das Modell nicht an → Antwort der Route (Zeile 145).
-**Verworfen nach Messung:** `runtimes.get(id)` verfehlt immer — bei einer `putIfAbsent`-Map keine Mutation
-(die Map trifft trotzdem), sie blieb grün und zählt nicht als Nachweis.
-
-Laufender Nachweis mit **echtem Modell** (Ollama, Home `/tmp/aifactory-inc3e`, **Port 8099**, Projekt
-`spring-petclinic-c2cea48`). Gemacht sichtbar durch einen mitschreibenden Vorbeilasser auf
-`127.0.0.1:11555`, der unverändert an Ollama weiterreicht und das `model`-Feld mitloggt (Skript nur in
-`/tmp`, nichts comittet, er antwortet nie selbst): Turn 1 `POST` 202 in 0,22 s, Antwort nach 40 s
-(„Apfel."), Anfrage `model='inc3e-alpha'` · Einstellung über die Route, `PUT` 200 in 0,012 s, DateiZeile 2
-danach `llm.model=inc3e-beta`, **derselbe Prozess** (PID 47096 durchgehend, kein Neu-Start) · Turn 2 `POST`
-202 in 0,004 s, Antwort nach 3,9 s („Birne"), Anfrage `model='inc3e-beta'` · Turn 3 unveränderte
-Konfiguration → wieder `inc3e-beta`. Home danach `config.properties`, `projects`, `projects.json`,
-`state/<id>/Peon-PO-history.jsonl` (1 691 byte); Ports 8099/11555/8080 frei; `~/.peon` byte-identisch
-(124 Dateien, Sammel-Prüfsumme `eeb6ca9c88720ef4` vor dem Start = nach dem Stop). Die beiden Modell-Namen
-waren Alias-Namen **eines** echten Modells (`ollama cp qwen3.5:4b`, beide wieder entfernt) — bewiesen wird
-der Wert auf dem Draht, nicht ein zweiter Verstand.
-
-Abweichungen, keine ändert eine UC-Aussage: (a) `ProjectRuntime.model()` neu — ohne diesen Leser wäre
-„dasselbe `ConfiguredChatModel`" nur über Reflection ans eigene Feld prüfbar; (b) der Lauf-Nachweis braucht
-einen Beobachter für das `"model"`-Feld, weil die Fabrik den Anbieter-Namen bewußt nicht nach außen gibt
-(wertfreie Fehlerzeile, Q1); (c) der `~/.peon`-Gesamtwert unterscheidet sich vom 3c/3d-Wert
-(`d85195f2…`) — das Plugin schreibt zwischen den Sessions daran; verglichen wird das Paar vor/nach diesem
-Increment, und das ist identisch. Build-Falle wieder gemessen: `eclipseEditFile` an einer Hauptquelle
-hinterläßt Lombok-Stümpfe in `target/classes` → Maven ohne `clean` läuft sie und der Server gibt POST 500
-„Unresolved compilation problems"; jeder Lauf hier mit `clean`.
-
-**Increment 3 ist damit durch (3a–3e, je eigener Commit, jedes Gate gemeldet). Nicht gebaut: UC-WP-39/40
-(= 3f, auf Jons eigenen Plan wartend), UC-WP-8/9/10 (Inc 4), 11/12/13 + Kacheln/Clear (Inc 5), UC-WP-25
-(Inc 6).**
-
-
-
-## 3.9 Gates, Beweispflichten, TABU (für alle fünf Increments)
-
-### 3.9.1 Jeder Increment, in dieser Reihenfolge
-
-1. `eclipseBuildProject factory-backend` (nach jeder Datei-Änderungsrunde), bei UI-Änderungen zusätzlich
-   `pnpm -C aifactory/factory-ui lint`.
-2. `export PATH=~/.nvm/versions/node/v22.12.0/bin:$PATH && mvn -f aifactory/pom.xml clean verify`
-   (Node auf dem Pfad, sonst bricht der UI-Block des Builds; `install`-Schritt nur für den Lauf-Nachweis).
-3. `pnpm -C aifactory/factory-ui test` · `lint` · `build`.
-4. `lintDocsAndTests` mit
-   `docRoots: ["docs","org.sterl.llmpeon.core/docs","org.sterl.llmpeon/docs","aifactory/docs"]`,
-   `testRoots: ["aifactory/factory-backend/src/test","aifactory/factory-ui/src/test"]`,
-   `idPattern: "UC-[A-Z]+-\\d+[a-z]?"` — und die **echte** `findings: N`-Zeile in den Report (Baseline nach
-   Inc 2b: 38 UC-Definitionen, 42 Test-ids, `findings: 19`, `VERWAIST` 0). Erwartung: `VERWAIST` bleibt 0,
-   die Zahl der ids **ohne** Test sinkt pro Increment um die dort genannten ids.
-5. Laufender Nachweis (§3.4.6 Muster) mit `AIFACTORY_HOME=/tmp/aifactory-inc3<brief>`; danach Port 8080 frei,
-   `~/.peon` byte-identisch (`diff -r` vor/nach dem Increment, Ergebnis im Report).
-6. Commit je Increment, Gate-Ergebnisse im Text (`AGENTS-DEV.md:55-59`). **Nie** geteilt:
-   `AGENTS*.md`, `CHANGELOG.md`, `aifactory/peon-plan/**`; `aifactory/docs/**` nur mit frischer,
-   ausdrücklich auf **diesen** Increment bezogener Freigabe (die Inc-2-Freigabe war für 2b und ist verbraucht).
-7. **Kein `✅`/`❌` in `aifactory/docs/**` anfassen** — die Marker gehören dem PO; der Report nennt, welche ids
-   jetzt einen Test haben (Q4).
-
-### 3.9.2 Was nach 3e gelten muß
-
-| id | Test seit |
+| Punkt | Befund |
 |---|---|
-| UC-WP-5, UC-WP-6, UC-WP-7 | 3a (Server) + 3b (Browser) |
-| UC-WP-17, UC-WP-20 | 3a |
-| UC-WP-14, UC-WP-22 | 3c |
-| UC-WP-15, UC-WP-16, UC-WP-21 | 3d |
-| UC-WP-24 | 3e (GIVEN 3; GIVEN 1+2 bleiben bei den Inc-2-Tests und beim `~/.peon`-Nachweis) |
+| Gate-Reihenfolge | Kern `clean test` **1393/0/0** (keine Kern-Änderung, trotzdem gelaufen) → `install -DskipTests` → **Plugin-Gate BUILD SUCCESS** (4 Module) → Fabrik `clean verify` **103/0/0** (96 Baseline + 7 neue, Probe-5 hinaus) → UI **22/3**, lint **0/0**, build grün → `lintDocsAndTests` |
+| `lintDocsAndTests` | `UC definitions: 42/42; test IDs: **72**/36; findings: **6**`, VERWAIST 0. Gegen die Baseline 67/10 sind das **+5** Marker ⇒ das Werkzeug zählt **id↔Test**, nicht id↔Datei (A1-Nachtrag: gelaufene Zahl 72, erwartet 71 oder 72). Offen: UC-WP-11/12/13/19/42/25 |
+| Mutation A (Pin-Zeile in `ProjectRuntime` entfernt) | **genau zwei** rot: `memberWritesArePinnedToo`, `memberRejectionStopsAtTheModel`. UC-WP-8 und UC-WP-18 bleiben grün ⇒ die Tests sind nicht zu weit |
+| Mutation B (`DynamicRootsWriteValidator.pathScopePrompt()` ⇒ `""`, Core installiert) | **genau einer** rot: `jonsPromptNamesBothRootsNotTheDocsSentence`; danach Core zurück und `clean install -DskipTests` erneut |
+| Mutation C (beide Wurzeln auf `/` entschärft) | fünf rot: `writeOutsideBothRootsRejected`, `memberRejectionStopsAtTheModel`, `traversalDoesNotEscapePinning`, `memberWritesArePinnedToo`, `jonsPrompt…`; UC-WP-8/18 bleiben grün (Schreiben ist ja gerade erlaubt) |
+| Live-Nachweis (Ollama `qwen3.5:4b`, Fabrik-Port **8099**, Home `target/aifactory-inc43` **nicht** unter TMP, Projekt `spring-petclinic-c2cea48`) | **Turn 1 (UC-WP-8):** `POST` 202 in 0,12 s; Leitung 347 Ereignisse (343 `partial`, 3 `tool`, 1 `done`), Zeile `Created file: …/notes/inc4-marker.txt`, **0×** „Write denied", Datei liegt im Checkout (13 Bytes) · **Turn 2 (UC-WP-9 Stufe 1):** `POST` 202 in 0,012 s; live `diskWriteFile: Write denied: '…inc4-live-outside/inc4-escape.txt' resolves to '…` (bei 180 Z gekürzt + `…`), Datei **existiert nicht**, `GET …/messages` zählt **0×** „Write denied"; die Dritt-Wurzel `target/inc4-live-outside` wurde nie angelegt · **Turn 3 (UC-WP-18):** `POST` 202 in 0,008 s; `Created file: /var/folders/…/T/inc4-tmp-<epoch>.txt`, `getParent() == java.io.tmpdir` (python-belegt `True`), beide TMP-Dateien gelöscht |
+| Home und `~/.peon` | Home trägt nur `config.properties`, `projects`, `projects.json`, `state`; `state/<id>/` genau eine Datei `Peon-PO-history.jsonl`, kein TMP-Unterordner, kein Sidecar · `~/.peon`-Prüfsumme vor/nach **identisch** `d85195f206ce723d880b458e88d8ad50d1157dfb` · Port 8099 nach dem Lauf frei, 8080 nie angefasst |
 
-Die restlichen `❌` in `web-prototype.md` (u. a. UC-WP-8/9/10, 11/12/13, 18/19, 25) sind **nicht** Gegenstand
-von Inc 3 und bleiben, wie sie sind; der Schlussreport führt sie als offen auf, nicht als versagt.
+**Abweichungen (gemeldet, nicht nachgebogen):**
 
-### 3.9.3 TABU (bricht den Increment, nicht nur einen Test)
+1. **UC-WP-10: „die Live-Zeile nennt die Wurzeln" ist auf dem Draht nicht beweisbar.** Die
+   180-Zeichen-Kürzung (`SmartToolExecutor:65`) frisst die Wurzel-Liste: bei einer 88-Zeichen-Projekt-
+   Wurzel stehen die Wurzeln erst ab Zeichen ~167. Behauptet wird die Live-Zeile am Präfix und die
+   **Wurzel-Liste im Anbieter-Payload** (D5b, ungekürzt gemessen). Das Doc verlangt die Wurzeln auf der
+   Zeile nicht (UC-WP-10 THEN nennt nur „wird abgelehnt").
+2. **Dritter Live-Prompt: `/tmp` ist auf macOS nicht `java.io.tmpdir`.** Der Plan schrieb
+   `/tmp/inc4-<marker>.txt`; `/tmp → /private/tmp` liegt außerhalb beider Wurzeln und wäre **abgelehnt**
+   worden. Genutzt wurde der System-TMP dieser Instanz (`/var/folders/…/T/`), also genau das, was
+   R-WP-13 meint.
+3. **Zweiter Live-Prompt: Ausbruchsziel war beschreibbar** (`target/inc4-live-outside`) statt `/etc/…` —
+   sonst bewiese die fehlende Datei nur eine OS-Rechte-Absage statt des Validators.
+4. **`@Timeout` 60 s je Test statt 30 s** (§4.6): ein delegierter Drehbuch-Turn braucht vier Anbieter-
+   Rundläufe; die Deadline-Schleife bleibt wie geplant 25 ms / **10 s**, gemessen laufen alle Tests in
+   3,8 s für sieben Tests.
+5. **Frische-Behauptung vergleicht die normalisierte TMP-Form**: `java.io.tmpdir` endet auf `/`,
+   `TmpRoots.systemTmp()` nicht — die erste Fassung prüfte die rohe Form und scheiterte daran (nicht am
+   Prompt). Wiederherstellung des Property-Werts aus dem rohen Wert, im `finally`.
+6. **`JonToolSet`-JavaDoc:** der Satz „for Jon and Da Mek" stand schon da und war nur halb wahr — nötig
+   war keine Richtigstellung des Satzes, sondern nur der Zusatz, dass der Core ihn auch zur **Prompt-Zeit**
+   liest. Kein anderer Text geändert.
+7. **Nebeneffekt Turn 2, nur gemeldet:** nach Jons eigener Ablehnung wählte das 4B-Modell selbständig
+   `/var/folders/…/T/inc4-escape.txt` und durfte schreiben (zweite Wurzel) — UC-WP-18 im Live-Betrieb,
+   keine Lücke; Datei gelöscht.
+8. **F1 ist damit geschlossen:** Da Mek war ungenagelt (4a-1 M5: Datei existierte), heute fehlt sie und
+   die Ablehnung endet beim Modell. **A2 bleibt stehen:** `ShellTool` ruft `validateWrite` nie auf —
+   Lücke steht im Klassen-JavaDoc von `WritePinningTest` und hier, sonst nirgends.
 
-* Kein Core-**Quellcode** wird geändert (`org.sterl.llmpeon.core/**`); Funde im Core werden gemeldet.
-* Keine neue Maven- oder npm-Abhängigkeit (kein webflux, kein Bean-Validation-Starter, kein Modulith-Events,
-  kein Awaitility, kein Mockito).
-* Kein Edit und kein Staging unter `aifactory/docs/**`, kein Edit von `AGENTS*.md`, `CHANGELOG.md`,
-  `aifactory/peon-plan/**`.
-* Kein `org.eclipse..`, kein `Eclipse*`, keine der in `ArchitectureGuardTest` verbotenen Core-Klassen;
-  kein `AiProvider.parse()`; kein zweiter `@RestControllerAdvice`; kein zweiter Serialisierungsort für Turns;
-  kein zweiter Speicher für Chat-Texte; kein Nutzer-/Login-Konzept; keine Kacheln, kein Clear/Compact,
-  kein `askUser`, keine Jon-Light-Runtime, kein Story-/Plan-Werkzeug.
-* **keine erfundene id** — Marker sind Überschriften-ids aus dem Doc, kopiert (`AGENTS-DEV.md:21-27`).
-* Java 21, keine `var`-Kette in öffentlichen Signaturen neuer Beans (Konvention der bestehenden Komponenten),
-  JavaDoc nur für Nicht-Selbstverständliches (`AGENTS.md:2`).
 
-## 3.10 Offene Fragen an Jon (keine ist entschieden; jede mit Empfehlung)
+
+## 4.7 Schritt 4b-1 — die Lese-Kante im `project`
+
+**Läuft danach:** `GET /api/projects/{id}/files` liefert Verzeichnis oder Datei aus Checkout oder System-TMP;
+jeder Ausbruch ist abgewiesen; schreiben kann die Kante nicht.
+
+**Dateien (`factory-backend/src/main/java/org/sterl/open/aifactory/project/`):**
+
+| Datei | Änderung |
+|---|---|
+| `ProjectFilesController.java` | **neu**, paketprivat oder `@RestController` im `project`-Paket; **nur** `GET`; Guard in der Methode (D6) |
+| `dto/ProjectEntryDto.java`, `dto/ProjectDirectoryDto.java`, `dto/ProjectFileDto.java` | **neu**, `record`s; Diskriminator `kind`; **nur** relative Namen |
+| `dto/ProjectFileRoot.java` | **neu** (oder enum-artige Konstanten-Klasse): `checkout` \| `tmp` — unbekannter Wert ⇒ `IllegalArgumentException` |
+
+Nicht angefaßt: `chat/**`, `shared/**` (auch `ApiExceptionHandler` nicht), `ProjectController`,
+`ProjectService`, jede Core-Datei, jede UI-Datei. **Kein** neuer Advice, **kein** neuer Pfad unter `chat`,
+**keine** Abhängigkeit, **kein** `WriteValidator` im Leseweg.
+
+**Tests** — `project/ProjectFilesTest.java` (`@SpringBootTest(RANDOM_PORT)`, `@Import(FakeGitConfig.class)`,
+`RestTemplate` + `@LocalServerPort` + `NoOpResponseErrorHandler`;Checkout-Inhalt schreibt der Test selbst in
+`project.localPath()`, weil `FakeGitConfig` nur `.git` anlegt):
+
+| Marker | Test | THEN — Beweis |
+|---|---|---|
+| `// UC-WP-19` | `fileAreaReadsCheckoutAndSystemTmp` | Checkout: `GET ?root=checkout` ⇒ `kind:"directory"`, die angelegten Ordner mit `directory:true`, `path` relativ (`""` oben); `GET ?root=checkout&path=<datei>` ⇒ `kind:"file"`, `text` == Inhalt, `binary:false`; TMP: eine vom Test zuvor angelegte Markendatei erscheint unter `?root=tmp`, dieselbe Datei ist **nicht** unter `root=checkout` sichtbar (zwei getrennte Wurzeln, keine Mischung) |
+| `// UC-WP-42` | `fileAreaNeverEscapesItsRoot` | **vier** Pfade: `../<outside>`, `src/../../<outside>`, absolut auf die `outside`-Datei, **Symlink innerhalb** des Checkouts **nach außerhalb** ⇒ alle **400**, die Botschaft nennt die **Wurzel** und enthält **nicht** den aufgelösten Pfad der `outside`-Datei; **Gegenprüfung gegen den Fehlalarm:** ein Symlink innerhalb des Checkouts **auf eine Datei desselben Checkouts** liest erfolgreich **200**; zusätzlich `?root=etwasanderes` ⇒ 400 |
+| — (intern) | `fileAreaIsReadOnlyAndBounded` | `PUT`/`POST`/`PATCH`/`DELETE` auf die Route ⇒ **405**; 600 Einträge ⇒ `entries.length == 500` und `truncated:true`; eine Datei > 64 KiB ⇒ `truncated:true` und `text.length() <= 65536`; eine Binärdatei (NUL in den ersten Bytes) ⇒ `binary:true`, `text == null`; unbekanntes Projekt ⇒ 404; fehlende Datei ⇒ 404; **die ganze Antwort enthält keinen absoluten Pfad** (Assertion über die rohe JSON-Zeichenkette — kein Eintrag darf mit `/` beginnen und kein Feld darf den `localPath`-Präfix enthalten) |
+
+**Fallen:** `@TempDir` für die `outside`-Wurzel ist richtig, der **System-TMP als Ausbruchsziel falsch** (er
+ist selbst eine Wurzel); `toRealPath()` **beider** Seiten (D6, macOS `/var`); `Files.walkFileTree` statt
+rekursivem `Files.list`-Sortieren ist nicht nötig — flache Verzeichnisse reichen dem Vertrag (Arch-Doc
+nennt „Einträge eines Verzeichnisses", nicht „ganzen Baum"), **ein** Ebene pro Aufruf, Navigation durch
+erneutes `GET`.
+
+**Commit:** `feat(project): Lese-Kante für Checkout und TMP mit Ausbruch-Guard (UC-WP-19,42)`.
+
+### 4b-1-E — Ausführungs-Log (gebaut 2026-10-26, Commit `beffbfc0`, Branch `web-factory`)
+
+Produktionscode (Fabrik, **nur neue Dateien im `project`-Paket**, keine angefaßt): `project/ProjectFilesController.java`
+(nur `@GetMapping("/{id}/files")`; Guard in der Methode; `MAX_ENTRIES 500` / `MAX_TEXT_BYTES 65536` /
+`BINARY_PROBE_BYTES 8192`) und `project/dto/{ProjectFileRoot,ProjectEntryDto,ProjectDirectoryDto,ProjectFileDto}.java`
+(`record`s, Diskriminator `kind`, **nur** relative Namen). Kein `WriteValidator` im Leseweg, kein neuer Advice, kein
+`chat`-Pfad, keine Abhängigkeit, kein Speicher für Datei-Inhalte. Test: `project/ProjectFilesTest.java`, 3 Tests
+(`// UC-WP-19 fileAreaReadsCheckoutAndSystemTmp`, `// UC-WP-42 fileAreaNeverEscapesItsRoot`,
+`fileAreaIsReadOnlyAndBounded` intern) — `@SpringBootTest(RANDOM_PORT)` + `FakeGitConfig` + Home `target/inc4b-home`
+(außerhalb TMP), `outside` als `@TempDir` (hier richtig, §4.7-Falle), Checkout-Inhalt schreibt der Test selbst.
+
+| Punkt | Befund |
+|---|---|
+| Gates | Fabrik `clean verify` **106/0/0 BUILD SUCCESS** (103 Baseline + 3) · UI **22/3**, lint **0/0**, Vite-Build grün (kein UI-Touch) · `eclipseBuildProject factory-backend` 0 Fehler 0 Warnungen · Core nicht angefaßt (1393/0/0) |
+| `lintDocsAndTests` | `UC definitions: 42/42; test IDs: **74**/38; findings: **4**`, VERWAIST 0. Offen: UC-WP-11/12/13/25. Gegen §4.9 (erwartet 73) ist das **+1 aus 4a-3** (Werkzeug zählt id↔Test, 4a-3-E), die `findings`-Zahl ist exakt vorhergesagt |
+| Guard-Aufbau | relativ-zwingend → lexikalische Containschaft **nach** Normalisierung (davon **vor** der Existenzprüfung ⇒ Traversal ist **400**, nicht 404) → `candidate.toRealPath()` gegen `root.toRealPath()` (**beide** aufgelöst, D6) → Inhalt. Botschaften nennen die **Wurzel** („… below the checkout root"), **niemals** das Ziel |
+| Mutationen (je einzeln, alle zurück, danach 3/3 grün) | lexikalische Prüfung aus ⇒ UC-WP-42 rot (`../secret.txt` → 404 statt 400) · reale Prüfung aus ⇒ UC-WP-42 rot (**200 durch den Symlink**, Inhalt durchgesickert) · Wurzel roh statt `toRealPath` ⇒ **UC-WP-19 rot** (TMP-Lesen schlägt fehl — die macOS-Falle ist tragend, nicht Theorie) · `@RequestMapping` statt `@GetMapping` ⇒ 405-Zweig rot (PUT 200) · `truncated=false` ⇒ intern rot · `binary=false` ⇒ intern rot |
+| Live (Ollama `qwen3.5:4b`, Port **8099**, Home `target/aifactory-inc4b` **nicht** unter TMP, Projekt `spring-petclinic-c2cea48`) | `?root=checkout` listet den Checkout (Ordner zuerst, `directory:true`), `src/main` ⇒ `[java, resources, scss]`, `pom.xml` ⇒ `kind:file` 15955 B `binary:false` · TMP: Markendatei direkt in `java.io.tmpdir` erscheint unter `?root=tmp` und liest ihren Text, dieselbe Datei ist unter `root=checkout` **404** (zwei getrennte Wurzeln); TMP-Liste liefert real **500** Einträge mit `truncated:true` (Grenze im echten Betrieb gesehen) · **Ausbruch:** `../../../../etc/passwd`, `src/../../../../etc/passwd`, absolut `/etc/passwd`, `root=etwasanderes` ⇒ je **400** mit Begründung, unbekanntes Projekt und fehlende Datei ⇒ **404** · **Symlink in den Checkout nach `/etc/passwd` ⇒ 400**, Symlink auf `pom.xml` desselben Checkout ⇒ **200** (kein Fehlalarm), Zielpfad taucht in keiner Antwort auf · `PUT`/`POST`/`PATCH`/`DELETE` ⇒ **405** · **zwei Kanten, ein Sachverhalt:** ein echter Turn schrieb `notes/inc4b-marker.txt` (live-Zeile `Created file: …`, 0× „Write denied"), der Datei-Bereich listete `notes/` und las den Inhalt `inc4b-gelesen-und-geschrieben` zurück |
+| Home und `~/.peon` | Home trägt nur `projects`, `projects.json`, `state` (`config.properties` fehlt, weil LLM über `AIFACTORY_LLM_*`-Env kam) · `state/<id>/` genau eine Datei `Peon-PO-history.jsonl`, **kein** Sidecar und kein Datei-Cache · `~/.peon`-Prüfsumme vor/nach **identisch** `e5843e6b926af061c5284cf29ffd5c1d1fc80f00` · 8099 nach dem Lauf frei, 8080 nie angefaßt |
+
+**Abweichungen (gemeldet, nicht nachgebogen):**
+
+1. **`RestTemplate` kann kein `PATCH`** — `HttpURLConnection` wirft `ProtocolException: Invalid HTTP method`.
+   Der 405-Nachweis läuft deshalb für `PATCH` (und der Vollständigkeit halber für alle vier Methoden) über
+   `java.net.http.HttpClient`. §4.7 verlangt keinen Client; der Weg ist Fabrik-Entscheidung, gemerkt für künftige
+   Methoden-Tests (`AGENTS-DEV.md`).
+2. **Antwortform: zwei `record`s ohne gemeinsame Schnittstelle**, Controller gibt `Object` zurück. §4.7 zählt genau
+   vier DTO-Dateien auf; eine versiegelte Oberklasse oder ein Verzeichnis-Vater wäre eine fünfte, nicht verlangte
+   Datei. `kind` bleibt der Diskriminator, die Test-Assertions sitzen an den Feldern.
+3. **Die 400-Botschaft nennt die Wurzel als absoluten Pfad** (z. B. `…/projects/spring-petclinic`). Das ist die von
+   D6 verlangte Wurzel, **nicht** das Ziel; der Test verbietet den `localPath`-Präfix in **Einträgen** und im
+   `path`-Feld, nicht in der Begründung. Ein Leck neuer Art wäre ein Ziel-Pfad — gemessen: keiner.
+4. **`eclipseBuildProject factory-backend` meldete während der Entwicklung Lombok-Getter-Fehler-Stümpfe**
+   (`AGENTS-DEV.md:50-57`); Maven mit `clean` ist grün, Eclipse danach ebenfalls. Kein Code-Eingriff.
+
+**Für 4b-2 mitzunehmen:** die Kante ist fertig und gemessen; `files.client.ts` braucht nur `readFiles(projectId,
+root, path)` auf `shared/api.client.request<T>` mit `FilesResponse`-Diskriminator `kind`; die UI muß die
+`truncated`- und `binary`-Hinweise zeigen (beide sind real erreichbar, TMP läuft über 500) und darf **kein**
+Schreib-Bedienelement haben; `chat.page.tsx` erhält den Slot als `ReactNode` und importiert nichts aus `project`.
+
+
+## 4.8 Schritt 4b-2 — der Datei-Bereich im Chat
+
+**Läuft danach:** In der Chat-Ansicht öffnet ein Knopf das Slide-Over; es zeigt den Checkout, auf Wunsch den
+TMP, ein Verzeichnis nach dem anderen, eine Datei als Text; ein Ausbruch zeigt einen Text statt Inhalt; es
+gibt nichts zu schreiben.
+
+**Dateien (`factory-ui/`):**
+
+| Datei | Änderung |
+|---|---|
+| `src/project/files.client.ts` | **neu**: `readFiles(projectId, root, path)` über `shared/api.client.request<T>`; Typ `FilesResponse = DirectoryResponse \| FileResponse` (Diskriminator `kind`) |
+| `src/project/project.files.tsx` | **neu**: selbstständige Komponente `{ project }` — eigener Knopf `files-open`, Umschalter Checkout/TMP (Checkout ist Standard), Verzeichnisliste (Ordner zuerst), Datei-Ansicht mit Zurück, Fehlerzeile, `truncated`-Hinweis, **kein** Schreib-Bedienelement |
+| `src/chat/chat.page.tsx` | **ein** optionales Prop `files?: ReactNode`, gemalt am Ende der Seite — **kein** Import aus `../project` |
+| `src/app/app.shell.tsx` | übergibt `files={<ProjectFiles project={selected}/>}` |
+| `src/styles.css` | **ein** Block `.chat-files…` (Slide-Over, Liste, Fehlerzeile) |
+
+Kein neuer Zustand außerhalb der Komponente, kein vierter Tab, kein Router, keine Abhängigkeit.
+
+**Tests** — `test/project/project.files.test.tsx` (Vitest + Testing Library, `fetch` gestubbt,
+`test/shared/fixtures.ts`):
+
+| Marker | Test | THEN — Beweis |
+|---|---|---|
+| `// UC-WP-19` | `fileAreaShowsCheckoutAndTmp` | **auf AppShell-Ebene** (Shell rendern, Projekt öffnen ⇒ Chat): kein Datei-Inhalt sichtbar, bis `files-open` geklickt wird ⇒ `fetch` auf `…/files?root=checkout` (Standard), Ordnerliste erscheint; Umschalter ⇒ zweite Anfrage mit `root=tmp`; **jede** getätigte `fetch`-Anfrage hat `method` `GET` oder fehlt (kein Body) und **keine** Methode `POST`/`PUT`/`DELETE` ist dabei; kein Bedienelement zum Schreiben/Löschen im DOM |
+| `// UC-WP-42` | `fileAreaNeverEscapesItsRoot` | Stub antwortet 400 mit der Server-Botschaft ⇒ die Fehlerzeile zeigt den Text (`errorMessage`), **kein** Verzeichnis- oder Datei-Inhalt wird gezeichnet, der Knopf bleibt benutzbar (kein Alarm-Dialog) |
+| — (intern) | `fileAreaNavigatesAndMarksBounds` | Klick auf Ordner ⇒ `path=src/main` und Liste wechselt, „Zurück" kehrt zurück; `binary:true` ⇒ Hinweis statt Inhalt; `truncated:true` ⇒ Hinweis sichtbar; Klick auf Datei ⇒ `kind:"file"`-Text erscheint |
+
+**Mutations-Nachweis:** `root`-Umschalter sendet immer `checkout` ⇒ UC-WP-19 rot · Komponenten-Knopf wird
+ein vierter Tab bzw. eine vierte Ansicht ⇒ UC-WP-19 rot **und** das bestehende 3b-Netz `showsExactlyThreeViews`
+(UC-WP-1) rot (dieses Netz greift nachweislich, 3f-4-E M4) · 400 wird wie ein leeres Verzeichnis behandelt ⇒
+UC-WP-42 rot · `chat.page.tsx` importiert `project.files` direkt statt Slot ⇒
+`ComponentArchitectureTest`/`ArchitectureGuardTest` **grün** (die Regeln kennen UI-Importe nicht) — deshalb
+prüft 4b-2 das per **Test** nicht und verlässt sich auf die Regel D7 plus Code-Review; das ist ehrlich
+benannt, keine erfundene Abdeckung.
+
+**Commit:** `feat(ui): Datei-Bereich als Slide-Over im Chat — Checkout und TMP lesbar (UC-WP-19,42)`.
+
+### 4b-2-E — Ausführungs-Log (gebaut 2026-10-26, Branch `web-factory`)
+
+Neu: `factory-ui/src/project/files.client.ts` (`readFiles(projectId, root, path)`, Diskriminator `kind`,
+400 ⇒ Wurf mit dem Server-Text, kein Retry), `factory-ui/src/project/project.files.tsx` (eigener
+`files-open`-Knopf, Slide-Over, Checkout als Standard, Umschalter, eine Ebene pro Lesen, Zurück, Fehlerzeile,
+`truncated`- und `binary`-Hinweis, **kein** Schreib-Bedienelement), `factory-ui/test/project/project.files.test.tsx`
+(3 Tests, **auf AppShell-Ebene**). Geändert: `chat/chat.page.tsx` (ein Prop `files?: ReactNode`, gemalt **nach**
+der Chat-`section`), `app/app.shell.tsx` (verdrahtet den Slot, `key` je Projekt), `styles.css` (ein Block
+`.chat-files`). Kein vierter Tab, kein Router, kein Zustand außerhalb der Komponente, keine Abhängigkeit.
+
+| Punkt | Befund |
+|---|---|
+| Gates | UI `pnpm test` **25 Tests / 4 Dateien** grün (Baseline 22/3 + 3 neue) · `lint` **0 Warnungen / 0 Fehler** (23 Dateien) · `build` grün (`tsc -b` + Vite, CSS 5,60 kB) · Fabrik `mvn -o -f aifactory/pom.xml clean verify` **106/0/0 BUILD SUCCESS** (unverändert — Backend nicht angefaßt, Kante mitgenutzt) · Core nicht angefaßt |
+| `lintDocsAndTests` | `UC definitions: 42/42; test IDs: **77**/38; findings: **4**`, VERWAIST 0; offen UC-WP-11/12/13/25. Gegen Baseline 74 sind das **+3** (`// UC-WP-19` ×2, `// UC-WP-42` ×1). **Jons Freigabe erwartete 74 unverändert** („UI-Tests tragen keine UC-id") — §4.8 und §4.9 Punkt 5 setzen die Marker dagegen **auf genau diese Tests**; die Marker-Regel (`AGENTS-DEV.md:21-33`) ist hier erfüllt, `findings` bleibt wie vorhergesagt **4** |
+| Slot-Richtung | `chat.page.tsx` importiert weiterhin nichts aus `project` (nur `ReactNode`); `app` kennt beide Seiten. `ArchitectureGuardTest`/`ComponentArchitectureTest` prüfen Java, **nicht** UI-Importe (F7) — die Richtung ist hier Bauart + Review, nicht mechanisch gedeckt |
+| Bestehendes Netz greift | `oneChatPerProject` (UC-WP-16) behauptet: die Chat-`region` hat genau **einen** Knopf („Senden"). Der Slot hängt deshalb **außerhalb** der `section aria-label="Chat"` — die Aussage bleibt unverändert grün, es mußte nichts umgeschrieben oder gelockert werden |
+| Mutation (einzeln, zurückgenommen) | `selectRoot('checkout')` statt `selectRoot(option.value)` — der TMP-Umschalter zeigt also auf die Checkout-Wurzel ⇒ **genau** `fileAreaSwitchesToSystemTmp` rot, die anderen beiden grün; danach wieder grün |
+| Browser-Nachweis (A5, **kein Ersatz**) | Headless **Chrome 155** über CDP (Port 9222, Profil `/tmp/inc4b2-chrome`, Skript `/tmp/inc4b2-cdp.mjs`), Fabrik auf **8099**, `AIFACTORY_HOME=…/target/aifactory-inc4b2` (nicht unter TMP), Projekt `spring-petclinic-c2cea48` (echt geklont), `qwen3.5:4b` konfiguriert, kein Turn nötig. Gesehen: **genau drei** Ansichten (`Projekte/Chat/Einstellungen`) · nach Projekt-Öffnen Chat da, `files-panel` **nicht** da, `files-open` da (Bild `01`) · Klick ⇒ `checkout · /`, Ordner zuerst (`.devcontainer/ .git/ … `) (Bild `02`) · Umschalter ⇒ `tmp · /` mit der zuvor angelegten `inc4b2-tmp-marker.txt`, `truncated`-Hinweis sichtbar, **500** Einträge, **kein** Checkout-Eintrag dazwischen (Bild `03`) · `src/` → `main/` → `resources/` ⇒ 8 Einträge mit Größen · `banner.txt (709 B)` ⇒ `files-text` mit der ersten Bannerzeile `«    |\      _,,,--,,_»`, Länge 709, Liste verschwunden (Bild `04`) · „Zurück" ⇒ `checkout · /src/main/resources`, Liste wieder da · Knöpfe im Bereich **nur** `Checkout TMP Schließen <einträge> Zurück`, **0** `input/textarea/select/contenteditable` · danach immer noch genau drei Ansichten, Chat unverändert · **alle 8** Anfragen an die Kante waren `GET` (CDP-`Network`-Protokoll, keine POST/PUT/PATCH) |
+| Aufgeräumt | TMP-Marker gelöscht, Chrome und Fabrik beendet, **8099/9222/8080 frei** · `~/.peon`-Prüfsumme vor/nach **identisch** `e5843e6b926af061c5284cf29ffd5c1d1fc80f00` · Home trägt **nur** `projects`, `projects.json` — **kein** `state/` (es entstand keins, weil kein Turn lief) und kein Datei-Cache: die Lese-Kante legt nachweislich nichts ab · Screenshots in `/tmp/inc4b2-0*.png`, nichts davon committet |
+
+**Abweichungen (gemeldet, nicht nachgebogen):**
+
+1. **`files-entry`-Texte tragen die Größe** (`app.tsx (12 B)`), deshalb prüfen die Tests auf
+   Rollen-Namen statt auf rohe Test-Ids — die Id allein hätte die Zwei-Eintrag-Ambiguität nicht gehalten.
+2. **Der State-Reset zog von der Komponente in die Verdrahtung um:** erste Fassung setzte `setOpen(false)` u. a.
+   in einem `useEffect` auf `project.id` — oxlint (`react-hooks/set-state-in-effect`, 2 Warnungen) und die
+   Baseline „lint 0/0" verbieten das. Jetzt steckt der Wechsel in `app.shell` (`key={selected.id}` ⇒
+   Remount pro Projekt), die Komponente hält nur noch echten eigenen Zustand. Gemessen: lint wieder **0/0**.
+3. **`URLSearchParams` kodierte jedes `/` zu `%2F`** (`path=src%2Fmain`). Der Client baut die Query jetzt
+   Segment für Segment, damit die Trenner lesbar bleiben und kein Proxy eine zweite Regel über die
+   Server-Guard-Lesart legt. Der Browser schickt `path=src/main/resources/banner.txt`.
+4. **Der Slot malt außerhalb der Chat-`section`** (§4.3.4 sagt nur „am Ende der Seite"). Grund ist das
+   bestehende UC-WP-16-Netz, das der Chat-Region genau einen Knopf zugesteht; ein Knopf *in* der Region hätte
+   eine bestehende Aussage gelockert. Die R-WP-1-Lesart („der Datei-Bereich ist eine Projekt-Komponente im
+   Chat-View") bleibt erfüllt: er ist in der Chat-**Ansicht**, nicht als vierte Ansicht.
+5. **Kein Modell-Turn im Browserlauf** — UC-WP-19 ist eine Aussage über die Ansicht; das Schreiben hat 4a-3
+   live belegt. Der Home ohne `state/` ist deshalb keine Lücke, sondern der Beleg, daß Lesen nichts speichert.
+
+**Für Inc 5 mitzunehmen:** der Slot ist ein `ReactNode` — jede weitere Projekt-Komponente (Kacheln,
+per-Agent-Transkripte) geht denselben Weg und darf `chat ↛ project` nicht brechen; der `files-open`-Knopf sitzt
+in der Komponente, ein dritter Knopf im Chat bräche UC-WP-16.
+
+
+## 4.9 Gates, Beweispflichten, TABU (je Schritt, in dieser Reihenfolge)
+
+1. `eclipseBuildProject factory-backend` (nach jeder Datei-Runde), bei UI-Änderungen zusätzlich
+   `pnpm -C aifactory/factory-ui lint`. Bei Core-Änderung zusätzlich `eclipseRefreshProject
+   org.sterl.llmpeon.core` — Eclipse meldet Lombok-Getter trotzdem als „undefined", Maven ist die Wahrheit.
+2. **Bei Core-Änderung zuerst** (4a-2): `mvn -f org.sterl.llmpeon.core/pom.xml clean test`
+   (Baseline **1386** Tests, 0 Fehler) → `mvn -o -pl org.sterl.llmpeon.core install -DskipTests` →
+   **Plugin-Gate `AGENTS-DEV.md:17-20`**:
+   `mvn -o -pl org.sterl.llmpeon,releng/llmpeon-target -am package -DskipTests`, danach
+   `eclipseRefreshProject` + `eclipseBuildProject` für **`org.sterl.llmpeon` UND `org.sterl.llmpeon.test`** —
+   beide Zahlen im Report. Ohne dieses Gate gilt PR-3 als **unbewiesen**.
+3. `export PATH=~/.nvm/versions/node/v22.12.0/bin:$PATH && mvn -o -f aifactory/pom.xml clean verify`
+   (Baseline **seit 4a-1-E: 101** Tests = 96 + 5 Probe, 0 Fehler, 0 Fehlermeldungen; **jeder** Lauf mit `clean`).
+4. `pnpm -C aifactory/factory-ui test` · `lint` · `build` (Baseline **22** Tests / 3 Dateien, lint 0/0).
+5. `lintDocsAndTests` mit `root: /Users/sterlp/dev/workset/peon-ai`, `docRoots: ["aifactory/docs"]`,
+   `testRoots: ["aifactory/factory-backend/src/test","aifactory/factory-ui/test"]`,
+   `testGlobs: ["**/*Test.java","**/*.test.ts","**/*.test.tsx"]`, `idPattern: "UC-WP-\\d+"` — die **echte**
+   `findings:`-Zeile und die VERWAIST-Zahl melden. Erwartung gegenüber der **gemessenen** Baseline
+   (`42/42; 67/32; findings: 10`, VERWAIST 0): nach 4a-3 `test IDs` **+4** (71) und `findings` **6**
+   (UC-WP-8/9/10/18 belegt), nach 4b-1 `test IDs` **+2** (73) und `findings` **4**, nach 4b-2 `test IDs`
+   **+2** (75, dieselben ids UC-WP-19/42 = zweite Hälfte) und `findings` bleibt **4**
+   (offen: UC-WP-11/12/13, UC-WP-25). Weicht eine Zahl ab, wird die Abweichung **gemeldet**, nicht das
+   Muster nachgebogen. **A1-Nachtrag:** der zweite `// UC-WP-9`-Marker (`memberRejectionStopsAtTheModel`)
+   sitzt in **derselben** Datei `WritePinningTest.java`; zählt das Werkzeug id↔Datei, bleibt 4a-3 bei **+4**,
+   zählt es id↔Test, wird es **+5** — in beiden Fällen die gelaufene Zahl melden.
+6. **Laufender Nachweis** (je Schritt, echtes Modell Ollama `qwen3.5:4b`, **Port 8099** — 8080 gehört der
+   IDE, nie anfassen), `AIFACTORY_HOME=aifactory/factory-backend/target/aifactory-inc4<nr>` und **nicht**
+   `/tmp/…`: ein Home unter TMP macht die Projekt-Root zur TMP-Wurzel, damit wäre UC-WP-10 unbeweisbar
+   (4a-1-E) — dieselbe Vorbedingung gilt für die 4a-3-Tests (§4.6). Projekt
+   `https://github.com/spring-projects/spring-petclinic.git`, Prompt **zum Schreiben zwingen**
+   („Schreibe genau die Datei `notes/inc4-marker.txt` im Projekt mit dem Inhalt …"), dann mit `curl` belegen:
+   `POST` 202; die vorher geöffnete SSE-Leitung zeigt die Schreib-Zeile und **keine** „Write denied"; die
+   Datei liegt im Checkout; zweiter Prompt schreibt `/etc/inc4-escape.txt` ⇒ **live** eine
+   `tool`-Zeile `diskWriteFile: Write denied: …`, Datei existiert nicht, und `GET …/messages` danach enthält
+   **keine** Ablehnungs-Zeile (UC-WP-9 wird hier an **Jons** Zeile belegt — A1-Stufe 1; eine
+   **Mitglieds**-Ablehnung wird live nicht verlangt, ihr Nachweis ist gerade „keine Zeile" und bleibt im Test
+   — A1-Stufe 2); dritter Prompt schreibt `/tmp/inc4-<marker>.txt` ⇒ Datei direkt im System-TMP,
+   nicht im Projekt (`ls`-Ausdruck im Report, danach gelöscht). 4b: `GET …/files?root=checkout` liefert die
+   Checkout-Ordner, `?root=tmp` die TMP-Dateien, `?path=../../../../etc/passwd` und ein absoluter Pfad
+   liefern **400** mit Begründung, `PUT` liefert **405**; `state/<id>/` bleibt die einzige Chat-Datei, Home
+   ohne Sidecar; `~/.peon` vorher/nachher byte-identisch; Ports danach frei. 4b-2 zusätzlich — **A5 beantwortet 2026-10-26: ja, Browser zusätzlich** — im echten
+   Browser (headless Chrome über CDP, Skripte nur in `/tmp`, nichts comittet): Projekt öffnen ⇒ Chat ⇒
+   `files-open` ⇒ Checkout-Inhalt, TMP-Umschalter, Ordner-Navigation, kein Schreib-Knopf, **genau drei**
+   Ansichten. Ist kein erreichbares Modell vorhanden, wird der Nachweis als **nicht gelaufen** gemeldet;
+   kein Ersatzmodell erfunden (`test-honesty`).
+7. Commit je Schritt mit den **tatsächlich gelaufenen** Gate-Ergebnissen (`AGENTS-DEV.md:55-59`). **Nie**
+   geteilt: `AGENTS*.md`, `CHANGELOG.md`, `aifactory/peon-plan/**`; `aifactory/docs/**`,
+   `org.sterl.llmpeon.core/docs/**` und `aifactory/proposals/**` nur mit frischer, ausdrücklich **diesen**
+   Increment nennender Freigabe; **kein** `✅`/`❌`/`⏳` in irgendeinem Doc anfassen — der Report nennt,
+   welche ids jetzt einen Test haben (auch R6 in den Core-Docs: Status **melden**, nicht ändern).
+
+**TABU (bricht den Schritt):** keine neue Maven-/npm-Abhängigkeit; kein `org.eclipse..`, kein `Eclipse*`,
+keine verbotene Core-Klasse; kein zweiter `@RestControllerAdvice`; kein zweiter Serialisierungsort; **kein
+zweiter Speicher** für Chat-Texte und keiner für Datei-Inhalte; kein Nutzer-/Login-Konzept; keine Kacheln,
+kein Clear/Compact, kein `askUser`, keine Jon-Light-Runtime; **kein** Schreib-Zugriff im Datei-Bereich;
+**keine** vierte Ansicht und **kein** vierter Chat-Pfad; **keine erfundene id**; Core-Änderungen
+**nur-hinzufügen** außer der einen benannten Prompt-Zeile (PR-3: keine Signatur entfernen, kein
+Plugin-Verhalten ändern); `AgentsTool.java` (WIP) und `aifactory/proposals/**` nicht editieren; Java 21,
+keine `var`-Kette in öffentlichen Signaturen, JavaDoc nur für Nicht-Selbstverständliches (`AGENTS.md:2`).
+
+## 4.10 Befunde aus der Recherche (Fund, nicht Scope — im Report nennen)
+
+* **F1 — Da Mek war ungenagelt.** `AiDevAgent` überschreibt `getWriteValidator()` nicht ⇒ `ALLOW_ALL`;
+  `ProjectRuntime.java:74` baute ihn plain. UC-WP-8/9 verlangen „oder ein Team-Mitglied" ⇒ 4a-3 nagelt ihn
+  fest (D4). Der Kern bleibt, wie er ist: ein `AiDevAgent` im Plugin behält `ALLOW_ALL` (Parität, PR-3).
+* **F2 — `JonToolSet.java:71-75`JavaDoc war halb wahr** („for Jon and Da Mek"), obwohl nur Jon genagelt war.
+  4a-3 macht die Aussage wahr; der Satz wird nicht entfernt.
+* **F3 — Shell-Bypass.** `ShellTool` ruft den Validator nicht auf; R-WP-6 ist über die Shell nicht erfüllt.
+  Kern-Fix = Plugin-Verhaltensänderung ⇒ eigene Geschichte mit eigener Doc-Regel (A2).
+  **A2 beantwortet 2026-10-26:** kein Kern-Fix in Inc 4, Jon legt den Punkt als eigenen ab. Der Fund war hier
+  schon vollständig geführt; ergänzt ist nur der Status und die Bindung — die Lücke steht im Test-JavaDoc von
+  `WritePinningTest` und im Report, sonst nirgends.
+* **F4 — R5-Asymmetrie ist meßbar.** `SmartToolExecutor` kürzt die Monitor-Kopie auf 180 Zeichen, die
+  Modell-Kopie nicht (D5b); ein Test, der den vollen Text auf dem Draht behauptet, wäre falsch.
+* **F5 — `MockLlmServer.stop()`** fährt seinen `cachedThreadPool` nicht herunter (3-H2-Fund, eine Zeile
+  `executor.shutdownNow()`); weiterhin offen, nicht Inc 4.
+* **F6 — Da Doks Empfehlung aus dem 3f-Review §E/9 ist hier eingelöst:** das Plugin-Gate steht in §4.9
+  Punkt 2 und ist Bedingung für 4a-2, nicht Freiwilligkeit.
+* **F7 — `ArchitectureGuardTest`/`ComponentArchitectureTest` prüfen nur Java,** nicht UI-Importe. Die
+  Regel „`chat` importiert nichts aus `project`" (Arch-Doc) ist im UI also **nicht mechanisch** geschützt;
+  4b-2 verlässt sich auf Bauart + Review und meldet das (kein erfundener Wächter).
+
+## 4.11 Abnahmefragen an Jon — jede mit Empfehlung · **beantwortet 2026-10-26 (Jon)**
 
 | # | Frage | Empfehlung und Grund |
 |---|---|---|
-| Q1 | UC-WP-20 GIVEN 3: Fehlerkanal. `POST` bleibt `202`, der Fehler kommt als SSE-`error` — oder `400` auf dem Composer? | **`error`-Ereignis, `POST` bleibt 202.** Der Arch-Doc `:80` sagt „antwortet 202, prüft nichts über den Turn hinaus", und es gibt nur drei Kanten; ein `400` wäre eine vierte Bedeutungs-Ebene. Folge in 3b: der Fehler steht als Zeile im Chat (`chat-error`). |
-| Q2 | Ist 3a (nur Backend, curl-beweisbar) ein eigenständiges Increment, oder muß API + UI zusammen landen? | **Getrennt lassen** (3a → 3b). Die drei Kanten sind die harte Voraussetzung für alles andere; ein Increment mit Backend **und** View ist das Doppelte und vermischt zwei Gates. |
-| Q3 | `ProjectService.remove` wirft die Runtime weg (benannte Abweichung, braucht eine Zeile in `project`). Und: soll `remove` künftig auch `state/<id>` löschen? | **Runtime: ja** (sonst lebt ein Agent eines toten Projekts weiter). **`state/<id>`: behalten** — R-WP-19 zählt genau zwei Dinge auf, die `remove` löscht; die Chat-Spur eines erneut angelegten Projekts wiederzufinden, paßt zu „genau ein Chat je Projekt". Wenn der Chat mit dem Projekt sterben soll, ist das eine Doc-Entscheidung (Inc 4), kein Agent-Decree. |
-| Q4 | Docs: `❌`-Marker nachziehen, und überhaupt — sind die vier `aifactory/docs/*.md` in diesem Increment zu teilen? | **Marker nicht anfassen**, ids und Gate-Ergebnisse nur melden; Docs bleiben unbeteilt, bis Jon eine neue Freigabe gibt (Inc 2 erlaubte nur 2b). |
-| Q5 | Da Dok (Review) behält `DENY_ALL` und Da Thinka (Plan) bekommt keine Editier-Werkzeuge — Core-Parität, obwohl R-WP-12 „alle Core-Werkzeuge für Jon **und sein Team**" sagt? | **Core-Parität behalten.** R-WP-12 regelt die Werkzeug-Familien (`disk*`, `web*`, `shell`, `docs*`), nicht die Lese-/Schreib-Rollen; Da Dok behält `shell` (`AiReviewAgent:75-78`), Da Thinka verliert nur Editier-Werkzeuge. Zwei-Wurzel-Validator gilt für Jon und Da Mek. |
-| Q6 | Der Core-Marker `[Queued Message] (HH:mm): ` steht im wiederhergestellten Verlauf — im DTO überarbeiten oder ehrlich zeigen? | **Zeigen.** Er ist Kern-Realität (Plugin zeigt ihn auch) und das Löschen wäre eine zweite, erfundene Regel über die History; für Inc 5 kann ein UI-Filter ein eigenes Feld werden. |
-| Q7 | Wiederhergestellte Verlaufszeilen haben keine Zeit (die History-Datei kennt keine) — akzeptiert? | **Ja.** Eine Fabrik-seitige Zeit-Stempel-Datei wäre ein zweiter Speicher und verstößt gegen R-WP-11; Live-Zeilen bekommen die Zeit vom Browser. |
-| Q8 | Jons Core-Prompt sagt weiterhin „schreibbar ist `docs/`" (`WriteValidator.JON_PATH_SCOPE_PROMPT`, `AiPoAgent:99-102`), obwohl D5 die ganze Projekt-Root erlaubt. Prompt-Text in der Fabrik übersteuern? | **Nein, nicht in Inc 3.** Der Validator ist die Grenze; eine Fabrik-seitige Prompt-Kette wäre ein neuer Kontext-Draht. Empfehlung: eigenes Mini-Story-Feld („Factory-Prompt für Jon") in Inc 4, dort mit eigenem Test. |
-| Q9 | Benennung: Jon heißt im Fabrik-UI „Jon", der Core nennt ihn „Da Boss"/„Peon-PO". Sollen Verlauf und Kacheln „Jon" zeigen? | In Inc 3 ändert die Benennung nichts am Verlauf (Rollen sind `user`/`jon`); **statische Kontext-Texte** nutzen die Core-Namen (`Da Boss`, `Da Thinka`, `Da Mek`, `Da Dok` — `AiPoAgent.getTeam():90-95`). Eine Umbenennung ist UI und gehört zu Inc 5 (Kacheln) — dort mit Doc-Deckung. |
+| **A1** | **UC-WP-9 sagt „Jon **oder ein Team-Mitglied** … die Ablehnung steht als Werkzeug-Zeile im Chat", aber R-WP-4/UC-WP-40 (seit 3f gebaut) verbieten, dass **irgendwas** von einem Mitglied live im Chat erscheint. Ein Mitglied kann also gar keine Ablehnungs-Zeile im Chat hinterlassen. Wie wird UC-WP-9 erfüllt? | **Zweistufig beweisen:** UC-WP-9 für **Jons** eigene Zeile im Chat (das ist der nach R-WP-4 sichtbare Fall), und die **Mitglieds**-Ablehnung auf ihrer eigenen Ebene — Werkzeug-Ergebnis beim Modell + keine Datei + **keine** Zeile auf dem Draht. Die Regel folgt dem Doc, nicht der Code dem Test: beide Doc-Aussagen bleiben erhalten, es gibt keinen Widerspruch im Verhalten, nur in der Lesart. Alternative (nicht empfohlen): Mitglieder-Ablehnungen durch den Filter reichen = R-WP-4-Verstoß. |
+| **A2** | **Shell-Bypass:** `ShellTool` prüft keinen Schreib-Validator, kann also außerhalb beider Wurzeln schreiben. R-WP-6 sagt „kein neuer Mechanismus", deckt das aber nicht ab. Kern-Fix erwünscht (Plugin-Verhaltensänderung) oder eigene Geschichte? | **Melden, eigene Geschichte.** Der Fix ändert Plugin-Verhalten (PR-3) und braucht eine Doc-Regel im Kern (`write-path-validator.md` wäre ❌-ärmer, gehört aber dir). 4a pinnt nur den `disk*`-Pfad und benennt die Lücke im Test-JavaDoc und im Report. |
+| **A3** | **Da Mek festnageln** ist eine **Verhaltensverschärfung** in einem sonst nur-hinzufügenden Schritt (§4.0). Freigabe erteilt? Und darf die JavaDoc-Zeile in `JonToolSet` mit? | **Ja bauen.** Ohne diese Zeile ist UC-WP-8/9 („oder ein Team-Mitglied") unerfüllbar; sie ist Fabrik-seitig, der Kern bleibt für das Plugin unverändert. JavaDoc-Korrektur ist Kommentar-only und macht eine bestehende Aussage wahr. |
+| **A4** | **Vertrag der Lese-Kante:** 500 Einträge, 64 KiB Text, `binary`-Marker bei `NUL` in den ersten 8 KiB, **nur relative Namen** in der Antwort, Ausbruch mit **400** (nicht 403) über die bestehende Fassade. Rechte so? | **Ja.** 403 setzt ein Rollen-/Nutzer-Konzept voraus, das es nicht gibt (TABU); eine neue Fehler-Bedeutung wäre ein neuer Vertrag. Die Zahlen sind Schutz gegen eine 200-MB-Antwort, nicht Produktversprechen — sie stehen im Code, nicht im Doc, und dürfen später mit eigenem Test geändert werden. |
+| **A5** | **Nachweis 4b im echten Browser** gegen den echten spring-petclinic-Checkout (CDP, headless), oder reicht der Server-Nachweis + Vitest? | **Browser zusätzlich.** UC-WP-19 ist eine Aussage über die **Ansicht** („öffnet … und zeigt …"), und 3f-4 hat gezeigt, dass nur der Browserlauf die Slot-Verdrahtung erwischt. |
+| **A6** | **4a-1 vor 4a-2:** der Mess-Schritt erzeugt einen Zwischenstand ohne Produktwert. OK, oder soll 4a-1 in den 4a-3-Commit hineinlaufen? | **Getrennt lassen, ohne Commit.** Erst die Wahrheit, dann der Beweis; sonst ist nicht mehr entscheidbar, ob ein grüner Test die Lücke je gezeigt hat. Der Report von 4a-1 ist Teil des 4a-3-Commit-Textes. |
 
-**STATUS: AWAITING_ANSWERS** — der Plan steht (Schritt 3.0–3.9), die Antwort auf mindestens Q1, Q2, Q3 und Q4
-braucht der Dev-Slave, bevor 3a beginnt.
+**Antworten 2026-10-26 (Jon)** — die Langform oben in der Tabelle bleibt stehen; je eine Zeile die Entscheidung:
 
+* **A1** — **zweistufig, wie empfohlen:** UC-WP-9 wird für **Jons** eigene Ablehnung als Chat-Zeile bewiesen
+  (die drei Belege aus D5, Test `writeOutsideBothRootsRejected`) **und** für das Mitglied auf dessen eigener
+  Ebene (Test `memberRejectionStopsAtTheModel`: Werkzeug-Ergebnis **ungekürzt** im nächsten Provider-Payload,
+  Datei fehlt, **keine** Zeile auf dem Draht, **keine** Zeile im wiederhergestellten Verlauf). Kein
+  Mitglieds-Internum wird durch den Filter gereicht — **R-WP-4 bleibt unangetastet**. **Jons Doc-Zusage:** er
+  schärft den Wortlaut von UC-WP-9 **selbst** nach (Klarstellung, keine Bedeutungsänderung: die sichtbare
+  Zeile ist Jons, die Mitglieds-Ablehnung endet beim Modell). Kein Agent fasst diese Doc-Änderung an; die
+  Tests laufen schon gegen den jetzigen Stand. Folge: Jons edit kann die **Zeilenangabe** von UC-WP-9 in
+  `web-prototype.md` (`:217`) verschieben — die id bleibt; Pre-flight §4.1 Punkt 1 meldet uncommittete
+  Doc-Änderungen ohnehin.
+* **A2** — **melden, eigene Geschichte**, kein Kern-Fix in Inc 4: der Shell-Bypass (`ShellTool` ruft
+  `validateWrite` nie) bleibt benannte Lücke im Test-JavaDoc und im Report; Jon legt ihn als eigenen Punkt ab.
+* **A3** — **freigegeben:** Da Mek wird festgenagelt (anonyme `AiDevAgent`-Unterklasse in `ProjectRuntime`),
+  die `JonToolSet`-JavaDoc-Zeile geht mit. Begründung bleibt: ohne sie sind UC-WP-8/9 („oder ein
+  Team-Mitglied") unerfüllbar; fabrikseitig, der Kern bleibt für das Plugin unverändert.
+* **A4** — **Vertrag freigegeben:** 500 Einträge / 64 KiB Text / `binary` bei `NUL` in den ersten 8 KiB /
+  **nur relative Namen** / Ausbruch mit **400** über die bestehende Fassade. Die Zahlen bleiben Code, kein
+  Produktversprechen.
+* **A5** — **Browser zusätzlich:** UC-WP-19 ist eine Aussage über die Ansicht, Server-Nachweis plus Vitest
+  reichen nicht (§4.9 Punkt 6).
+* **A6** — **4a-1 bleibt getrennt und ohne Commit;** sein Report geht in den 4a-3-Commit-Text.
 
-## 3.11 Härtung nach Inc 3 — 3-H1 (UI-Komponenten) und 3-H2 (Backend)
-
-Freigabe 2026-10-26 mündlich von Jon, **nach** dem Inc-3-Review (Da Dok: CONCERNS, kein Blocker).
-Beide Increments sind **Umbau, kein neues Verhalten**. Bindend für 3-H1:
-`aifactory/docs/aifactory-architektur.md` §UI-Aufbau (Zeilen 105-149) und `factory-ui/AGENTS.md`.
-3-H2 trägt die neue Regel **UC-WP-41** `slowReaderNeverStopsTheTurn`
-(`aifactory/docs/web-prototype.md:199`). Staging-Freigabe für Jons uncommittete Doc-Stände
-(`web-prototype.md`, `index.md`, `open-points.md`, `aifactory-architektur.md`, `memory.md`) —
-Inhalt nicht angefasst. TABU wie §3.9.3.
-
-### 3H1-E — Ausführungsnachweis (gebaut 2026-10-26, Commit `eb642e3e`, Baseline `6acfc2f1`)
-
-Umgezogen wie vorgegeben: `app/app.shell.tsx` + `app/app.tabs.tsx`,
-`project/project.page.tsx` + `project.client.ts`, `config/config.page.tsx` + `config.client.ts`,
-`chat/chat.page.tsx` + `chat.log.tsx` + `chat.composer.tsx` + `chat.client.ts` + `chat.stream.ts`,
-`shared/api.client.ts` (+ `errorMessage` dorthin) + `shared/dto.ts` (`Project`, brauchen mehrere).
-Tests 1:1 nach `test/<komponente>/<komponente>.<rolle>.test.tsx`, Helfer nach `test/shared/`;
-mitgezogen: `vite.config.ts` (setupFiles), `tsconfig.app.json` (`include: ["src","test"]`).
-Richtung geprüft: `shared` importiert nichts, die drei Komponenten nur `shared` + sich, `app` kennt alle.
-
-Gates: UI `Test Files 3 passed (3)` / `Tests 19 passed (19)` (vorher 19), lint
-„Found 0 warnings and 0 errors." (20 files), build ✓ 30 modules (`index-CMQaxmnl.js` 233,64 kB);
-`mvn -f aifactory/pom.xml clean verify` → `Tests run: 80, Failures: 0, Errors: 0`, BUILD SUCCESS.
-Flake-Prüfung: Chat-Datei 5× allein grün, ganzer Satz 2× grün.
-Laufender Nachweis (headless Chrome 155, Home `/tmp/aifactory-inc3h1`, Port 8099): `/` → 302 → `/ui/`,
-`/ui/` 200, ausgeliefertes Bundle 200 (233 649 byte), CSS 200; drei Tabs + Projekt-Knopf; Klick öffnet
-den Chat (Log da, Composer fokussiert, Hinweis „Projekt: spring-petclinic", Liste weg, 0 `select`);
-Eingabe aktiviert „Senden". `~/.peon` nicht angefasst, Port danach frei.
-
-Abweichungen, keine ändert eine Aussage: (a) Komponenten-**Namen** mitgezogen
-(`App`→`AppShell`, `ViewTabs`→`AppTabs`, `ProjectsView`→`ProjectPage`, `SettingsView`→`ConfigPage`,
-`ChatView`→`ChatPage`), sonst hießen Datei und Rolle verschränkt; (b) Log und Composer aus der
-Chat-Seite gelöst (Seite hält den Zustand, die beiden zeichnen) — die Doc-Tafel nennt beide Rollen;
-(c) **keine** `.list`/`.add`-/`.form`-Fragmente: `project.page.tsx` (101) und `config.page.tsx` (214,
-die ganze Datei *ist* das Formular) bleiben ganz — Fragmentierung wäre hier Umbau ohne Gewinn;
-(d) `styles.css`/`index.css` bleiben auf `src/` (CSS ist keine Komponente); (e) `index.html` zeigt
-weiter auf `src/main.tsx` (Vite-Einstieg, keine Komponenten-Datei); (f) Test-Race aus dem Review
-mitgenommen: zwei `getByRole('button', …)` → `await findByRole` ( Assertions unverändert).
-Beobachtung für später: `showsExactlyThreeViews` (UC-WP-1) rendert die Shell und läge richtiger in
-`test/app/`; Marker blieben, wo sie sind.
-
-
-
-### 3H2-E — Ausführungsnachweis (gebaut 2026-10-26, Commit `ec13b2e4`, Baseline `d72385d1`)
-
-Produktionscode: **zwei Dateien**. `chat/ChatStreamRegistry.java` — kein Projekt-Lock mehr, je Zuschauer
-ein eigener Virtual-Thread-Zusteller mit Outbox (`ArrayBlockingQueue`, Grenze 256 Zeilen, Überlauf =
-Zeile verlieren statt Turn bremsen), `publish` bietet nur noch an und wirft nie nach außen,
-`closeProject(id)` meldet alle Leitungen eines Projekts ab, leere Projekte werden aus der Karte geräumt
-(`projectCount()` als Test-Naht). `chat/ProjectRuntimeRegistry.java` — `onProjectRemoved` schließt jetzt
-auch die Leitungen; `closeAll()` und `shutdownTurns()` laufen auf `@EventListener(ContextClosedEvent)`
-statt `@PreDestroy`. Kein neuer Pfad, kein neues Feld, kein Core-Quellcode, keine Abhängigkeit.
-
-**Der 30-s-Hinweis ist gemessen, nicht geraten.** jstack auf dem hängenden Surefire-Fork
-(`-Dsurefire.exitTimeout=40`, wiederholte Dumps): der `SpringApplicationShutdownHook` hing in
-`DefaultLifecycleProcessor$LifecycleGroup.stop` → `org.springframework.boot.tomcat.GracefulShutdown.awaitInactiveOrAborted`
-— Boots Graceful-Shutdown wartete auf die noch offene SSE-Anfrage (Emitter-Timeout 0) und kostete genau
-`spring.lifecycle.timeout-per-shutdown-phase` = 30 s. `ContextClosedEvent` läuft **vor** dem Lifecycle-Stop,
-`@PreDestroy` (Bean-Zerstörung) ist **nach** dem Webserver-Stop also zu spät. Bisect: der Hinweis kam nur bei
-`ChatTurnTest` und `ChatQueueTest` allein (den Klassen mit offener SSE-Leitung), nie bei
-`ChatRestartTest`/`ChatConfigTurnTest`/`ChatFirstTouchTest`/`ProjectRemovalTest` oder der Nicht-Chat-Hälfte.
-**Irrweg, sauber gemeldet:** `MockLlmServer.stop()` fährt seinen `cachedThreadPool` nicht herunter und
-hinterlässt einen nicht-daemon `pool-2-thread-1` (im Dump gesehen) — **nicht** der Blocker
-(`ChatFirstTouchTest` hinterlässt ihn ebenfalls, ohne Hinweis). Fund für den Core-Eigentümer: eine Zeile
-`executor.shutdownNow()` in `MockLlmServer.stop()`. Die Wegwerf-Messklasse für diesen Nachweis ist gelöscht.
-
-Neue Tests: `chat/ChatFirstTouchTest` (Erstkontakt-Renne: 8 Threads auf `runtime(id)` ⇒ alle `isSameAs`,
-`runtimeCount` 1, `jon().getName()` = `AiPoAgent.NAME`; zwei gleichzeitige erste Turns ⇒ eine Runtime, beide
-Texte im Verlauf und beim Anbieter, **eine** `-history.jsonl` unter `state/<id>`);
-`ChatStreamRegistryTest` auf fünf Tests erweitert (`twoDeadListenersLeaveNoProjectBehind`,
-`slowReaderNeverStopsTheTurn` mit Marker `// UC-WP-41`); `ProjectRemovalTest` um
-`closingAProjectEndsItsLiveLines` (echt abonniert ⇒ `DELETE` ⇒ `listenerCount` 0 **und** die Leitung ist
-geschlossen). Fallnote für künftige SSE-Tests: ein Test-Emitter muß `send(SseEmitter.SseEventBuilder)`
-überschreiben — `SseEmitter` hat diese speziellere Überladung, der Registry schreibt genau die, ein
-Override von `send(Object)` greift nicht.
-
-Gates: `mvn -f aifactory/pom.xml clean verify` → **`Tests run: 86, Failures: 0, Errors: 0, Skipped: 0`**,
-`BUILD SUCCESS`, `Total time: 49.959 s` (Baseline 80 Tests und 1 m 2 s; der Hinweis „The exit has elapsed
-30 seconds after System.exit(0)" ist **weg**, auch im Einzel-Surefire-Lauf der beiden Klassen).
-`pnpm -C aifactory/factory-ui test` → `Test Files 3 passed (3)` / `Tests 19 passed (19)`, `lint` →
-„Found 0 warnings and 0 errors." (20 files), `build` ✓ 30 modules (`index-CMQaxmnl.js` 233,64 kB).
-`lintDocsAndTests` (root Repo; docRoots `aifactory/docs`; testRoots backend/src/test + ui/test;
-idPattern `UC-[A-Z]+-\d+[a-z]?`) → `UC definitions: 51 / 51; test IDs: 61 / 30; findings: 21`, **VERWAIST 0**
-(3-H1: 50/50; 60/29; 21 — **+1 id** = UC-WP-41, durch den Marker belegt); mit den §3.9-Doc-Wurzeln →
-`UC definitions: 252 / 252; test IDs: 61 / 30; findings: 222`, ebenso VERWAIST 0. Offen und nicht
-H2-Stoff: UC-WP-8/9/10, 11/12/13, 18/19, 25, 39/40 (= 3f), zehn UC-JL. *Randnotiz:* die §3.9-Testwurzeln
-`aifactory/factory-ui/src/test` und `src/views` gibt es seit 3-H1 nicht mehr (Tests liegen in
-`aifactory/factory-ui/test`), der Läufer bricht mit „Doc root not found" — Wurzeln für künftige Läufe
-anpassen, Doc-Inhalt nicht angefaßt.
-
-Laufender Nachweis mit **echtem Modell** (Ollama `qwen3.5:4b`, Home `/tmp/aifactory-inc3h2`, **Port 8099**,
-Projekt `spring-petclinic-c2cea48`): ein Zuschauer liest **nie** (Roh-Socket, Empfangspuffer 4 kB), ein
-zweiter liest mit. `POST` **202 in 0,213 s**; der lesende Zuschauer zählt **177 `partial`
-(63 `think` + 114 `answer`) und genau ein `done{millis:36295}`** nach 36,3 s; Verlauf danach genau
-`user` + `jon` (382 Zeichen); dem wartenden Zuschauer standen am Ende 10,2 kB nach — er war deutlich im
-Rückstand, hat aber nichts gebremst. `state/<id>/Peon-PO-history.jsonl` = einzige Datei (981 byte), Home =
-`config.properties`, `projects`, `projects.json`, `state`. **SIGTERM bei offener SSE-Leitung**: Graceful
-Shutdown nach **2,02 s** beendet, JVM weg nach **2,65 s** (vor dem Fix derselbe Vorgang als 30-s-Warten
-gemessen). Ports 8099/8080 frei, `~/.peon` byte-identisch (124 Dateien, Sammel-Prüfsumme
-`e5843e6b926af061c5284cf29ffd5c1d1fc80f00` vor dem Start = nach dem Stop).
-
-Mutationsbatterie, jede einzeln rot auf dem geplanten Punkt, alle zurück (grep `MUTATION` = leer):
-`putIfAbsent` → `put` (Erstkontakt-Renne) ⇒ **beide** `ChatFirstTouchTest`-Tests rot; `publish` schreibt
-synchron auf den Emitter ⇒ `slowReaderNeverStopsTheTurn` („publish must not wait for the slow reader
-(19858 ms)"); `closeProject` in `onProjectRemoved` weg ⇒ `closingAProjectEndsItsLiveLines` (1 statt 0);
-`outbox.clear()` beim Schließen weg ⇒ `slowReaderNeverStopsTheTurn` (7 Zeilen hängen noch in der Leitung);
-Aufräumen leerer Projekte weg ⇒ `twoDeadListenersLeaveNoProjectBehind`. **Verworfen nach Messung:** die
-`MockLlmServer`-Thread-Korrektur — sie änderte am Hinweis nichts und ist kein Nachweis, sondern ein Fund.
-
-Abweichungen, keine ändert eine UC-Aussage: (a) `@PreDestroy` → `@EventListener(ContextClosedEvent)`
-(begründet oben, ohne diese Umstellung bliebe der 30-s-Fix wirkungslos); (b) in `ChatTurnTest`/`ChatQueueTest`
-`STREAMS.shutdownNow()` → `STREAMS.close()` — der JDK-HttpClient-Selector-Thread ist ein Daemon, die Änderung
-war gemessen **ohne** Auswirkung auf den Hinweis und bleibt als dokumentierte Ressourcen-Freigabe;
-(c) `ProjectRuntimeRegistry.shutdownTurns()` ruft `turns.shutdownNow()` — ein laufender Turn darf einen
-Herunterfahr-Prozess nicht aufhalten; (d) Jons Doc-Zusage `aifactory/docs/web-prototype.md` (UC-WP-41) ritt
-mit ausdrücklicher Freigabe in diesem Commit, `AGENTS*.md`/`CHANGELOG.md` unangetastet; (e) Beobachtung,
-nicht geändert: eine SSE-Leitung sendet erst mit dem ersten Ereignis Bytes (kein Keep-Alive-Kommentar beim
-Öffnen) — die View aus 3-H1 hängt nicht daran (ihre Reconnect-Regel ignoriert Kommentarzeilen).
-
-**Härtung 3-H1 + 3-H2 damit durch; danach Stopp wie verabredet. Nicht gebaut: UC-WP-39/40 (= 3f, Jons
-eigener Plan), UC-WP-8/9/10 (Inc 4), 11/12/13 + Kacheln/Clear (Inc 5), UC-WP-25 (Inc 6).**
+**STATUS: ANSWERED 2026-10-26 (Jon)** — nichts offen, §4.0 … §4.11 sind bindend. **4a-1 ist gelaufen**
+(`### 4a-1-E`, HEAD `acab5b20`, kein Commit nach A6). **4a-2 ist gelaufen und committed** (`### 4a-2-E`,
+Commit `dc5343ee`; Kern 1393/0/0, Plugin-Gate BUILD SUCCESS, Fabrik 101/0/0, R6 bleibt ❌ bis zum Review).
+**4a-3 ist gelaufen und committed** (`### 4a-3-E`, Commit `d9f38eb1`; Kern 1393/0/0, Plugin-Gate BUILD
+SUCCESS, Fabrik **103**/0/0, UI 22/3, lint 0/0, `lintDocsAndTests` 72/36 mit findings **6**, VERWAIST 0;
+Live-Nachweis an `qwen3.5:4b` auf Port 8099 gedreht; UC-WP-8/9/10/18 haben Tests, Marker bleiben ❌).
+**4b-1 ist gelaufen und committed** (`### 4b-1-E`, Commit `beffbfc0`; Fabrik **106**/0/0, UI 22/3, lint 0/0,
+`lintDocsAndTests` 74/38 mit findings **4**, VERWAIST 0; Live-Nachweis auf Port 8099 inkl. Symlink-beider-Richtungen
+und echtem Schreib-Turn mit afterwards lesbare Datei). **4b-2 ist gelaufen** (`### 4b-2-E`; UI **25**/4 Dateien,
+lint 0/0, Build grün, Fabrik unverändert **106**/0/0, `lintDocsAndTests` 77/38 mit findings **4**, VERWAIST 0;
+Browser-Nachweis mit headless Chrome über CDP auf Port 8099). Damit ist **Inc 4 durchgebaut** — UC-WP-8/9/10/18/19/42
+und R6 haben Tests und laufende Software, **kein Marker ist geflippt**. Nächster Schritt ist **Jons Review**
+über den ganzen Increment; danach entscheidet er über Inc 5 (UC-WP-11/12/13) und Inc 6 (UC-WP-25).
+Kein Doc wird von einem Agenten angefasst; R6- und UC-Status werden nur **gemeldet** —
+UC-WP-9-Textschärfe ist Jons eigene Doc-Änderung, nicht Aufgabe des Dev-Agenten.
+**Nebeneffekt, nur gemeldet:** Jons Doc-Edits haben die Zeilenangaben im `lintDocsAndTests`-Befund
+verschoben — UC-WP-10 `:225`, UC-WP-18 `:331`, UC-WP-19 `:340`, UC-WP-42 `:345`, UC-WP-25 `:420`
+(Plan-Kopf §4.1 nennt noch die älteren Zahlen; die ids sind unverändert).

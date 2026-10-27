@@ -49,8 +49,8 @@ Nicht hier: alles Eclipse-/OSGi-spezifische (SWT-Views, Widgets, Preference-Page
 
 * [Web-Prototype](web-prototype.md) — Projects · Chat · Einstellungen; Git-Clone als Projekt,
   Jon mit Team, Schreib-Pinning auf Projekt-Root + TMP, Kacheln je Agent. ◐ teilweise gebaut
-  (Registry · Clone · Auslieferung · Einstellungen · Chat mit Queue, Verlauf und SSE ✅;
-  Herkunft/Team-Antworten, Schreib-Pinning, Datei-Bereich, Kacheln ❌)
+  (Registry · Clone · Auslieferung · Einstellungen · Chat mit Queue, Verlauf, SSE und Herkunft je Zeile ✅;
+  Schreib-Pinning, Datei-Bereich, Kacheln ❌)
 * [Jon Light & Stories](jon-light-stories.md) — read-only Jon je Nutzer, Stories in `stories/`,
   konfliktfrei oder mit benanntem Konflikt. ❌ specified (nach dem MVP)
 

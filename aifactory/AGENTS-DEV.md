@@ -28,10 +28,50 @@
   `org.springframework.boot:spring-boot-restclient` (`RestTemplateBuilder`) braucht; das deklariert das
   Artefakt **nicht** und liegt nicht in `~/.m2` → `NoClassDefFoundError` beim Context-Load
   (`Tests run: n, Errors: n`, nicht blau). Echte HTTP-Tests deshalb mit
+- **`/tmp` is NOT `java.io.tmpdir` on macOS** (measured 2026-10-26, inc-4a-3): `/tmp → /private/tmp`,
+  while the JVM's temp root is `/var/folders/<…>/T`. A write-pinning proof aimed at `/tmp/…` proves the
+  opposite of what it claims (it gets DENIED, being outside both factory roots). Same trap inverts for
+  test dirs: `@TempDir` lives *inside* `java.io.tmpdir`, so a project home built on it can never escape
+  the second write root (`..` stays allowed). Use `target/…` for a home, `TmpRoots.systemTmp()` (or a
+  `resolveSibling`) for outside, and never `@TempDir` for either.
+- **Long absolute paths never reach the SSE wire** (measured 2026-10-26, inc-4a-3):
+  `SmartToolExecutor.reportProblem` truncates the monitor copy at 180 chars + `…`, so a denial line with
+  an 88-char root loses its `allowed roots […]` list on the wire while the model still gets the full
+  text. Assert wire denials at the stable prefix (`<tool>: Write denied:`) and roots/paths only in the
+  next provider payload (`MockLlmServer.getCapturedMessages()` → `ToolExecutionResultMessage.text()`).
+
   `@SpringBootTest(RANDOM_PORT)` + `@LocalServerPort` + `org.springframework.web.client.RestTemplate`
   und `NoOpResponseErrorHandler` (sonst versteckt eine Exception die Status-Assertion), und
   Redirects mit `java.net.http.HttpClient` (`Redirect.NEVER`) prüfen — ein folgender Client macht den
   Redirect unsichtbar. Boot-4-Importe: `LocalServerPort` = `org.springframework.boot.test.web.server`,
   `TestRestTemplate` = `org.springframework.boot.resttestclient`,
   `@AutoConfigureMockMvc` = `org.springframework.boot.webmvc.test.autoconfigure`.
+- **`RestTemplate` kann kein `PATCH` senden** (gemessen 2026-10-26, inc-4b-1): der underlying
+  `HttpURLConnection` wirft `ProtocolException: Invalid HTTP method: PATCH`, und die Exception versteckt sich
+  hinter `NoOpResponseErrorHandler` als unerwarteter Status. Methoden-Matrix-Tests (405 auf
+  `PUT`/`POST`/`PATCH`/`DELETE`) deshalb über `java.net.http.HttpClient` (`HttpRequest.newBuilder().method(m,
+  noBody())`) — der beherrscht alle vier.
+- **Lese-Guard gegen Pfad-Ausbruch: beide Seiten `toRealPath()`** (inc-4b-1, Mutation belegt): erst
+  lexikalische Containschaft **nach** Normalisierung (davon ⇒ Traversal wird 400, nicht 404, auch wenn das Ziel
+  nicht existiert), dann `candidate.toRealPath()` gegen `root.toRealPath()`. Nur eine Seite aufzulösen ist auf
+  macOS falsch (`/var → /private/var`): der TMP-Test fällt mit NPE/404, obwohl jede Datei da ist. Ein Symlink
+  **innerhalb** der Wurzel **nach außerhalb** muß 400 werden, einer **binnen** der Wurzel 200 — sonst ist der
+  Guard ein Fehlalarm-Generator und der Test nur aufs Scheitern geprüft.
+
+## Eclipse schreibt kaputte Klassen — Maven ist die Wahrheit
+
+* Nach `eclipseBuildProject`/`eclipseEditFile` kann `target/classes` **Lombok-blankierte Fehler-Stümpfe**
+  enthalten. Ein Maven-Lauf **ohne** `clean` hält sie für aktuell; der laufende Server antwortet dann
+  `500 "Unresolved compilation problems"` (gemessen: `JonToolSet`, `model.getConfig`). Deshalb **jeder**
+  Maven-Lauf mit `clean`, besonders `verify` und `spring-boot:run`.
+* Eclipse meldet Lombok-Getter (`LlmConfig`, `ConfiguredChatModel`) trotzdem als „undefined" — nicht
+  danach gehen, Maven ist die Wahrheit.
+* Nach einer Änderung im Kern (`org.sterl.llmpeon.core`) **zuerst**
+  `mvn -f org.sterl.llmpeon.core/pom.xml clean test`, dann `mvn -o -pl org.sterl.llmpeon.core install
+  -DskipTests` — sonst baut die Fabrik gegen das alte `~/.m2`-Artefakt.
+* „Das war schon vorher so" ist eine Behauptung: erst **bisecten** (`git stash`, Baseline bauen, wieder
+  einspielen), dann melden. Ein gemessener Hinweis (z. B. ein 30-s-Hang) wird mit Ursache belegt, nicht
+  als „vorbestehend" abgehakt.
+* `eclipseEditFile`/`eclipseReplaceLines` mit einer Teilzeile als `oldString` haben schon Nachbarzeilen
+  beschädigt — nach jedem Edit die Region neu lesen.
 

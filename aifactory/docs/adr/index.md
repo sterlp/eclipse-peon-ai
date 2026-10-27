@@ -13,3 +13,4 @@ die Factory-ADRs in den globalen Raum umgezogen.
 | ADR | Entscheidung | Status |
 |-----|--------------|--------|
 | [AF-ADR-001](001-factory-shares-core-disk-only.md) | Factory teilt den Core: Factory-Fähigkeiten entstehen möglichst im Core (Plugin profitiert), Factory nutzt nur die Disk-Familie, Core bleibt Eclipse-frei — gegen Jons „Core unangetastet"-Empfehlung, schreibt globale ADR-0046 fort | Accepted |
+| [AF-ADR-002](002-origin-in-core-display-in-factory.md) | Herkunft je Chat-Zeile: der Core stempelt die Kern-Id, die Fabrik filtert und benennt; die finale Team-Antwort liegt als Attribut am Delegations-Ergebnis in Jons History (kein zweiter Speicher, kein Text-Parsen) | Accepted |
