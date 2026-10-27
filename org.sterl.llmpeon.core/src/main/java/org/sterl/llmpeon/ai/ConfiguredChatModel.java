@@ -41,12 +41,10 @@ public class ConfiguredChatModel {
         return callBlocking(req, null, monitor, Instant.now());
     }
 
-    /** Blocking call on the model for the agent's effective connection (ADR-0034). */
-    public ChatResponse callBlocking(ChatRequest req, AgentConfig agent, AiMonitor monitor) {
-        return callBlocking(req, agent, monitor, Instant.now());
-    }
-
-    /** R20: caller-provided turn start. Stand-alone calls use {@link Instant#now()}. */
+    /**
+     * Blocking call on the model for the agent's effective connection (ADR-0034).
+     * R20: caller-provided turn start. Stand-alone calls use {@link Instant#now()}.
+     */
     public ChatResponse callBlocking(ChatRequest req, AgentConfig agent, AiMonitor monitor, Instant startedAt) {
         return new StreamingBridge().call(modelFor(agent), req, monitor, startedAt);
     }

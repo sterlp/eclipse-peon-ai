@@ -15,3 +15,7 @@ description: Verified repo-specific API traps — langchain4j customParameters p
   UNWRAPPED**, not wrapped in `ExecutionException` — a catch on `ExecutionException` silently misses
   it (this hid the model-list race, see
   `docs/adr/0040-model-list-single-flight-secret-masking.md`).
+- **`ThreadSafeMemory.add` joins consecutive `UserMessage`s into one.** Message-count assertions
+  (e.g. "→ 1 vs → 2 messages" after re-seed + fresh question) are therefore vacuous — assert content
+  or tokens instead (hit: `preTurnCompactEndLineReportsMemoryAtCompactTime`, the count mutation
+  stayed green).
