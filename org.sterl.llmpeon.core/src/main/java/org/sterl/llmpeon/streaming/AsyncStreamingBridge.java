@@ -40,24 +40,17 @@ import lombok.RequiredArgsConstructor;
 public class AsyncStreamingBridge {
 
     private final Clock clock;
-    @Getter
-    private final Timer totalTimer;
-    
-    
+
     public AsyncStreamingBridge(Clock clock) {
         super();
         this.clock = clock;
-        this.totalTimer = new Timer(clock).start();
     }
 
     public AsyncStreamingBridge() {
         this(Clock.systemUTC());
     }
 
-    public CompletableFuture<SteamHandler> call(StreamingChatModel model, ChatRequest request, AiMonitor monitor) {
-        return call(model, request, monitor, Instant.now(clock));
-    }
-
+    /** {@code startedAt} is the caller's (agent-owned) turn start, R20. */
     public CompletableFuture<SteamHandler> call(StreamingChatModel model, ChatRequest request, AiMonitor monitor, Instant startedAt) {
         Objects.requireNonNull(monitor, "Monitor is needed otherwise cancel can't work.");
 
