@@ -27,7 +27,12 @@
 - ⚠ `org.sterl.llmpeon.test` baut schon VOR Inc 1 nicht (Tycho: Plugin braucht `jakarta.annotation
   [2.1,3)`, nicht im Target) → Plugin-Tests derzeit blind. Paul melden/entscheiden.
 - ✅ Inc 3 `993c0525`+`238b7cd3` (Core 1389, 8 R20-Tests mutationsbelegt) · ✅ Inc 4 `1438f019` (Core 1390,
-  UC-CC-2 belegt; failed-Test = Regressionsschranke). Nächst: Inc 2a → 2b → 2c → 5 (CHANGELOG-Text Jon).
+  UC-CC-2 belegt; failed-Test = Regressionsschranke) · ✅ Inc 2a `7b6e5bf4` (Core 1396, UC-CT-16/17
+  mutationsbelegt). Nächst: 2b → 2c → 5 (CHANGELOG-Text Jon).
+- Backlog-Kandidat: `AbstractAgent.asyncCall` ist protected ohne Aufrufer (toter Code, in 2a nur gespiegelt,
+  ungetestet) → löschen? Paul fragen nach Zyklus.
+- Jon-Entscheid: `CompactRun.messageCountAfter` bleibt (ein Snapshot-Zeitpunkt für die ganze End-Zeile),
+  obwohl der UserMessage-Join es heute nicht beobachtbar macht.
 - **Commit-Liste Jon-Dateien:** docs/memory.md, org.sterl.llmpeon.core/docs/{compact-lock,compact,
   compact-architektur,index}.md, org.sterl.llmpeon/docs/{streaming-display,index}.md,
   proposals/agent-origin-proposal.md, aifactory/docs/{adr/002-…,adr/index,aifactory-architektur,
