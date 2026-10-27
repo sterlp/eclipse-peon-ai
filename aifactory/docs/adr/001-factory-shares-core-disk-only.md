@@ -19,16 +19,16 @@ Factory als reine Web-Schicht darüber. Der User entscheidet bewusst anders.
    [ADR-0046](../../../docs/adr/0046-core-portability-review.md): 0 `import org.eclipse` in
    `src/main`) — jetzt mit einem zweiten realen Consumer, der die Regel dauerhaft erzwingt statt sie
    nur theoretisch zu behalten.
-4. **Grenze:** in den Core gehört, was *beide* Consumer brauchen (Agenten, Tools, Context/Compact,
-   Provider/Config). Was nur ein Consumer braucht — HTTP/SSE und Server-Session auf der einen,
-   SWT/OSGi auf der anderen Seite — bleibt im jeweiligen Consumer.
+4. **Grenze:** steht verbindlich in den
+   [Core Ground Rules](../../../org.sterl.llmpeon.core/docs/ground-rules.md) (GR-1…3) — insbesondere
+   GR-3: Erweiterungen nur, wenn klar generisch für alle Consumer.
 
 ## Consequences
 
-* Core-Änderungen aus Factory-Anlass sind **erwünscht**, aber sie müssen dem Plugin nützen oder
-  mindestens verhaltenstreu sein: der Plugin-Bestand ist der Regressionstest für jede Core-Änderung.
-* Web-only-Logik im Core ist ein Verstoß gegen diese Entscheidung — der Test ist die Frage
-  „braucht das auch das Plugin?".
+* Core-Änderungen aus Factory-Anlass sind möglich, aber **vorsichtig** und nur nach GR-3
+  ([ground-rules.md](../../../org.sterl.llmpeon.core/docs/ground-rules.md)); der Plugin-Bestand ist
+  der Regressionstest für jede Core-Änderung. Die frühere Prüffrage „braucht das auch das Plugin?"
+  war zu schwach — sie ließ `OriginMonitor` & Co. durch (AF-ADR-002).
 * Der Factory-Verzicht auf Build/Test-Runner/Java-Navigation/Console (ADR-0046) bleibt bestehen;
   Web-Äquivalente sind eigene Stories, keine Core-Pflicht.
 * Nächste echte Baustelle ist der aus ADR-0046 dokumentierte **Composition-Root-Gap**

@@ -647,6 +647,25 @@ GIVEN derselbe Baum WHEN ein Default-Lauf und ein Lauf mit allen entdeckten Wurz
 GIVEN ein Root ohne jedes `docs`-Verzeichnis WHEN `lintDocs` ohne `docRoots` läuft THEN gibt es
 keine Exception; der Report nennt den Fallback `docs` mit Warnung und meldet 0 Dateien.
 
+### R-DL-27 — Lange Docs werden als schwacher Hinweis gemeldet ❌ specified (2026-10-27, Paul)
+
+Ein Doc über **1000 Zeilen** erzeugt den Hinweis `ZU_LANG` mit `datei` und Zeilenzahl — für **jedes**
+gescannte Doc, auch ohne `idPrefix` (es geht um Lese-Kosten, nicht um IDs). Er ist
+**schwach**: kein Befund im Sinne von R-DL-5, zählt nicht in `findings`, blockiert keinen ✅-Flip
+(R-DL-8). Er ist die Frage an den PO, ob ein Split sinnvoll ist — kein Auftrag zum Splitten. Der PO
+fragt den User; ein Split geht nach Teil-Feature/UC-Gruppe in ein Unterverzeichnis mit eigener
+`index.md` (ein Präfix darf über mehrere Dateien gehen, R-DL-17).
+
+> **WEIL** (Paul): ein Doc wuchs auf ~15.000 Zeilen; die Prompt-Regel „über 2 Doc-Seiten splitten"
+> war nicht messbar und wurde nie geprüft. 1000 Zeilen ≈ 15k Token pro vollem Lesen.
+
+Minimal gebaut (Paul): eine Zeile pro langem Doc im Report, ein Test.
+
+#### UC-DL-100 — Nur Docs über 1000 Zeilen werden gemeldet, ohne Befund ❌
+GIVEN ein Doc **ohne** `idPrefix` mit 1001 Zeilen und ein Doc mit `idPrefix` und genau 1000 Zeilen
+WHEN `lintDocs` läuft THEN steht genau **ein** Hinweis `ZU_LANG` mit Datei und Zeilenzahl 1001 im
+Report, und `findings` ist 0.
+
 
 ### R-DL-16 — `nextIds` ist zustandslos; vergeben ist erst, was gespeichert im Doc steht ✅ done
 

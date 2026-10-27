@@ -3,6 +3,9 @@
 Business-Logik ohne Eclipse: Agent-Loop, Tool-Familien (`disk*`/`web*`/`shell`/`docs*`), Prompts,
 Compact/Context, Provider-Mapping, Skills, MCP. 57 Docs · Build/Test: `mvn -f pom.xml -pl org.sterl.llmpeon.core clean test` (vom Repo-Root).
 
+* **[Core Ground Rules](ground-rules.md)** — shared lib für zwei Produkte (Plugin + AI Factory):
+  was in den Core darf und was nicht (GR-1 framework-frei · GR-2 kein UI/Transport · GR-3
+  Erweiterungen nur, wenn klar generisch). **Vor jeder Core-Erweiterung lesen.**
 * Register: [Root index](../../docs/index.md) (pro Turn auto-geladen, Link-Doc)
 * ADRs (globaler Nummernraum): [adr/index.md](../../docs/adr/index.md)
 * **Nicht hier:** Eclipse/OSGi — SWT/JFace-Views & Widgets, Preference-Pages, Header/Roster, `eclipse*`-Adapter, OSGi-Tests → [Plugin-Docs](../../org.sterl.llmpeon/docs/index.md)

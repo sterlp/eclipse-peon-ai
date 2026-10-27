@@ -375,7 +375,7 @@ Compact-only. Sichtbarkeit für den 400-Fall kommt stattdessen über ein neues F
 Agent den Abbruch kennt und nachfolgend reagieren kann.
 
 
-### R-CC-18 — Voller Context: Compact direkt statt auf den Hint warten ❌ specified (✅ 2026-10-18; geschärft 2026-10-27: Erfolg sperrt keinen weiteren Direkt-Compact, UC-CC-2)
+### R-CC-18 — Voller Context: Compact direkt statt auf den Hint warten ✅ done (2026-10-18; geschärft + gebaut 2026-10-27: Erfolg sperrt keinen weiteren Direkt-Compact, UC-CC-2)
 
 **Anlass:** Der Compact-Hint (R-CC-4) ist eine *Bitte* ans Modell. Ist der Context bereits über dem
 Budget, kommt sie zu spät — der nächste Provider-Call geht unverändert raus und stirbt am
@@ -428,7 +428,7 @@ Ereignis-Gate (`ranTool(compactSession)` + Turn-Merker) ersatzlos.
 - GIVEN Memory ≤ `MIN_COMPACT_MESSAGES` WHEN über Budget THEN kein Direkt-Compact (R-CC-8) — der
   Provider-Fehler bleibt der ehrliche Ausgang. *(Test: `directCompactRespectsMinMessages`)*
 
-#### UC-CC-2 — successfulDirectCompactDoesNotBlockTheNextOne ❌
+#### UC-CC-2 — successfulDirectCompactDoesNotBlockTheNextOne ✅
 - GIVEN ein Turn, dessen Direkt-Compact erfolgreich war (`COMPACTED`) WHEN das Memory im selben Turn
   erneut über `autoCompactAfter` wächst THEN wird vor dem nächsten Call erneut direkt compactiert.
 - GIVEN ein Turn, dessen Direkt-Compact `SKIPPED_SMALL`/`FAILED_EMPTY` lieferte WHEN das Memory in

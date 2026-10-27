@@ -233,19 +233,19 @@ fehlte sie im neu aufgebauten Chat.
   `onCallStart`/`onChatMessage` auf demselben Monitor feuert THEN bleibt die Chat-View unverändert.
   *(UC-CT-17)*
 
-#### UC-CT-10 — mainAgentCompactResetsChatView ❌
+#### UC-CT-10 — mainAgentCompactResetsChatView ✅
 - GIVEN der aktive Agent kompaktiert per Button erfolgreich WHEN der Compact endet THEN wird die
   Chat-View aus dem Memory neu aufgebaut.
 - GIVEN der aktive Agent kompaktiert im Turn erfolgreich (Pre-Turn, In-Loop, `compactSession`) WHEN
   `onCompactCompleted` mit seinem Namen eintrifft THEN wird die Chat-View sofort aus dem Memory neu
   aufgebaut.
 
-#### UC-CT-16 — preTurnCompactSignalsAfterFreshQuestion ❌
+#### UC-CT-16 — preTurnCompactSignalsAfterFreshQuestion ✅
 - GIVEN ein Agent mit langem Verlauf und eine frische Frage löst den Pre-Turn-Compact aus WHEN
   `onCompactCompleted` feuert THEN enthält sein Memory zu diesem Zeitpunkt bereits die frische Frage
   — ein Rebuild zeigt Summary **und** Frage.
 
-#### UC-CT-17 — delegatedMemberEventsDoNotResetChatView ❌
+#### UC-CT-17 — delegatedMemberEventsDoNotResetChatView ❌ (Agent-Hälfte automatisiert; View-Hälfte = manueller Smoke, offen)
 - GIVEN der aktive Agent hat im Turn kompaktiert und anschließend delegiert WHEN der Sklave
   `onCallStart`/`onChatMessage` auf dessen Monitor feuert THEN bleibt die Chat-View unverändert.
 

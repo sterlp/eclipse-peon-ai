@@ -188,7 +188,7 @@ Kein Thread-Sync nötig (ein Thread schreibt, UI-Thread liest — volatile long 
 - **GIVEN** ein Timer läuft **WHEN** `millis()` **THEN** liefert `now − start` (live)
 - **Tag:** unit
 
-### R19 — StreamingBridge: Call-Timer, korrekte toc/s ✅ (Total-Timer ❌ entfällt → R20, 2026-10-27)
+### R19 — StreamingBridge: Call-Timer, korrekte toc/s ✅ (Total-Timer entfallen → R20, 2026-10-27)
 
 `StreamingBridge` hält nur Timer, die **einem Call** gehören, und verwaltet sie pro `call()`. Eine
 Turn-Zeit hält die Bridge **nicht** — sie kennt keinen Turn (R20).
@@ -221,7 +221,7 @@ Agenten, R20) für "working since".
 - **GIVEN** ein Call ist in der PP-Phase (noch kein Token) **WHEN** Statusleiste rendert **THEN** kein UI-Update (kein Chunk = kein Trigger); User sieht die Urzeit aus dem START-Chunk ("Started 12:24 waiting for AI...") und kann die Wartezeit mental ablesen
 - **Tag:** core (verify timer resets per call; verify toc/s uses token-timer not turn-start; verify tokenPhaseStart in OnPartialAiResponse)
 
-### R20 — Statusleiste zeigt "Started hh:mm" — die Turn-Zeit gehört dem Agenten ❌ specified (revidiert 2026-10-27, Paul — Regression „Zeit springt bei Compact/Cancel")
+### R20 — Statusleiste zeigt "Started hh:mm" — die Turn-Zeit gehört dem Agenten ✅ done (revidiert 2026-10-27, Paul — Regression „Zeit springt bei Compact/Cancel")
 
 Die Statusleiste zeigt die Turn-Startzeit des **streamenden Agenten** zusätzlich zur Laufzeit.
 Format: `Started 14:32 · working since 3m 15s | <phase>... | <tok/s>`

@@ -9,6 +9,8 @@ borders (eclipse*/disk*-Parität, Wiring, shared classes).
 Status: ✅ done · 🚧 design/WIP · ❌ not done · ⏳ geparkt/historisch · 📝 Studie.
 Backlog = every ❌/🚧 item. Vollständige Einträge (mit Status-Grund) stehen in den Modul-Indexen.
 
+**[Product Vision](product-vision.md)** — was Peon AI (Eclipse-Plugin) ist und was nicht: Agenten-System in Eclipse, local first, kein Code-Completion-Tool.
+
 ## Where the knowledge lives
 
 * **[Core docs](../org.sterl.llmpeon.core/docs/index.md)** — `llmpeon-core` (plain Maven):
