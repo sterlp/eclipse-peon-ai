@@ -63,6 +63,12 @@ class DocsLintReportRenderer {
 
         sb.append(skippedDocsList(result.skippedDocs()));
 
+        if (!result.longDocs().isEmpty()) {
+            sb.append("\n\nHints (not findings):");
+            result.longDocs().forEach((file, lines) ->
+                    sb.append("\n  ZU_LANG ").append(file).append(" ").append(lines));
+        }
+
         return sb.toString();
     }
 

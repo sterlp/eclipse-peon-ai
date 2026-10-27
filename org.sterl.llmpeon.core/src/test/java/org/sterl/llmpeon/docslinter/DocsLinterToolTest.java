@@ -500,6 +500,24 @@ class DocsLinterToolTest {
         assertThat(monitor.toolMessages).containsExactly("lintDocs: 1 docs, 0 findings" + " " + StringUtil.charsSuffix(output));
     }
 
+    // UC-DL-100
+    @Test
+    void reportsZuLangOnlyAbove1000LinesWithoutCountingAsFinding() throws IOException {
+        writeDoc("long.md", "filler\n".repeat(1001));
+        writeDoc("edge.md", "---\nidPrefix: DL\n---\n" + "filler\n".repeat(997));
+        assertThat(Files.readAllLines(docsDir.resolve("long.md"))).hasSize(1001);
+        assertThat(Files.readAllLines(docsDir.resolve("edge.md"))).hasSize(1000);
+
+        String docsOnly = tool.lintDocs(null, List.of("docs"), null);
+        String withTests = tool.lintDocsAndTests(null, List.of("docs"), null, null, null);
+
+        for (String output : List.of(docsOnly, withTests)) {
+            assertThat(output).contains("ZU_LANG docs/long.md 1001");
+            assertThat(output.split("ZU_LANG", -1)).hasSize(2);
+            assertThat(output).contains("findings: 0");
+        }
+    }
+
     private ToolLoopRequest requestWith(AiMonitor monitor) {
         var model = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
         return ToolLoopRequest.builder()

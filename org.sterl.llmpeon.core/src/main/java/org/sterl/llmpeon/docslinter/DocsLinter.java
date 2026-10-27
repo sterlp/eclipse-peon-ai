@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -27,12 +28,15 @@ class DocsLinter {
     private static final Pattern UC_FLAT_NUM_PATTERN = Pattern.compile("^UC-(.+)-(\\d+)");
     private static final Pattern PREFIX_PATTERN = Pattern.compile("[A-Z]+(?:-[A-Z0-9]+)*");
 
+    /** R-DL-27: docs with more lines than this get the weak ZU_LANG hint. */
+    static final int MAX_DOC_LINES = 1000;
+
     DocsLintResult lint(Path root, List<String> docRoots, Pattern idPattern) throws IOException {
         DocParseData data = parseDocs(root, docRoots, idPattern);
         List<String> sourceRoots = relativeRoots(root, resolveRoots(root, docRoots));
         return new DocsLintResult(data.definitions(), data.findings(),
                 data.lintedDocs(), data.skippedDocs(), data.useCaseCount(),
-                false, 0, 0, 0, List.of(), sourceRoots);
+                false, 0, 0, 0, List.of(), sourceRoots, data.longDocs());
     }
 
     /**
@@ -141,7 +145,7 @@ class DocsLinter {
         List<Path> resolvedRoots = resolveRoots(root, docRoots);
         List<Path> mdFiles = discoverMarkdownFiles(resolvedRoots);
         if (mdFiles.isEmpty()) {
-            return new DocParseData(List.of(), List.of(), List.of(), List.of(), List.of(), 0);
+            return new DocParseData(List.of(), List.of(), List.of(), List.of(), List.of(), 0, Map.of());
         }
 
         DocParser parser = new DocParser(idPattern);
@@ -149,11 +153,16 @@ class DocsLinter {
         List<LintFinding> allFindings = new ArrayList<>();
         List<String> lintedDocs = new ArrayList<>();
         List<String> skippedDocs = new ArrayList<>();
+        Map<String, Integer> longDocs = new LinkedHashMap<>();
 
         for (Path file : mdFiles) {
             String relativePath = root.relativize(file).toString();
             relativePath = relativePath.replace('\\', '/');
             DocParser.DocParseResult result = parser.parse(file, relativePath);
+
+            if (result.lineCount() > MAX_DOC_LINES) {
+                longDocs.put(relativePath, result.lineCount());
+            }
 
             if (!result.hasPrefix() && result.definitions().isEmpty()) {
                 skippedDocs.add(relativePath);
@@ -188,7 +197,7 @@ class DocsLinter {
                 .thenComparingInt(LintFinding::line)
                 .thenComparing(LintFinding::id));
 
-        return new DocParseData(allDefs, allFindings, lintedDocs, skippedDocs, mdFiles, (int) ucCount);
+        return new DocParseData(allDefs, allFindings, lintedDocs, skippedDocs, mdFiles, (int) ucCount, longDocs);
     }
 
     static int findingPriority(FindingType type) {
@@ -293,7 +302,7 @@ class DocsLinter {
         return new DocsLintResult(docResult.definitions(), allFindings,
                 docResult.lintedDocs(), docResult.skippedDocs(),
                 docResult.useCaseCount(), true, allEvidence.size(), uniqueTestIds,
-                testSourceFileCount, allEvidence, sourceRoots);
+                testSourceFileCount, allEvidence, sourceRoots, docResult.longDocs());
     }
 
     private List<String> buildDefaultGlobs(List<String> testGlobs) {
@@ -438,13 +447,15 @@ class DocsLinter {
 
     private record DocParseData(List<DocDefinition> definitions, List<LintFinding> findings,
                                 List<String> lintedDocs, List<String> skippedDocs,
-                                List<Path> mdFiles, int useCaseCount) {
+                                List<Path> mdFiles, int useCaseCount,
+                                Map<String, Integer> longDocs) {
         DocParseData {
             definitions = List.copyOf(definitions);
             findings = List.copyOf(findings);
             lintedDocs = List.copyOf(lintedDocs);
             skippedDocs = List.copyOf(skippedDocs);
             mdFiles = List.copyOf(mdFiles);
+            longDocs = Collections.unmodifiableMap(new LinkedHashMap<>(longDocs));
         }
     }
 }

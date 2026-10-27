@@ -115,7 +115,7 @@ class DocParser {
 
         validateStructure(definitions, prefixHolder[0], relativePath, findings);
 
-        return new DocParseResult(definitions, findings, prefixHolder[0] != null);
+        return new DocParseResult(definitions, findings, prefixHolder[0] != null, lines.size());
     }
 
     private record Fence(char marker, int length) {}
@@ -268,7 +268,7 @@ class DocParser {
     }
 
     record DocParseResult(List<DocDefinition> definitions, List<LintFinding> findings,
-                          boolean hasPrefix) {
+                          boolean hasPrefix, int lineCount) {
         DocParseResult {
             definitions = List.copyOf(definitions);
             findings = List.copyOf(findings);
