@@ -7,6 +7,11 @@
 > **Δ 2026-10-25:** Reseed-Form (R-CC-9, [ADR-0076](../../docs/adr/0076-compact-reseed-marker-in-user-message.md)) —
 > **eine** UserMessage: Turn-Context-Blöcke zuerst, als **letzter** TextContent der Marker
 > `Session compacted:` + Summary (die AiMessage-Form ist verworfen) ·
+> **Δ 2026-10-27 (❌ specified):** (1) nur ein **Fehlschlag** sperrt den Direkt-Compact im Turn, ein
+> Erfolg nicht (R-CC-18, UC-CC-2) · (2) die **Turn-Startzeit gehört dem Agenten**, ein Compact im Turn
+> erbt sie ([streaming-display R20](../../org.sterl.llmpeon/docs/streaming-display.md)) · (3) Chat-Rebuild
+> nach Compact allein über `onCompactCompleted(agentName)`, nicht über `DEFERRED`/`onCallStart`
+> ([R-CT-7](compact-lock.md)) — Abschnitt „Turn-Zeit & Chat-Rebuild" unten ·
 > **Fachdocs:** [compact.md](compact.md) (R-CC-1…14, R-CC-18) · [compact-input-budget.md](compact-input-budget.md) (R-CIB-1…6) ·
 > **ADRs:** [ADR-0055](../../docs/adr/0055-context-counter-input-not-cost.md) · [ADR-0056](../../docs/adr/0056-compact-component-and-render-modes.md) · [ADR-0070](../../docs/adr/0070-compact-decision-in-one-component.md)
 
@@ -18,7 +23,7 @@
 - **Out-of-Scope:** Live-Context (kein Think-Stripping im laufenden Turn), UI-State (Lock/Queue →
   [compact-lock.md](compact-lock.md)), Retry/Fehlerklassen (R-CC-7 🚧, mit ApiRetry-Tabelle),
   Context-Pollution an den Quellen ([open-points.md](../../docs/open-points.md)).
-- **Keine Überschneidung mit:** `StreamingBridge` (Chat-Streaming der Hauptkonversation), `ChatMessageUtil`
+- **Keine Überschneidung mit:** `StreamingBridge` (Chat-Streaming, nur Call-Timer — keine Turn-Zeit), `ChatMessageUtil`
   (nur generische Token-Mathe), Plugin-UI (rendert model-Values, rechnet nichts).
 
 ## Kernprinzip (Ownership)
@@ -27,7 +32,7 @@
 
 | Komponente | BESITZT |
 |---|---|
-| `AbstractAgent` (core `agent`) | den Vorgang: Guard/Policy (`working`-CAS, `MIN_COMPACT_MESSAGES`, Staging-Budget = rohe `autoCompactAfter`), `requestTokens`-Capture **vor** `clear()`, clear+reseed, Monitor-Emission (`onTool`/`onProblem`); den **Pre-Turn-Check** vor der frischen User-Message (R-CC-20, rohes Budget, kein Faktor) — kein Agent-Faktor ([ADR-0071](../../docs/adr/0071-compact-policy-owned-by-delegation.md)); das frühe Compacten von Jons Sklaven besitzt `PoDelegateTool` |
+| `AbstractAgent` (core `agent`) | die **Turn-Startzeit** (gesetzt mit dem `working`-Flag, an jeden Call/Compact im Turn weitergegeben); den Vorgang: Guard/Policy (`working`-CAS, `MIN_COMPACT_MESSAGES`, Staging-Budget = rohe `autoCompactAfter`), `requestTokens`-Capture **vor** `clear()`, clear+reseed, Monitor-Emission (`onTool`/`onProblem`); den **Pre-Turn-Check** vor der frischen User-Message (R-CC-20, rohes Budget, kein Faktor) — kein Agent-Faktor ([ADR-0071](../../docs/adr/0071-compact-policy-owned-by-delegation.md)); das frühe Compacten von Jons Sklaven besitzt `PoDelegateTool` |
 | `HandleToolLoopCompactComponent` (core `compact`) | **die Compact-Entscheidung — beide Fronten, ein Ort:** im Tool-Loop (R-CC-18) `used > Budget` → `agent.compact()` direkt · `used > 95 %` → Hint (R-CC-4) · sonst nichts; und die Pre-Turn-Schwelle (R-CC-20: `used > 95 %`, Compact statt Hint — vor dem Turn wissen wir, was wichtig ist: die frische Message). Statische Regeln (`overRawBudget`/`nearBudget`), die Folgen jedes Compacts (`reevaluateTokens` + Static-Rebuild) am Ausführenden. Ein Zustand, ein Wert (95 %), zwei Zeitpunkte — kein Ereignis-Gate. |
 | `ToolService.executeLoop` (core `tool`) | den Loop — und **nichts** über Compact: kein `ranTool(compactSession)`, kein Turn-Merker, keine Hint-Verdrahtung. Es ruft nur `HandleToolLoopCompactComponent` vor dem Call. |
 | `CompactService` (core `compact`) | die LLM-Transformation: Compressor-Prompt, Call mit Caller-Monitor-Streaming (Chunks → Caller-Monitor, nie Log — R-CT-8), „genau EIN debug-Log", `Stats` |
@@ -90,8 +95,9 @@ sequenceDiagram
             alt COMPACTED
                 D->>M: reevaluateTokens()
                 D->>A: buildStaticMessages() → req.staticMessages
+                Note over D: bleibt scharf — erneuter Überlauf im Turn → erneut direkt (UC-CC-2)
             else SKIPPED_SMALL / FAILED_EMPTY
-                Note over D: kein zweiter Versuch in diesem Turn (R-CC-18.1)
+                Note over D: Fehlschlag gemerkt → kein zweiter Versuch in diesem Turn (R-CC-18)
             end
         else used > 95 % des Budgets
             D->>M: Hint vorhanden? nein → COMPACT_HINT als UserMessage
@@ -99,6 +105,44 @@ sequenceDiagram
             Note over D: nichts (R-CC-18.3)
         end
     end
+```
+
+## Turn-Zeit & Chat-Rebuild (Δ 2026-10-27)
+
+**Wer besitzt die Turn-Startzeit?** Der **Agent** — Turn = seine `working`-Phase. Er setzt die Zeit,
+wenn er das Flag belegt, und gibt sie jedem AI-Call dieses Turns mit (Tool-Loop, Compact im Turn,
+Such-Unterloop). **Nicht** die Bridge (lebt pro Request/Call, kennt keinen Turn — eine frische Bridge im
+Compact brachte eine fremde Zeit) und **nicht** der Monitor (bei Delegation geteilt: ein Wert für zwei
+Agenten). Die Bridge besitzt nur noch Call-Timer (PP/Token/Think → tok/s).
+
+**Wer entscheidet den Chat-Rebuild?** Die **View** (Plugin `AIChatView`, später Web), allein an
+`onCompactCompleted(agentName, …)`: Absender == angezeigter Agent und Compact erfolgreich → sofort neu
+aufbauen, innerhalb wie außerhalb eines Turns. Der Core liefert keine Zeitpunkt-Policy mehr (`DEFERRED`
+entfällt). **Der Agent besitzt den Zeitpunkt des Events:** er feuert es erst, wenn sein Memory den
+anzuzeigenden Stand hat (Pre-Turn: nach dem Anfügen der frischen Frage). Absenderlose Events
+(`onCallStart`, `onChatMessage`) lösen nie einen Rebuild aus.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant J as Jon (AbstractAgent)
+    participant Mk as Da Mek (AbstractAgent)
+    participant S as CompactService / Bridge
+    participant V as View (Monitor-Zuhörer)
+
+    Note over J: working belegt → turnStart(Jon)=10:00
+    J->>S: Call / Compact im Turn (turnStart 10:00)
+    S-->>V: Chunks "Started 10:00"
+    J->>Mk: delegieren (Jons Monitor)
+    Note over Mk: working belegt → turnStart(Mek)=10:05
+    Mk->>S: Calls (turnStart 10:05)
+    S-->>V: Chunks "Started 10:05" + onChatMessage
+    Note over V: absenderlos → kein Rebuild
+    Mk-->>V: onCompactCompleted("Da Mek")
+    V->>V: Absender ≠ aktiver Agent (Jon) → kein Rebuild
+    Mk-->>J: Antwort
+    J->>S: nächster Call (turnStart 10:00)
+    S-->>V: Chunks "Started 10:00"
 ```
 
 ## Diagramm (Sequenz)

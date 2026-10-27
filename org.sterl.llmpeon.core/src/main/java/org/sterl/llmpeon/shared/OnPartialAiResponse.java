@@ -12,7 +12,7 @@ import org.jspecify.annotations.Nullable;
  * @param startedAt       the turn start — identical for every chunk of the turn
  * @param tokenPhaseStart epoch millis of the first partial of the current call, or {@code 0} while the token phase has not started yet
  * @param origin          the core id of the agent whose turn produced this chunk, or {@code null} when no
- *                        agent owns it — set by {@link OriginMonitor}, never guessed (see
+ *                        agent owns it — set by the producer's viewer chain, never guessed (see
  *                        {@link org.sterl.llmpeon.tool.model.SimpleMessage#origin()} for the same rule)
  */
 public record OnPartialAiResponse(Type type, String value, Instant startedAt, long tokenPhaseStart,

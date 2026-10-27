@@ -153,8 +153,8 @@ Keine Agent-Auswahl, keine weiteren Built-in- oder Custom-Agenten
 ([PR-1](index.md)). Eine Delegation an Da Thinka/Da Mek/Da Dok/Da Sniffa erscheint als
 Werkzeug-Zeilen im Chat, die das Mitglied nennen — Start und Abschluss, Parität zum Plugin.
 
-**Herkunft je Zeile.** Der Core liefert die Herkunft einer Nachricht mit (Agenten-Name im
-Message-Modell, Proposal `agent-origin-proposal.md`): Jon-Zeilen und die finalen Antworten von
+**Herkunft je Zeile.** Der Core liefert die Herkunft einer Nachricht mit (der Monitor kennt den
+aktuellen Agenten — Entwurf offen, [agent-origin-proposal](../../proposals/agent-origin-proposal.md)): Jon-Zeilen und die finalen Antworten von
 Team-Mitgliedern tragen den Namen dessen, der sie erzeugt hat; eine Zeile ohne Agenten-Bezug trägt
 **keinen** Namen statt eines erfundenen (kein „System", kein „Peon"). Nutzer-Zeilen tragen den Namen
 des Menschen, sobald es ihn gibt (R-WP-17). Gemeint ist die **dauerhafte** Zeile (der Verlauf); das
@@ -170,7 +170,7 @@ genau **einen** Gesprächsstrang.
 - GIVEN der Chat-View WHEN der Nutzer eine Nachricht sendet THEN antwortet Jon; ein Agenten-Wechsel
   ist nirgends möglich.
 
-#### UC-WP-39 — everyLineCarriesItsAuthor ✅
+#### UC-WP-39 — everyLineCarriesItsAuthor ❌ (2026-10-27: Core-Stempel entfernt, neuer Weg offen — [AF-ADR-002](adr/002-origin-in-core-display-in-factory.md))
 - GIVEN eine Antwort von Jon oder von einem Team-Mitglied WHEN sie im Chat erscheint THEN nennt die
   Zeile den Agenten-Namen, der sie erzeugt hat; hat eine Zeile keinen Agenten-Bezug, trägt sie keinen
   Namen statt eines erfundenen.
@@ -178,7 +178,7 @@ genau **einen** Gesprächsstrang.
   Herkunft (die Herkunft der wiederhergestellten Zeilen folgt aus dem Besitzer des Verlaufs, nicht aus
   einer zweiten Ablage).
 
-#### UC-WP-40 — onlyFinalAnswersFromTheTeam ✅
+#### UC-WP-40 — onlyFinalAnswersFromTheTeam ❌ (2026-10-27: Umsetzung gestrichen, neuer Weg offen — [AF-ADR-002](adr/002-origin-in-core-display-in-factory.md))
 - GIVEN Jon delegiert an ein Team-Mitglied WHEN der Chat die Delegation zeigt THEN steht die **finale**
   Antwort dieses Mitglieds als Zeile mit seinem Namen im Chat.
 - GIVEN dieselbe Delegation WHEN man den Chat betrachtet THEN sind die Zwischenschritte des
@@ -186,9 +186,8 @@ genau **einen** Gesprächsstrang.
   die Delegations-Zeilen und die finale Antwort, es gibt genau einen Gesprächsstrang, keinen zweiten
   Verlauf und keinen Mitschnitt je Agent.
 - GIVEN ein Reload nach einer Delegation WHEN der Chat neu aufgebaut wird THEN ist die finale Antwort
-  des Team-Mitglieds weiterhin Teil des Verlaufs (Live-Zeilen ausgenommen, R-WP-11) — sie liegt als
-  Attribut am Delegations-Ergebnis in Jons Verlauf, nicht in einer zweiten Ablage
-  ([Architektur](aifactory-architektur.md)).
+  des Team-Mitglieds weiterhin Teil des Verlaufs (Live-Zeilen ausgenommen, R-WP-11) — in Jons Verlauf,
+  nicht in einer zweiten Ablage.
 
 ### R-WP-5 — Antworten erscheinen laufend ✅
 

@@ -12,7 +12,7 @@ verboten → Fragen als Chat-Nachricht; Lücken als ⏳/❓ in [open-points.md](
 | 2a–2d | Config-Datei-Store im Core, `GET/PUT /api/settings`, Einstellungen-Tab | `b4f57a61` `6d6aff20` `3df46084` `50a35210` |
 | 3a–3e | Chat: drei Kanten, View, Queue, Neustart, Config je Turn | `88de42fb` `48636970` **`e3638dce`** `683748ae` `565ec1b9` `eacf02ac` |
 | 3-H1/H2 | UI in Komponenten; Härtung (Outbox, `ContextClosedEvent`) | `eb642e3e` `ec13b2e4` |
-| 3f-1 | **Core**: `origin` je Zeile, `OriginMonitor`, `onAgentCallCompleted`/`onDelegatedAnswer`, Team-Antwort als Attribut | `9ece7b89` |
+| 3f-1 | **Core** (2026-10-27 zurückgebaut, s. u.): `origin` je Zeile, `OriginMonitor`, `onAgentCallCompleted`/`onDelegatedAnswer`, Team-Antwort als Attribut | `9ece7b89` |
 | 3f-2 | Fabrik filtert Mitglieder-Interna, `done` nur vom äußersten Agenten, `AgentNames` | `f3d61f6f` |
 | 3f-3 | `delegated`-Ereignis live + Verlauf mit Herkunft (auch nach Neustart) | `cab87925` |
 | 3f-4 | UI: Urheber je Zeile, Team-Antwort als eigene dauerhafte Zeile | `ab1966ad` |
@@ -25,22 +25,19 @@ Gates: **Kern 1386/0/0**, **Fabrik 96/0/0**, **UI 22 Tests / 3 Dateien**, lint 0
 UC-WP-11/12/13 (Kacheln/Clear/Compact, Inc 5) · UC-WP-25 (Nutzername, Inc 6). Dazu zehn UC-JL
 (Jon Light, eigener Plan).
 
-## Was in 3f entschieden wurde (nicht wieder aufmachen)
+## 2026-10-27 — Inc 3f-1 (Core) zurückgebaut (Paul, im Plugin-Bugfix-Zyklus)
 
-* **Herkunft**: Core stempelt am Ort der Erzeugung (Kern-Id), Fabrik bildet auf Anzeigenamen ab
-  (`AgentNames`, Jon = „Jon"), unbekannt ⇒ `null`, nie geraten. Feld heißt `origin`.
-* **Attribut-Weg ist gemessen**: `delegatedAgent`/`delegatedAnswer` überleben
-  `ChatMessageSerializer`→`Deserializer` (Test bleibt im Kern) ⇒ Team-Antwort liegt in **Jons** History,
-  kein zweiter Speicher (R-WP-11). Der ⏳-Punkt in open-points ist damit erledigt, GIVEN 3 von UC-WP-40
-  hängt daran.
-* **Vierter/fünfter Draht-Name `delegated`** (`{origin,text}`); `done` **nur** aus
-  `onAgentCallCompleted` (behebt F1: jedes Mitglieds-Ende sendete vorher ein `done`).
+* `OriginMonitor`, `onAgentCallCompleted`, `onDelegatedAnswer`, `ToolResultAttributes`,
+  `resultAttributes` fliegen aus dem Core ([AF-ADR-002](adr/002-origin-in-core-display-in-factory.md)).
+  **Fabrik-Code ist danach defekt — bewusst**, erst bei Wiederaufnahme reparieren.
+* Bei Wiederaufnahme: `done`/`error` aus der Rückkehr von `jon.call()` in `ProjectRuntime`;
+  UC-WP-39/40 neu entwerfen über „Monitor kennt den aktuellen Agenten" (agent-origin-proposal §7a).
+* `aifactory/` soll als Geschwister-Ordner aus dem Repo wandern (Paul) — dann Core per `mvn install`.
+
+## Was in 3f entschieden wurde (weiter gültig)
+
 * **Live gilt nur Jon**: ein Mitglieds-Ende ist kein Turn-Ende; Mitglieder-Interna (Denken, Werkzeug,
   Teilantwort) sind live **und** im Verlauf unsichtbar.
-* **Der `OriginMonitor` stempelt auch die abgeleiteten Callbacks** (`onTool`/`onProblem`/`onFileUpdate`),
-  aber roh weiterreichen nur an einen Delegate **ohne** eigenen Override (`forwardsRaw`, Reflection) und
-  nie an einen verschachtelten Umschlag — sonst färbt der äußere die Zeile des inneren um. Plugin-Parität
-  (`AIChatView:395` überschreibt `onFileUpdate`).
 * **Live-Fragment trägt keinen Namen** — die dauerhafte Zeile schon (in R-WP-4 klargestellt, ⏳ in
   open-points zur Rückversicherung).
 * **Delegation = Werkzeug-Zeilen (Start + Abschluss) plus eine finale Antwort** — R-WP-4 sagt jetzt

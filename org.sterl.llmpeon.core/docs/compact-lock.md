@@ -10,6 +10,8 @@ idPrefix: CT
 > („bleibt auf `working`") ist 2026-10-23 revidiert — siehe R-CT-4 und den ADR-0052-Nachtrag.
 > **Verifikation 2026-10-18:** R-CT-1…3 und UC-CT-1/2/4 sind automatisiert (Marker in
 > `AbstractAgentTest`); UC-CT-3/5 sind **manueller Smoke — offen (Paul)**.
+> **2026-10-27:** R-CT-7 revidiert (❌) — Chat-Rebuild allein über `onCompactCompleted(agentName)` statt
+> Aufschub auf `onCallStart` (Regression 2.15.0: Chat wurde beim Start eines delegierten Sklaven geleert).
 > **2026-10-23 (✅ done, Nachtzyklus):** R-CT-4 revidiert (eigener Compact-Status 🟡 statt „working reicht") und
 > R-CT-5…7 gebaut — Compact-UI-Sichtbarkeit (unten). UC-CT-6 ist mit dem R-CT-4-Bau
 > automatisiert (Marker in `AiAgentStatusModelTest`, `AbstractAgentTest`, `CompactRosterStatusTest`).
@@ -199,37 +201,53 @@ Pre-Turn, In-Loop-Direct) enthält den Agent-Namen. Heute nennen Pre-Turn, Direc
 - GIVEN ein Compact startet über einen beliebigen Trigger WHEN die Start-Zeile emittiert wird THEN
   enthält sie den Agent-Namen.
 
-### R-CT-7 — Chat-View-Reset bei Compact des aktiven Agenten ✅ done (2026-10-23, Nachtzyklus)
+### R-CT-7 — Chat-View-Reset bei Compact des aktiven Agenten ❌ specified (revidiert 2026-10-27, Paul — Regression „Chat wird bei Delegation geleert")
 
 Kompaktiert der im UI **aktive** Agent — egal welcher Trigger (Button, `compactSession` im Loop,
 Pre-Turn, In-Loop-Direct) — baut die Chat-View nach erfolgreichem Compact aus dem Memory neu auf:
 der alte Verlauf verlässt das Chat-HTML (es läuft nicht voll), die re-geseedete Summary bleibt
 sichtbar. Sklaven-Compact: **kein** Reset (fremdes Memory — der Roster zeigt den Kontext-Drop).
+Gilt für **jede** Chat-View (Eclipse-Plugin und später die Web-View der AI Factory).
 
-Läuft der Compact **innerhalb** eines Turns (Pre-Turn, In-Loop-Direct, `compactSession`, Self-Compact
-aus einem Tool), schiebt die View den Rebuild auf das nächste Turn-Start-Event (`onCallStart`)
-desselben Agenten: R-CC-20.2 legt den Pre-Turn-Compact **vor** den Memory-Add der frischen Nachricht,
-ein sofortiger Rebuild aus dem Memory würde die bereits im Chat stehende, dort aber noch nicht
-gespeicherte User-Frage verschlucken. Bei Pre-Turn ist das derselbe Turn (`onCallStart` liegt direkt
-nach dem Memory-Add), bei den In-Loop-Triggern der nächste — aufgeschoben ist hier nie falsch, die
-frische Frage ist dann in jedem Fall im Memory. Button-Compacts laufen ohne Turn und rebuilden sofort.
+**Auslöser ist allein das Compact-Ende-Event mit Absender:** `onCompactCompleted(agentName, …)`
+nennt den kompaktierenden Agenten. Die View baut neu auf, wenn `agentName` der im UI aktive Agent
+ist und der Compact erfolgreich war — sofort, egal ob innerhalb oder außerhalb eines Turns. Andere
+Monitor-Events (`onCallStart`, `onChatMessage`) tragen keinen Absender und lösen **nie** einen
+Rebuild aus: ein delegierter Sklave feuert sie auf dem Monitor des Delegierenden. Kein Aufschub,
+kein Merker, keine Memory-Heuristik.
 
-- GIVEN der aktive Agent kompaktiert erfolgreich WHEN der Compact endet THEN Rebuild der Chat-View
-  aus dem Memory (Summary sichtbar, alter Verlauf weg). *(UC-CT-10)*
-- GIVEN ein Sklave kompaktiert WHEN der Compact endet THEN kein Rebuild der Chat-View. *(UC-CT-11)*
+**Zeitpunkt-Pflicht des Agenten:** Das Event feuert erst, wenn das Memory den Stand zeigt, den der
+Chat zeigen soll. Beim Pre-Turn-Compact heißt das: **nach** dem Anfügen der frischen Frage — sonst
+fehlte sie im neu aufgebauten Chat.
+
+> **Ausblick 🚧 (Paul 2026-10-27):** Künftig soll der Monitor bei **jedem** Event den aktuellen
+> Agenten kennen. Nicht Teil dieser Regel; Design offen ([agent-origin-proposal](../../proposals/agent-origin-proposal.md)).
+
+- GIVEN der aktive Agent kompaktiert per Button erfolgreich WHEN der Compact endet THEN Rebuild der
+  Chat-View aus dem Memory (Summary sichtbar, alter Verlauf weg). *(UC-CT-10)*
+- GIVEN ein Sklave kompaktiert WHEN er danach weiterarbeitet THEN bleibt die Chat-View unverändert.
+  *(UC-CT-11)*
 - GIVEN der Compact scheitert (FAILED_EMPTY) WHEN der Job endet THEN kein Rebuild (Memory
   unverändert), der `onProblem`-Hinweis ist sichtbar. *(UC-CT-12)*
+- GIVEN der aktive Agent hat im Turn kompaktiert und delegiert danach WHEN der Sklave
+  `onCallStart`/`onChatMessage` auf demselben Monitor feuert THEN bleibt die Chat-View unverändert.
+  *(UC-CT-17)*
 
-#### UC-CT-10 — mainAgentCompactResetsChatView ✅
-- GIVEN der aktive Agent kompaktiert erfolgreich WHEN der Compact endet THEN wird die Chat-View aus
-  dem Memory neu aufgebaut.
-- GIVEN der aktive Agent kompaktiert während eines laufenden Turns (Pre-Turn, die frische Frage ist
-  noch nicht im Memory) WHEN der Compact endet THEN bleibt die Chat-View zuerst unverändert und wird
-  beim Turn-Start-Event desselben Agenten neu aufgebaut — die frisch gestellte Frage verschwindet
-  nicht.
-  *(Automatisiert: die Policy-Entscheidung — `CompactFeedbackTest` (Sofort und Aufschub) und
-  `AbstractAgentCompactResultTest` (`withinTurn` am Event). Der Flush selbst ist manueller Smoke:
-  Pre-Turn-Compact in einer langen Session — die gerade gestellte Frage muss im Chat stehen bleiben.)*
+#### UC-CT-10 — mainAgentCompactResetsChatView ❌
+- GIVEN der aktive Agent kompaktiert per Button erfolgreich WHEN der Compact endet THEN wird die
+  Chat-View aus dem Memory neu aufgebaut.
+- GIVEN der aktive Agent kompaktiert im Turn erfolgreich (Pre-Turn, In-Loop, `compactSession`) WHEN
+  `onCompactCompleted` mit seinem Namen eintrifft THEN wird die Chat-View sofort aus dem Memory neu
+  aufgebaut.
+
+#### UC-CT-16 — preTurnCompactSignalsAfterFreshQuestion ❌
+- GIVEN ein Agent mit langem Verlauf und eine frische Frage löst den Pre-Turn-Compact aus WHEN
+  `onCompactCompleted` feuert THEN enthält sein Memory zu diesem Zeitpunkt bereits die frische Frage
+  — ein Rebuild zeigt Summary **und** Frage.
+
+#### UC-CT-17 — delegatedMemberEventsDoNotResetChatView ❌
+- GIVEN der aktive Agent hat im Turn kompaktiert und anschließend delegiert WHEN der Sklave
+  `onCallStart`/`onChatMessage` auf dessen Monitor feuert THEN bleibt die Chat-View unverändert.
 
 #### UC-CT-11 — slaveCompactDoesNotResetChatView ✅
 - GIVEN ein Sklave kompaktiert WHEN der Compact endet THEN bleibt die Chat-View unverändert.
@@ -238,20 +256,14 @@ frische Frage ist dann in jedem Fall im Memory. Button-Compacts laufen ohne Turn
 - GIVEN der Compact des aktiven Agenten scheitert WHEN der Job endet THEN kein Rebuild und der
   `onProblem`-Hinweis ist sichtbar.
 
-> Umsetzungshinweis: **ein** Kanal statt Trigger-Sonderfälle — `AiMonitor.onCompactCompleted(agentName,
-> result, withinTurn)` feuert genau einmal pro gelaufenem Compact (COMPACTED **und** FAILED_EMPTY, nie
-> bei SKIPPED_SMALL, nie auf Throw) und liegt nach der Freigabe des Arbeits-Flags, damit ein Refresh in
-> der Reaktion den Agenten als idle sieht. `withinTurn` heißt: das Arbeits-Flag war beim Compact schon
-> belegt, der Compact lief also in einem Turn — genau der Fall, in dem ein sofortiger Rebuild die
-> frische Frage verschluckt. Die Entscheidung ist Core-Policy
-> `CompactFeedback.resetTiming(result, compactedAgentName, activeAgentName, withinTurn)` →
-> `NONE | NOW | DEFERRED`; die View hält einen `DEFERRED`-Reset nur auf dem UI-Thread offen und flusht
-> ihn im `onCallStart`-Runnable desselben Agenten (ein voller `refreshChat()` verwirft einen offenen
-> Pending). Damit das ein sicherer Flush-Punkt ist, liegt `onCallStart` **nach** dem Memory-Add der
-> Turn-Nachricht. Headless getrennt durch `CompactFeedbackTest` (UC-CT-10/11/12 inkl. Deferred) und
-> `AbstractAgentCompactResultTest` (`compactCompletedEventCarriesAgentAndResult`,
-> `inTurnCompactReportsTurnFlag`, `noCompactCompletedOnSkipOrThrow`) sowie
-> `AbstractAgentTest.onCallStartSeesUserMessageInMemory` (sichert den Flush-Punkt gegen Rückbau); der
-> eigentliche Chat-Rebuild inkl. Pending/Flush ist manueller Smoke (unten).
+> Umsetzungshinweis: `AiMonitor.onCompactCompleted(agentName, result)` — **ohne** `withinTurn`: die View
+> unterscheidet Turn/kein Turn nicht mehr, ein ungenutzter Parameter lüde nur zu neuer Sonderlogik
+> ein (Paul 2026-10-27). Feuert genau einmal
+> pro gelaufenem Compact (COMPACTED **und** FAILED_EMPTY, nie bei SKIPPED_SMALL, nie auf Throw) —
+> beim Button-Compact nach der Freigabe des Arbeits-Flags. Es ist der **einzige** Rebuild-Auslöser der View — für Button- und
+> Turn-Compact gleich. Der bisherige Aufschub-Pfad (`DEFERRED` + `pendingChatReset` + Flush in
+> `onCallStart`) entfällt — genau er hat den Chat bei Delegation geleert. Manueller Smoke: lange
+> Session, Pre-Turn-Compact, dann Delegation — Summary + frische Frage bleiben stehen, der Chat wird
+> beim Start des Sklaven nicht geleert.
 
 

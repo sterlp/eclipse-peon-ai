@@ -375,7 +375,7 @@ Compact-only. Sichtbarkeit für den 400-Fall kommt stattdessen über ein neues F
 Agent den Abbruch kennt und nachfolgend reagieren kann.
 
 
-### R-CC-18 — Voller Context: Compact direkt statt auf den Hint warten ✅ done (Paul 2026-10-18)
+### R-CC-18 — Voller Context: Compact direkt statt auf den Hint warten ❌ specified (✅ 2026-10-18; geschärft 2026-10-27: Erfolg sperrt keinen weiteren Direkt-Compact, UC-CC-2)
 
 **Anlass:** Der Compact-Hint (R-CC-4) ist eine *Bitte* ans Modell. Ist der Context bereits über dem
 Budget, kommt sie zu spät — der nächste Provider-Call geht unverändert raus und stirbt am
@@ -404,10 +404,15 @@ Ereignis-Gate (`ranTool(compactSession)` + Turn-Merker) ersatzlos.
 - **R-CC-18.4 — Kein zusätzlicher Text ins LLM-Memory:** die Reinsert-UserMessage endet bereits
   mit dem Marker-Block `Session compacted:` + Summary (R-CC-9), der `onTool`-Report trägt die Zahlen. Ein zweiter Hinweis wäre
   Rauschen und ein neuer Sonderfall für die Stufenkürzung.
-- **Ein Versuch pro Turn:** liefert der Direkt-Compact `SKIPPED_SMALL` oder `FAILED_EMPTY`, wird er
-  im **selben** Turn nicht wiederholt (sonst ein Compressor-LLM-Call pro Iteration). Die Entscheidung
-  ist zustandsbasiert und prüft in der **nächsten** Runde bzw. beim nächsten Turn erneut; die
-  Delegations-Regel (`PoDelegateTool`) versucht es ebenfalls wieder.
+- **Kein Wiederholen eines Fehlschlags im Turn — ein Erfolg sperrt nichts** (geschärft 2026-10-27,
+  Paul — Überlauf `205k > 170k` in einem langen Sklaven-Turn): liefert der Direkt-Compact
+  `SKIPPED_SMALL` oder `FAILED_EMPTY`, wird er im **selben** Turn nicht wiederholt (sonst ein
+  Compressor-LLM-Call pro Iteration); beim nächsten Turn bzw. über die Delegations-Regel
+  (`PoDelegateTool`) wird erneut geprüft. War er **erfolgreich** (`COMPACTED`), bleibt R-CC-18.1 im
+  selben Turn scharf: wächst das Memory erneut über das Budget, wird erneut direkt compactiert.
+
+- GIVEN der Direkt-Compact im Turn war erfolgreich WHEN das Memory im selben Turn erneut über das
+  Budget wächst THEN wird vor dem nächsten Call erneut direkt compactiert. *(UC-CC-2)*
 
 - GIVEN `used` 170001 und Budget 160000 WHEN der nächste Call ansteht THEN ist compactiert, **bevor**
   der Call rausgeht — der Call trägt die neue, kleine History. *(Test: `directCompactBeforeCall`)*
@@ -422,6 +427,12 @@ Ereignis-Gate (`ranTool(compactSession)` + Turn-Merker) ersatzlos.
   (R-CIB-1-Semantik: 0 = off). *(Test: `directCompactRespectsOffSwitch`)*
 - GIVEN Memory ≤ `MIN_COMPACT_MESSAGES` WHEN über Budget THEN kein Direkt-Compact (R-CC-8) — der
   Provider-Fehler bleibt der ehrliche Ausgang. *(Test: `directCompactRespectsMinMessages`)*
+
+#### UC-CC-2 — successfulDirectCompactDoesNotBlockTheNextOne ❌
+- GIVEN ein Turn, dessen Direkt-Compact erfolgreich war (`COMPACTED`) WHEN das Memory im selben Turn
+  erneut über `autoCompactAfter` wächst THEN wird vor dem nächsten Call erneut direkt compactiert.
+- GIVEN ein Turn, dessen Direkt-Compact `SKIPPED_SMALL`/`FAILED_EMPTY` lieferte WHEN das Memory in
+  einer späteren Runde weiter über dem Budget liegt THEN kein zweiter Direkt-Versuch in diesem Turn.
 
 **Kein Pre-Turn-Gate für den Faktor:** `AbstractAgent` compactet nie nach einer Agent-Eigenschaft —
 die 0.7-Regel lebt allein in der Delegation ([ADR-0071](../../docs/adr/0071-compact-policy-owned-by-delegation.md)).

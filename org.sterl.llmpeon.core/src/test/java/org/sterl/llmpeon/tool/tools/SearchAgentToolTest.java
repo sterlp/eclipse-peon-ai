@@ -24,8 +24,6 @@ import org.sterl.llmpeon.compact.CompactConstants;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
-import org.sterl.llmpeon.shared.OnPartialAiResponse;
-import org.sterl.llmpeon.shared.OriginMonitor;
 import org.sterl.llmpeon.tool.SmartTool;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
@@ -214,58 +212,5 @@ class SearchAgentToolTest {
         assertThat(streamMock.getLastRequest().modelName()).isEqualTo("search-specific-model");
     }
 
-    /**
-     * Da Sniffa is a tool and not a team member, but its sub-loop must still say who spoke: without its
-     * own origin every sub-loop line would arrive wearing the asking agent's name, and a viewer that
-     * shows only that agent's lines would read the search's thinking as its own.
-     */
-    @Test
-    @Timeout(10)
-    void subLoopCarriesItsOwnOrigin() {
-        // GIVEN — the parent turn listens through the wrapper its agent put around it
-        var service = new RecordingToolService();
-        var streamMock = new StreamMock();
-        var cm = streamMock.buildStreamingMock(r -> ChatResponse.builder()
-                .aiMessage(AiMessage.from("SNIF ANTWORT")).build(), "SNIF", " ANTWORT");
-        var listener = new OriginRecordingMonitor();
-        var request = ToolLoopRequest.builder()
-                .chatModel(new ConfiguredChatModel(LlmConfig.newOpenAi("foo"), cm))
-                .memory(new ThreadSafeMemory())
-                .monitor(OriginMonitor.of(listener, "Peon-PO"))
-                .build();
-        var sniffa = service.getTool(SearchAgentTool.class).get();
-        sniffa.withToolRequest(request);
-
-        // WHEN
-        sniffa.searchAgent("find something");
-
-        // THEN — every sub-loop line and chunk names Da Sniffa and never the asking agent
-        assertThat(listener.chunks).as("the sub-loop did stream").isNotEmpty();
-        assertThat(listener.chunks).allSatisfy(chunk -> assertThat(chunk.origin()).isEqualTo(SearchAgentTool.NAME));
-        assertThat(listener.lines).filteredOn(line -> line.role() == SimpleMessage.Type.AI).singleElement()
-                .satisfies(line -> {
-                    assertThat(line.origin()).isEqualTo(SearchAgentTool.NAME);
-                    assertThat(line.message()).isEqualTo("SNIF ANTWORT");
-                });
-
-        // AND — the tools own status lines stay lines of the agent that called it
-        assertThat(listener.lines).filteredOn(line -> line.role() == SimpleMessage.Type.TOOL).hasSize(2)
-                .allSatisfy(line -> assertThat(line.origin()).isEqualTo("Peon-PO"));
-    }
-
-    /** Keeps the chunks and the chat lines apart, so an origin can be read per kind of line. */
-    static class OriginRecordingMonitor implements AiMonitor {
-        final List<OnPartialAiResponse> chunks = new ArrayList<>();
-        final List<SimpleMessage> lines = new ArrayList<>();
-
-        @Override
-        public void onChatResponse(SimpleMessage message) {
-            lines.add(message);
-        }
-
-        @Override
-        public void onStreamingChunk(OnPartialAiResponse chunk) {
-            chunks.add(chunk);
-        }
-    }
 }
+

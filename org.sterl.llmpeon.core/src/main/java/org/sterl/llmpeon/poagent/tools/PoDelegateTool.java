@@ -15,7 +15,6 @@ import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.CallStats;
 import org.sterl.llmpeon.shared.StringUtil;
-import org.sterl.llmpeon.tool.ToolResultAttributes;
 import org.sterl.llmpeon.tool.tools.AbstractTool;
 
 import dev.langchain4j.agent.tool.P;
@@ -259,7 +258,6 @@ public class PoDelegateTool extends AbstractTool {
             final var answer = response != null
                     ? response.aiMessage().text()
                     : null;
-            announceFinalAnswer(target, answer);
 
             final var result = StringUtil.hasValue(answer)
                     ? answer + System.lineSeparator() + statsLine
@@ -270,26 +268,6 @@ public class PoDelegateTool extends AbstractTool {
             onProblem(target.uiName() + " " + e.getMessage());
             return "Failed: " + target.uiName() + " " + e.getMessage();
         }
-    }
-
-    /**
-     * The member's final answer is a fact of its own — two channels, both keyed by the member's
-     * <b>core</b> id (a display name is not core knowledge):
-     * <ul>
-     * <li>{@link org.sterl.llmpeon.shared.AiMonitor#onDelegatedAnswer} for a live consumer,</li>
-     * <li>the result attributes of this call's tool result for a consumer reading the history later —
-     * they never reach the model and survive the history round-trip.</li>
-     * </ul>
-     * The model-facing text stays {@code answer + stats line}: the answer is additionally carried, not
-     * reshaped. No answer (null, blank, failed call) means no announcement and no attribute — the
-     * "returned no result" line the model already gets is the honest, visible failure.
-     */
-    private void announceFinalAnswer(NamedAgent target, String answer) {
-        if (!StringUtil.hasValue(answer)) return;
-        var agentName = target.agent().getName();
-        monitor.onDelegatedAnswer(agentName, answer);
-        attachResultAttribute(ToolResultAttributes.DELEGATED_AGENT, agentName);
-        attachResultAttribute(ToolResultAttributes.DELEGATED_ANSWER, answer);
     }
 
     /** Paul: 0.7 des geteilten Budgets — vor der Delegation compacten, sonst stirbt der Task. */

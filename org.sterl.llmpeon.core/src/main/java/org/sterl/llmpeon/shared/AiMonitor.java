@@ -42,28 +42,6 @@ public interface AiMonitor {
     default void onCallCompleted(ChatResponse response, Duration duration) {}
 
     /**
-     * {@link #onCallCompleted(ChatResponse, Duration)} of one <b>named</b> agent — fired by the agent
-     * that finished, with its own {@code org.sterl.llmpeon.agent.AiAgent#getName()}, so a listener never
-     * has to guess whose turn ended. A delegated member announces itself; a viewer that shows one
-     * conversation decides whether a nested member's completion means anything to it.
-     * <p>
-     * Fired at the same point as {@link #onCallCompleted} and never instead of it: a listener that only
-     * wants today's behaviour keeps listening to {@code onCallCompleted} and is untouched.
-     */
-    default void onAgentCallCompleted(String agentName, ChatResponse response, Duration duration) {}
-
-    /**
-     * The final answer a delegation handed back to the delegating agent — the pure text the member
-     * produced, not the status line the model additionally receives. A fact, not "the member's last
-     * answer": only a delegation that actually returned an answer fires it, and a member that was asked
-     * twice fires it twice.
-     * <p>
-     * {@code agentName} is the member's core id ({@code org.sterl.llmpeon.agent.AiAgent#getName()});
-     * display names are not core knowledge.
-     */
-    default void onDelegatedAnswer(String agentName, String answer) {}
-
-    /**
      * Fired for every completed LLM response that carried real token usage — main loop, search
      * sub-agent and compaction all funnel through here. Never fired for estimated/missing usage.
      * Default is a no-op.

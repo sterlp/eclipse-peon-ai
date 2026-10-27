@@ -213,6 +213,18 @@ Bisher hatten Tool-Zeilen keine Überschrift. Neu:
 
 ---
 
+## 7a. Richtung: Monitor kennt den aktuellen Agenten (Paul 2026-10-27)
+
+Jedes Monitor-Event soll künftig den **aktuellen Agenten** tragen — nicht nur Chat-Zeilen, auch
+`onCallStart`/`onChatMessage`/`onStreamingChunk`. Heute feuert ein delegierter Sklave diese Events
+anonym auf dem Monitor des Delegierenden; die Chat-View muss den Absender darum am Memory erraten
+([R-CT-7](../org.sterl.llmpeon.core/docs/compact-lock.md)). Mit Absender am Event wird R-CT-7 einfacher.
+
+Leitplanken aus dem Review des Web-Baus (2026-10-27): **kein** zweiter Abschluss-Kanal
+(`onAgentCallCompleted` — Turn-Ende = Rückkehr von `call()`), **kein** Delegations-Antwort-Event
+(`onDelegatedAnswer`), **keine** Reflection im Wrapper. Ort des Stempelns offen: Nachricht
+(`SimpleMessage.origin`) vs. Decorator an der Delegationsgrenze (`PoDelegateTool`/`SearchAgentTool`).
+
 ## 8. Offene Punkte
 
 *(Keine — Design ist nach deiner Revision eindeutig: `origin` = Agenten-Name oder null, UI blendet bei null aus, kein fake Fallback.)*

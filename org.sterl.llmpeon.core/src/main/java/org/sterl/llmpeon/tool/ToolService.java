@@ -252,11 +252,7 @@ public class ToolService {
     public static record ToolResult(boolean clearMemory, ToolExecutionResultMessage message) {}
 
     /**
-     * Runs one tool call and builds the result the model reads. The attributes the tool attached
-     * ({@link org.sterl.llmpeon.tool.tools.AbstractTool#attachResultAttribute}) are collected here,
-     * <b>after</b> the run — the second half of the pair whose first half is
-     * {@code AbstractTool.withToolRequest} emptying that map when the invocation is entered. One call
-     * after the other ({@code runAllTools} iterates sequentially), never two of the same tool at once.
+     * Runs one tool call and builds the result the model reads.
      */
     public ToolExecutionResultMessage execute(ToolExecutionRequest tr, ToolLoopRequest req) {
         var executor = toolExecutors.get(tr.name());
@@ -277,20 +273,7 @@ public class ToolService {
         } else {
             result = executor.run(tr, req);
         }
-        var message = ToolExecutionResultMessage.from(tr, result);
-        var attributes = resultAttributes(executor);
-        return attributes.isEmpty() ? message : message.toBuilder().attributes(attributes).build();
-    }
-
-    /**
-     * What the tool attached for the model-facing result
-     * ({@link org.sterl.llmpeon.tool.tools.AbstractTool#attachResultAttribute}) — read after the run,
-     * which is the only point where the call's own values are still in reach. Empty for every tool
-     * that attaches nothing, so those results stay exactly the object they always were.
-     */
-    private static Map<String, Object> resultAttributes(SmartToolExecutor executor) {
-        if (executor == null) return Map.of();
-        return executor.getTool() instanceof AbstractTool tool ? tool.resultAttributes() : Map.of();
+        return ToolExecutionResultMessage.from(tr, result);
     }
 
     /**

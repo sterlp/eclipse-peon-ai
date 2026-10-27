@@ -1,46 +1,35 @@
-# AF-ADR-002 — Herkunft je Chat-Zeile: der Core stempelt, die Fabrik entscheidet
+# AF-ADR-002 — Herkunft und Team-Antwort: kein zweiter Monitor-Kanal
 
-**Status:** Accepted (2026-10-26, Inc 3f)
+**Status:** Accepted (2026-10-27, Paul) — ersetzt den Inc-3f-Bau vom 2026-10-26 vollständig.
 
 ## Context
 
-Der Chat soll **nur** Jon und die **finalen** Antworten seines Teams zeigen (R-WP-4, UC-WP-39/40). Der Core
-gab Jons Monitor an jedes delegierte Mitglied weiter, damit war jede Mitglieder-Zeile live als Jons Zeile
-unterwegs und die fertige Mitglieder-Antwort erreichte den Chat **gar nicht**. Naheliegende Auswege, alle
-verworfen: in der Fabrik den Werkzeug-Text parsen (`statsLine`, `charsPrefix`) — ein zweiter, stiller
-Vertrag auf Core-Formulierungen; eine zweite Chat-Datei — Verstoß gegen R-WP-11; „die letzte Antwort eines
-Agenten ist die finale" — läßt Denk-Zwischenprodukte durch und unterscheidet zwei Delegationen nicht;
-im Core filtern — ändert das Plugin (PR-3).
+Der Chat soll **nur** Jon und die **finalen** Antworten seines Teams zeigen, jede dauerhafte Zeile mit
+ihrem Urheber (R-WP-4, UC-WP-39/40). Der Core reicht Jons Monitor ungefiltert an jedes delegierte
+Mitglied weiter — Mitglieder-Events kommen also ohne Absender bei Jons Zuhörer an.
+
+Inc 3f (2026-10-26) hat das im Core mit **zusätzlichen Kanälen** gelöst: `OriginMonitor` (Umschlag um
+jeden Turn, Reflection-Weiche für Overrides), `onAgentCallCompleted` (zweites Turn-Ende neben
+`onCallCompleted`), `onDelegatedAnswer` + `ToolResultAttributes` + `AbstractTool.resultAttributes`
+(Team-Antwort als eigenes Event und als Attribut in der History). Das Plugin nutzte keinen davon.
 
 ## Decision
 
-1. **Der Core stellt die Tatsache, nicht die Anzeige.** Ein Monitor-Umschlag (`OriginMonitor`) stempelt die
-   **Kern-Id** am Ort der Erzeugung (`SimpleMessage.origin`, `OnPartialAiResponse.origin`) — nur wenn noch
-   keine Herkunft gesetzt ist, damit die innerste (besitzende) Umschreibung gewinnt. Anzeigenamen kennt
-   nur die Fabrik (`AgentNames`), unbekannte Herkunft bleibt `null`; niemand rät einen Namen.
-2. **Ableitungen werden mitgestempelt, aber nie ein Override verschluckt.** `onTool`/`onProblem`/
-   `onFileUpdate` baut der Umschlag selbst (über das eigene `onChatResponse`); roh weiterreichen darf er nur
-   an einen Delegate **ohne** eigenen Override (Reflection auf die deklarierende Klasse) und **nie** an einen
-   verschachtelten Umschlag. Grund: `AIChatView` des Plugins überschreibt `onFileUpdate` (Diff-Ansicht).
-3. **Die finale Team-Antwort ist eine eigene Tatsache** — der Text, den das Delegations-Werkzeug an Jon
-   zurückgibt, gemeldet per `onDelegatedAnswer` und als langchain4j-`attributes`
-   (`delegatedAgent`/`delegatedAnswer`) am Werkzeug-Ergebnis in **Jons** History abgelegt. Attributes gehen
-   nicht ans Modell; der Rundlauf durch die History ist durch einen Kern-Test festgenagelt (kein zweiter
-   Speicher).
-4. **`done` kommt nur vom äußersten Agenten** (`onAgentCallCompleted`, vom Umschlag durchgelassen). Ein
-   Mitglieds-Ende ist kein Turn-Ende.
-5. **Vierter Draht-Name `delegated`** `{origin,text}` — die Team-Antwort braucht nach der Filterung einen
-   eigenen Kanal; sie ist die einzige Live-Zeile, die nicht von Jon stammt.
+1. **Alles aus Inc 3f-1 fliegt aus dem Core** (`OriginMonitor`, `onAgentCallCompleted`,
+   `onDelegatedAnswer`, `ToolResultAttributes`, `resultAttributes`). Das Feld `origin` an
+   `SimpleMessage`/`OnPartialAiResponse` bleibt vorerst ungenutzt stehen.
+2. **Turn-Ende = Rückkehr von `jon.call()`** — kein Monitor-Event. Die Fabrik ruft `call()` selbst.
+3. **Herkunft (UC-WP-39) und Team-Antwort (UC-WP-40) sind neu offen (❌).** Richtung: der Monitor
+   kennt künftig den **aktuellen Agenten** ([agent-origin-proposal](../../../proposals/agent-origin-proposal.md) §7a);
+   Ort und Form werden dort entworfen, nicht in der Fabrik.
+4. **Der Fabrik-Code darf bis dahin defekt sein** (Paul) — nur die Docs werden nachgezogen.
 
 ## Consequences
 
-* Der Core bleibt für das Plugin verhaltensgleich: die zwei neuen `AiMonitor`-Methoden sind leer, keine
-  Signatur entfernt; `onChatResponse` bleibt die einzige abstrakte Methode (62 Implementierungen).
-* Ein **fünfter** Ereignis-Typ ist billig: `ChatStreamRegistry.toSse` schaltet erschöpfend über das
-  versiegelte `ChatEvent` — es kompiliert nicht mehr, statt den Zustell-Thread eines Zuschauers zu töten.
-* Das **Live-Fragment** eines Turns trägt keinen Namen (live spricht nur Jon); der Name gehört zur
-  dauerhaften Zeile ([web-prototype R-WP-4](../web-prototype.md)).
-* Pro Agent gibt es **keinen** Mitschnitt und keinen zweiten Verlauf; die Kacheln (Inc 5) sind eine andere
-  Ansicht auf dieselbe Memory, kein neuer Speicher.
-* Wer die Herkunft „einfacher" aus dem Antworttext ableiten will, baut einen zweiten Vertrag auf
-  Core-Formulierungen — dagegen steht diese ADR.
+* Leitplanken für den Neuentwurf: **kein** zweiter Abschluss-Kanal, **kein** Delegations-Antwort-Event,
+  **keine** Reflection im Wrapper, **keine** Attribut-Map je Tool-Instanz (Nebenläufigkeit).
+* Weiterhin verworfen (nicht wieder vorschlagen): Werkzeug-Text parsen (`statsLine`) — zweiter, stiller
+  Vertrag auf Core-Formulierungen; eine zweite Chat-Datei — Verstoß gegen R-WP-11; „die letzte Antwort
+  eines Agenten ist die finale" — läßt Denk-Zwischenprodukte durch und unterscheidet zwei Delegationen nicht.
+* Chat-Rebuild nach Compact folgt derselben Regel wie im Plugin
+  ([R-CT-7](../../../org.sterl.llmpeon.core/docs/compact-lock.md)).

@@ -7,7 +7,6 @@ import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.shared.ArgsUtil;
-import org.sterl.llmpeon.shared.OriginMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolPolicy;
 import org.sterl.llmpeon.tool.ToolService;
@@ -22,13 +21,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 public class SearchAgentTool extends AbstractTool {
-
-    /**
-     * The search sub-loop's stamp: Da Sniffa is a tool, not a team member, so his thinking is his own —
-     * a customer that shows one conversation can tell it apart from the asking agent's lines instead of
-     * reading it as theirs. Not an {@code AiAgent} name and never a history file.
-     */
-    public static final String NAME = "Peon-Search";
 
     private final SystemMessage system = SystemMessage.systemMessage(PromptLoader.load("search-agent.md"));
 
@@ -86,8 +78,6 @@ public class SearchAgentTool extends AbstractTool {
                 .staticMessages(staticMessages)
                 .toolFilter(filter.and(exec -> allow.test(exec.getSpec().name())))
                 .toolNameFilter(allow)
-                // the sub-loop's lines are Da Sniffa's own, not the asking agent's (its agent is nulled below)
-                .monitor(OriginMonitor.of(monitor, NAME))
                 .memory(messages)
                 .agentConfig(cfg.searchAgentConfig())
                 // R-CC-15: never inherit the parent agent — a sub-loop compactSession would

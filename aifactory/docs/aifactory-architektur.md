@@ -82,7 +82,9 @@ sequenceDiagram
   C->>K: subscribe(projectId)
   R->>J: call(text, monitor)
   J-->>K: Monitor-Events
-  K-->>B: SSE (partial · tool · delegated · done)
+  K-->>B: SSE (partial · tool)
+  R-->>K: done / error (Rückkehr von call())
+  K-->>B: SSE (done · error)
 ```
 
 * **Drei Kanten, kein vierter Pfad:** `GET …/messages` (Verlauf), `POST …/messages` (Turn anstoßen,
@@ -94,17 +96,15 @@ sequenceDiagram
 * **Ein `ProjectRuntime` je Projekt**, `ChatStreamRegistry` hält **keine** Nachrichten — nur die
   Zuhörer je Projekt und den Broadcast. Wer den Verlauf braucht, liest ihn aus dem Core-History-Store
   (`home.stateDir(id)`), nicht aus einem zweiten Speicher.
-* **Fünf Ereignis-Namen, jeder mit Besitzer:** `partial` (ein Token-Delta), `tool` (eine Werkzeug-/
-  Problem-Zeile), `delegated` (die **finale** Antwort eines Team-Mitglieds, live), `done`, `error`. Der
-  Core stempelt die Herkunft am Ort der Erzeugung (`origin`, Kern-Id); die Fabrik filtert und benennt.
-  `delegated` existiert, weil nach dem Filter die Team-Antwort über keinen anderen Kanal live erreichbar
-  wäre — die Alternative (Mitglieder-Denken durchreichen) verletzt R-WP-4, die andere (Antwort erst nach
-  `done` aus dem Verlauf) verletzt UC-WP-40 GIVEN 1.
-* **Die finale Team-Antwort ist eine eigene Tatsache, kein „letzte Antwort eines Agenten".** Sie entsteht
-  dort, wo das Delegations-Werkzeug sie an Jon zurückgibt, und liegt als Attribut am Werkzeug-Ergebnis in
-  **Jons** History-Datei (`attributes` gehen nicht ans Modell) — derselbe Store, kein Sidecar, und damit
-  auch nach einem Neustart lesbar. `done` kommt **nur** vom äußersten Agenten (`onAgentCallCompleted`);
-  ein Mitglieds-Ende ist kein Turn-Ende.
+* **Ereignis-Namen, jeder mit Besitzer:** `partial` (ein Token-Delta), `tool` (eine Werkzeug-/
+  Problem-Zeile), `done`, `error`. `done`/`error` sendet `ProjectRuntime`, wenn `jon.call()`
+  zurückkehrt bzw. wirft — **kein** Monitor-Event (ein Mitglieds-Ende ist kein Turn-Ende).
+* **Finale Team-Antwort (UC-WP-40) ❌ offen:** der Weg über `onDelegatedAnswer` + Attribut am
+  Werkzeug-Ergebnis ist 2026-10-27 gestrichen ([AF-ADR-002](adr/002-origin-in-core-display-in-factory.md));
+  ein neuer Weg ohne zweiten Monitor-Kanal ist nicht entworfen. Der Code ist bis dahin bewusst defekt.
+* **Chat-Rebuild nach Compact:** dieselbe Regel wie im Plugin —
+  [R-CT-7](../../org.sterl.llmpeon.core/docs/compact-lock.md) (`onCompactCompleted` mit dem angezeigten
+  Agenten als Absender → neu aus dem Verlauf aufbauen).
 
 * **Komponentenzuschnitt:** `chat` besitzt Controller + `ProjectRuntime` + `ChatStreamRegistry` und darf
   `config` und `project` fragen; `config` liefert die `LlmConfig` pro Turn (UC-WP-24 GIVEN 3), `project`

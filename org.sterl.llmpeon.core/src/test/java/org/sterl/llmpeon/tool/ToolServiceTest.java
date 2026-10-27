@@ -3,7 +3,6 @@ package org.sterl.llmpeon.tool;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.entry;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -526,49 +525,6 @@ class ToolServiceTest {
         assertThatNoException().isThrownBy(() -> subject.executeLoop(req));
     }
 
-    /** A tool that reports one fact of its call as a result attribute, and one only its first call has. */
-    static class AttributedTool extends org.sterl.llmpeon.tool.tools.AbstractTool {
-        private int calls;
-
-        @Tool("attaches one attribute per call")
-        public String attr(@dev.langchain4j.agent.tool.P(name = "value") String value) {
-            attachResultAttribute("value", value);
-            if (++calls == 1) {
-                attachResultAttribute("onlyInFirstCall", value);
-            }
-            return "done " + value;
-        }
-    }
-
-    /**
-     * Attributes belong to <b>one</b> call: the tool instance is shared across turns, so a value of the
-     * previous call must not ride along into the next result.
-     */
-    @Test
-    void resultAttributesArePerInvocation() {
-        // GIVEN
-        subject.replaceTool(new AttributedTool());
-        var req = ToolLoopRequest.builder().memory(new ThreadSafeMemory())
-                .chatModel(new ConfiguredChatModel(LlmConfig.newOpenAi("foo"), mock(StreamingChatModel.class)))
-                .build();
-
-        // WHEN — first call
-        var first = subject.execute(ToolExecutionRequest.builder()
-                .id("1").name("attr").arguments("{\"value\":\"eins\"}").build(), req);
-
-        // THEN — the tool really ran, and its own values are on the result
-        assertThat(first.text()).isEqualTo("done eins");
-        assertThat(first.attributes()).containsOnly(entry("value", "eins"), entry("onlyInFirstCall", "eins"));
-
-        // WHEN — second call, same tool instance
-        var second = subject.execute(ToolExecutionRequest.builder()
-                .id("2").name("attr").arguments("{\"value\":\"zwei\"}").build(), req);
-
-        // THEN — only its own value, nothing of the first call left
-        assertThat(second.text()).isEqualTo("done zwei");
-        assertThat(second.attributes()).containsOnly(entry("value", "zwei"));
-    }
-
     /**
      * R-ATC-8 preview source: activeNames filters the built-in executors via classFilter and
      * applies nameFilter to the names — the single composition the agent preview and the
@@ -593,3 +549,4 @@ class ToolServiceTest {
         assertThat(names).containsExactly("searchAgent");
     }
 }
+

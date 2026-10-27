@@ -12,8 +12,7 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
   hält. Klarstellung, keine Bedeutungsänderung. *Andersfall:* soll eine Mitglieds-Ablehnung doch im Chat
   erscheinen, ist das eine Ausnahme zu R-WP-4 und braucht eine eigene Regel.
 * **⏳ Der Urheber-Name gehört zur dauerhaften Zeile, nicht zum Live-Fragment**
-  ([UC-WP-39](web-prototype.md), so gebaut 2026-10-26: Verlaufszeilen tragen „Jon" / „Da Mek", `user`
-  keinen Namen) — die Live-Zeile eines laufenden Turns trägt **keinen** Namen, weil live nur Jon spricht
+  ([UC-WP-39](web-prototype.md), 2026-10-26 gebaut, 2026-10-27 mit dem Core-Rückbau wieder ❌) — die Live-Zeile eines laufenden Turns trägt **keinen** Namen, weil live nur Jon spricht
   und damit nichts zu verwechseln ist. *Andersfall:* soll auch das wachsende Live-Fragment ein Label
   tragen, ist das eine kleine UI-Zeile — dann sagt das Doc es ausdrücklich.
 

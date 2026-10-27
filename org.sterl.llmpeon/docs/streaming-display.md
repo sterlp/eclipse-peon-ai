@@ -188,20 +188,20 @@ Kein Thread-Sync nötig (ein Thread schreibt, UI-Thread liest — volatile long 
 - **GIVEN** ein Timer läuft **WHEN** `millis()` **THEN** liefert `now − start` (live)
 - **Tag:** unit
 
-### R19 — StreamingBridge: 4 Timer, korrekte toc/s ✅
+### R19 — StreamingBridge: Call-Timer, korrekte toc/s ✅ (Total-Timer ❌ entfällt → R20, 2026-10-27)
 
-`StreamingBridge` hält 4 Timer und verwaltet sie pro `call()`:
+`StreamingBridge` hält nur Timer, die **einem Call** gehören, und verwaltet sie pro `call()`. Eine
+Turn-Zeit hält die Bridge **nicht** — sie kennt keinen Turn (R20).
 
 | Timer | Scope | Start | Stop | Reset |
 |---|---|---|---|---|
-| **Total** | Turn | Konstruktor | nie (läuft durch die Bridge-Lebenszeit — die Bridge kennt kein Turn-Ende) | nie |
 | **PP** | pro Call | `call()` Entry | erstes `onPartial*` (ANY Type) | pro `call()` |
 | **Token** | pro Call | erstes `onPartial*` | `onCompleteResponse` | pro `call()` |
 | **Think** | pro Call | `call()` Entry | erstes `onPartialThinking` | pro `call()` |
 
 **toc/s** = geschätzte Partial-Tokens (ANY Type: THINK + ANSWER + TOOL) / Token-Timer-Dauer.
 TOOL zählt den gestreamten Arguments-Delta (`partialArguments()`), nicht den Tool-Namen.
-Nicht aus dem Turn-Start (Total) — das war der Bug.
+Nicht aus dem Turn-Start — das war der Bug.
 Token-Zählung: Estimator `chars × 2 / 7` (~3,5 chars/token), konsistent an beiden Stellen
 (Live-Rate `estimateTokens(String)` inkl. Floor-Regel „≤5 chars → 1" + Context-Threshold
 `estimateTokens(List<ChatMessage>)`). **⚠️ bewusst leichte Über-Schätzung** (WEIL User
@@ -211,24 +211,38 @@ Kalibrier-Historie: `chars/3` (bis 2.7.x, ~30–50 % über llama.cpp toc/s) → 
 Nicht: Callback-Count (jeder `onPartialResponse` = 1 Token — war der zweite Bug).
 
 `OnPartialAiResponse` bekommt ein Feld `tokenPhaseStart` (epoch millis, `0` = Token-Phase
-noch nicht gestartet). Statusleiste nutzt `tokenPhaseStart` für Rate, `startedAt` für
-"working since".
+noch nicht gestartet). Statusleiste nutzt `tokenPhaseStart` für Rate, `startedAt` (Turn-Start des
+Agenten, R20) für "working since".
 
-- **GIVEN** ein Tool-Loop mit 3 LLM-Calls **WHEN** der 2. `call()` startet **THEN** PP- und Token-Timer werden neu gestartet (Total bleibt)
+- **GIVEN** ein Tool-Loop mit 3 LLM-Calls **WHEN** der 2. `call()` startet **THEN** PP- und Token-Timer werden neu gestartet (Turn-Start bleibt, R20)
 - **GIVEN** Partial-Text gesamt 3000 chars (mix THINK/ANSWER/TOOL) in 2000ms Token-Phase **WHEN** Statusleiste rendert **THEN** toc/s ≈ "500 t/s" (3000/3 = 1000 Tokens / 2s)
 - **GIVEN** ein Non-Streaming-Modell sendet 1500 chars in 200ms **WHEN** Statusleiste rendert **THEN** toc/s = "2500 t/s" (500 Tokens / 0.2s — hoch, aber ehrlich)
 - **GIVEN** keine `onPartialThinking`-Callbacks im gesamten Turn **WHEN** Turn endet **THEN** Think-Timer ist nie gestoppt → Think-Zeit nicht verfügbar
 - **GIVEN** ein Call ist in der PP-Phase (noch kein Token) **WHEN** Statusleiste rendert **THEN** kein UI-Update (kein Chunk = kein Trigger); User sieht die Urzeit aus dem START-Chunk ("Started 12:24 waiting for AI...") und kann die Wartezeit mental ablesen
 - **Tag:** core (verify timer resets per call; verify toc/s uses token-timer not turn-start; verify tokenPhaseStart in OnPartialAiResponse)
 
-### R20 — Statusleiste zeigt "Started hh:mm" ✅
+### R20 — Statusleiste zeigt "Started hh:mm" — die Turn-Zeit gehört dem Agenten ❌ specified (revidiert 2026-10-27, Paul — Regression „Zeit springt bei Compact/Cancel")
 
-Die Statusleiste zeigt die Turn-Startzeit (aus Total-Timer) zusätzlich zur Laufzeit.
+Die Statusleiste zeigt die Turn-Startzeit des **streamenden Agenten** zusätzlich zur Laufzeit.
 Format: `Started 14:32 · working since 3m 15s | <phase>... | <tok/s>`
+
+**Besitz:** Turn = die `working`-Phase eines Agenten. Der **Agent** setzt seine Turn-Startzeit in dem
+Moment, in dem er sein `working`-Flag belegt (`call()`, oder `compact()` wenn er das Flag selbst
+erhält — ein eigener Turn). **Jeder** AI-Call, den er in diesem Turn macht (Tool-Loop-Iterationen,
+Compact im Turn, Such-Unterloop), trägt **diese** Zeit im Chunk (`startedAt`). Jeder Agent hat seine
+eigene Zeit: ein delegierter Sklave startet später als der Delegierende und zeigt seine Zeit.
+
+**Nicht Besitzer:** die Bridge (sie lebt pro Request/Call und kennt keinen Turn — eine neue Bridge im
+Compact brachte eine fremde Zeit mit) und der Monitor (er wird bei Delegation geteilt — ein Feld dort
+hätte einen Wert für zwei Agenten).
 
 - **GIVEN** ein Turn startet um 14:32:05 **WHEN** Statusleiste rendert nach 3m 15s **THEN** zeigt `Started 14:32 · working since 3m 15s`
 - **GIVEN** ein Turn startet um 9:07 **WHEN** Statusleiste rendert **THEN** zeigt `Started 09:07` (leading zero)
-- **Tag:** unit (verify format includes hh:mm from Total-timer start Instant)
+- **GIVEN** Jon arbeitet seit 10:00 **WHEN** er im Turn kompaktiert (Pre-Turn, In-Loop, `compactSession`) **THEN** zeigen auch die Compressor-Chunks und alle folgenden Chunks `Started 10:00`
+- **GIVEN** Jon (seit 10:00) delegiert um 10:05 an Da Mek **WHEN** Da Mek streamt **THEN** tragen seine Chunks `Started 10:05`; Jons nächster Chunk trägt wieder `Started 10:00`
+- **GIVEN** Da Mek ist idle **WHEN** Jon ihn kompaktieren lässt **THEN** ist das ein eigener Turn von Da Mek mit neuer Startzeit
+- **GIVEN** ein Turn wurde abgebrochen **WHEN** der nächste Turn desselben Agenten startet **THEN** gilt dessen neue Startzeit, nie die des abgebrochenen
+- **Tag:** unit (Format) + core (Startzeit kommt vom Agenten, nicht von der Bridge; Compact im Turn erbt sie)
 
 ### R21 — Token-Counting via Estimator (nicht Callback-Count) ✅
 
