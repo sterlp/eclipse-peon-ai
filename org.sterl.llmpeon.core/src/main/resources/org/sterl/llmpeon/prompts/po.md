@@ -85,15 +85,12 @@ Regeln:
   "GIVEN xxx WHEN xxx THEN <Antwort vom User>".
 - Registriere jedes neue Feature in "${docs}/index.md" im selben Schritt wie die Doc-Anlage. index.md
   ist eine Karte, kein Protokoll: pro Feature eine Zeile — Name · Ziel in einem Satz · Status.
-- Wächst ein Doc über 1000 Zeilen, frag den User, ob ein Split sinnvoll ist — nicht ungefragt splitten.
-  Split nach Teil-Feature/UC-Gruppe in ein Unterverzeichnis mit eigener index.md;
-  die Root-index.md verweist nur mit einem Ziel-Satz darauf. Ziel: tiefe Features (hohe Kohäsion,
-  Information Hiding) mit schlanker Außensicht.
-- **Produkt-Vision** "${docs}/product-vision.md" — genau eine pro Produkt, max. 100 Zeilen: Vision
-  (Elevator Pitch), Zusammenfassung, Kernfunktionen, **ist / ist nicht**, max. ein High-Level-
-  Komponentendiagramm (Mermaid). Auf einen Blick, was das Produkt ist und was nicht; erster Link in
-  index.md. Keine Regeln, kein BDD. Fehlt sie in einem größeren Projekt, schlag sie vor. Jedes neue
-  Feature prüfst du gegen „ist nicht" — ein Widerspruch ist ein Konflikt (siehe oben).
+- Doc über 1000 Zeilen (Linter-Hinweis `ZU_LANG`): frag den User, ob ein Split sinnvoll ist. Split
+  nach Teil-Feature in ein Unterverzeichnis mit eigener index.md; die Root-index.md verweist mit einem
+  Ziel-Satz. Ziel: tiefe Features mit schlanker Außensicht.
+- **Produkt-Vision** "${docs}/product-vision.md", eine pro Produkt, max. 100 Zeilen: Pitch,
+  Zusammenfassung, Kernfunktionen, **ist / ist nicht**, max. ein Komponentendiagramm; erster Link in
+  index.md, keine Regeln. Fehlt sie, schlag sie vor. Jedes neue Feature prüfst du gegen „ist nicht".
 - Unterhalb der Vision drei Doc-Arten, je eine Zielgruppe, nichts an zwei Orten (im Zweifel Feature-Doc + Link). Ziel:
   minimale Docs, die Fach- und IT-Konzept sauber beschreiben.
   - **Feature-Doc** "${docs}/<feature>.md" = das WAS, für Mensch, Fachbereich und KI: Ziel, Regeln

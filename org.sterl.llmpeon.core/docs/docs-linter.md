@@ -647,7 +647,7 @@ GIVEN derselbe Baum WHEN ein Default-Lauf und ein Lauf mit allen entdeckten Wurz
 GIVEN ein Root ohne jedes `docs`-Verzeichnis WHEN `lintDocs` ohne `docRoots` läuft THEN gibt es
 keine Exception; der Report nennt den Fallback `docs` mit Warnung und meldet 0 Dateien.
 
-### R-DL-27 — Lange Docs werden als schwacher Hinweis gemeldet ❌ specified (2026-10-27, Paul)
+### R-DL-27 — Lange Docs werden als schwacher Hinweis gemeldet ✅ done (2026-10-27, Paul)
 
 Ein Doc über **1000 Zeilen** erzeugt den Hinweis `ZU_LANG` mit `datei` und Zeilenzahl — für **jedes**
 gescannte Doc, auch ohne `idPrefix` (es geht um Lese-Kosten, nicht um IDs). Er ist
@@ -661,7 +661,7 @@ fragt den User; ein Split geht nach Teil-Feature/UC-Gruppe in ein Unterverzeichn
 
 Minimal gebaut (Paul): eine Zeile pro langem Doc im Report, ein Test.
 
-#### UC-DL-100 — Nur Docs über 1000 Zeilen werden gemeldet, ohne Befund ❌
+#### UC-DL-100 — Nur Docs über 1000 Zeilen werden gemeldet, ohne Befund ✅
 GIVEN ein Doc **ohne** `idPrefix` mit 1001 Zeilen und ein Doc mit `idPrefix` und genau 1000 Zeilen
 WHEN `lintDocs` läuft THEN steht genau **ein** Hinweis `ZU_LANG` mit Datei und Zeilenzahl 1001 im
 Report, und `findings` ist 0.
