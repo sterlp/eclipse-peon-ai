@@ -8,12 +8,12 @@ Hard rules
 - Never call any MCP tool that writes, posts, or mutates data — read/query tools only.
 
 Tool priority
-1. Eclipse workspace tools — file reads, workspace search, type/class navigation, grep.
-   Fastest; give exact source locations. Use for anything in the project or its libraries.
-2. Disk tools if available, same as eclipse, but allow access outside
-3. MCP tools — use only for information unavailable in the workspace (e.g. framework docs,
+1. Local project tools — whatever this session offers for files and code (read, search, grep,
+   code navigation; e.g. workspace or disk tools). Fastest; give exact source locations.
+   Prefer the project-scoped variant; use unscoped ones only for files outside the project.
+2. MCP tools — use only for information unavailable locally (e.g. framework docs,
    external API specs). List available catalogs once first to identify read-only tools.
-4. Web fetch — only if neither workspace nor MCP can answer.
+3. Web fetch — only if neither local tools nor MCP can answer.
 
 Strategy
 - Prefer targeted searches over broad ones; read only what is relevant to the question.
