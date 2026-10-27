@@ -433,7 +433,7 @@ public abstract class AbstractAgent implements AiAgent {
      * the memory is bigger than "the result".
      */
     private record CompactRun(CompactResult result, CallStats stats, int messageCountAfter,
-                              int tokensAfter, boolean withinTurn) {}
+                              int tokensAfter) {}
 
     /** Runs the compact incl. the working-flag handling; announces nothing. */
     private CompactRun runCompact(AiMonitor monitor) {
@@ -452,19 +452,18 @@ public abstract class AbstractAgent implements AiAgent {
         } finally {
             if (acquired) working.set(false);
         }
-        // !acquired = a turn already held the flag, so this compact ran inside it (withinTurn).
-        return new CompactRun(result, callStats, memory.size(), memory.getTotalTokenUsed(), !acquired);
+        return new CompactRun(result, callStats, memory.size(), memory.getTotalTokenUsed());
     }
 
     /**
-     * R-CT-7: the one reset channel for every trigger, fired after the release. A skip ran nothing
-     * (no event), and a throw never reaches an announce.
+     * R-CT-7: the one reset channel for every trigger. A skip ran nothing (no event), and a throw
+     * never reaches an announce.
      */
     private void announce(AiMonitor monitor, CompactRun run) {
         var mon = AiMonitor.nullSafety(monitor);
         var result = run.result();
         if (result.status() != CompactResult.Status.SKIPPED_SMALL) {
-            mon.onCompactCompleted(getName(), result, run.withinTurn());
+            mon.onCompactCompleted(getName(), result);
         }
         // R-CT-8: the one end line, for every trigger and every agent alike. It goes out after the
         // event on purpose — the event enqueues the chat rebuild of the shown agent (R-CT-7),

@@ -23,16 +23,6 @@ public final class CompactFeedback {
      */
     public static final String END_MARKER = " compacted: ";
 
-    /** When (R-CT-7) a compact makes the chat view rebuild itself. */
-    public enum Timing {
-        /** No rebuild: nothing ran, it failed, or another agent is shown. */
-        NONE,
-        /** Rebuild now — no turn was in flight, the memory already holds everything the chat shows. */
-        NOW,
-        /** Rebuild at the shown agent's next turn start: its fresh message is not in the memory yet. */
-        DEFERRED
-    }
-
     private CompactFeedback() {}
 
     /**
@@ -69,28 +59,6 @@ public final class CompactFeedback {
     /** Token display for the end-line: under 1000 raw (never {@code "0k"}), above compact as k/M. */
     private static String tokens(int value) {
         return value < 1000 ? String.valueOf(value) : StringUtil.toK(value);
-    }
-
-    /**
-     * R-CT-7: only a successful compact of the agent the view is showing rebuilds it. A slave's
-     * memory is not the chat's content (its compact shows in the roster instead), and a failure left
-     * the memory untouched — a rebuild would only throw away a transcript that never changed.
-     * <p>
-     * A compact that ran inside a turn is deferred, not immediate: the pre-turn trigger (R-CC-20.2)
-     * runs before that turn's message enters the memory, so rebuilding right away would drop a
-     * question the chat already shows. {@code onCallStart} is the earliest event whose memory holds
-     * it, so that is the flush point.
-     *
-     * @param result              the compact's outcome; {@code null} when the run died before one
-     * @param compactedAgentName  the agent that compacted, as carried by the event
-     * @param activeAgentName     the agent the view renders, {@code null} when there is none
-     * @param withinTurn          whether a turn held the working flag while the compact ran
-     */
-    public static Timing resetTiming(CompactResult result, String compactedAgentName,
-                                     @Nullable String activeAgentName, boolean withinTurn) {
-        if (result == null || result.status() != CompactResult.Status.COMPACTED) return Timing.NONE;
-        if (activeAgentName == null || !activeAgentName.equals(compactedAgentName)) return Timing.NONE;
-        return withinTurn ? Timing.DEFERRED : Timing.NOW;
     }
 
     /**

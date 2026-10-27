@@ -233,8 +233,7 @@ class AbstractAgentPreTurnCompactTest {
                 if (message.startsWith(CompactFeedback.START_PREFIX)) order.add("start-line");
                 else if (message.contains(CompactFeedback.END_MARKER)) order.add("end-line");
             }
-            @Override public void onCompactCompleted(String agentName, org.sterl.llmpeon.model.CompactResult result,
-                                                     boolean withinTurn) {
+            @Override public void onCompactCompleted(String agentName, org.sterl.llmpeon.model.CompactResult result) {
                 order.add("completed");
                 agent.getMemory().getCopy().forEach(m -> memoryAtEvent.add(ChatMessageUtil.toString(m)));
             }

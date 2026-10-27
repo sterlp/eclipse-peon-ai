@@ -335,7 +335,7 @@ public class AIChatView implements EclipseAiMonitor {
      * message entered the memory, so the rebuild cannot swallow it.
      */
     @Override
-    public void onCompactCompleted(String agentName, CompactResult result, boolean withinTurn) {
+    public void onCompactCompleted(String agentName, CompactResult result) {
         EclipseUtil.runInUiThread(parent, () -> {
             var active = aiService.getActiveAgent();
             if (CompactFeedback.resetsChat(result, agentName, active == null ? null : active.getName())) {

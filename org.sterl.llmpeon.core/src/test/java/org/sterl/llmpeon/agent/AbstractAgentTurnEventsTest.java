@@ -49,7 +49,7 @@ class AbstractAgentTurnEventsTest {
         @Override public void onChatResponse(SimpleMessage m) {}
         @Override public void onCallStart(String userMessage) { events.add("callStart:" + userMessage); }
         @Override public void onChatMessage(int iteration, ChatRequest.Builder request) { events.add("chatMessage"); }
-        @Override public void onCompactCompleted(String agentName, CompactResult result, boolean withinTurn) {
+        @Override public void onCompactCompleted(String agentName, CompactResult result) {
             compacts.add(agentName + "=" + result.status());
             events.add("compact:" + agentName);
             if ("Jon".equals(agentName)) {

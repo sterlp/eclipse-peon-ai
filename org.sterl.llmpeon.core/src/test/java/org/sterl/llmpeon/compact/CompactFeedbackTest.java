@@ -10,7 +10,6 @@ import java.time.ZoneOffset;
 
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.CoreTestFixtures;
-import org.sterl.llmpeon.compact.CompactFeedback.Timing;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.CallStats;
 
@@ -80,25 +79,6 @@ class CompactFeedbackTest {
 
     // UC-CT-10
     @Test
-    void mainAgentCompactResetsChatView() {
-        // THEN — a successful compact of the agent the chat is showing rebuilds it from the memory,
-        // right away: no turn is in flight, so the memory already holds everything the chat shows
-        assertThat(CompactFeedback.resetTiming(CoreTestFixtures.compactedResult(), "Da Boss", "Da Boss", false))
-                .isEqualTo(Timing.NOW);
-    }
-
-    // UC-CT-10
-    @Test
-    void preTurnCompactDefersChatReset() {
-        // GIVEN — the same compact of the same agent, but a turn was running when it ran: that turn's
-        // fresh message is not in the memory yet (R-CC-20.2 compacts before the add)
-        // THEN — the rebuild waits for the turn's onCallStart instead of swallowing the question
-        assertThat(CompactFeedback.resetTiming(CoreTestFixtures.compactedResult(), "Da Boss", "Da Boss", true))
-                .isEqualTo(Timing.DEFERRED);
-    }
-
-    // UC-CT-10
-    @Test
     void resetsChatForSuccessfulCompactOfTheShownAgent() {
         assertThat(CompactFeedback.resetsChat(CoreTestFixtures.compactedResult(), "Da Boss", "Da Boss")).isTrue();
     }
@@ -119,44 +99,6 @@ class CompactFeedbackTest {
         assertThat(CompactFeedback.resetsChat(failed, "Da Boss", "Da Boss")).isFalse();
         assertThat(CompactFeedback.resetsChat(CompactResult.skippedSmall(), "Da Boss", "Da Boss")).isFalse();
         assertThat(CompactFeedback.resetsChat(null, "Da Boss", "Da Boss")).isFalse();
-    }
-
-    // UC-CT-11
-    @Test
-    void slaveCompactDoesNotResetChatView() {
-        // THEN — a slave's compact leaves the chat alone, turn or no turn: its memory is not the
-        // chat's content ...
-        assertThat(CompactFeedback.resetTiming(CoreTestFixtures.compactedResult(), "Da Mek", "Da Boss", false))
-                .isEqualTo(Timing.NONE);
-        assertThat(CompactFeedback.resetTiming(CoreTestFixtures.compactedResult(), "Da Mek", "Da Boss", true))
-                .isEqualTo(Timing.NONE);
-        // AND — a view without an active agent never resets, not even deferred
-        assertThat(CompactFeedback.resetTiming(CoreTestFixtures.compactedResult(), "Da Boss", null, false))
-                .isEqualTo(Timing.NONE);
-        assertThat(CompactFeedback.resetTiming(CoreTestFixtures.compactedResult(), "Da Boss", null, true))
-                .isEqualTo(Timing.NONE);
-    }
-
-    // UC-CT-12
-    @Test
-    void failedCompactKeepsChatView() {
-        // GIVEN — the active agent's compact ran, but the compressor produced no summary
-        var failed = CompactResult.failedEmpty(
-                new CompactResult.Stats(3, 900, 0, CompactResult.Stage.NONE, 0, 0, "compact-model", 10L, null, true),
-                "compressor returned no summary for Da Boss");
-
-        // THEN — for every non-success and either timing: the memory is untouched, so a rebuild would
-        // only throw away an unchanged transcript
-        for (var withinTurn : new boolean[] { false, true }) {
-            assertThat(CompactFeedback.resetTiming(failed, "Da Boss", "Da Boss", withinTurn))
-                    .as("FAILED_EMPTY, withinTurn=" + withinTurn).isEqualTo(Timing.NONE);
-            // AND — a skip (nothing ran) resets neither ...
-            assertThat(CompactFeedback.resetTiming(CompactResult.skippedSmall(), "Da Boss", "Da Boss", withinTurn))
-                    .as("SKIPPED_SMALL, withinTurn=" + withinTurn).isEqualTo(Timing.NONE);
-            // AND — so does a run that died before it produced any result
-            assertThat(CompactFeedback.resetTiming(null, "Da Boss", "Da Boss", withinTurn))
-                    .as("no result at all, withinTurn=" + withinTurn).isEqualTo(Timing.NONE);
-        }
     }
 
     /** Fixed clock the tests advance manually — pins {@link CallStats#suffix()} (Muster CallStatsTest). */
