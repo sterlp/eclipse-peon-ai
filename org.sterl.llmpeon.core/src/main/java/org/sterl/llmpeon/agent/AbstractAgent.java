@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.agent;
 
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -55,6 +56,11 @@ public abstract class AbstractAgent implements AiAgent {
     /** R-CT-4: own compact indicator for the roster 🟡 — display only, the lock stays {@code working}.
      *  Volatile: the header reads it from the UI thread while a compact job sets it. */
     private volatile boolean compacting = false;
+
+    /** R20: start of the current turn. Owned by the agent; set only when the working flag is acquired. */
+    private volatile Instant turnStart;
+
+    private Clock clock = Clock.systemUTC();
 
     private volatile String systemMessage = null;
     /**
@@ -214,6 +220,9 @@ public abstract class AbstractAgent implements AiAgent {
     /** Test seam: swap the queue (fixed {@code Clock} for Rule 9 Queued-At tests). Package-private. */
     void setMessageQueue(UserMessageQueue queue) { this.messageQueue = queue; }
 
+    /** Test seam: fixed clock for R20 turn-time tests. Package-private. */
+    void setClock(Clock clock) { this.clock = clock; }
+
     public int tokenContextUsedInPercent() {
         float used = memory.getTotalTokenUsed();
         if (used < 100) return 0;
@@ -233,6 +242,7 @@ public abstract class AbstractAgent implements AiAgent {
         // the turn that already holds it, else the next caller wins the CAS and runs parallel
         // on the same memory instead of queueing.
         boolean acquired = working.compareAndSet(false, true);
+        if (acquired) turnStart = Instant.now(clock);
         try {
             if (!acquired) {
                 messageQueue.add(initialMessage); // already running: queue it
@@ -337,6 +347,7 @@ public abstract class AbstractAgent implements AiAgent {
                     .writeValidator(getWriteValidator())
                     .agentConfig(getConfig())
                     .agent(this)
+                    .turnStart(turnStart)
                     .build()
                 );
 
@@ -369,6 +380,7 @@ public abstract class AbstractAgent implements AiAgent {
                     .writeValidator(getWriteValidator())
                     .agentConfig(getConfig())
                     .agent(this)
+                    .turnStart(turnStart)
                     .build()
                 );
 
@@ -409,6 +421,7 @@ public abstract class AbstractAgent implements AiAgent {
         // User-triggered compact acquires the working flag (R-CT-1); an in-loop compact runs
         // inside a turn that already holds it, so the CAS fails and the flag is left untouched.
         boolean acquired = working.compareAndSet(false, true);
+        if (acquired) turnStart = Instant.now(clock);
         CompactResult result;
         try {
             result = doCompact(mon);
@@ -454,7 +467,7 @@ public abstract class AbstractAgent implements AiAgent {
             monitor.onTool(CompactFeedback.startLine(getName(), messages.size(),
                     ChatMessageUtil.estimateTokens(messages), compactCfg.getModel())); // R-CT-6
             var result = new CompactService(configuredModel).compact(
-                    getName(), messages, memory.tokenDiagnosis(), requestTokens, monitor);
+                    getName(), messages, memory.tokenDiagnosis(), requestTokens, monitor, turnStart);
 
             if (result.status() == CompactResult.Status.FAILED_EMPTY) {
                 monitor.onProblem("Compact failed: " + result.cause());

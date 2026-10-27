@@ -95,6 +95,29 @@ class StreamingBridgeTest {
         assertThat(monitor.starts.get(1)).isEqualTo(T0);
     }
 
+    // R20
+    @Test
+    void startedAtIsWhatTheCallerPasses() {
+        // GIVEN — a bridge whose own clock runs hours away from the turn start the caller owns
+        var clock = new MutableClock();
+        var bridge = new StreamingBridge(clock);
+        var model = completeModel();
+        var monitor = new StartRecorder();
+        var request = new ChatRequest.Builder().messages(UserMessage.from("hi")).build();
+        var turnStart = T0.minus(Duration.ofDays(1));
+
+        // WHEN — two calls of one turn an hour apart, the caller passing its turn start each time
+        bridge.call(model, request, monitor, turnStart);
+        clock.advance(Duration.ofHours(1));
+        bridge.call(model, request, monitor, turnStart);
+        // AND — a call of another turn
+        var otherTurn = T0.minus(Duration.ofDays(2));
+        bridge.call(model, request, monitor, otherTurn);
+
+        // THEN — every START chunk shows exactly what the caller passed, never the bridge's clock
+        assertThat(monitor.starts).containsExactly(turnStart, turnStart, otherTurn);
+    }
+
     @Test
     void startChunkTokenPhaseStartIsZero() {
         var clock = new MutableClock();
@@ -111,16 +134,17 @@ class StreamingBridgeTest {
     @Test
     void partialChunkTokenPhaseStartIsCallStartNotTurnStart() {
         var clock = new MutableClock();
-        var bridge = new StreamingBridge(clock); // turn start = T0
+        var bridge = new StreamingBridge(clock);
         var monitor = new ChunkRecorder();
 
-        // WHEN the call starts one hour after the turn began
+        // WHEN the call starts one hour after the turn began (turn start T0 handed in explicitly)
         clock.advance(Duration.ofHours(1));
-        bridge.call(answerModel(clock, Duration.ZERO, Duration.ZERO), request("hi"), monitor);
+        bridge.call(answerModel(clock, Duration.ZERO, Duration.ZERO), request("hi"), monitor, T0);
 
         // THEN the partial's tokenPhaseStart is the call start (T0+1h), NOT the turn start (T0)
         var partial = monitor.chunks.get(1);
         assertThat(partial.type()).isEqualTo(OnPartialAiResponse.Type.ANSWER);
+        assertThat(partial.startedAt()).isEqualTo(T0);
         assertThat(partial.tokenPhaseStart()).isEqualTo(clock.millis());
         assertThat(partial.tokenPhaseStart()).isNotEqualTo(partial.startedAt().toEpochMilli());
     }

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,7 @@ import org.sterl.llmpeon.compact.CompactConstants;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.tool.SmartTool;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
@@ -182,6 +184,36 @@ class SearchAgentToolTest {
         assertThat(monitor.toolLines).noneMatch(l -> l.contains("Compact hint for Peon-PO"));
         // AND — the honest fallback landed in the sub-memory (the sub-loop has no compact tool)
         assertThat(service.loops.get(0).getMemory().containsMessage("cannot be compacted")).isTrue();
+    }
+
+    // R20
+    @Test
+    @Timeout(10)
+    void subLoopInheritsParentTurnStart() {
+        // GIVEN — a parent request whose turn started long ago, a sub-loop answering immediately
+        var turnStart = Instant.parse("2020-01-01T10:00:00Z");
+        var service = new RecordingToolService();
+        var cm = new StreamMock().buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.from("found it")).build());
+        var startedAt = new ArrayList<Instant>();
+        var monitor = new CapturingMonitor() {
+            @Override public void onStreamingChunk(OnPartialAiResponse chunk) { startedAt.add(chunk.startedAt()); }
+        };
+        var request = ToolLoopRequest.builder()
+                .memory(new ThreadSafeMemory())
+                .chatModel(new ConfiguredChatModel(LlmConfig.newOpenAi("foo"), cm))
+                .monitor(monitor)
+                .turnStart(turnStart)
+                .build();
+        var sniffa = service.getTool(SearchAgentTool.class).get();
+        sniffa.withToolRequest(request);
+
+        // WHEN
+        sniffa.searchAgent("find something");
+
+        // THEN — the sub-loop's chunks show the PARENT's turn start (the search is part of the turn)
+        assertThat(service.loops).hasSize(1);
+        assertThat(startedAt).isNotEmpty().containsOnly(turnStart);
     }
 
     // SEARCH slot routing: the nested loop runs on the configured search model

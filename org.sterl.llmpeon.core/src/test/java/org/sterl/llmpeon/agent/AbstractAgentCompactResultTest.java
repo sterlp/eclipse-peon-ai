@@ -742,7 +742,8 @@ class AbstractAgentCompactResultTest {
         var dyingModel = new ConfiguredChatModel(LlmConfig.builder().model("mock").build(),
                 new StreamMock().buildMock(r -> null)) {
             @Override
-            public ChatResponse callBlocking(ChatRequest req, AgentConfig agent, AiMonitor monitor) {
+            public ChatResponse callBlocking(ChatRequest req, AgentConfig agent, AiMonitor monitor,
+                    java.time.Instant startedAt) {
                 return null;
             }
         };

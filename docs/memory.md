@@ -21,8 +21,12 @@
   - Bug 1 → R-CC-18 + UC-CC-2 (compact.md): Erfolg sperrt keinen weiteren Direkt-Compact
     (`attemptedDirect`, HandleToolLoopCompactComponent:33). Keine Regression, alter Bug.
   - compact-architektur.md Δ 2026-10-27 (Turn-Zeit-Besitz, Rebuild in View, Mermaid).
-- **Nächst:** Plan (Da Thinka) → Abnahme → Inkremente: 1 Aufräumen (nur-löschen) · 2 R-CT-7 ·
-  3 R20 · 4 R-CC-18 · 5 Homepage-Changelog. Danach Review (Da Dok), ✅-Flip mit lintDocsAndTests.
+- **Plan final** (peon-plan/overview.md), Reihenfolge 1 → 3 → 4 → 2a/2b/2c → 5. Danach Review (Da Dok),
+  ✅-Flip mit lintDocsAndTests.
+- ✅ Inc 1 `1d11430a` (Core 1393→1383, −10 gelöschte Tests, belegt). Jon-Docs mitcommittet.
+- ⚠ `org.sterl.llmpeon.test` baut schon VOR Inc 1 nicht (Tycho: Plugin braucht `jakarta.annotation
+  [2.1,3)`, nicht im Target) → Plugin-Tests derzeit blind. Paul melden/entscheiden.
+- Uncommitted: `StreamingBridge.java` Javadoc (`@deprecated` raus, Paul?) → mit Inc 3.
 - **Commit-Liste Jon-Dateien:** docs/memory.md, org.sterl.llmpeon.core/docs/{compact-lock,compact,
   compact-architektur,index}.md, org.sterl.llmpeon/docs/{streaming-display,index}.md,
   proposals/agent-origin-proposal.md, aifactory/docs/{adr/002-…,adr/index,aifactory-architektur,

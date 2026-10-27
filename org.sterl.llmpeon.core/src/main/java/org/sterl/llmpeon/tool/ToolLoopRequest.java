@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.tool;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
@@ -56,6 +57,11 @@ public class ToolLoopRequest {
     private final StreamingBridge bridge = new StreamingBridge();
     @Default
     private final AsyncStreamingBridge asyncBridge = new AsyncStreamingBridge();
+
+    /** R20: the agent-owned turn start time. Default keeps stand-alone calls (tests, voice) working. */
+    @Default
+    @Getter
+    private final Instant turnStart = Instant.now();
     
     /** Earned-patience retry around the AI call; fresh per turn (this object is rebuilt per message). */
     @Default
@@ -112,14 +118,14 @@ public class ToolLoopRequest {
     }
     
     public ChatResponse call(ChatRequest chatRequest) {
-        return retry.call(monitor, () -> bridge.call(chatModel.modelFor(getAgentConfig()), chatRequest, monitor));
+        return retry.call(monitor, () -> bridge.call(chatModel.modelFor(getAgentConfig()), chatRequest, monitor, turnStart));
     }
     
     public CompletableFuture<SteamHandler> asyncCall(ChatRequest chatRequest) {
         // TODO build on retry ... if steam handler has an error ...
         // but here we add the partial response, if any received, to the chat history
         // we have to test if this is valid of course, AI, message after AI message guess we have to merge or add a User message "retry x/y?" 
-        return asyncBridge.call(chatModel.modelFor(getAgentConfig()), chatRequest, monitor);
+        return asyncBridge.call(chatModel.modelFor(getAgentConfig()), chatRequest, monitor, turnStart);
     }
 
     /**

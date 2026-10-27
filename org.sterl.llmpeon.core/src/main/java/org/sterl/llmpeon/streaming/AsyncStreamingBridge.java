@@ -55,11 +55,15 @@ public class AsyncStreamingBridge {
     }
 
     public CompletableFuture<SteamHandler> call(StreamingChatModel model, ChatRequest request, AiMonitor monitor) {
+        return call(model, request, monitor, Instant.now(clock));
+    }
+
+    public CompletableFuture<SteamHandler> call(StreamingChatModel model, ChatRequest request, AiMonitor monitor, Instant startedAt) {
         Objects.requireNonNull(monitor, "Monitor is needed otherwise cancel can't work.");
 
-        var result = new SteamHandler(clock, monitor, ChatMessageUtil.estimateTokens(request.messages()));
+        var result = new SteamHandler(clock, monitor, ChatMessageUtil.estimateTokens(request.messages()), startedAt);
         // and go
-        monitor.onStreamingChunk(new OnPartialAiResponse(Type.START, null, Instant.now(), 0));
+        monitor.onStreamingChunk(new OnPartialAiResponse(Type.START, null, startedAt, 0));
         model.chat(request, result);
         
         return result.getFuture();
@@ -73,7 +77,10 @@ public class AsyncStreamingBridge {
         private final int inputTok;
 
         private final Clock clock;
+        /** R20: the turn start shown in the chunks — owned by the agent, not by this call. */
         private final Instant startedAt;
+        /** This call's own start — the only basis of the call duration. */
+        private final Instant callStart;
 
         private final Timer ppTimer;
         private final Timer tokenTimer;
@@ -98,11 +105,12 @@ public class AsyncStreamingBridge {
             return errorRef.get() != null;
         }
 
-        SteamHandler(Clock clock, AiMonitor monitor, int inputTok) {
+        SteamHandler(Clock clock, AiMonitor monitor, int inputTok, Instant startedAt) {
             this.clock = clock;
             this.inputTok = inputTok;
             this.monitor = AiMonitor.nullSafety(monitor);
-            this.startedAt = Instant.now(clock);
+            this.startedAt = startedAt;
+            this.callStart = Instant.now(clock);
 
             this.ppTimer = new Timer(clock).start();
 
@@ -195,7 +203,7 @@ public class AsyncStreamingBridge {
             var usage = ChatMessageUtil.tokenUsage(completeResponse);
             if (usage != null) this.monitor.onTokenUsage(usage);
 
-            monitor.onCallCompleted(response, Duration.between(startedAt, Instant.now()));
+            monitor.onCallCompleted(response, Duration.between(callStart, Instant.now(clock)));
             future.complete(this);
         }
 

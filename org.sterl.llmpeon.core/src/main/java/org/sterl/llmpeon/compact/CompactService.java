@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.compact;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 
@@ -63,11 +64,14 @@ public class CompactService {
      * @param callerMonitor R-CT-5 + R-CT-8: a compact always has a caller monitor — it receives the
      *                      compressor's request start and its live streaming tokens (working state
      *                      and token counter in the caller's UI), never a chat response
+     * @param turnStart     R20: the owning agent's turn start — the compressor's chunks carry it as
+     *                      "Started", so a compact never restarts the shown turn time. Required on
+     *                      purpose: a silent {@code Instant.now()} default would bring the bug back
      * @throws IllegalStateException when the LLM call returns null — Log OR throw: the throw stays
      *             in the call path, the result line is no exception substitute
      */
     public CompactResult compact(String agentName, List<ChatMessage> messages, String tokenDiagnosis,
-                                 @Nullable Integer requestTokens, AiMonitor callerMonitor) {
+                                 @Nullable Integer requestTokens, AiMonitor callerMonitor, Instant turnStart) {
         var caller = callerMonitor;
         var budgetTokens = chatModel.getConfig().getAutoCompactAfter();
         var requestIsEstimate = requestTokens == null;
@@ -100,7 +104,7 @@ public class CompactService {
         caller.onChatMessage(1, request);
 
         long startMillis = System.currentTimeMillis();
-        var response = chatModel.callBlocking(request.build(), compactCfg, caller);
+        var response = chatModel.callBlocking(request.build(), compactCfg, caller, turnStart);
         long millis = System.currentTimeMillis() - startMillis;
         if (response == null) {
             throw new IllegalStateException("AI call returned null — streaming failed without a response");
