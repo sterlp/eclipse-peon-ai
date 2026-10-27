@@ -65,7 +65,37 @@ class HandleToolLoopCompactComponentTest {
         assertThat(toolLines).isEmpty();
     }
 
-    // R-CC-18
+    // UC-CC-2
+    @Test
+    @Timeout(10)
+    void successfulDirectCompactDoesNotBlockTheNextOne() {
+        // GIVEN — round 1 ends over budget, the direct compact succeeds
+        var memory = seed(new ThreadSafeMemory(), 5);
+        setCounter(memory, 170001);
+        var compactCalls = new AtomicInteger();
+        var agent = agent(compactCalls, memory,
+                CompactResult.compacted(new CompactResult.Stats(6, 57000, 10, CompactResult.Stage.NONE,
+                        0, 30, "compact-model", 5, 170001, false), "summary"));
+        var req = request(memory, agent, new ArrayList<>());
+        var handler = new HandleToolLoopCompactComponent();
+        handler.handle(req, true);
+        assertThat(compactCalls.get()).isEqualTo(1);
+
+        // AND — the stub agent clears to ONE message; re-seed a compactable history (> MIN_COMPACT_MESSAGES)
+        // and push the counter over budget again, so round 2 is a real second overflow in the SAME turn
+        seed(memory, 4);
+        setCounter(memory, 170001);
+        assertThat(memory.size()).isGreaterThan(CompactConstants.MIN_COMPACT_MESSAGES);
+        assertThat(memory.getTotalTokenUsed()).isGreaterThan(BUDGET);
+
+        // WHEN — round 2 of the same turn ends over budget again
+        handler.handle(req, true);
+
+        // THEN — the second overflow is compacted too (R-CC-18: only a FAILED direct compact blocks)
+        assertThat(compactCalls.get()).isEqualTo(2);
+    }
+
+    // UC-CC-2 — regression guard (green before the change): a failed attempt stays blocked
     @Test
     @Timeout(10)
     void failedDirectCompactIsNotRetriedInTurn() {

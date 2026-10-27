@@ -20,8 +20,8 @@ import dev.langchain4j.data.message.UserMessage;
  * the tool path {@code CompactSessionTool}.</p>
  *
  * <p><b>One instance per tool loop</b> ({@code ToolService.executeLoop}): the
- * {@code attemptedDirect} flag gives "one direct attempt per turn" (R-CC-18.1) without leaking
- * into sub-loops or the next turn.</p>
+ * {@code failedDirect} flag gives "a failed direct attempt is not retried in the turn" (R-CC-18.1)
+ * without leaking into sub-loops or the next turn; a successful compact never sets it (UC-CC-2).</p>
  *
  * <p><b>Two rules, two time points</b>: the in-loop direct compact applies
  * {@link #overRawBudget(int, int, int)} (over the raw config budget, R-CC-18.1), the pre-turn check
@@ -30,8 +30,8 @@ import dev.langchain4j.data.message.UserMessage;
  */
 public class HandleToolLoopCompactComponent {
 
-    /** One direct attempt per turn (R-CC-18.1): a SKIPPED_SMALL/FAILED_EMPTY is not retried in-loop. */
-    private boolean attemptedDirect = false;
+    /** A failed direct compact (SKIPPED_SMALL/FAILED_EMPTY) is not retried in-loop (R-CC-18.1); a COMPACTED one never blocks the next (UC-CC-2). */
+    private boolean failedDirect = false;
 
     /**
      * The in-loop over-budget rule (R-CC-18.1): over the RAW config budget with a compactable
@@ -71,13 +71,14 @@ public class HandleToolLoopCompactComponent {
 
         var used = memory.getTotalTokenUsed();
         if (overRawBudget(used, budget, memory.size())) { // R-CC-18.1 — over budget: compact directly, no hint
-            if (agent != null && !attemptedDirect) {
-                attemptedDirect = true;
+            if (agent != null && !failedDirect) {
                 var result = agent.compact(req.getMonitor()); // AbstractAgent.compact null-safes the monitor itself
                 if (result.status() == CompactResult.Status.COMPACTED) {
                     memory.reevaluateTokens(); // R-CC-2: the counter holds the small post-compact estimate
                     req.staticMessages(agent.buildStaticMessages(req.getMonitor()));
                     // R-CT-8: no own line — `AbstractAgent.compact` sent the one end line for it
+                } else {
+                    failedDirect = true;
                 }
                 // SKIPPED_SMALL / FAILED_EMPTY: no retry (flag), no hint (over budget) — R-CC-18.1
             } else if (agent == null) { // R-CC-8 already checked in overRawBudget

@@ -60,7 +60,6 @@ public class ToolLoopRequest {
 
     /** R20: the agent-owned turn start time. Default keeps stand-alone calls (tests, voice) working. */
     @Default
-    @Getter
     private final Instant turnStart = Instant.now();
     
     /** Earned-patience retry around the AI call; fresh per turn (this object is rebuilt per message). */
