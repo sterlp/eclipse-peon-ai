@@ -97,6 +97,30 @@ class CompactFeedbackTest {
                 .isEqualTo(Timing.DEFERRED);
     }
 
+    // UC-CT-10
+    @Test
+    void resetsChatForSuccessfulCompactOfTheShownAgent() {
+        assertThat(CompactFeedback.resetsChat(CoreTestFixtures.compactedResult(), "Da Boss", "Da Boss")).isTrue();
+    }
+
+    // UC-CT-11
+    @Test
+    void resetsChatNeverForAnotherAgent() {
+        assertThat(CompactFeedback.resetsChat(CoreTestFixtures.compactedResult(), "Da Mek", "Da Boss")).isFalse();
+        assertThat(CompactFeedback.resetsChat(CoreTestFixtures.compactedResult(), "Da Boss", null)).isFalse();
+    }
+
+    // UC-CT-12
+    @Test
+    void resetsChatNeverWithoutSuccess() {
+        var failed = CompactResult.failedEmpty(
+                new CompactResult.Stats(3, 900, 0, CompactResult.Stage.NONE, 0, 0, "compact-model", 10L, null, true),
+                "compressor returned no summary for Da Boss");
+        assertThat(CompactFeedback.resetsChat(failed, "Da Boss", "Da Boss")).isFalse();
+        assertThat(CompactFeedback.resetsChat(CompactResult.skippedSmall(), "Da Boss", "Da Boss")).isFalse();
+        assertThat(CompactFeedback.resetsChat(null, "Da Boss", "Da Boss")).isFalse();
+    }
+
     // UC-CT-11
     @Test
     void slaveCompactDoesNotResetChatView() {

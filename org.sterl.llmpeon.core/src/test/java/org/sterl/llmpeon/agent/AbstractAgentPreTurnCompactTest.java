@@ -219,6 +219,55 @@ class AbstractAgentPreTurnCompactTest {
         assertThat(agent.getMemory().size()).isEqualTo(6); // 4 seeded + fresh message + the turn's AI response
     }
 
+    // UC-CT-16
+    @Test
+    void preTurnCompactSignalsAfterFreshQuestion() {
+        // GIVEN — over the budget; the monitor reads the memory at the moment of the compact event,
+        // exactly as the chat view does when it rebuilds
+        var agent = overBudgetAgent();
+        var order = new ArrayList<String>();
+        var memoryAtEvent = new ArrayList<String>();
+        var monitor = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onTool(String message) {
+                if (message.startsWith(CompactFeedback.START_PREFIX)) order.add("start-line");
+                else if (message.contains(CompactFeedback.END_MARKER)) order.add("end-line");
+            }
+            @Override public void onCompactCompleted(String agentName, org.sterl.llmpeon.model.CompactResult result,
+                                                     boolean withinTurn) {
+                order.add("completed");
+                agent.getMemory().getCopy().forEach(m -> memoryAtEvent.add(ChatMessageUtil.toString(m)));
+            }
+            @Override public void onCallStart(String userMessage) { order.add("callStart"); }
+        };
+
+        // WHEN
+        agent.call("fresh message", monitor);
+
+        // THEN — the memory the listener rebuilds from holds the summary AND the fresh question
+        assertThat(memoryAtEvent).anyMatch(t -> t.contains("Summary of the session"));
+        assertThat(memoryAtEvent).anyMatch(t -> t.contains("fresh message"));
+        // AND — start line, then the event, then the end line (R-CT-8), all before the turn's onCallStart
+        assertThat(order).containsExactly("start-line", "completed", "end-line", "callStart");
+    }
+
+    // R-CT-8
+    @Test
+    void preTurnCompactEndLineReportsMemoryAtCompactTime() {
+        // GIVEN — over the budget, a 4-message history
+        var agent = overBudgetAgent();
+        var toolLines = new ArrayList<String>();
+
+        // WHEN — the fresh question is huge (~10k tokens), the summary tiny
+        agent.call("x".repeat(40_000), monitor(toolLines));
+
+        // THEN — the end line reports the memory right after the re-seed: a few tokens, not the
+        // ~10k it holds once the fresh question joined. (The message count cannot tell the two apart:
+        // ThreadSafeMemory joins consecutive UserMessages, so it is 1 either way.)
+        var endLine = toolLines.stream().filter(l -> l.contains(CompactFeedback.END_MARKER)).findFirst().orElseThrow();
+        assertThat(endLine).contains("4 → 1 messages").doesNotContain("k tokens");
+    }
+
     /** Budget 80 000 and a 4-message history whose counter is over it (90 000 + estimate). */
     private AiDevAgent overBudgetAgent() {
         return overBudgetAgent(80_000);

@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import org.jspecify.annotations.Nullable;
 import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
@@ -324,14 +325,15 @@ public abstract class AbstractAgent implements AiAgent {
 
     /** Execute a single LLM+tool turn for the given message. */
     protected ChatResponse doCall(String message, AiMonitor monitor) {
-        preTurnCompact(monitor); // R-CC-20.2: over 95 % of the raw budget, before the fresh message enters
+        var preTurn = preTurnCompact(monitor); // R-CC-20.2: over 95 % of the raw budget, before the fresh message enters
         // Inject turn-scoped context on every turn (idempotent via contains-check)
         var userMessages = renderTurnContext(memory, turnContextSupplier, monitor);
 
         if (StringUtil.hasValue(message)) userMessages.add(TextContent.from(message));
         if (!userMessages.isEmpty()) addMessage(UserMessage.from(userMessages));
-        // R-CT-7: onCallStart only after the memory add — from here a listener rebuilding the UI from
-        // the memory (a deferred compact reset) cannot lose this turn's message.
+        // R-CT-7: the pre-turn compact is announced only after the memory add — a listener rebuilding
+        // the UI from the memory then sees summary + fresh message (UC-CT-16).
+        if (preTurn != null) announce(monitor, preTurn);
         monitor.onCallStart(message);
 
         var start = Instant.now();
@@ -358,14 +360,15 @@ public abstract class AbstractAgent implements AiAgent {
     
     /** Execute a single LLM+tool turn for the given message. */
     protected ChatResponse asyncCall(String message, AiMonitor monitor) {
-        preTurnCompact(monitor); // R-CC-20.2: over 95 % of the raw budget, before the fresh message enters
+        var preTurn = preTurnCompact(monitor); // R-CC-20.2: over 95 % of the raw budget, before the fresh message enters
         // Inject turn-scoped context on every turn (idempotent via contains-check)
         var userMessages = renderTurnContext(memory, turnContextSupplier, monitor);
 
         if (StringUtil.hasValue(message)) userMessages.add(TextContent.from(message));
         if (!userMessages.isEmpty()) addMessage(UserMessage.from(userMessages));
-        // R-CT-7: onCallStart only after the memory add — from here a listener rebuilding the UI from
-        // the memory (a deferred compact reset) cannot lose this turn's message.
+        // R-CT-7: the pre-turn compact is announced only after the memory add — a listener rebuilding
+        // the UI from the memory then sees summary + fresh message (UC-CT-16).
+        if (preTurn != null) announce(monitor, preTurn);
         monitor.onCallStart(message);
 
         var staticMessages = buildStaticMessages(monitor);
@@ -394,25 +397,46 @@ public abstract class AbstractAgent implements AiAgent {
      * One attempt per turn, no hint, no retry. The in-loop direct compact keeps its own 100 % rule
      * (R-CC-18.1).
      */
-    private void preTurnCompact(AiMonitor monitor) {
+    private @Nullable CompactRun preTurnCompact(AiMonitor monitor) {
         if (!HandleToolLoopCompactComponent.overHintBand(memory.getTotalTokenUsed(),
-                configuredModel.getConfig().getAutoCompactAfter(), memory.size())) return;
-        CompactResult result;
+                configuredModel.getConfig().getAutoCompactAfter(), memory.size())) return null;
+        CompactRun run;
         try {
-            result = compact(monitor); // in-turn: the CAS leaves the turn's working flag untouched
+            run = runCompact(monitor); // in-turn: the CAS leaves the turn's working flag untouched
         } catch (RuntimeException e) {
             // R-CC-20.5: a failing compressor must not kill the turn before the fresh message enters.
             // Cancellation is not a failure — a Stop still aborts the turn (R-CC-7 owns retry/classes).
             if (ExceptionUtil.isCanceled(e)) throw e;
             AiMonitor.nullSafety(monitor).onProblem("Pre-turn compact failed: " + e.getMessage());
-            return; // over budget only: the provider call is the honest outcome (same as FAILED_EMPTY)
+            return null; // over budget only: the provider call is the honest outcome (same as FAILED_EMPTY)
         }
-        if (result.status() != CompactResult.Status.COMPACTED) return; // SKIPPED_SMALL/FAILED_EMPTY: no retry, no hint
-        memory.reevaluateTokens(); // R-CC-2 — R-CT-8: `compact(...)` already sent the one end line
+        // SKIPPED_SMALL ran nothing: no event. FAILED_EMPTY/COMPACTED: no retry, no hint, the caller
+        // announces after the fresh message entered the memory (R-CT-7).
+        if (run.result().status() == CompactResult.Status.SKIPPED_SMALL) return null;
+        if (run.result().status() == CompactResult.Status.COMPACTED) {
+            memory.reevaluateTokens(); // R-CC-2 — the end line's figures were captured at the compact
+        }
+        return run;
     }
 
     @Override
     public CompactResult compact(AiMonitor monitor) {
+        var mon = AiMonitor.nullSafety(monitor);
+        var run = runCompact(mon);
+        announce(mon, run);
+        return run.result();
+    }
+
+    /**
+     * A finished compact run — result plus the figures the end line needs, captured at compact time:
+     * a pre-turn compact announces only after the fresh message entered the memory (R-CT-7), by then
+     * the memory is bigger than "the result".
+     */
+    private record CompactRun(CompactResult result, CallStats stats, int messageCountAfter,
+                              int tokensAfter, boolean withinTurn) {}
+
+    /** Runs the compact incl. the working-flag handling; announces nothing. */
+    private CompactRun runCompact(AiMonitor monitor) {
         // ADR-0053: the shared duration/wall-time helper, started at the compact's visible start so
         // the end line measures everything the user waits for — staging, call and re-seed.
         var callStats = CallStats.start();
@@ -428,21 +452,28 @@ public abstract class AbstractAgent implements AiAgent {
         } finally {
             if (acquired) working.set(false);
         }
-        // R-CT-7: the one reset channel for every trigger, fired after the release. A skip ran
-        // nothing, and a throw never reaches this line (it propagates out of the try above).
         // !acquired = a turn already held the flag, so this compact ran inside it (withinTurn).
+        return new CompactRun(result, callStats, memory.size(), memory.getTotalTokenUsed(), !acquired);
+    }
+
+    /**
+     * R-CT-7: the one reset channel for every trigger, fired after the release. A skip ran nothing
+     * (no event), and a throw never reaches an announce.
+     */
+    private void announce(AiMonitor monitor, CompactRun run) {
+        var mon = AiMonitor.nullSafety(monitor);
+        var result = run.result();
         if (result.status() != CompactResult.Status.SKIPPED_SMALL) {
-            mon.onCompactCompleted(getName(), result, !acquired);
+            mon.onCompactCompleted(getName(), result, run.withinTurn());
         }
         // R-CT-8: the one end line, for every trigger and every agent alike. It goes out after the
-        // event on purpose — the event enqueues the chat rebuild of the shown agent (R-CT-7 NOW),
+        // event on purpose — the event enqueues the chat rebuild of the shown agent (R-CT-7),
         // and SWT runs the queued display FIFO, so the line survives that rebuild instead of being
         // reset away with it.
         if (result.status() == CompactResult.Status.COMPACTED) {
-            mon.onTool(CompactFeedback.endLine(getName(), result, memory.size(),
-                    memory.getTotalTokenUsed(), callStats));
+            mon.onTool(CompactFeedback.endLine(getName(), result, run.messageCountAfter(),
+                    run.tokensAfter(), run.stats()));
         }
-        return result;
     }
 
     /** The compact run itself — {@code monitor} is already null-safe. */

@@ -92,4 +92,20 @@ public final class CompactFeedback {
         if (activeAgentName == null || !activeAgentName.equals(compactedAgentName)) return Timing.NONE;
         return withinTurn ? Timing.DEFERRED : Timing.NOW;
     }
+
+    /**
+     * R-CT-7: the chat view rebuilds right away exactly when a compact succeeded for the agent it
+     * shows. The agent owns the timing (a pre-turn compact is announced only once the fresh message
+     * is in the memory), so the view needs no turn knowledge; a slave's compact or a failure never
+     * resets it (UC-CT-11, UC-CT-12).
+     *
+     * @param result              the compact's outcome; {@code null} when the run died before one
+     * @param compactedAgentName  the agent that compacted, as carried by the event
+     * @param activeAgentName     the agent the view renders, {@code null} when there is none
+     */
+    public static boolean resetsChat(@Nullable CompactResult result, String compactedAgentName,
+                                     @Nullable String activeAgentName) {
+        return result != null && result.status() == CompactResult.Status.COMPACTED
+                && activeAgentName != null && activeAgentName.equals(compactedAgentName);
+    }
 }
