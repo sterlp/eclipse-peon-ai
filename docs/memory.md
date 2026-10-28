@@ -1,24 +1,24 @@
 # Open Ends / Memory — Session-Zwischenstand
 
-> Nur Jon schreibt `docs/**`. Zwischenstand, kein Protokoll: Erledigtes fliegt raus.
-> Paul = Mensch und Da Mek zugleich: **ein Thema pro Nachricht**, kurz; Paul committet/pusht selbst.
+> Zwischenstand, kein Protokoll: Erledigtes fliegt raus.
 > Branch `web-factory`.
 
 ## Jetzt
 
-- **R-CC-18.5 bauen (❌):** Direkt-Compact zustandslos, Compressor über Turn-`ApiRetry`, Fehlschlag
-  beendet den Turn. Plan `peon-plan/overview.md` von Jon abgenommen (inkl. §7a Ausführungsregeln,
-  zwei Schritte mit Halt). Danach: Review (Da Dok) → `compact.md` R-CC-18/UC-CC-2 auf ✅.
+- **R-CC-18.5 ✅ gebaut + committet:** Commit `28b49cfa` auf `web-factory` (nicht gepusht), Plan
+  archiviert (`peon-plan/overview-done-2026-10-28-14-22.md`, untracked). Core Surefire 1398/0,
+  Da Dok CONCERNS ohne Blocker, Docs geflippt (R-CC-18/18.5/UC-CC-2 ✅). **Paul: squash-merge + release.**
 - **Prompts (nicht committet):** `doc-method.md` + `paco.md` neu, `po.md` (nur Charakter + Rolle),
   `review-agent.md` neu (Pauls 8 Punkte). **Paul baut Loader:** Jon = `default + po + doc-method +
   po-delegation`, `doc-method.md` per `PromptLoader.load` (nicht `loadWithDefault`),
   `AiPoAgentPromptParityTest:27` nachziehen. Paco-Agent = R-PC-1…8 ❌. Web: [aifactory/docs/memory.md](../aifactory/docs/memory.md).
-- **Release (Plugin):** CHANGELOG `[Unreleased]` gefüllt, Paul merged/released.
-- Lint 2026-10-28: Core 157/157 (nur Baseline-Befunde, s. Backlog), aifactory 76/76, 0 Befunde.
+- **Release (Plugin):** CHANGELOG `[Unreleased]` gepflegt (R-CC-18.5-Zeile im Commit), Paul merged/released.
+- Lint 2026-10-28: Core 157/157 + aifactory 76/76, 0 Befunde.
 
 ## Offen für Paul (je eine Frage)
 
-1. CHANGELOG `[Unreleased]`/Changed: je eine Zeile für neues Review-Verhalten + Paco-Vorbereitung? (Empf. ja)
+1. `docs/memory.md:3-4` (Header-Zitate „Nur Jon schreibt docs/**" / „Paul = Mensch und Da Mek") im
+   Working Tree gelöscht — gewollt? (Diff ist uncommitted, ich habe sie nicht zurückgeschrieben.)
 2. `bugs/compact-regression.md` (205k > 170k): Lauf vor oder nach dem 27.10.? Danach → Restlücke
    „Budget vs. Modellfenster" als nächster Bug-Zyklus.
 3. Smoke R-CT-7/UC-CT-17 (bleiben ❌): lange Session → Pre-Turn-Compact → Delegation; frischer Chat →
@@ -30,6 +30,8 @@
 7. ⏳-Rückversicherungen in [open-points.md](open-points.md) (Delegations-Compact, Briefing-Schema,
    `codegraph`-Name, R-CG-15, R-CC-19, Windows-`cmd /c`).
 8. Jon-Skill (GitHub) nachziehen: ZU_LANG-Zeile, Produkt-Vision, R15, Auto-Docs klein, doc-method-Split.
+9. Bug-Kandidaten neu in [open-points.md](open-points.md) (totes MCP-Tool in der Spec-Liste,
+   `dispatch`-Catch zu eng) — Triagen im nächsten Bug-Zyklus.
 
 ## Backlog
 

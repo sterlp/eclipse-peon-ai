@@ -391,3 +391,13 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 - ⏳ **Homepage-Update für 2.15.0 steht aus** (webSearch, Compact-Sichtbarkeit, Skill-Roots,
   last-search-rolling wirkt nur im Agenten — evtl. kurz erwähnen): AGENTS.md verlangt User-Updates
   im selben Inkrement, der Nachtzyklus hat sie ausgelassen. Nachholen vor/vom Release.
+## 2026-10-28 — Bug-Kandidaten aus dem R-CC-18.5-Zyklus (Delegations-Blocker)
+
+- ❓ **Totes MCP-Tool bleibt in der Spec-Liste:** Ist ein MCP-Server nicht erreichbar, bleiben seine
+  Tools angeboten — jeder Agent-Turn verbrennt Runden am toten Tool (`Tool failed - check why and
+  inform user …` statt Ergebnis). Fix-Idee: tote Gruppe → Specs raus + einmal `onProblem`. Passend
+  zur Repo-Regel „A tool must never lie" — diesmal auf der Angebotsseite. Ursprung: Delegations-
+  Blocker 2026-10-28 (tatsächliche Ursache war API-Down; der Befund bleibt gültig).
+- ❓ **`PoDelegateTool.dispatch` fängt nur `IllegalStateException`** (`PoDelegateTool.java:267`):
+  andere RuntimeExceptions schlagen als roher Stacktrace-Dump zum PO durch statt als ehrliche
+  Meldung „Delegation nicht möglich: <Grund>". Beide im nächsten Bug-Zyklus triagen.
