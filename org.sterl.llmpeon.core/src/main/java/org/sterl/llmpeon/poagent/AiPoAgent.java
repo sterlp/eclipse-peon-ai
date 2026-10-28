@@ -39,6 +39,7 @@ public class AiPoAgent extends AbstractAgent {
     public static final String NAME = "Peon-PO";
     // ${docs}/${plan} placeholders resolved from PeonPaths so the paths live in one constant, not the prompt.
     private static final String BASE_PROMPT = PeonPaths.resolve(PromptLoader.loadWithDefault("po.md"));
+    private static final String DOCS_PROMPT = PeonPaths.resolve(PromptLoader.loadWithDefault("doc-method.md"));
     // Delegation playbook appended after Jon's identity/methodology prompt — kept out of po.txt so his
     // identity stays clean. Steers the talkPlan/planWithPlanAgent/askDev/buildWithDev loop: plan →
     // sign-off → build → mandatory post-build review, then planImplemented as the closing step.
@@ -98,6 +99,7 @@ public class AiPoAgent extends AbstractAgent {
     public String getSystemPrompt() {
         String scope = getWriteValidator().pathScopePrompt();
         return BASE_PROMPT + System.lineSeparator()
+            + DOCS_PROMPT + System.lineSeparator()
             + (scope.isEmpty() ? "" : System.lineSeparator() + scope + System.lineSeparator())
             + DELEGATION_PROMPT;
     }

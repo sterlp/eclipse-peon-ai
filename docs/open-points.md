@@ -85,10 +85,6 @@ Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.
   SOLL geschrieben: Verbindung bleibt, State-Refresh auf B. Nebenwirkung, die Paul kennen sollte:
   jeder Projektwechsel mit gemeinsamem Index erzeugt **eine neue Chat-Zeile** (Dedup-Key ändert sich);
   Alternative wäre ein Live-Projekt im Item (dann zwei Wahrheiten: State + Supplier).
-- ❓ **In-Loop-Direkt-Compact fängt Exceptions nicht (Nachbarloch von R-CC-20.5):** wirft der Compressor
-  im Tool-Loop (`HandleToolLoopCompactComponent.handle` → `agent.compact()`), stirbt der ganze Turn —
-  seit R-CC-18. Nichts geht verloren (Messages sind im Memory), aber der gleiche Fehler, der R-CC-20.5
-  heilt, gehört auch hier hin. Scope bewusst nicht im R-CC-20.5-Fix erweitert.
 - ⏳ **R-CG-14 Fix-Mechanik präzisiert:** der Reviewer schlug „Adopt und Disconnect über denselben
   Lock" vor — Jon: **nein**, ein Lock über `service.connect()` lässt Dispose auf einen 5–10-s-Spawn
   warten. Spezifiziert: Generation + `disposed`-Flag, Prüfung nach dem Connect, Lock nur um den

@@ -31,11 +31,19 @@ Delegation über [PoDelegateTool](../../docs/adr/0020-po-agent-orchestration.md)
 ### Review-Verhalten (Prompt getrieben)
 
 - **R4 ✅** Der Review läuft über `reviewPlanAgent` an Da Dok — **nicht** mehr über `talkPlan` an
-  Da Thinka (`po-delegation.txt` Schritt 4). Er prüft DREI Seiten (Plan↔Code, Docs↔Code, Docs↔Plan)
-  + Mutations-Check-Empfehlung, meldet Abweichungen und **repariert nichts**. Prompt
-  `review-agent.txt`: Verdict ACCEPTED/CONCERNS/REJECTED, Intake (Plan + Diff vollständig),
-  Checklist (Completeness/Correctness/Duplication-Rule-of-Three/Deviations/Tests/Skill-Gaps),
-  Plan-Update bei legitimen Abweichungen, Chat-Summary zuletzt.
+  Da Thinka (`po-delegation.md` Schritt 4). Er meldet Abweichungen und **repariert nichts**.
+  Verdict ACCEPTED/CONCERNS/REJECTED, Chat-Summary zuletzt.
+- **R8 ✅ (2026-10-28, Paul; prompt-basiert, kein BDD) — Maßstab: leicht wartbar, leicht änderbar, keine Überraschungen.**
+  Der Prompt ist rollen-neutral (keine Team-Namen — Da Dok läuft auch allein) und arbeitet auch
+  **ohne Plan oder ohne Docs**. Prüft: Bugs · Docs↔Code (wenn Docs da) · Plan↔Code (wenn Plan da) ·
+  Docs↔Plan-Konflikt (Docs sind Maßstab) · überflüssige Kommentare statt Doc-Verweis · schlechte
+  Testbarkeit · schlechte Kapselung, Wiederholung (≥3×), Modul-Zyklen · verschmierte Struktur
+  (Änderung braucht viele Module). Diese sind **BUG** (→ REJECTED); Überkomplexes ist **LOW** mit
+  einfacherer Lösung; Nitpicks/Stil werden ignoriert. Ein Durchgang meldet **alle** BUGs (kein
+  Abbruch beim ersten); BUG nur für geänderten/neuen Code, Altlast als nicht-blockierende Liste
+  „Pre-existing"; Verhaltens-BUG nur mit Beleg (sonst „Verdacht"), Tests des Moduls laufen mit
+  Befehl + Zahlen; BUGs nach Wirkung sortiert (Verhalten/Daten vor Struktur). Inhalt: Prompt
+  `review-agent.md`.
   - GIVEN Da Mek meldet fertig WHEN Jon reviewPlanAgent aufruft THEN Da Dok liefert Verdict +
     Chat-Summary, ohne Code zu ändern
 - **R5 ✅** Da Dok ist **read-only im Code**: Write-Tools ausgenommen, nur plan*-Tools zum Schreiben
@@ -73,4 +81,4 @@ Delegation über [PoDelegateTool](../../docs/adr/0020-po-agent-orchestration.md)
 | R1 | `AgentServiceTest.hasDefaultAgent` (named: enthält Peon-Review) |
 | R2 | `PoDelegateToolTest` (3 NamedAgents im Ctor) · `PeonAiServiceTest.test_status_agents_are_jons_team_when_po_active` (Header: Da Boss, Da Thinka, Da Mek, Da Dok) |
 | R3 | `PoDelegateToolTest.clearReview_wipesReviewSlaveMemoryOnly` / `compactReview_compactsReviewSlaveMemory` · `AiPoAgentTest.clear_cascadesToAllThreeSlaves` / `compact_cascadesToAllThreeSlaves` · Sticky-Path: `reviewPlanAgent_reusesStickyPlanPath` |
-| R4–R6 | Prompt/Verhalten — manuelle Verifikation (kein Unit-Test, wie Prompts-Konvention) |
+| R4–R6, R8 | Prompt/Verhalten — manuelle Verifikation (kein Unit-Test, wie Prompts-Konvention) |

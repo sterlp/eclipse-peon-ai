@@ -28,7 +28,10 @@ nach einer Runde der Zähler re-derived und ob ein Hint angehängt wurde. Zwei B
   Ende jeder Tool-Runde vor dem nächsten Call. Drei Ausgänge über **einem** Zustand
   (`memory.getTotalTokenUsed()` gegen die **rohe** Config `req.getConfig().getAutoCompactAfter()`):
   1. `used > Budget` und `size > MIN_COMPACT_MESSAGES` → `agent.compact(monitor)` **direkt**
-     (ein Versuch pro Turn; `SKIPPED_SMALL`/`FAILED_EMPTY` wird nicht wiederholt).
+     (zustandslos seit der Revision 2026-10-28 — kein Turn-Merker, ein Fehlschlag geht nach
+     Wiederholung an den User: [compact.md R-CC-18.5](../../org.sterl.llmpeon.core/docs/compact.md).
+     Die ursprüngliche Fassung „ein Versuch pro Turn" sperrte auch nach Erfolg und ließ einen langen
+     Sklaven-Turn auf 205k > 170k laufen — derselbe Ereignis-Merker-Fehler, den dieser ADR abschaffen wollte).
   2. `used > 95 %` und ≤ Budget → `COMPACT_HINT` (R-CC-4-Dedup unverändert).
   3. sonst nichts.
 - **Die Folgen eines Compacts hängen am Ausführenden:** `reevaluateTokens()` + Static-Rebuild macht,

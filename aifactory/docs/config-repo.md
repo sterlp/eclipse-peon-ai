@@ -29,6 +29,7 @@ die Chat-History der Agenten.
     projects.yml          Projektliste (ersetzt projects.json)
     agents/<id>/AGENT.md  Agenten
     .agents/skills/       Skills (wie im Plugin der empfohlene Ort)
+    paco/<nutzer>/<projekt-id>/memory.md   Pacos Gedächtnis je Nutzer (R-CR-11)
   projects/<name>         ← Clone je Projekt — nicht im Config-Repo
   state/<id>/             ← Chat-History je Projekt — nicht im Config-Repo
 ```
@@ -62,6 +63,22 @@ die Fabrik rein lokal; das Config-Repo ist offline und „übernehmen" gesperrt.
 
 Jede Änderung auf der Config-Seite wird zuerst **getestet**: sie landet in der lokalen Datei und wirkt ab
 dem nächsten Turn, ohne Commit. **„übernehmen"** committet und pusht den lokalen Stand ins Config-Repo.
+Einzige Ausnahme ohne Zutun des Nutzers: Pacos Gedächtnis (R-CR-11).
+
+### R-CR-11 — Pacos Gedächtnis wird automatisch committet, sonst nichts ❌
+
+Die Fabrik committet und pusht **stündlich und beim Herunterfahren** genau die geänderten Dateien unter
+`config/paco/` — gezielt per Pfad, nie das ganze `config/`. Getestete, nicht übernommene Änderungen
+(Modell, Keys, Agenten) bleiben davon unberührt. Push wie bei „übernehmen" (Rebase, nie Force, R-CR-9);
+ist das Config-Repo offline, entfällt der Commit. **WEIL** ein Node ohne Platte sonst Pacos Gedächtnis
+beim Neustart verliert ([R-PC-8](paco.md)).
+
+#### UC-CR-14 — autoCommitTakesOnlyPacoMemory ❌
+- GIVEN eine geänderte `config/paco/paul/<id>/memory.md` und ein getestetes, nicht übernommenes Modell in
+  `config.properties` WHEN der stündliche Auto-Commit läuft THEN enthält der Commit nur die
+  `memory.md`; `config.properties` bleibt lokal geändert und uncommittet.
+- GIVEN keine Änderung unter `config/paco/` WHEN der Auto-Commit läuft THEN entsteht kein Commit.
+- GIVEN eine geänderte `memory.md` WHEN die Fabrik herunterfährt THEN ist sie vorher committet und gepusht.
 
 #### UC-CR-4 — testWritesFileCommitPushes ❌
 - GIVEN ein Config-Repo WHEN der Nutzer ein Modell ändert und „testen" wählt THEN steht der neue Wert in

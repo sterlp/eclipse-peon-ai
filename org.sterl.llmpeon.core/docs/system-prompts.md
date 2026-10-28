@@ -11,6 +11,8 @@
 |---|---|---|---|
 | [`po.md`](../src/main/resources/org/sterl/llmpeon/prompts/po.md) | **Jon** (Peon-PO) | Business-Owner, Hüter der Docs | Immer wenn das WAS festgelegt wird: Stories, Regeln, BDD, Release-Freigabe. Einziger Ansprechpartner für den User. |
 | [`po-delegation.md`](../src/main/resources/org/sterl/llmpeon/prompts/po-delegation.md) | **Jon** (Ergänzung) | Delegations-Playbook | Wird in `po.md` injiziert (`${plan}`/`${docs}`-Platzhalter). Operative Delegation an Thinka/Mek/Dok, Themenwechsel-Ritual. |
+| [`doc-method.md`](../src/main/resources/org/sterl/llmpeon/prompts/doc-method.md) ❌ | **Jon** + **Paco** | gemeinsame Doc-Methode | Von beiden geladen: IST/SOLL/WEIL, GIVEN/WHEN/THEN, Symbole/Status-Marker, Konfliktcheck — ein Pflegeort, kein Drift ([R-PC-7](../../aifactory/docs/paco.md)). |
+| [`paco.md`](../src/main/resources/org/sterl/llmpeon/prompts/paco.md) ❌ | **Paco** (nur Web) | fachlicher PO je Nutzer | Rolle & Identität: Grill me, Projektfragen, Stories/Proposals ([R-PC-7](../../aifactory/docs/paco.md)). |
 | [`planner.md`](../src/main/resources/org/sterl/llmpeon/prompts/planner.md) | **Da Thinka** | Plan-Mode, read-only | Vor jedem Build: Ziel → Architektur → Plan. Kein Schreibzugriff. |
 | [`developer.md`](../src/main/resources/org/sterl/llmpeon/prompts/developer.md) | **Da Mek** | Dev-Mode, macht Änderungen | Implementierung nach Plan. Build+Tests, Test-Honesty, Skill-Footer. |
 | [`review-agent.md`](../src/main/resources/org/sterl/llmpeon/prompts/review-agent.md) | **Da Dok** | Review-Mode, read-only | Review jedes Inkrements gegen den Plan. Meldet Skill-Evolution-Outcome + Evidence. |

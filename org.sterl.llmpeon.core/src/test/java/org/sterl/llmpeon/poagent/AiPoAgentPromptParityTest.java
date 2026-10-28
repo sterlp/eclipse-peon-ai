@@ -25,6 +25,7 @@ class AiPoAgentPromptParityTest {
 
     private static final String NL = System.lineSeparator();
     private static final String BASE_PROMPT = PeonPaths.resolve(PromptLoader.loadWithDefault("po.md"));
+    private static final String DOCS_PROMPT = PeonPaths.resolve(PromptLoader.loadWithDefault("doc-method.md"));
     private static final String DELEGATION_PROMPT = PeonPaths.resolve(PromptLoader.load("po-delegation.md"));
 
     private AiPoAgent agent(WriteValidator validator) {
@@ -41,7 +42,9 @@ class AiPoAgentPromptParityTest {
     @Test
     void pluginPromptIsByteIdentical() {
         assertThat(agent(WriteValidator.DOCS).getSystemPrompt())
-                .isEqualTo(BASE_PROMPT + NL + NL + WriteValidator.JON_PATH_SCOPE_PROMPT + NL + DELEGATION_PROMPT);
+                .isEqualTo(BASE_PROMPT + NL 
+                        + DOCS_PROMPT + NL
+                        + NL + WriteValidator.JON_PATH_SCOPE_PROMPT + NL + DELEGATION_PROMPT);
     }
 
     @Test
@@ -61,7 +64,9 @@ class AiPoAgentPromptParityTest {
 
         // exact equality is the seam proof: an empty scope may not leave a blank paragraph behind
         // (measured: BASE_PROMPT itself ends with a line separator, so a bare "\n\n" count is blind here)
-        assertThat(prompt).isEqualTo(BASE_PROMPT + NL + DELEGATION_PROMPT);
+        assertThat(prompt).isEqualTo(BASE_PROMPT + NL
+                + DOCS_PROMPT + NL
+                + DELEGATION_PROMPT);
         assertThat(prompt).doesNotContain(WriteValidator.JON_PATH_SCOPE_PROMPT);
     }
 }

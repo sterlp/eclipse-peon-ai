@@ -14,10 +14,10 @@ das Plugin kennt nur Jon):
 
 | | **Jon** — technischer PO | **Paco** — fachlicher PO |
 |---|---|---|
-| wie viele | einer je Projekt, ein Chat für alle | einer je Nutzer und Projekt, privat |
+| wie viele | einer je Projekt, ein Chat für alle | einer je Nutzer und Projekt — Chat und Gedächtnis privat, Vorschläge öffentlich |
 | tut | baut mit seinem Team, klärt auch technische Fragen | analysiert das Projekt, schärft das SOLL, schreibt Vorschläge |
 | Fokus | SOLL == IST herstellen | **Grill me:** Vision, Ziele, fachlicher Mehrwert, was genau gebaut werden soll — inkl. GIVEN/WHEN/THEN, die das SOLL härten |
-| schreibt | `docs/` (und lässt Code bauen) | nur eigene `stories/` und `proposals/` |
+| schreibt | `docs/` (und lässt Code bauen) | nur `paco/<nutzer>/` im Projekt (Stories, Proposals) + eigenes Gedächtnis (R-PC-8) |
 | Team | Plan · Dev · Review · Search | nur **Search** |
 
 Paco ist ein **gewöhnlicher Agent** (id `paco`, Name „Paco", mit description) — keine
@@ -45,18 +45,18 @@ beide Gespräche bleiben getrennt.
 ### R-PC-2 — Paco liest, sucht, und schreibt nur in die eigenen Vorschlags-Ordner ❌
 
 Werkzeuge: alles Lesende der Core-Familien (`disk*`-Read/Grep/Search, `web*`, `docs*`-Read) und als
-**einziges** Agenten-Werkzeug den Such-Agenten (`searchAgent`). Schreibend sind **ausschließlich**
-`<projekt>/stories/<nutzer>/` und `<projekt>/proposals/<nutzer>/` des **eigenen** Nutzers erlaubt —
+**einziges** Agenten-Werkzeug den Such-Agenten (`searchAgent`). Schreibend ist **ausschließlich**
+`<projekt>/paco/<nutzer>/` des **eigenen** Nutzers erlaubt (plus das eigene Gedächtnis, R-PC-8) —
 durchgesetzte Schreib-Liste, nicht höfliche Bitte. Solange kein Nutzer bekannt ist (kein Login), ist
 `<nutzer>` = `user`.
 
 #### UC-PC-3 — pacoWriteAllowedOnlyInOwnFolders ❌
-- GIVEN Paco von Nutzer `paul` WHEN er in `<projekt>/stories/paul/…` oder
-  `<projekt>/proposals/paul/…` schreibt THEN gelingt der Write.
+- GIVEN Paco von Nutzer `paul` WHEN er in `<projekt>/paco/paul/stories/…` oder
+  `<projekt>/paco/paul/proposals/…` schreibt THEN gelingt der Write.
 
 #### UC-PC-4 — pacoWriteOutsideOwnFoldersRejected ❌
 - GIVEN Paco von Nutzer `paul` WHEN er im Quellcode, in `docs/`, im temporären Verzeichnis oder im
-  Ordner eines anderen Nutzers (`stories/anna/…`) schreiben will THEN wird abgelehnt und die Ablehnung
+  Ordner eines anderen Nutzers (`paco/anna/…`) schreiben will THEN wird abgelehnt und die Ablehnung
   steht als Tool-Zeile im Gespräch.
 
 #### UC-PC-5 — pacoHasOnlyTheSearchAgent ❌
@@ -70,15 +70,16 @@ Paco ordnet jeden Vorschlag genau einer Art zu:
 
 | Art | wofür | Ablage | Inhalt |
 |---|---|---|---|
-| **Story** | neuer Wunsch aus Nutzersicht | `stories/<nutzer>/<JJJJ-MM-TT>-<kurztitel>.md` | Ziel, GIVEN/WHEN/THEN, betroffene Bereiche |
-| **Proposal** | Änderung an Bestehendem (Regel, Ablauf) | `proposals/<nutzer>/<JJJJ-MM-TT>-<kurztitel>.md` | IST / SOLL / WEIL, betroffene Regeln |
+| **Story** | neuer Wunsch aus Nutzersicht | `paco/<nutzer>/stories/<JJJJ-MM-TT>-<kurztitel>.md` | Ziel, GIVEN/WHEN/THEN, betroffene Bereiche |
+| **Proposal** | Änderung an Bestehendem (Regel, Ablauf) | `paco/<nutzer>/proposals/<JJJJ-MM-TT>-<kurztitel>.md` | IST / SOLL / WEIL, betroffene Regeln |
 
 Ein Vorschlag je Datei. Eine neue Datei überschreibt nie eine bestehende (Namens-Suffix bei
-Kollision).
+Kollision). Paco schreibt **fortlaufend** wie Jon: die Datei entsteht mit dem ersten geklärten Punkt,
+jede weitere Entscheidung landet sofort darin — nichts ist entworfen, das nur im Chat steht.
 
 #### UC-PC-6 — newProposalNeverOverwrites ❌
 - GIVEN Paco WHEN eine **neue** Story angelegt wird THEN entsteht eine neue Datei unter
-  `stories/<nutzer>/` mit dem Schema oben; eine bestehende Datei gleichen Namens bleibt unverändert,
+  `paco/<nutzer>/stories/` mit dem Schema oben; eine bestehende Datei gleichen Namens bleibt unverändert,
   die neue bekommt ein Suffix. (Weiterarbeiten an einer eigenen Datei regelt R-PC-6.)
 
 #### UC-PC-7 — twoUsersNeverCollideOnFileNames ❌
@@ -87,7 +88,7 @@ Kollision).
 
 #### UC-PC-11 — changeToExistingRuleBecomesProposal ❌
 - GIVEN Paco WHEN der Nutzer eine bestehende Regel ändern will THEN entsteht
-  `proposals/<nutzer>/<datum>-<titel>.md` mit IST/SOLL/WEIL — keine Datei unter `stories/`.
+  `paco/<nutzer>/proposals/<datum>-<titel>.md` mit IST/SOLL/WEIL — keine Datei unter `stories/`.
 
 ### R-PC-6 — An eigenen Vorschlägen weiterarbeiten, fremde nur lesen ❌
 
@@ -97,9 +98,9 @@ Vorschläge anderer Nutzer sind lesbar, aber nie änderbar. Im MVP gibt es keine
 Vorschläge liegen unter `user/` und sind damit für jeden eigene; die Trennung greift mit Login.
 
 #### UC-PC-12 — continueOwnProposalInPlace ❌
-- GIVEN Nutzer `paul` hat `proposals/paul/2026-10-27-login.md` WHEN er sie auf der Paco-Seite öffnet
+- GIVEN Nutzer `paul` hat `paco/paul/proposals/2026-10-27-login.md` WHEN er sie auf der Paco-Seite öffnet
   und eine Änderung bespricht THEN ändert Paco genau diese Datei — es entsteht keine Kopie.
-- GIVEN dieselbe Liste zeigt `proposals/anna/…` WHEN `paul` sie öffnet THEN kann er sie lesen, ein
+- GIVEN dieselbe Liste zeigt `paco/anna/proposals/…` WHEN `paul` sie öffnet THEN kann er sie lesen, ein
   Schreibversuch wird abgelehnt (R-PC-2).
 
 ### R-PC-4 — Ein Vorschlag ist konfliktfrei oder benennt seinen Konflikt ❌
@@ -118,8 +119,10 @@ Positionen (Regel/ADR und Vorschlag) und wie der Konflikt aufgelöst werden soll
 
 ### R-PC-5 — Stories und Proposals sind Vorschläge, kein Bestand ❌
 
-Was in `stories/` oder `proposals/` liegt, ist **nicht** Teil der Feature-Docs und verändert keine
-Regel. Geschrieben werden darf dort nur, was später importiert werden soll.
+Was unter `paco/` liegt, ist **nicht** Teil der Feature-Docs und verändert keine Regel. Geschrieben
+werden darf dort nur, was später importiert werden soll. Stories und Proposals sind **öffentlich**:
+sie liegen im Projekt, damit Jon und jeder Nutzer sie sehen, und Jon committet sie mit dem nächsten
+Projekt-Commit seines Zyklus mit.
 
 #### UC-PC-10 — storyIsNotADocRule ❌
 - GIVEN eine fertige Story WHEN Jon das Feature-Doc liest THEN gilt weiterhin nur das, was in den
@@ -128,26 +131,45 @@ Regel. Geschrieben werden darf dort nur, was später importiert werden soll.
 ### R-PC-7 — Paco hat einen eigenen Prompt mit eigener Rolle und Identität ❌
 
 Pacos Prompt ist **eigenständig** (`prompts/paco.md` im Core — ein Pflegeort für Plugin und Web, im
-Plugin ist Paco nur nicht aktiv). Er ist **inhaltlich aus Jons `po.md` abgeleitet**, lädt sie aber
-nicht und baut nicht auf ihr auf; ebenso wenig `po-delegation.md`.
+Plugin ist Paco nur nicht aktiv). Die **Doc-Methode**, die Jon und Paco teilen, steht in **einem**
+gemeinsamen Fragment `prompts/doc-method.md`, das **beide** laden — so bleibt Paco 100 % kompatibel
+zu Jon, ohne Kopie. Jons `po.md` und `po-delegation.md` lädt Paco nicht.
 
-Ziel des Prompts:
+Aufteilung (gleiche Symbole bei beiden — ein neues Symbol kennt sofort jeder):
 
-| übernimmt von Jon (Arbeitsweise) | eigen (Rolle & Identität) | entfällt (Jons Bau-Rolle) |
+| `doc-method.md` (Jon + Paco) | `paco.md` (Rolle & Identität) | nur Jon (`po.md`/`po-delegation.md`) |
 |---|---|---|
-| skeptischer Berater, nimmt nichts an · eine Frage pro Nachricht mit Empfehlung · IST/SOLL/WEIL · GIVEN/WHEN/THEN härten das SOLL · Konfliktcheck gegen Regeln, Glossar, ADRs | „Du bist Paco" — fachlicher PO **eines** Nutzers · **Grill me** auf Vision, Ziele, fachlichen Mehrwert, was genau gebaut werden soll · Ergebnis ist eine Story oder ein Proposal (R-PC-3) | `docs/` schreiben · `nextIds`/ID-Vergabe · ADRs · Status-Marker · Team steuern (Plan/Dev/Review) · Bauen |
+| skeptischer Berater, nimmt nichts an · eine Frage pro Nachricht mit Empfehlung · IST/SOLL/WEIL · GIVEN/WHEN/THEN härten das SOLL · Konfliktcheck gegen Regeln, Glossar, ADRs · fortlaufend schreiben · Feature-Doc-Format · Symbole/Status-Marker | Abschnitt **Charakter** ganz oben (Ton, Auftreten — wie in `po.md`) · „Du bist Paco" — **fachliches** Design **eines** Nutzers · **Grill me** auf Vision, Ziele, fachlichen Mehrwert · beantwortet Fragen zum Projekt aus Docs und Code · Ergebnis ist eine Story oder ein Proposal (R-PC-3) | fachliches **und technisches** Design · `docs/` schreiben · `nextIds`/ID-Vergabe · ADRs · Architektur-Docs · Team steuern (Plan/Dev/Review) · Bauen |
 
 #### UC-PC-13 — pacoPromptIsOwnPrompt ❌
 - GIVEN Paco ohne eigene Agent-Datei WHEN sein System-Prompt gebaut wird THEN stammt er aus
-  `paco.md` und enthält weder `po.md` noch `po-delegation.md`.
+  `doc-method.md` + `paco.md` und enthält weder `po.md` noch `po-delegation.md`.
+- GIVEN Jon WHEN sein System-Prompt gebaut wird THEN enthält er `doc-method.md` genau einmal.
 - GIVEN Pacos Agent-Datei mit Rumpf WHEN sein System-Prompt gebaut wird THEN ersetzt der Rumpf den
   eingebauten Prompt wie bei jedem Agenten ([Agent-Dateien](../../org.sterl.llmpeon.core/docs/builtin-agent-prompt-tracked.md)).
+
+### R-PC-8 — Paco hat ein Gedächtnis je Nutzer ❌
+
+Paco ist stateful, je Nutzer und Projekt zwei Teile:
+
+- **Chat-Verlauf** — wie bei Jon gespeichert, je Nutzer getrennt.
+- **`memory.md`** — von Paco selbst gepflegt: letzter Fokus, offene Punkte, nächster Schritt; kompakt,
+  Erledigtes fliegt raus. **Privat:** liegt unter `config/paco/<nutzer>/<projekt-id>/memory.md` (nicht
+  im Projekt; einzige Schreib-Erlaubnis außerhalb von `paco/<nutzer>/` im Projekt), wird beim Start
+  **automatisch geladen** (nur die des eigenen Nutzers) und von der Fabrik stündlich und beim
+  Herunterfahren committet ([R-CR-11](config-repo.md)). Überlebt damit jedes Compact und jeden Neustart.
+
+Beim Start meldet Paco kurz letzten Fokus und offene Punkte und schlägt vor, dort weiterzumachen.
+Fremde `memory.md` lädt er nie automatisch.
+
+#### UC-PC-14 — pacoRemembersOnlyOwnUser ❌
+- GIVEN `paul` und `anna` haben je eine Paco-`memory.md` am selben Projekt WHEN `paul` Paco startet
+  THEN enthält Pacos Kontext Pauls `memory.md` und nicht Annas.
+- GIVEN ein Nutzer ohne Stand WHEN er Paco startet THEN fragt Paco, worauf ihr euch fokussiert.
 
 ## Offene Punkte
 
 | # | Punkt | Stand / Vorschlag |
 |---|-------|-------------------|
 | 1 | Import-Mechanik (wer holt Vorschläge in die Docs?) | ⏳ bewusst außerhalb dieses Features |
-| 2 | Darf Paco auch `docs/` **lesen** und daraus antworten? | ⏳ angenommen: ja, lesen ja, schreiben nein |
 | 3 | Story-Sprache und -Schema fest vorgeben oder frei? | ⏳ angenommen: Schema aus R-PC-3, Formulierungen frei |
-| 4 | Git: wer committet Vorschläge, auf welchen Branch? | ❓ Paul 2026-10-27: „main oder aktueller Branch, erst mal nicht wichtig" — bis dahin committet Paco **nicht** (keine Shell); die Dateien liegen im Checkout |

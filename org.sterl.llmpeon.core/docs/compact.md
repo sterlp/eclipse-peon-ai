@@ -8,8 +8,8 @@ idPrefix: CC
 > · R-CC-8/9 **✅ done** (2026-09-25, Inc 3/3.1, Da Dok Review ACCEPTED)
 > · R-CC-10 **✅ done** (2026-09-26) · R-CC-11…14 **✅ done** (2026-09-26, Nachbau-Review)
 > · R-CC-7 **🚧 in design** (Retry/Fehlerklassen, zusammen mit ApiRetry-Tabelle)
-> · R-CC-18 **✅ done** (2026-10-18 specified / 2026-10-19 gebaut: vollen Context direkt compacten
-> statt auf den Hint zu warten — siehe unten; Da Dok CONCERNS ohne Blocker).
+> · R-CC-18 **❌ specified** (Revision 2026-10-28: zustandslos, Fehlschlag → Retry → User;
+> Grundregel ✅ seit 2026-10-19).
 > **Input-Budget-Regeln (Präfix CIB):** eigenes Doc
 > [compact-input-budget.md](compact-input-budget.md) — ✅ done (2026-09-25, Da Dok ACCEPTED).
 > **Komponente:** eigens core-Package `compact` ([ADR-0056](../../docs/adr/0056-compact-component-and-render-modes.md)) —
@@ -375,7 +375,7 @@ Compact-only. Sichtbarkeit für den 400-Fall kommt stattdessen über ein neues F
 Agent den Abbruch kennt und nachfolgend reagieren kann.
 
 
-### R-CC-18 — Voller Context: Compact direkt statt auf den Hint warten ✅ done (2026-10-18; geschärft + gebaut 2026-10-27: Erfolg sperrt keinen weiteren Direkt-Compact, UC-CC-2)
+### R-CC-18 — Voller Context: Compact direkt statt auf den Hint warten ❌ specified (Revision 2026-10-28, Paul: zustandslos, Fehlschlag → Retry → User; zuvor ✅ 2026-10-18/27)
 
 **Anlass:** Der Compact-Hint (R-CC-4) ist eine *Bitte* ans Modell. Ist der Context bereits über dem
 Budget, kommt sie zu spät — der nächste Provider-Call geht unverändert raus und stirbt am
@@ -404,20 +404,36 @@ Ereignis-Gate (`ranTool(compactSession)` + Turn-Merker) ersatzlos.
 - **R-CC-18.4 — Kein zusätzlicher Text ins LLM-Memory:** die Reinsert-UserMessage endet bereits
   mit dem Marker-Block `Session compacted:` + Summary (R-CC-9), der `onTool`-Report trägt die Zahlen. Ein zweiter Hinweis wäre
   Rauschen und ein neuer Sonderfall für die Stufenkürzung.
-- **Kein Wiederholen eines Fehlschlags im Turn — ein Erfolg sperrt nichts** (geschärft 2026-10-27,
-  Paul — Überlauf `205k > 170k` in einem langen Sklaven-Turn): liefert der Direkt-Compact
-  `SKIPPED_SMALL` oder `FAILED_EMPTY`, wird er im **selben** Turn nicht wiederholt (sonst ein
-  Compressor-LLM-Call pro Iteration); beim nächsten Turn bzw. über die Delegations-Regel
-  (`PoDelegateTool`) wird erneut geprüft. War er **erfolgreich** (`COMPACTED`), bleibt R-CC-18.1 im
-  selben Turn scharf: wächst das Memory erneut über das Budget, wird erneut direkt compactiert.
+- **R-CC-18.5 — Zustandslos, ein Fehlschlag geht an den User** (❌ Revision 2026-10-28, Paul:
+  „zwei einfache if-Blöcke"): die Entscheidung kennt keinen Turn-Merker. Nach jeder Tool-Runde gilt
+  allein der Zustand: über Budget → compact; im 95-%-Band → Hint; sonst nichts. Ein erfolgreicher
+  Compact sperrt nichts — wächst das Memory im selben Turn erneut über das Budget, wird erneut
+  compactiert. Ein **API-Fehler** des Compressor-Calls wird wiederholt — mit derselben Retry-Logik
+  wie jeder Modell-Call ([agents-retry.md](agents-retry.md), `ApiRetry`), kein eigener Compact-Retry.
+  Sind die Wiederholungen erschöpft **oder** liefert der Compact ein anderes Ergebnis als
+  `COMPACTED` (leere Summary, nichts zu kompaktieren), **endet der Turn mit dem Fehler beim User** —
+  es geht kein Call über Budget raus.
+
+  ```mermaid
+  flowchart TD
+    R[Tool-Runde fertig] --> B{used > Budget?}
+    B -- ja --> C[compact]
+    C -- COMPACTED --> N[nächster Call, kleines Memory]
+    C -- Fehler --> RT{Wiederholung übrig?}
+    RT -- ja --> C
+    RT -- nein --> U[Turn endet, Fehler an User]
+    B -- nein --> H{used > 95 %?}
+    H -- ja --> HI[Compact-Hint] --> N2[nächster Call]
+    H -- nein --> N2
+  ```
 
 - GIVEN der Direkt-Compact im Turn war erfolgreich WHEN das Memory im selben Turn erneut über das
   Budget wächst THEN wird vor dem nächsten Call erneut direkt compactiert. *(UC-CC-2)*
+- GIVEN über Budget WHEN der Compact scheitert und keine Wiederholung mehr übrig ist THEN endet der
+  Turn, der User sieht den Fehler und es geht **kein** weiterer Provider-Call raus. *(UC-CC-2)*
 
 - GIVEN `used` 170001 und Budget 160000 WHEN der nächste Call ansteht THEN ist compactiert, **bevor**
   der Call rausgeht — der Call trägt die neue, kleine History. *(Test: `directCompactBeforeCall`)*
-- GIVEN der Direkt-Compact liefert `SKIPPED_SMALL`/`FAILED_EMPTY` WHEN die nächste Runde beginnt
-  THEN kein zweiter Direkt-Versuch in diesem Turn. *(Test: `failedDirectCompactIsNotRetriedInTurn`)*
 - GIVEN `used` 155000 (96,9 % von 160000) WHEN die Runde endet THEN Hint, kein Direkt-Compact.
   *(Test: `hintOnlyInTheBandBelowBudget`)*
 - GIVEN `compactSession` lief in dieser Runde erfolgreich WHEN danach geprüft wird THEN greift keine
@@ -428,11 +444,11 @@ Ereignis-Gate (`ranTool(compactSession)` + Turn-Merker) ersatzlos.
 - GIVEN Memory ≤ `MIN_COMPACT_MESSAGES` WHEN über Budget THEN kein Direkt-Compact (R-CC-8) — der
   Provider-Fehler bleibt der ehrliche Ausgang. *(Test: `directCompactRespectsMinMessages`)*
 
-#### UC-CC-2 — successfulDirectCompactDoesNotBlockTheNextOne ✅
+#### UC-CC-2 — directCompactIsStateless ❌ (Revision 2026-10-28)
 - GIVEN ein Turn, dessen Direkt-Compact erfolgreich war (`COMPACTED`) WHEN das Memory im selben Turn
   erneut über `autoCompactAfter` wächst THEN wird vor dem nächsten Call erneut direkt compactiert.
-- GIVEN ein Turn, dessen Direkt-Compact `SKIPPED_SMALL`/`FAILED_EMPTY` lieferte WHEN das Memory in
-  einer späteren Runde weiter über dem Budget liegt THEN kein zweiter Direkt-Versuch in diesem Turn.
+- GIVEN über Budget WHEN der Direkt-Compact scheitert und keine Wiederholung mehr übrig ist THEN
+  endet der Turn mit dem Fehler beim User — kein Provider-Call über Budget.
 
 **Kein Pre-Turn-Gate für den Faktor:** `AbstractAgent` compactet nie nach einer Agent-Eigenschaft —
 die 0.7-Regel lebt allein in der Delegation ([ADR-0071](../../docs/adr/0071-compact-policy-owned-by-delegation.md)).
@@ -479,8 +495,8 @@ ungeprüft in den nächsten Provider-Call. Der In-Loop-Hint fängt nur, wer wied
   `call()` rettet nur die Queue — die Meldung ist weg. SOLL: der Pre-Turn-Compact läuft in try/catch; bei
   einem Fehler `onProblem` melden und **ohne Compact weitermachen** (der Kontext ist nur über Budget, das
   Modellfenster ist noch nicht voll — der Provider-Call ist der ehrliche Ausgang, wie beim FAILED_EMPTY).
-  Dasselbe Loch existiert seit R-CC-18 auch im In-Loop-Direkt-Compact (Turn stirbt, nichts verloren) —
-  bewusst nicht in diesem Fix ([open-points.md](../../docs/open-points.md)).
+  Im In-Loop-Direkt-Compact gilt bewusst das Gegenteil: dort ist die frische Message schon im Memory,
+  ein Fehlschlag beendet den Turn (R-CC-18.5).
 
 - GIVEN `used` 90 000 und Budget 80 000 WHEN ein neuer Turn startet THEN ist compactiert, **bevor**
   der Provider-Call rausgeht, und die frische User-Message steht danach im Memory.

@@ -103,12 +103,13 @@ to the prompt file instead of a BDD. Full 12-file inventory + loader mechanics:
 
 | File | Loaded by | When | Why it exists |
 |---|---|---|---|
-| `default.txt` | `PromptLoader` (static base) | always — prepended via `loadWithDefault` | shared base behaviour for all built-in agents (and custom-agent bodies) |
-| `po.txt` | `AiPoAgent` (static) | always — Jon's system prompt | Jon's identity + docs-first methodology (SOLL/IST/WEIL, status markers, one-question interviews) |
-| `po-delegation.txt` | `AiPoAgent` (static) | always — appended after the path-white-list line | the delegation playbook (plan → sign-off → build → one review → retro, cycle/branch discipline) — split out so the identity stays clean and the playbook evolves on its own |
-| `po-tutorial.txt` | plugin `PeonAiService` | first activation in a session (R4) | onboarding message, like Peon-Scaffold |
-| `plan-write-loop.txt` | `PoDelegateTool.planWithPlanAgent` | one-shot standing order per plan dispatch | plan-writing discipline — only when Da Thinka actually writes the plan, not on `talkPlan` |
-| `dev-build-loop.txt` | `PoDelegateTool.buildWithDev` | per build dispatch with a (sticky) planPath | build discipline (vertical slices, green gate, git commits, compactSession) — only when Da Mek builds from a released plan, not on `askDev` |
+| `default.md` | `PromptLoader` (static base) | always — prepended via `loadWithDefault` | shared base behaviour for all built-in agents (and custom-agent bodies) |
+| `doc-method.md` ❌ | `AiPoAgent` + Paco (static) | always — right after Jon's/Paco's own prompt (`default` + `po`/`paco` + `doc-method`, both say "Doc-Methode unten"); `${docs}` resolved like `po.md` | the shared docs-first method (SOLL/IST/WEIL, GIVEN/WHEN/THEN, symbols/status markers, conflict check, one-question interviews) — one source so Jon and Paco never drift ([aifactory R-PC-7](../../aifactory/docs/paco.md)) |
+| `po.md` | `AiPoAgent` (static) | always — Jon's system prompt | Jon's `## Charakter` + build role (IDs/`nextIds`, ADRs, architecture docs, status flips, team) |
+| `po-delegation.md` | `AiPoAgent` (static) | always — appended after the path-white-list line | the delegation playbook (plan → sign-off → build → one review → retro, cycle/branch discipline) — split out so the identity stays clean and the playbook evolves on its own |
+| `po-tutorial.md` | plugin `PeonAiService` | first activation in a session (R4) | onboarding message, like Peon-Scaffold |
+| `plan-write-loop.md` | `PoDelegateTool.planWithPlanAgent` | one-shot standing order per plan dispatch | plan-writing discipline — only when Da Thinka actually writes the plan, not on `talkPlan` |
+| `dev-build-loop.md` | `PoDelegateTool.buildWithDev` | per build dispatch with a (sticky) planPath | build discipline (vertical slices, green gate, git commits, compactSession) — only when Da Mek builds from a released plan, not on `askDev` |
 
 **Split rationale:** identity (static, small) · playbook (operational, changes more often) · loop
 disciplines (one-shot injections bound to the work verbs — talk/ask turns stay lean, and the
@@ -798,7 +799,7 @@ GIVEN a slave returns plain text (a clarifying question), not an exception
 THEN it is a normal tool result (R8), not treated as an error
 ```
 
-### R15: Build-Zyklus auf Git-Branch — Commit + Push je Iteration, Squash-Merge als Default ❌ (Commit 2026-08-28; Push/Message/Merge ✅ 2026-10-28; nur im Jon-Modus ❌ 2026-10-28; prompt-basiert, kein BDD)
+### R15: Build-Zyklus auf Git-Branch — Commit + Push je Iteration, Squash-Merge als Default ✅ (Commit 2026-08-28; Push/Message/Merge + nur im Jon-Modus 2026-10-28; prompt-basiert, kein BDD)
 Ein Build-Zyklus (ein Plan/Feature) läuft auf einem **dedizierten Git-Branch** — nur wenn Git
 im Workspace verfügbar und wir tatsächlich auf einem Branch (sonst: **kein** Auto-Commit,
 Jon fragt den User). **Zu Zyklus-Start** prüft Jon den aktuellen Branch und ist bei
@@ -807,13 +808,13 @@ er Da Mek los schickt. Der **Dev-Agent** committet nach **jeder erfolgreichen (g
 Scope = die Dateien dieser Iteration — jeder Schritt bleibt revertierbar (`git revert`), die
 Base-Branch bleibt während des Zyklus unangetastet.
 
-**Auto-Commit nur im Jon-Modus ❌ (2026-10-28, Paul).** Automatisch committet der Dev-Agent nur in
+**Auto-Commit nur im Jon-Modus (2026-10-28, Paul).** Automatisch committet der Dev-Agent nur in
 einem Build-Zyklus, den Jon steuert (`buildWithDev`). Bei `askDev` committet er nur, wenn Jon es im
 Auftrag sagt. Arbeitet der User direkt mit dem Dev-Agenten, committet, pusht und merged dieser **nie**
 von sich aus, nur auf ausdrückliche Bitte. **WEIL** der User im Direktbetrieb selbst über seine History
 entscheidet; Jon steuert seinen Zyklus.
 
-**Commit, Push, Merge ❌ (2026-10-28, Paul — Plugin und Web).** Defaults — Jon oder der User können
+**Commit, Push, Merge (2026-10-28, Paul — Plugin und Web).** Defaults — Jon oder der User können
 jederzeit anders entscheiden, und Jon denkt mit, wann ein Default nicht passt:
 - **Message = kurze Zusammenfassung des fachlichen Effekts + IDs**, für LLM und Mensch beim Blick in die
   History: `inc-N: <Effekt> (R-…, UC-…)`, Body höchstens 2 Zeilen (Abweichung/Grund). Keine Dateiliste.
