@@ -13,4 +13,4 @@ die Factory-ADRs in den globalen Raum umgezogen.
 | ADR | Entscheidung | Status |
 |-----|--------------|--------|
 | [AF-ADR-001](001-factory-shares-core-disk-only.md) | Factory teilt den Core: Factory-Fähigkeiten entstehen möglichst im Core (Plugin profitiert), Factory nutzt nur die Disk-Familie, Core bleibt Eclipse-frei — gegen Jons „Core unangetastet"-Empfehlung, schreibt globale ADR-0046 fort | Accepted |
-| [AF-ADR-002](002-origin-in-core-display-in-factory.md) | Herkunft und Team-Antwort: kein zweiter Monitor-Kanal — Inc-3f-Core-Bau entfernt, Turn-Ende = Rückkehr von `call()`, Herkunft neu offen (Monitor kennt künftig den Agenten) | Accepted (2026-10-27) |
+| [AF-ADR-002](002-origin-in-core-display-in-factory.md) | Herkunft und Team-Antwort: kein zweiter Monitor-Kanal — Inc-3f-Core-Bau entfernt, Turn-Ende = Rückkehr von `call()`, Team-Antwort = Ergebnis des Delegations-Werkzeugs (MVP ohne Core) | Accepted (2026-10-27) |

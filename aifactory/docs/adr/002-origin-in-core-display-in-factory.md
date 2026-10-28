@@ -19,9 +19,15 @@ jeden Turn, Reflection-Weiche für Overrides), `onAgentCallCompleted` (zweites T
    `onDelegatedAnswer`, `ToolResultAttributes`, `resultAttributes`). Das Feld `origin` an
    `SimpleMessage`/`OnPartialAiResponse` bleibt vorerst ungenutzt stehen.
 2. **Turn-Ende = Rückkehr von `jon.call()`** — kein Monitor-Event. Die Fabrik ruft `call()` selbst.
-3. **Herkunft (UC-WP-39) und Team-Antwort (UC-WP-40) sind neu offen (❌).** Richtung: der Monitor
-   kennt künftig den **aktuellen Agenten** ([agent-origin-proposal](../../../proposals/agent-origin-proposal.md) §7a);
-   Ort und Form werden dort entworfen, nicht in der Fabrik.
+3. **Herkunft (UC-WP-39) und Team-Antwort (UC-WP-40) braucht der MVP ohne Core** (Paul 2026-10-27):
+   die finale Mitglieds-Antwort ist das Ergebnis des Delegations-Werkzeugs in Jons Verlauf, der
+   Urheber folgt aus dem Werkzeugnamen (R-WP-4). Die Zeile zeigt das Ergebnis **wie es ist** (inkl.
+   der angehängten Statistik-Zeile) — gekürzt wird nichts, denn das hieße Werkzeug-Text parsen.
+   Der Core-Weg „Monitor kennt den aktuellen Agenten"
+   ([agent-origin-proposal](../../../proposals/agent-origin-proposal.md) §7a) bleibt ein Plugin-Thema
+   (dort als Experten-Einstellung), keine MVP-Voraussetzung.
+5. **Grenze der Werkzeug→Name-Tabelle:** sie kennt nur das feste Jon-Team. Kommen Custom Agents ins
+   Web, trägt sie nicht mehr — dann ist `origin` aus dem Core (Proposal) der Weg, nicht eine längere Tabelle.
 4. **Der Fabrik-Code darf bis dahin defekt sein** (Paul) — nur die Docs werden nachgezogen.
 
 ## Consequences

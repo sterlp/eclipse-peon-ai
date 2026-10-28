@@ -21,7 +21,7 @@ import org.junit.jupiter.api.io.TempDir;
  * {@link FileLlmConfigStore}: whole-file rewrite, deterministic bytes, atomic and owner-only write.
  *
  * <p><b>No {@code UC-WP-*} marker on any test here — deliberately.</b> This is a core component and
- * {@code aifactory/docs/web-prototype.md} is a factory feature doc, so the {@code UC-WP-*} use cases
+ * {@code aifactory/docs/config.md} is a factory feature doc, so the {@code UC-WP-*} use cases
  * are carried by the factory tests that use this store, not by this class; an invented marker would
  * be a false anchor ({@code AGENTS-DEV.md} marker rule).</p>
  *

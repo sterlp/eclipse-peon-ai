@@ -798,26 +798,36 @@ GIVEN a slave returns plain text (a clarifying question), not an exception
 THEN it is a normal tool result (R8), not treated as an error
 ```
 
-### R15: Build-Zyklus auf Git-Branch — Dev committiert jede grüne Iteration ✅ (2026-08-28, User; prompt-basiert, kein BDD)
+### R15: Build-Zyklus auf Git-Branch — Commit + Push je Iteration, Squash-Merge als Default ❌ (Commit ✅ 2026-08-28; Push/Message/Merge ❌ 2026-10-28; prompt-basiert, kein BDD)
 Ein Build-Zyklus (ein Plan/Feature) läuft auf einem **dedizierten Git-Branch** — nur wenn Git
 im Workspace verfügbar und wir tatsächlich auf einem Branch (sonst: **kein** Auto-Commit,
 Jon fragt den User). **Zu Zyklus-Start** prüft Jon den aktuellen Branch und ist bei
 main/master **zuerst** auf einem Feature-Branch (anlegen/wechseln, sonst User fragen), bevor
-er Da Mek los schickt (Prompt: `po-delegation.txt`). Der **Dev-Agent** committet nach **jeder erfolgreichen (grünen)
-Iteration** (kurze Message, z. B. `inc-3: <einzeilige Summary>`, Scope = die Dateien dieser
-Iteration) — jeder Schritt bleibt revertierbar (`git revert`), die Base-Branch bleibt während
-des Zyklus unangetastet; am Ende steht eine saubere Fortschritts-History des Zyklus. Der
-**finale Merge** (optional squash: Zyklus = ein History-Eintrag) ist die **Entscheidung des
-Users**. Die Konvention steht im Projekt-`AGENTS.md` („Build cycles & git“ — das SOLL für alle
-Verbraucher) und operativ in den Prompts: **Jon-Teil** in `po-delegation.txt` (Branch-Namen zu
-Zyklusbeginn bestimmen, an Da Mek übergeben — vor „Ablauf — Plan vor Build“), **Dev-Teil** in
-`dev-build-loop.txt` (Commit-Bullet + Abschluss-Satz nach dem planImplemented-Bullet).
-`AGENTS-PO.md` bzw. der `AGENTS-DEV.md`-Git-Bullet wurden entfernt (2026-08-29,
-De-duplizierung — die Prompts tragen das operative Wissen). **Prompt-Aufnahme ✅ (2026-08-28).**
+er Da Mek los schickt. Der **Dev-Agent** committet nach **jeder erfolgreichen (grünen) Iteration**,
+Scope = die Dateien dieser Iteration — jeder Schritt bleibt revertierbar (`git revert`), die
+Base-Branch bleibt während des Zyklus unangetastet.
 
-**Kein Prompt-BDD:** operative Umsetzung in `po-delegation.txt` (Jon: Branch-Entscheidung) +
-`dev-build-loop.txt` (Da Mek: Commit-Disziplin) — Content im Repo, siehe Prompts; SOLL im
-Projekt-`AGENTS.md`.
+**Commit, Push, Merge ❌ (2026-10-28, Paul — Plugin und Web).** Defaults — Jon oder der User können
+jederzeit anders entscheiden, und Jon denkt mit, wann ein Default nicht passt:
+- **Message = kurze Zusammenfassung des fachlichen Effekts + IDs**, für LLM und Mensch beim Blick in die
+  History: `inc-N: <Effekt> (R-…, UC-…)`, Body höchstens 2 Zeilen (Abweichung/Grund). Keine Dateiliste.
+- **Nacharbeit = eigener Commit** (Review-Delta, Fix nach Rückfrage) mit dem, was nachgearbeitet wurde —
+  kein amend/squash im Zyklus.
+- **Push direkt nach jedem Commit** (auch nach dem Archiv-Commit), nicht erst nach Jons Abnahme — der
+  Push sichert, freigegeben wird mit dem Merge. Kein Remote / Push schlägt fehl ⇒ Dev meldet es, der
+  Zyklus läuft weiter, Jon gibt es an den User weiter.
+- **Merge auf main nur im Auftrag des Users** (meist über Jon). **Default Squash-Merge**; sein Text ist
+  allein aus den Commit-Messages des Branches ableitbar — niemand muss dafür Diffs lesen. **Kein Squash**,
+  wenn Commits einzeln gebraucht werden (Cherry-Picks, mehrere Branches): dann normaler Merge und Branch
+  gleich löschen. Nach einem Squash fragt Jon, ob der Branch gelöscht wird, wenn der User nichts gesagt
+  hat — mit eigener Empfehlung.
+- `CHANGELOG.md` ist nur das Release-Log für den User, keine Zweitschrift der Commits.
+
+**WEIL** auf einem frischen Fabrik-Node alles Ungepushte weg ist
+([aifactory R-CR-8](../../aifactory/docs/config-repo.md)) und die History ohne Diffs lesbar sein soll.
+
+**Kein Prompt-BDD:** operativ in `dev-build-loop.md` + `developer.md` (Dev: Commit/Push) und
+`po-delegation.md` (Jon: Branch, Merge) — gleicher Text für Plugin und Fabrik.
 
 ### R17: Jon gets `askUser` — matched user answers ✅ (2026-09-05, User)
 

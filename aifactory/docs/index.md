@@ -15,10 +15,10 @@ Backlog = jedes ❌/🚧/◐.
 
 * **[Architektur](aifactory-architektur.md)** — das WIE: Komponenten, Turn-Besitz, Core-Abbildung,
   Invarianten. **Vor jedem Plan** zu lesen.
-* **[Pauls Produktvision](../pauls-product-vision.md)** — Richtungsinput des Users (*für Agenten nur zu
-  lesen*): Rollen und Rechte, Slide-outs je Agent, Config-Fenster (MCP, Agenten, System-Prompt),
-  Docs als Website. **Kein SOLL** — was daraus Regel wird, entscheiden wir und es steht dann in einem
-  Feature-Doc. Abweichungen davon stehen als ❓ in [Open Points](open-points.md).
+* **[Product Vision](product-vision.md)** — was Open AI Fabric (OAF, Jon@Web) ist und was nicht.
+* **[Pauls Produktvision](../pauls-product-vision.md)** — Pauls Rohvision (*für Agenten nur zu lesen*).
+  **Quelle des SOLL**, soweit keine bessere Idee abgestimmt ist (Paul 2026-10-27); verbindlich wird
+  ein Punkt erst als Regel in einem Feature-Doc. Abweichungen stehen als ❓ in [Open Points](open-points.md).
 * **[Peon-AI Root-Docs](../../docs/index.md)** — Register des `llmpeon-parent`-Repos: globale ADRs,
   Glossary, Architektur-Regeln, Open/Resolved Points.
 * **[Core-Docs](../../org.sterl.llmpeon.core/docs/index.md)** — `llmpeon-core` (plain Maven,
@@ -28,10 +28,11 @@ Nicht hier: alles Eclipse-/OSGi-spezifische (SWT-Views, Widgets, Preference-Page
 
 ## Produktregeln (SOLL)
 
-* **PR-1 · Ein Agent, volles Team.** Pro Projekt genau ein Jon mit unverändertem Team (Da Thinka,
-  Da Mek, Da Dok; Da Sniffa bleibt wie im Plugin das Such-Werkzeug). ✅
+* **PR-1 · Ein Jon, volles Team.** Pro Projekt genau ein Jon mit unverändertem Team (Plan, Dev,
+  Review; Search bleibt wie im Plugin das Such-Werkzeug — Namen siehe
+  [Agent-Dateien](../../org.sterl.llmpeon.core/docs/builtin-agent-prompt-tracked.md)). ✅
 * **PR-2 · Nur Disk-Werkzeuge.** Die Factory betreibt die Core-Familien `disk*`, `web*`, `shell`,
-  `docs*`; `eclipse*`-Tools und OSGi gibt es hier nicht. ✅ — [R-WP-12](web-prototype.md).
+  `docs*`; `eclipse*`-Tools und OSGi gibt es hier nicht. ✅ — [R-WP-12](chat.md).
 * **PR-3 · Geteilter Core.** Was beide Consumer brauchen, entsteht im Core und das Plugin profitiert;
   Web-only-Schichten (HTTP/SSE, Server-Session, SPA) bleiben in der Factory. Duplikate der
   Agent-Logik in der Factory sind verboten. ✅ — Begründung:
@@ -41,19 +42,27 @@ Nicht hier: alles Eclipse-/OSGi-spezifische (SWT-Views, Widgets, Preference-Page
   fortschreitend [ADR-0046](../../docs/adr/0046-core-portability-review.md).
 * **PR-5 · Je Projekt ein Jon, ein Chat für alle.** Inputs aller Nutzer laufen in die Queue *eines*
   Agenten; verschiedene Projekte laufen parallel. ✅ — Details
-  [Web-Prototype R-WP-15](web-prototype.md).
-* **PR-6 · parallele Vorarbeit ohne Baurisiko.** Nutzer dürfen über **Jon Light** (read-only) Stories
-  liefern, ohne den bauenden Jon zu stören. ❌ — [Jon Light & Stories](jon-light-stories.md).
+  [R-WP-15](chat.md).
+* **PR-6 · Zwei POs: Jon technisch, Paco fachlich.** Jon baut (einer je Projekt), **Paco** schärft
+  je Nutzer das SOLL und liefert Stories/Proposals, ohne den bauenden Jon zu stören. ❌ — [Paco](paco.md).
 
 ## Features
 
-* [Web-Prototype](web-prototype.md) — Projects · Chat · Einstellungen; Git-Clone als Projekt,
-  Jon mit Team, Schreib-Pinning auf Projekt-Root + TMP, Kacheln je Agent. ◐ teilweise gebaut
-  (Registry · Clone · Auslieferung · Einstellungen · Chat mit Queue, Verlauf, SSE ✅;
-  Herkunft je Zeile + Team-Antwort ❌ seit 2026-10-27 ([AF-ADR-002](adr/002-origin-in-core-display-in-factory.md)),
-  Schreib-Pinning, Datei-Bereich, Kacheln ❌). **Code nach Core-Aufräumen 2026-10-27 bewusst defekt.**
-* [Jon Light & Stories](jon-light-stories.md) — read-only Jon je Nutzer, Stories in `stories/`,
+MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabil). **Code nach
+Core-Aufräumen 2026-10-27 bewusst defekt.**
+
+* [UI](ui.md) — vier Seiten unter `/ui/`, Reload bleibt auf der Seite, Look. ◐ (Auslieferung ✅, Seiten/Router ❌)
+* [Projekte](project.md) — Git-Checkout als Projekt: klonen, eindeutig, entfernen, nie interaktiv, Live-Status. ◐
+* [Jon-Chat](chat.md) — ein Jon, ein Gespräch je Projekt: Streaming, Queue, Neustart, Tools, Kacheln. ◐
+  (Herkunft je Zeile ❌, [AF-ADR-002](adr/002-origin-in-core-display-in-factory.md); Kacheln 🚧)
+* [Dateien](files.md) — Schreiben nur in Projekt + TMP, Datei-Bereich lesend. ❌ (gebaut, nicht reviewt)
+* [Config](config.md) — eigene Datei der Factory, Config-Seite maskiert, „überschreiben" je Agent. ◐
+* [Nutzer](user.md) — Name statt Login, `[User Name]:` an Jon und Paco. ❌
+* [Paco](paco.md) — fachlicher PO je Nutzer (grillt Vision/Ziele/SOLL), Stories/Proposals in `stories|proposals/<nutzer>/`,
   konfliktfrei oder mit benanntem Konflikt. ❌ specified (nach dem MVP)
+* [Config-Repo](config-repo.md) — Fabrik-Config (Agenten, Skills, `projects.yml`) aus einem Git-Repo beim
+  Start, Zugang über HTTPS-Token oder SSH aus der Umgebung; Verschlüsselung der Keys direkt nach dem MVP.
+  ❌ specified (MVP; Verschlüsselung/Rotation danach)
 
 ## Noch nicht angelegt
 

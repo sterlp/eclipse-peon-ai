@@ -24,8 +24,8 @@
   5. Regressionsschranke View „kein Rebuild an `onCallStart`" (Da Dok) — braucht Plugin-Test-Setup (3).
 - **Klein/Backlog:** `MutableClock` 7× dupliziert → Test-Fixture (Da Dok C3) · `AbstractAgent.asyncCall`
   protected ohne Aufrufer → löschen? · `CompactRun.messageCountAfter` bleibt (Jon).
-- **Danach:** planImplemented (Da Mek) · Agenten clear · Thema aifactory-Docs reparieren (Paul:
-  NICHT Ground Truth, schwächere AI hat sie geschrieben; Lint zeigt 86 VERWAIST UC-WP-*, 10 UNBELEGT UC-JL-*).
+- **Danach:** planImplemented (Da Mek) · Agenten clear. aifactory-Docs-Review läuft (Stand:
+  [aifactory/docs/memory.md](../aifactory/docs/memory.md)).
 - Paul will `aifactory/` später als Geschwister-Ordner aus dem Repo ziehen (er selbst).
 
 ## 2026-10-27 — Neues Thema: Doc-Regeln (Paul)
@@ -41,9 +41,16 @@
   generisch). Verlinkt: Core-index, core/AGENTS.md, AF-ADR-001 Pkt. 4 + Consequences nachgezogen.
 - d) ✅ `docs/product-vision.md` abgestimmt (Agenten-System, local first/cloud second, kein Code-Completion).
   Web-App-Vision später mit aifactory-Docs-Reparatur.
-- Nächst: Zyklus R-DL-27 (ZU_LANG) bauen — danach `ZU_LANG` in po.md:88 nennen. Uncommittet (Jon):
-  po.md, ground-rules.md, product-vision.md, docs/index.md, core index.md, core AGENTS.md, AF-ADR-001,
-  docs-linter.md, memory.md + Status-Flips/Homepage aus Regression-Zyklus.
+- ✅ R-DL-27/UC-DL-100 `f4bdd688` (Core 1393, 1 Test, 5 Mutationen rot) · Docs `f989cf16` · po.md gekürzt
+  + ZU_LANG `e52be183`. Plugin zeigt ZU_LANG erst nach Neustart (alter Core geladen).
+- **Prompt-Neutralität (Paul: keine Sprache/Plattform bevorzugen):** Kandidaten gefunden, NICHT geändert —
+  search-agent.md:11-13 „Eclipse workspace tools" als Prio 1 · planner.md:17 `pom.xml/package.json/
+  build.gradle` (Beispiele, eher ok) · scaffold-agent.md:38/93 „Java startsWith/regex" (Implementierungs-
+  fakt, ok) · :73 Beispiel-Tool `eclipse`. Nächst: mit Paul entscheiden.
+- ✅ search-agent.md Tool-Priorität plattformneutral (Paul ja) — `575488af`, Core 1393/0.
+- **aifactory-Docs-Review läuft** — Stand nur in [aifactory/docs/memory.md](../aifactory/docs/memory.md).
+- Lint-Baseline Core: 14 UNBELEGT_ERLEDIGT (UC-DL-48…53/55 Tool-Zuordnung, ATC-4, TF-2/4, OD-1/10,
+  TD-3/4) + 12 VERWAIST UC-DEF-* in Core-Tests (Def-Doc liegt im Plugin) → eigenes Aufräum-Thema.
 
 ## Offen für Paul (Details: [open-points.md](open-points.md))
 
@@ -69,7 +76,8 @@
 ## Backlog (nächste Session)
 
 - **Async-Shell-Tool — Paul-Prio**, danach async Agents ([async-agents.md](../org.sterl.llmpeon.core/docs/async-agents.md)).
-- **agent-origin**: „Monitor kennt den aktuellen Agenten" (Proposal §7a) → dann UC-WP-39/40 neu.
+- **agent-origin** (Plugin): Agentenname je Chat-Nachricht + Experten-Einstellung „nur finale
+  Agenten-Antwort" (Paul 2026-10-27, später). Web braucht es nicht (AF-ADR-002).
 - TempFileTool Slice 2 · Issue #163 (⏳ geparkt) · Lint-Baseline · R-CG-14 · R-CIB-4 Stufe 2 ·
   R-CC-7 ApiRetry-Tabelle (❓, Overflow blind retried) · Header-State-Leak · McpService-Rollback-Test.
 - **OP-STREAM-1:** Stream-Hänger bei Verbindungsverlust → [streaming-display.md](../org.sterl.llmpeon/docs/streaming-display.md).

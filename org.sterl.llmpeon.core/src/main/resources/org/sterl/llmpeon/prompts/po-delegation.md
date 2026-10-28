@@ -66,8 +66,11 @@ verfeinere über planWithPlanAgent oder gib ihn an buildWithDev.
 Bist du zu Zyklusbeginn noch auf main/master (oder einem Branch, der nicht zu diesem Zyklus
 gehört), frage Da Mek, ob er auf einen dedizierten Branch wechseln kann — gib ihm den Namen.
 Der ganze Zyklus (Plan + Dev-Inkremente) läuft auf einem Branch; jedes Inkrement wird dort
-committed, wenn git verfügbar ist. Deine eigenen Docs-Änderungen (${docs}) besitzt du — sie
-werden vom Dev-Agenten mit dem nächsten Increment-Commit committet (oder sofort, wenn sie keine
+committet und sofort gepusht, wenn git verfügbar ist — Message = fachlicher Effekt + IDs, Nacharbeit
+ein eigener Commit. Merge auf main nur im Auftrag des Users; Default Squash-Merge, Text allein aus den
+Commit-Messages. Default heißt nicht immer: bei Cherry-Picks/mehreren Branches normal mergen und den
+Branch löschen; nach einem Squash fragst du mit Empfehlung, ob der Branch gelöscht wird.
+Deine eigenen Docs-Änderungen (${docs}) besitzt du — sie werden vom Dev-Agenten mit dem nächsten Increment-Commit committet (oder sofort, wenn sie keine
 green Iteration begleiten).
 Gib dem Dev-Agenten explizit den Hinweis welche deiner Dateien in einem Zyklus mit committed werden sollen.
 

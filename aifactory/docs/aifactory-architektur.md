@@ -1,8 +1,9 @@
 # Architektur — AI Factory (Web)
 
-> **Status:** ◐ teilweise gebaut (2026-10-25) — `ui` (Auslieferung), `project` (Registry/Clone) und
-> `config` (Config + Einstellungen) stehen; `ProjectRuntime`, SSE und Jon Light sind SOLL. Regeln und BDD
-> stehen in [web-prototype.md](web-prototype.md) und [jon-light-stories.md](jon-light-stories.md); hier
+> **Status:** ◐ teilweise gebaut (2026-10-27) — `ui`, `project` (Registry/Clone/Datei-Bereich),
+> `config` und `chat` (`ProjectRuntime`, SSE, Verlauf, Schreib-Pinning) stehen; Kacheln und Paco
+> sind SOLL. Fabrik-Code seit dem Core-Rückbau bewusst defekt ([AF-ADR-002](adr/002-origin-in-core-display-in-factory.md)). Regeln und BDD
+> stehen in den Feature-Docs ([Index](index.md)); hier
 > nur das WIE.
 
 ## Grundgedanke
@@ -19,7 +20,7 @@ Zugriffe und ist die einzige Stelle, die den Core aufruft. HTTP-Handler rufen de
 ```mermaid
 flowchart LR
   subgraph Browser
-    UI[SPA React<br/>Projects · Chat · Einstellungen]
+    UI[SPA React<br/>Projekte · Config · je Projekt: Jon-Chat · Paco]
   end
   subgraph factory-backend
     REST[Chat & Project REST]
@@ -45,7 +46,7 @@ flowchart LR
 | `ProjectRuntime` | Jon + Team je Projekt, Serialisierung der Turns, Clear/Compact je Agent, Tool- und Write-Roots | HTTP, JSON, Browser-Formate |
 | `ChatStreamRegistry` | Events des `AiMonitor` als SSE je Projekt verteilen, tote Zuschauer abmelden | eigene Nachrichten halten (Memory ist im Core), **kein** Replay des Verlaufs, kein Emitter-I/O unter dem Projekt-Lock (ein langsamer Leser darf den Turn nicht bremsen, UC-WP-41) |
 | `FactoryConfig` (Package `config`) | Lesen/Schreiben der Factory-Config, Maskierung der Keys, Auflösung pro Turn | den geteilten Config-Bestand des Plugins schreiben **oder lesen** |
-| `JonLightRuntime` | ein read-only Jon je Nutzer, Write-Liste `stories/*` | Team, Delegation, Projekt-Jon-Memory |
+| `PacoRuntime` | ein Paco je Nutzer und Projekt, Write-Liste `stories/<nutzer>/` + `proposals/<nutzer>/`, nur `searchAgent` | Team Plan/Dev/Review, Projekt-Jon-Memory |
 | Core (`AiPoAgent` …) | Agent-Logik, Tools, Memory, History-Store | Eclipse, HTTP, Factory-Klassen |
 
 ## Turn (Sequenz)
@@ -99,9 +100,10 @@ sequenceDiagram
 * **Ereignis-Namen, jeder mit Besitzer:** `partial` (ein Token-Delta), `tool` (eine Werkzeug-/
   Problem-Zeile), `done`, `error`. `done`/`error` sendet `ProjectRuntime`, wenn `jon.call()`
   zurückkehrt bzw. wirft — **kein** Monitor-Event (ein Mitglieds-Ende ist kein Turn-Ende).
-* **Finale Team-Antwort (UC-WP-40) ❌ offen:** der Weg über `onDelegatedAnswer` + Attribut am
-  Werkzeug-Ergebnis ist 2026-10-27 gestrichen ([AF-ADR-002](adr/002-origin-in-core-display-in-factory.md));
-  ein neuer Weg ohne zweiten Monitor-Kanal ist nicht entworfen. Der Code ist bis dahin bewusst defekt.
+* **Finale Team-Antwort (UC-WP-39/40):** die Fabrik liest sie aus dem, was der Core schon liefert —
+  live das Werkzeug-Ergebnis der Delegation, im Verlauf die `ToolExecutionResultMessage` in Jons
+  History; der Urheber kommt aus einer festen Zuordnung Werkzeugname → Mitglied in `chat`. Kein
+  Core-Eingriff ([AF-ADR-002](adr/002-origin-in-core-display-in-factory.md)).
 * **Chat-Rebuild nach Compact:** dieselbe Regel wie im Plugin —
   [R-CT-7](../../org.sterl.llmpeon.core/docs/compact-lock.md) (`onCompactCompleted` mit dem angezeigten
   Agenten als Absender → neu aus dem Verlauf aufbauen).
@@ -149,7 +151,7 @@ Datei die Rolle im Namen (`<komponente>.<rolle>.tsx`). Kein Sammelordner für Vi
 ```
 factory-ui/
   src/
-    app/      app.shell.tsx          Tabs, Auswahl des Projekts
+    app/      app.shell.tsx          Router (eine Adresse je Seite, R-WP-1), Auswahl des Projekts
     project/  project.page.tsx       Liste + Hinzufügen
               project.list.tsx
               project.add.tsx
@@ -157,7 +159,7 @@ factory-ui/
               chat.log.tsx
               chat.composer.tsx
               chat.stream.ts         SSE-Lesen/Parser
-    config/   config.page.tsx        Einstellungen
+    config/   config.page.tsx        Config-Seite
               config.form.tsx
     shared/   api.client.ts          HTTP + Fehlertyp, von allen benutzt
               dto.ts
@@ -182,7 +184,7 @@ factory-ui/
 |---|---|
 | Jon + Team | `AiPoAgent(ConfiguredChatModel, ToolService, historyDir, List<NamedAgent>)`, `AiPlanAgent`/`AiDevAgent`/`AiReviewAgent`, `PoDelegateTool`, `SearchAgentTool` |
 | Tools ohne Eclipse | `ToolService(true)` + `DiskFileReadTool`/`DiskFileWriteTool`/`DiskGrepTool`/`DocsLinterTool`/`DocsIdTool`/`WebGetTool`, `ShellTool.setDefaultWorkingDir` |
-| Schreib-Pinning | `DynamicRootsWriteValidator` je Agent (Projekt-Root + TMP bzw. `stories/*`) |
+| Schreib-Pinning | `DynamicRootsWriteValidator` je Agent (Projekt-Root + TMP bzw. `stories/<nutzer>/` + `proposals/<nutzer>/`) |
 | Konfiguration | eigener `LlmConfigStore` der Factory (siehe Konflikt unten), `LlmConfigLoader.load(store)` |
 | Chat-Persistenz | `FileAgentHistoryStore` über `historyStateDir` — ein Verzeichnis je Projekt |
 | Streaming/Status | `AiMonitor` → SSE; Compact/Clear über die bestehenden Core-Pfade |
@@ -194,7 +196,7 @@ flowchart LR
   UI[Einstellungen-View] -->|"GET / PUT /api/settings"| SC[SettingsController<br/>External Facade: nur DTO]
   SC --> FS[FactoryConfigService<br/>Internal Facade: pin · validate · lock]
   FS --> ENV[EnvFallbackLlmConfigStore<br/>Connector: Datei → Umgebung]
-  ENV --> FILE[(~/.aifactory/config.properties<br/>Properties-Format · Rechte 600)]
+  ENV --> FILE[(~/.aifactory/config/config.properties<br/>Properties-Format · Rechte 600)]
   FS --> CORE["LlmConfigLoader.load(store)<br/>+ Pinnen: configDir · diskToolsEnabled"]
 ```
 
@@ -234,7 +236,7 @@ eigene Story im Core gemacht (mit globalem ADR, wenn das Plugin dadurch angefass
 * **Schreibgrenze am Choke-Point.** Erlaubte Wurzeln setzt der Agent (`WriteValidator`), nicht der
   Handler; es gibt keinen Schreibpfad an ihm vorbei.
 * **Der Checkout bleibt sauber.** Runtime-Zustand (History, Config, Logs) liegt unter
-  `~/.aifactory/`, nie im Projekt — `stories/` ist die bewusste Ausnahme.
+  `~/.aifactory/`, nie im Projekt — `stories/` und `proposals/` sind die bewusste Ausnahme.
 * **Kein `org.eclipse`-Import** in Factory und Core (`AF-ADR-001`, PR-4).
 * **Keys verlassen den Server nie im Klartext** (Settings zeigt maskiert).
 * **`shared` kennt keine Komponente.** Was alle Fachpakete brauchen (z. B. `ApiError`, `FactoryHome`,
@@ -247,6 +249,6 @@ eigene Story im Core gemacht (mit globalem ADR, wenn das Plugin dadurch angefass
 Bestand* (`~/.peon`). **Das stimmt nicht:** der Plugin-Bestand liegt in Eclipse-Prefereces
 (`EclipseLlmConfigStore` auf `IEclipsePreferences`), `~/.peon` enthält nur Skills/Agents/Commands.
 Es gibt also keine Datei, die die Factory lesen könnte. Entscheidung (Nachtzyklus, ⏳ in
-[Open Points](open-points.md)): die Factory bekommt eine **eigene** Config (`~/.aifactory/config.properties`,
+[Open Points](open-points.md)): die Factory bekommt eine **eigene** Config (`~/.aifactory/config/config.properties`, [R-CR-10](config-repo.md),
 Keys auch aus Umgebungsvariablen), die Einstellungen-Seite schreibt ausschließlich dorthin. Der
 Plugin-Bestand bleibt unberührt — die Absicht aus `R-WP-9` (nichts Gemeinsames schreiben) bleibt erhalten.

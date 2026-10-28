@@ -1,6 +1,9 @@
 # Proposal: Agenten-Herkunft pro Nachricht — `origin` im Message-Modell
 
-**Status:** 🚧 design  
+**Status:** 🚧 design — Plugin-only, später (Paul 2026-10-27). Dazu eine **Experten-Einstellung „nur finale
+Agenten-Antwort anzeigen"** (Web-Verhalten, siehe `aifactory/docs/web-prototype.md` R-WP-4). Die Web-App braucht
+dieses Proposal nicht (AF-ADR-002). Stärkstes Motiv laut Paul: **Custom Agents** — ihr Name soll an jeder
+Nachricht stehen; eine feste Werkzeug→Name-Tabelle (Web-MVP) kann sie nicht abdecken.  
 **Ziel:** Jede Nachricht, die das UI anzeigt (AI-Text, Tool-Zeile, Problem), trägt ihre **Herkunft** (Agenten-Name) im Core-Message-Modell. Das UI entscheidet selbst, wo es den Namen anzeigt — bei Nachrichten ohne klarem Agenten-Bezug bleibt er `null`/leer, und das UI blendet die Überschrift aus.
 
 ---

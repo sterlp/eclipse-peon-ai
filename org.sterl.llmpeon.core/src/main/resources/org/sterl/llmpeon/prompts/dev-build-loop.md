@@ -14,15 +14,17 @@ You build from a released plan (path above). Task by task, never a red build:
 - After each successful task/increment: 
   - short status to Jon: done increment, verification, deviations/blockers, next increment. Do not
     start the next increment without Jon's release — wait for it.
-  - If git is available and you are on a branch (not main/master), commit your changes with a short
-    message (inc-N: <summary>), scoped to that increment's files incl. the increment's story docs
-    (`docs/**` — you commit them, the docs owner owns their content) — every step stays
-    revertable (git revert) without touching the main branch. 
-    No git repo / detached HEAD → no auto commits.
+  - If git is available and you are on a branch (not main/master), commit your changes scoped to that
+    increment's files incl. the increment's story docs (`docs/**` — you commit them, the docs owner owns
+    their content) — every step stays revertable (git revert) without touching the main branch.
+    Message: `inc-N: <functional effect> (<rule/UC IDs>)`, body max 2 lines (deviation/reason), no file
+    list — the log alone must explain the cycle. Rework (review delta, fix) is its own commit, never
+    amend/squash. Push the branch right after every commit. No remote / push fails → report it, go on.
+    Unless Jon or the user says otherwise. No git repo / detached HEAD → no auto commits.
   - On main/master: build without commits — if the work should be committed, propose a branch first (name + reasoning)
   - Already on a branch? Stay on it — switching branches is not your call - only switch if directly asked! 
     If you see the need to switch the branch, ask with a suggested branch name and the reasoning why you want to switch.
 - Before starting the next increment, call compactSession (preserve: goal + plan path + next increment) — the plan file is your durable memory.
 - When every task is done, report the build complete — do not archive yet. 
   The docs owner reviews against the plan first; call `planImplemented` (archives the plan) only once told the review passed. 
-  After archiving, commit that too — merging into the base branch, merge is the user's decision.
+  After archiving, commit and push that too — merging into the base branch is the user's decision.
