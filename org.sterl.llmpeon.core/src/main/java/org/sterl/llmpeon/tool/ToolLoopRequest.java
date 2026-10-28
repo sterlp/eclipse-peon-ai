@@ -63,6 +63,7 @@ public class ToolLoopRequest {
     private final Instant turnStart = Instant.now();
     
     /** Earned-patience retry around the AI call; fresh per turn (this object is rebuilt per message). */
+    @Getter
     @Default
     private final ApiRetry retry = new ApiRetry();
 

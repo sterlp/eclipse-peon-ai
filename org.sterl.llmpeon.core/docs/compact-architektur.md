@@ -1,7 +1,7 @@
 # Compact Architektur
 
 > **Status:** ✅ (2026-09-26, Da-Dok-Review) ·
-> **Δ 2026-10-18:** R-CC-18 ❌ specified (Tool-Loop-Entscheidung, Abschnitt „Tool-Loop-Auslöser" unten) ·
+> **Δ 2026-10-18:** R-CC-18 ✅ done (2026-10-28, Revision „zustandslos"; Tool-Loop-Entscheidung, Abschnitt „Tool-Loop-Auslöser" unten) ·
 > **Δ 2026-10-24:** R-CT-8 ✅ done (Paul-Smoke) — Compressor-Streaming an den Caller-Monitor
 > (UI, nie Log), log-only-Monitor-Konzept entfallen ·
 > **Δ 2026-10-25:** Reseed-Form (R-CC-9, [ADR-0076](../../docs/adr/0076-compact-reseed-marker-in-user-message.md)) —

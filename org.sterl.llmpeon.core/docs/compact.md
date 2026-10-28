@@ -8,7 +8,7 @@ idPrefix: CC
 > · R-CC-8/9 **✅ done** (2026-09-25, Inc 3/3.1, Da Dok Review ACCEPTED)
 > · R-CC-10 **✅ done** (2026-09-26) · R-CC-11…14 **✅ done** (2026-09-26, Nachbau-Review)
 > · R-CC-7 **🚧 in design** (Retry/Fehlerklassen, zusammen mit ApiRetry-Tabelle)
-> · R-CC-18 **❌ specified** (Revision 2026-10-28: zustandslos, Fehlschlag → Retry → User;
+> · R-CC-18 **✅ done** (Revision 2026-10-28: zustandslos, Fehlschlag → Retry → User; gebaut, Da Dok CONCERNS ohne Blocker)
 > Grundregel ✅ seit 2026-10-19).
 > **Input-Budget-Regeln (Präfix CIB):** eigenes Doc
 > [compact-input-budget.md](compact-input-budget.md) — ✅ done (2026-09-25, Da Dok ACCEPTED).
@@ -375,7 +375,7 @@ Compact-only. Sichtbarkeit für den 400-Fall kommt stattdessen über ein neues F
 Agent den Abbruch kennt und nachfolgend reagieren kann.
 
 
-### R-CC-18 — Voller Context: Compact direkt statt auf den Hint warten ❌ specified (Revision 2026-10-28, Paul: zustandslos, Fehlschlag → Retry → User; zuvor ✅ 2026-10-18/27)
+### R-CC-18 — Voller Context: Compact direkt statt auf den Hint warten ✅ done (2026-10-28, Revision „zustandslos, Fehlschlag → Retry → User"; Da Dok CONCERNS ohne Blocker; zuvor ✅ 2026-10-18/27)
 
 **Anlass:** Der Compact-Hint (R-CC-4) ist eine *Bitte* ans Modell. Ist der Context bereits über dem
 Budget, kommt sie zu spät — der nächste Provider-Call geht unverändert raus und stirbt am
@@ -404,7 +404,7 @@ Ereignis-Gate (`ranTool(compactSession)` + Turn-Merker) ersatzlos.
 - **R-CC-18.4 — Kein zusätzlicher Text ins LLM-Memory:** die Reinsert-UserMessage endet bereits
   mit dem Marker-Block `Session compacted:` + Summary (R-CC-9), der `onTool`-Report trägt die Zahlen. Ein zweiter Hinweis wäre
   Rauschen und ein neuer Sonderfall für die Stufenkürzung.
-- **R-CC-18.5 — Zustandslos, ein Fehlschlag geht an den User** (❌ Revision 2026-10-28, Paul:
+- **R-CC-18.5 — Zustandslos, ein Fehlschlag geht an den User** (✅ Revision 2026-10-28, Paul:
   „zwei einfache if-Blöcke"): die Entscheidung kennt keinen Turn-Merker. Nach jeder Tool-Runde gilt
   allein der Zustand: über Budget → compact; im 95-%-Band → Hint; sonst nichts. Ein erfolgreicher
   Compact sperrt nichts — wächst das Memory im selben Turn erneut über das Budget, wird erneut
@@ -412,7 +412,10 @@ Ereignis-Gate (`ranTool(compactSession)` + Turn-Merker) ersatzlos.
   wie jeder Modell-Call ([agents-retry.md](agents-retry.md), `ApiRetry`), kein eigener Compact-Retry.
   Sind die Wiederholungen erschöpft **oder** liefert der Compact ein anderes Ergebnis als
   `COMPACTED` (leere Summary, nichts zu kompaktieren), **endet der Turn mit dem Fehler beim User** —
-  es geht kein Call über Budget raus.
+  es geht kein Call über Budget raus. Ein Retry nach erfolgreichem Re-Seed läuft in
+  `SKIPPED_SMALL` (R-CC-8: das re-geseedete Memory liegt unter `MIN_COMPACT_MESSAGES`) — es wird
+  nie doppelt kompaktiert. Wirft der Compact erst **nach** dem `clear()` (z. B. `renderTurnContext`),
+  bleibt das Memory im geleerten Zustand und der Turn endet — Vorbestand, nicht vom Retry verursacht.
 
   ```mermaid
   flowchart TD
@@ -444,7 +447,7 @@ Ereignis-Gate (`ranTool(compactSession)` + Turn-Merker) ersatzlos.
 - GIVEN Memory ≤ `MIN_COMPACT_MESSAGES` WHEN über Budget THEN kein Direkt-Compact (R-CC-8) — der
   Provider-Fehler bleibt der ehrliche Ausgang. *(Test: `directCompactRespectsMinMessages`)*
 
-#### UC-CC-2 — directCompactIsStateless ❌ (Revision 2026-10-28)
+#### UC-CC-2 — directCompactIsStateless ✅ done (2026-10-28)
 - GIVEN ein Turn, dessen Direkt-Compact erfolgreich war (`COMPACTED`) WHEN das Memory im selben Turn
   erneut über `autoCompactAfter` wächst THEN wird vor dem nächsten Call erneut direkt compactiert.
 - GIVEN über Budget WHEN der Direkt-Compact scheitert und keine Wiederholung mehr übrig ist THEN

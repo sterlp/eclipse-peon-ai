@@ -23,7 +23,9 @@ Releases before `2.12.4` are documented via [GitHub Releases](https://github.com
   a compact or cancel inside the turn no longer resets it. A delegated member shows its own start
   time, and the delegating agent gets its original time back afterwards.
 - **A second context overflow in the same turn is compacted again.** A successful in-loop compact
-  no longer blocks a later one in the same turn; only a failed compact stops further attempts.
+  no longer blocks a later one in the same turn. A failed one ends the turn with the error instead
+  of sending calls over budget, and compressor API errors are retried with the turn's normal retry
+  logic.
 
 ## [2.15.0] — 2026-10-25
 

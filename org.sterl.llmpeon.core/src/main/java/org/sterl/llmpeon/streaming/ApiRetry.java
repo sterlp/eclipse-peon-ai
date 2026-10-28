@@ -5,13 +5,13 @@ import java.util.function.Supplier;
 
 import org.sterl.llmpeon.shared.AiMonitor;
 
-import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * "Earned patience" retry around a single AI request. Wraps only the AI call (never tool execution),
- * so it lives at the {@code bridge.call} choke-point and applies to all agents and contexts.
+ * "Earned patience" retry around a single AI request — a model call, or in the tool loop the
+ * compressor call of a direct compact. Wraps only the AI call (never tool execution), so it lives at
+ * the {@code bridge.call} choke-point and applies to all agents and contexts.
  * <p>
  * Two counters (see org.sterl.llmpeon.core/docs/agents-retry.md):
  * <ul>
@@ -58,7 +58,7 @@ public class ApiRetry {
      * @throws RuntimeException the last transient error once {@code retryCount >= credit}
      *         (the UI logs this on the give-up path — not logged here to avoid a double log).
      */
-    public ChatResponse call(AiMonitor monitor, Supplier<ChatResponse> aiCall) {
+    public <T> T call(AiMonitor monitor, Supplier<T> aiCall) {
         var m = AiMonitor.nullSafety(monitor);
         while (true) {
             try {

@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -102,5 +103,66 @@ class ToolServiceDirectCompactTest {
         assertThat(endLines.getFirst()).matches(
                 "🗜 Peon-Dev compacted: \\d+ → 1 messages, ~\\d+ → ~\\d+ tokens \\(\\d+(?:m \\d+)?s, \\d{2}:\\d{2}\\) \\(\\d+ chars\\)");
         assertThat(toolLines).noneMatch(l -> l.contains("Direct compact for"));
+    }
+
+    // UC-CC-2
+    @Test
+    @Timeout(10)
+    void failedDirectCompactStopsTurnWithoutFurtherProviderCall() {
+        // GIVEN — as directCompactBeforeNextCall, but the compressor answers with nothing usable
+        var sent = new ArrayList<ChatRequest>();
+        var compactCalls = new AtomicInteger();
+        var config = LlmConfig.builder()
+                .model("main-model")
+                .autoCompactAfter(160000)
+                .modelConfigs(Map.of(AgentModelConfig.COMPACT,
+                        new AgentModelConfig(null, null, "compact-model", null, null, null)))
+                .build();
+        var configuredModel = new ConfiguredChatModel(config, new StreamMock().buildMock(r -> {
+            if ("compact-model".equals(r.modelName())) {
+                compactCalls.incrementAndGet();
+                return ChatResponse.builder().aiMessage(AiMessage.from("")).build();
+            }
+            sent.add(r);
+            if (sent.size() == 1) {
+                return ChatResponse.builder()
+                        .aiMessage(AiMessage.builder()
+                                .toolExecutionRequests(List.of(ToolExecutionRequest.builder()
+                                        .id("1").name("probe").arguments("{}").build()))
+                                .build())
+                        .tokenUsage(new TokenUsage(260000, 0, 260000))
+                        .build();
+            }
+            return ChatResponse.builder().aiMessage(AiMessage.from("done")).build();
+        }));
+        var toolService = new ToolService();
+        var agent = new AiDevAgent(configuredModel, toolService);
+        var memory = agent.getMemory();
+        memory.add(UserMessage.from("seed one"));
+        memory.add(AiMessage.from("seed two"));
+        memory.add(UserMessage.from("seed three"));
+        memory.addResult(ChatResponse.builder()
+                .aiMessage(AiMessage.from("pre-compact tail"))
+                .tokenUsage(new TokenUsage(260000, 0, 260000))
+                .build(), List.of());
+        var monitor = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+        };
+        var req = ToolLoopRequest.builder()
+                .memory(memory)
+                .chatModel(configuredModel)
+                .monitor(monitor)
+                .agent(agent)
+                .build();
+
+        // WHEN — round 1 ends over budget and the direct compact does not help
+        assertThatThrownBy(() -> toolService.executeLoop(req))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("did not help");
+
+        // THEN — the turn ended BEFORE the next provider call: exactly one main request went out
+        assertThat(sent).hasSize(1);
+        // AND — exactly one compressor call: this turn has earned no retry credit for it
+        assertThat(compactCalls.get()).isEqualTo(1);
     }
 }

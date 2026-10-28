@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.compact;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -10,7 +11,9 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -22,6 +25,7 @@ import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
+import org.sterl.llmpeon.streaming.ApiRetry;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 
@@ -95,29 +99,128 @@ class HandleToolLoopCompactComponentTest {
         assertThat(compactCalls.get()).isEqualTo(2);
     }
 
-    // UC-CC-2 — regression guard (green before the change): a failed attempt stays blocked
+    // UC-CC-2
     @Test
     @Timeout(10)
-    void failedDirectCompactIsNotRetriedInTurn() {
+    void failedDirectCompactStopsTheTurn() {
+        // R-CC-18.5 — anything but COMPACTED ends the turn, it does not route around the problem
         for (var failed : List.of(CompactResult.skippedSmall(),
                 CompactResult.failedEmpty(new CompactResult.Stats(6, 57000, 57000, CompactResult.Stage.NONE,
                         0, 0, "compact-model", 5, 170001, false), "no summary"))) {
-            // GIVEN — the direct compact fails (SKIPPED_SMALL / FAILED_EMPTY) and the next round
-            // of the SAME turn ends still over budget
+            // GIVEN — over budget, the direct compact does not help (SKIPPED_SMALL / FAILED_EMPTY)
             var memory = seed(new ThreadSafeMemory(), 5);
             setCounter(memory, 170001);
+            var sizeBefore = memory.size();
             var compactCalls = new AtomicInteger();
             var agent = agent(compactCalls, memory, failed);
             var req = request(memory, agent, new ArrayList<>());
-            var handler = new HandleToolLoopCompactComponent();
 
-            // WHEN — two consecutive rounds end over budget within one turn
-            handler.handle(req, true);
-            handler.handle(req, true);
+            // WHEN — the round ends over budget
+            assertThatThrownBy(() -> new HandleToolLoopCompactComponent().handle(req, true))
+                    .as("status %s", failed.status())
+                    .isInstanceOf(IllegalStateException.class)
+                    // AND — the message is honest about the numbers, the agent and the outcome
+                    .hasMessageContaining("170001 of 160000")
+                    .hasMessageContaining("Peon-Dev")
+                    .hasMessageContaining(failed.resultLine());
 
-            // THEN — one attempt per turn: the second round does not retry the failed compact
+            // THEN — one attempt, memory untouched, no hint around the error
             assertThat(compactCalls.get()).as("status %s", failed.status()).isEqualTo(1);
+            assertThat(memory.size()).as("status %s", failed.status()).isEqualTo(sizeBefore);
+            assertThat(memory.getTotalTokenUsed()).as("status %s", failed.status()).isEqualTo(170001);
+            assertThat(hintMessages(memory)).isEmpty();
+            assertThat(fallbackMessages(memory)).isEmpty();
         }
+    }
+
+    // UC-CC-2
+    @Test
+    @Timeout(10)
+    void apiErrorOfDirectCompactIsRetried() {
+        // R-CC-18.5 — the compressor call rides the TURN's ApiRetry
+        // GIVEN — over budget; the first compressor call fails with an API error, the second succeeds.
+        // The retry carries credit 1: a fresh ApiRetry (credit 0) would never retry (see the counter-check).
+        var memory = seed(new ThreadSafeMemory(), 5);
+        setCounter(memory, 170001);
+        var compactCalls = new AtomicInteger();
+        var agent = flakyAgent(compactCalls, memory);
+        var req = request(memory, agent, new ArrayList<>(), BUDGET, preloadedRetry(), false);
+
+        // WHEN — the round ends over budget
+        new HandleToolLoopCompactComponent().handle(req, true);
+
+        // THEN — the retry bridged the API error, and the success ran its consequences
+        assertThat(compactCalls.get()).isEqualTo(2);
+        assertThat(memory.getTotalTokenUsed()).isLessThan(170001); // R-CC-2: reevaluate ran
+        assertThat(req.staticMessages).hasSize(1);
+        assertThat(((SystemMessage) req.staticMessages.get(0)).text()).isEqualTo("static-rebuilt");
+    }
+
+    // UC-CC-2
+    @Test
+    @Timeout(10)
+    void apiErrorRetriesExhaustedEndsTheTurn() {
+        // R-CC-18.5 — an exhausted API error ends the turn as the ORIGINAL error, not wrapped
+        // GIVEN — the compressor call never succeeds, the turn has earned credit 1
+        var memory = seed(new ThreadSafeMemory(), 5);
+        setCounter(memory, 170001);
+        var sizeBefore = memory.size();
+        var compactCalls = new AtomicInteger();
+        var agent = throwingAgent(compactCalls, () -> new RuntimeException("compressor api error"));
+        var retry = preloadedRetry();
+        var req = request(memory, agent, new ArrayList<>(), BUDGET, retry, false);
+
+        // WHEN — the round ends over budget
+        assertThatThrownBy(() -> new HandleToolLoopCompactComponent().handle(req, true))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasMessage("compressor api error");
+
+        // THEN — credit + 1 attempts, then the turn ends; the memory is untouched
+        assertThat(compactCalls.get()).isEqualTo(2);
+        assertThat(retry.getRetryCount()).isGreaterThanOrEqualTo(retry.getCredit());
+        assertThat(memory.size()).isEqualTo(sizeBefore);
+    }
+
+    // Regressionsschranke (Cancel-Randfall, kein UC): a Stop stays a Stop
+    @Test
+    @Timeout(10)
+    void cancelDuringDirectCompactIsNotRetriedOrWrapped() {
+        // GIVEN — the compressor call is canceled by the user, the turn has earned credit 1
+        var memory = seed(new ThreadSafeMemory(), 5);
+        setCounter(memory, 170001);
+        var compactCalls = new AtomicInteger();
+        var agent = throwingAgent(compactCalls, () -> new CancellationException("user stop"));
+        var req = request(memory, agent, new ArrayList<>(), BUDGET, preloadedRetry(), false);
+
+        // WHEN / THEN — the cancel propagates unchanged: no retry, no wrapping into a turn error
+        assertThatThrownBy(() -> new HandleToolLoopCompactComponent().handle(req, true))
+                .isExactlyInstanceOf(CancellationException.class)
+                .hasMessage("user stop");
+        assertThat(compactCalls.get()).isEqualTo(1);
+    }
+
+    // Regressionsschranke (Stop-Randfall, kein UC): no error popup after a user Stop
+    @Test
+    @Timeout(10)
+    void failedCompactAfterStopDoesNotThrow() {
+        // GIVEN — the compressor returns FAILED_EMPTY while the user has stopped the turn
+        var memory = seed(new ThreadSafeMemory(), 5);
+        setCounter(memory, 170001);
+        var sizeBefore = memory.size();
+        var compactCalls = new AtomicInteger();
+        var agent = agent(compactCalls, memory, CompactResult.failedEmpty(
+                new CompactResult.Stats(6, 57000, 57000, CompactResult.Stage.NONE, 0, 0, "compact-model", 5,
+                        170001, false),
+                "no summary"));
+        var req = request(memory, agent, new ArrayList<>(), BUDGET, null, true);
+
+        // WHEN — the round ends over budget while canceled
+        new HandleToolLoopCompactComponent().handle(req, true);
+
+        // THEN — no throw: the loop's own isCanceled() gate ends the turn, memory untouched
+        assertThat(compactCalls.get()).isEqualTo(1);
+        assertThat(memory.size()).isEqualTo(sizeBefore);
+        assertThat(hintMessages(memory)).isEmpty();
     }
 
     // R-CC-18
@@ -381,7 +484,12 @@ class HandleToolLoopCompactComponentTest {
 
     private static ToolLoopRequest request(ThreadSafeMemory memory, AiAgent agent, List<String> toolLines,
             int budget) {
-        return ToolLoopRequest.builder()
+        return request(memory, agent, toolLines, budget, null, false);
+    }
+
+    private static ToolLoopRequest request(ThreadSafeMemory memory, AiAgent agent, List<String> toolLines,
+            int budget, ApiRetry retry, boolean canceled) {
+        var builder = ToolLoopRequest.builder()
                 .memory(memory)
                 .chatModel(new ConfiguredChatModel(
                         LlmConfig.builder().model("mock").autoCompactAfter(budget).build(),
@@ -390,9 +498,50 @@ class HandleToolLoopCompactComponentTest {
                 .monitor(new AiMonitor() {
                     @Override public void onChatResponse(SimpleMessage m) {}
                     @Override public void onTool(String message) { toolLines.add(message); }
+                    @Override public boolean isCanceled() { return canceled; }
                 })
-                .agent(agent)
-                .build();
+                .agent(agent);
+        if (retry != null) builder.retry(retry);
+        return builder.build();
+    }
+
+    /**
+     * The turn's retry with earned credit 1 — {@code ApiRetry} starts at credit 0, which bubbles the
+     * very first error, so a retry test has to earn the credit the way a turn does: one success.
+     * The 10 ms cap keeps the real backoff cheap.
+     */
+    private static ApiRetry preloadedRetry() {
+        var retry = new ApiRetry(10);
+        retry.call(null, () -> "ok");
+        return retry;
+    }
+
+    /** An owning agent whose every {@code compact} throws — the error is whatever the caller asks for. */
+    private static AiAgent throwingAgent(AtomicInteger compactCalls, Supplier<RuntimeException> error) {
+        var agent = mock(AiAgent.class);
+        when(agent.getName()).thenReturn("Peon-Dev");
+        when(agent.buildStaticMessages(any())).thenReturn(List.of(SystemMessage.from("static-rebuilt")));
+        doAnswer(inv -> {
+            compactCalls.incrementAndGet();
+            throw error.get();
+        }).when(agent).compact(any());
+        return agent;
+    }
+
+    /** An owning agent whose first {@code compact} hits an API error and whose second one succeeds. */
+    private static AiAgent flakyAgent(AtomicInteger compactCalls, ThreadSafeMemory memory) {
+        var agent = mock(AiAgent.class);
+        when(agent.getName()).thenReturn("Peon-Dev");
+        when(agent.buildStaticMessages(any())).thenReturn(List.of(SystemMessage.from("static-rebuilt")));
+        doAnswer(inv -> {
+            if (compactCalls.incrementAndGet() == 1) throw new RuntimeException("compressor api error");
+            memory.clear();
+            memory.add(UserMessage.from(CompactConstants.REINSERT_MARKER + System.lineSeparator()
+                    + System.lineSeparator() + "summary"));
+            return CompactResult.compacted(new CompactResult.Stats(6, 57000, 10, CompactResult.Stage.NONE,
+                    0, 30, "compact-model", 5, 170001, false), "summary");
+        }).when(agent).compact(any());
+        return agent;
     }
 
     /**

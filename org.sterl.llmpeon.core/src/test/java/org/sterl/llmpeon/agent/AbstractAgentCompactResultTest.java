@@ -141,9 +141,11 @@ class AbstractAgentCompactResultTest {
 
         // WHEN — turn 1: the model calls compactSession, the compressor fails (call 1), and the
         // over-budget state (260000 > 200000) fires the direct in-loop attempt (call 2, R-CC-18,
-        // FAILED_EMPTY); the over-budget state persists, so turn 2's pre-turn check (R-CC-20 —
-        // one attempt per turn) makes the third attempt (call 3, FAILED_EMPTY)
-        agent.call("start", monitor);
+        // FAILED_EMPTY) — R-CC-18.5: that failure ENDS turn 1 with an error, the loop does not
+        // continue over budget. Turn 2's pre-turn check (R-CC-20.5: a failed turn does not kill the
+        // pre-turn gate) makes the third attempt (call 3, FAILED_EMPTY)
+        assertThatThrownBy(() -> agent.call("start", monitor))
+                .isInstanceOf(IllegalStateException.class);
         agent.call("next", monitor);
 
         // THEN — the failed compacts did not silence the gates: 3 attempts — turn 1 tool attempt +

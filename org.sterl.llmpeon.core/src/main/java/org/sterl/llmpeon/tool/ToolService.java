@@ -153,8 +153,8 @@ public class ToolService {
         int iterations = 0;
         boolean shouldLoop = true;
         int stuck = 0;
-        // R-CC-18: one compact-decision component per loop — the per-turn flag must not leak
-        // into sub-loops or the next turn (ADR-0070)
+        // R-CC-18: the compact decision of THIS loop — the component is stateless (R-CC-18.5), a
+        // failed direct compact ends the turn instead of blocking later rounds (ADR-0070)
         var compactHandler = new HandleToolLoopCompactComponent();
 
         do {

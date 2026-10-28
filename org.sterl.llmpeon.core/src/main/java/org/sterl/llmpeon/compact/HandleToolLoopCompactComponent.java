@@ -19,9 +19,10 @@ import dev.langchain4j.data.message.UserMessage;
  * The consequence of a compact hangs on the one who runs it (ADR-0070): here the component, in
  * the tool path {@code CompactSessionTool}.</p>
  *
- * <p><b>One instance per tool loop</b> ({@code ToolService.executeLoop}): the
- * {@code failedDirect} flag gives "a failed direct attempt is not retried in the turn" (R-CC-18.1)
- * without leaking into sub-loops or the next turn; a successful compact never sets it (UC-CC-2).</p>
+ * <p><b>Stateless</b> (R-CC-18.5): every round decides on its own — a direct compact that does not
+ * help ends the turn with an {@link IllegalStateException} (UC-CC-2), so nothing can leak into a
+ * later round, a sub-loop or the next turn. The API error of the compressor call rides the turn's
+ * {@code ApiRetry}, exactly like any model call of that turn.</p>
  *
  * <p><b>Two rules, two time points</b>: the in-loop direct compact applies
  * {@link #overRawBudget(int, int, int)} (over the raw config budget, R-CC-18.1), the pre-turn check
@@ -29,9 +30,6 @@ import dev.langchain4j.data.message.UserMessage;
  * 95 % band, R-CC-20.2) — each caller uses its own rule, they never share a threshold.</p>
  */
 public class HandleToolLoopCompactComponent {
-
-    /** A failed direct compact (SKIPPED_SMALL/FAILED_EMPTY) is not retried in-loop (R-CC-18.1); a COMPACTED one never blocks the next (UC-CC-2). */
-    private boolean failedDirect = false;
 
     /**
      * The in-loop over-budget rule (R-CC-18.1): over the RAW config budget with a compactable
@@ -71,20 +69,24 @@ public class HandleToolLoopCompactComponent {
 
         var used = memory.getTotalTokenUsed();
         if (overRawBudget(used, budget, memory.size())) { // R-CC-18.1 — over budget: compact directly, no hint
-            if (agent != null && !failedDirect) {
-                var result = agent.compact(req.getMonitor()); // AbstractAgent.compact null-safes the monitor itself
-                if (result.status() == CompactResult.Status.COMPACTED) {
-                    memory.reevaluateTokens(); // R-CC-2: the counter holds the small post-compact estimate
-                    req.staticMessages(agent.buildStaticMessages(req.getMonitor()));
-                    // R-CT-8: no own line — `AbstractAgent.compact` sent the one end line for it
-                } else {
-                    failedDirect = true;
-                }
-                // SKIPPED_SMALL / FAILED_EMPTY: no retry (flag), no hint (over budget) — R-CC-18.1
-            } else if (agent == null) { // R-CC-8 already checked in overRawBudget
+            if (agent == null) { // R-CC-8 already checked in overRawBudget
                 fallbackHint(req); // R-CC-15: no owning agent to compact — honest out
+                return;
             }
-            return;
+            var mon = AiMonitor.nullSafety(req.getMonitor());
+            // R-CC-18.5: the compressor call rides the TURN's ApiRetry — same earned patience as any
+            // model call of this turn. No catch: a cancel stays a cancel, an exhausted API error ends the turn.
+            var result = req.getRetry().call(mon, () -> agent.compact(mon));
+            if (result.status() == CompactResult.Status.COMPACTED) {
+                memory.reevaluateTokens(); // R-CC-2: the counter holds the small post-compact estimate
+                req.staticMessages(agent.buildStaticMessages(mon));
+                // R-CT-8: no own line — `AbstractAgent.compact` sent the one end line for it
+                return;
+            }
+            if (mon.isCanceled()) return; // the user stopped during the call — the loop's own cancel gate ends it
+            throw new IllegalStateException("Context over budget (" + used + " of " + budget
+                    + " tokens) and the direct compact of '" + agent.getName()
+                    + "' did not help — turn stopped: " + result.resultLine()); // R-CC-18.5 / UC-CC-2
         }
         if (used <= budget * 0.95) return; // R-CC-18.3: nothing below the band
         if (memory.size() <= CompactConstants.MIN_COMPACT_MESSAGES) return; // R-CC-8
