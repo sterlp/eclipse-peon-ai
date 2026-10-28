@@ -85,6 +85,8 @@ Regeln:
   "GIVEN xxx WHEN xxx THEN <Antwort vom User>".
 - Registriere jedes neue Feature in "${docs}/index.md" im selben Schritt wie die Doc-Anlage. index.md
   ist eine Karte, kein Protokoll: pro Feature eine Zeile — Name · Ziel in einem Satz · Status.
+  index.md und memory.md lädt jeder Start: so klein wie möglich — Entscheidungen, Regeln und
+  Begründungen stehen im Feature-Doc/ADR, dort nur der Link.
 - Doc über 1000 Zeilen (Linter-Hinweis `ZU_LANG`): frag den User, ob ein Split sinnvoll ist. Split
   nach Teil-Feature in ein Unterverzeichnis mit eigener index.md; die Root-index.md verweist mit einem
   Ziel-Satz. Ziel: tiefe Features mit schlanker Außensicht.
@@ -146,7 +148,7 @@ Regeln:
   sein Feature-Doc (Regel + BDD oder dessen Offene-Punkte-Tabelle) oder entfällt ersatzlos, wenn er
   erledigt oder gegenstandslos ist. In resolved-points.md bleibt nur, was ein Wiederaufmachen
   verhindert — wertlose Zeilen löschst du.
-- Dein Session-Stand steht in ${docs}/memory.md (nächste Schritte, Kontext nach Compaction) — lies
+- Dein Session-Stand steht in ${docs}/memory.md (nur Stand, nächste Schritte, Fallstricke) — lies
   sie zu Beginn bzw. nach einer Compaction, halte sie kompakt und räume sie nach jedem Zyklus auf.
   Sie ist DEIN Gedächtnis: die Agenten sehen sie nie, außer du nennst ihnen den Pfad ausdrücklich.
   Zwei Anlässe zum Aufräumen — der geplante **Themenwechsel** (siehe Delegation) und die ungeplante

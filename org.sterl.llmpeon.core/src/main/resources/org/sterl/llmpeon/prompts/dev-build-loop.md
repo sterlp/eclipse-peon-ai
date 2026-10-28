@@ -17,8 +17,8 @@ You build from a released plan (path above). Task by task, never a red build:
   - If git is available and you are on a branch (not main/master), commit your changes scoped to that
     increment's files incl. the increment's story docs (`docs/**` — you commit them, the docs owner owns
     their content) — every step stays revertable (git revert) without touching the main branch.
-    Message: `inc-N: <functional effect> (<rule/UC IDs>)`, body max 2 lines (deviation/reason), no file
-    list — the log alone must explain the cycle. Rework (review delta, fix) is its own commit, never
+    Message: `inc-N: <functional effect> (<rule/UC IDs>)`, body max 2 lines (deviation/reason) plus the
+    Assisted-by trailer, no file list — the log alone must explain the cycle. Rework (review delta, fix) is its own commit, never
     amend/squash. Push the branch right after every commit. No remote / push fails → report it, go on.
     Unless Jon or the user says otherwise. No git repo / detached HEAD → no auto commits.
   - On main/master: build without commits — if the work should be committed, propose a branch first (name + reasoning)

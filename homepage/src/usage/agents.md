@@ -29,6 +29,13 @@ The number in parentheses is the agent's **current context size** in tokens. A *
 With a non-Jon agent active (e.g. plain Peon-Dev), the team roster is not shown — only the session token readout remains in the header.
 :::
 
+## Who commits
+
+| Mode | Commits |
+|------|---------|
+| **Jon** runs a build cycle | Da Mek works on a feature branch, commits **and pushes** after every green increment — message = functional effect + rule/UC IDs. Merging into `main` happens only when you ask (default: squash). |
+| **Peon-Dev** used directly | Never commits, pushes or merges on its own — only when you ask. |
+
 ## Compacting a single agent
 
 Each of the three worker rows (**Da Thinka**, **Da Mek**, **Da Dok**) carries a small **compact icon button** (tooltip: `Compact Da X`). Clicking it compresses **exactly that one agent's** context:

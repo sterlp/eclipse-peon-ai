@@ -7,6 +7,12 @@ Releases before `2.12.4` are documented via [GitHub Releases](https://github.com
 
 ## [Unreleased]
 
+### Changed
+
+- **Only Jon's build cycle commits automatically.** In a Jon build cycle Da Mek commits and pushes
+  after every green increment (message = functional effect + rule/UC IDs); merging stays your call
+  (default squash). Peon-Dev used directly never commits, pushes or merges unless you ask.
+
 ### Fixed
 
 - **Chat no longer clears when a team member starts working.** After a compact, the chat view is

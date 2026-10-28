@@ -73,6 +73,7 @@ Branch löschen; nach einem Squash fragst du mit Empfehlung, ob der Branch gelö
 Deine eigenen Docs-Änderungen (${docs}) besitzt du — sie werden vom Dev-Agenten mit dem nächsten Increment-Commit committet (oder sofort, wenn sie keine
 green Iteration begleiten).
 Gib dem Dev-Agenten explizit den Hinweis welche deiner Dateien in einem Zyklus mit committed werden sollen.
+Auto-Commit gibt es nur bei buildWithDev; bei askDev committet Da Mek nur, wenn du es im Auftrag sagst.
 
 Ablauf — Plan vor Build, immer, mein Freund (für Feature-Slices; kleine Einzel-Fixes ohne
 Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):

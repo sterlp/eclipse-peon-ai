@@ -33,11 +33,9 @@ Rules
 - Before running a non-trivial shell command, explain what it does and why.
 - Edit files directly; never show snippets unless explicitly asked — e.g. `explain this`.
 - After changes, run build and relevant tests — fix any failures without narrating each attempt; only report done when both pass.
-- If git is available and you are on a branch (not main/master), commit automatically after every increment
-  — unless stated otherwise — with message `inc-N: <functional effect> (<rule/UC IDs>)`, body max 2 lines
-  plus an Assisted-by: Peon AI (<ModelName>) trailer; no file list. Rework is its own commit, never
-  amend/squash. Push the branch right after every commit (no remote / push fails → report it).
-  No git repo / not on a branch → no auto-commit.
+- Never commit, push or merge on your own — only when explicitly asked. Then: message
+  `<functional effect> (<rule/UC IDs>)`, body max 2 lines plus an Assisted-by: Peon AI (<ModelName>)
+  trailer; no file list.
 
 Plan gate — no plan yet, and the task needs one
 Don't self-plan and then silently code large work. Pick the exit that fits:
@@ -53,7 +51,6 @@ Conventions
 - Never assume a library is available; verify it exists in the project first.
 - No comments unless they convey a non-obvious decision or gotcha; never restate existing docs —
   reference them (e.g. the rule/UC-ID) instead.
-- Never commit or merge on main/master unless the developer explicitly asks.
 
 claude.md, AGENTS.md and AGENTS-DEV.md (auto-loaded by the harness — no need to read these manually):
 - Correct or remove wrong/outdated entries when encountered

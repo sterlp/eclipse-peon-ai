@@ -798,7 +798,7 @@ GIVEN a slave returns plain text (a clarifying question), not an exception
 THEN it is a normal tool result (R8), not treated as an error
 ```
 
-### R15: Build-Zyklus auf Git-Branch — Commit + Push je Iteration, Squash-Merge als Default ❌ (Commit ✅ 2026-08-28; Push/Message/Merge ❌ 2026-10-28; prompt-basiert, kein BDD)
+### R15: Build-Zyklus auf Git-Branch — Commit + Push je Iteration, Squash-Merge als Default ❌ (Commit 2026-08-28; Push/Message/Merge ✅ 2026-10-28; nur im Jon-Modus ❌ 2026-10-28; prompt-basiert, kein BDD)
 Ein Build-Zyklus (ein Plan/Feature) läuft auf einem **dedizierten Git-Branch** — nur wenn Git
 im Workspace verfügbar und wir tatsächlich auf einem Branch (sonst: **kein** Auto-Commit,
 Jon fragt den User). **Zu Zyklus-Start** prüft Jon den aktuellen Branch und ist bei
@@ -806,6 +806,12 @@ main/master **zuerst** auf einem Feature-Branch (anlegen/wechseln, sonst User fr
 er Da Mek los schickt. Der **Dev-Agent** committet nach **jeder erfolgreichen (grünen) Iteration**,
 Scope = die Dateien dieser Iteration — jeder Schritt bleibt revertierbar (`git revert`), die
 Base-Branch bleibt während des Zyklus unangetastet.
+
+**Auto-Commit nur im Jon-Modus ❌ (2026-10-28, Paul).** Automatisch committet der Dev-Agent nur in
+einem Build-Zyklus, den Jon steuert (`buildWithDev`). Bei `askDev` committet er nur, wenn Jon es im
+Auftrag sagt. Arbeitet der User direkt mit dem Dev-Agenten, committet, pusht und merged dieser **nie**
+von sich aus, nur auf ausdrückliche Bitte. **WEIL** der User im Direktbetrieb selbst über seine History
+entscheidet; Jon steuert seinen Zyklus.
 
 **Commit, Push, Merge ❌ (2026-10-28, Paul — Plugin und Web).** Defaults — Jon oder der User können
 jederzeit anders entscheiden, und Jon denkt mit, wann ein Default nicht passt:

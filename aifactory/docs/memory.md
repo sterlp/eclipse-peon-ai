@@ -13,7 +13,7 @@ den Feature-Docs (siehe [Index](index.md)), nicht hier.
   (MCP, Codegraph, Skills geteilt). Details: [open-points.md](open-points.md).
 * **Vor Planung Config:** `aifactory-architektur.md` Config-Abschnitt nachziehen (Config-Repo,
   geleert = gelöscht, Agenten-Checkbox).
-* Core R15 (po-agent-jon.md) bleibt ❌, bis Paul die Prompt-Änderungen committet hat → dann ✅.
+* Paul = Da Mek (2026-10-28): wir arbeiten zu zweit, Paul committet/pusht selbst.
 * Danach: Gesamtstand an Paul; er merged/released erst den Plugin-Fix.
 
 ## Code-Stand
