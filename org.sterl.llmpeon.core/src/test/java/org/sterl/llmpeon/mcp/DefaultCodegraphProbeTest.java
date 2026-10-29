@@ -212,6 +212,7 @@ class DefaultCodegraphProbeTest {
     }
 
     /** All relative file paths under the root — the probe must not add, remove or rename any. */
+    @SuppressWarnings("null")
     private List<String> snapshot(Path root) throws IOException {
         var paths = new ArrayList<String>();
         try (var walk = Files.walk(root)) {

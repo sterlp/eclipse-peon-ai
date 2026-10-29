@@ -62,6 +62,7 @@ public class ShellTool extends AbstractTool {
             + "\ntmpdir: " + System.getProperty("java.io.tmpdir");
     }
 
+    @SuppressWarnings("null")
     @Tool(name = SHELL_RUN_COMMAND, value = "Run a shell command — only for build, test and git. Reading or searching files → use the Read/Grep tools. Output is trimmed beyond maxChars (default "
             + OutputTrim.DEFAULT_MAX_CHARS + " chars, head + tail excerpt; lines over " + OutputTrim.MAX_LINE_CHARS + " chars cut).")
     public String shellRunCommand(

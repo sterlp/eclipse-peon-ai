@@ -35,6 +35,7 @@ public final class ExceptionUtil {
      * Returns the first throwable of the given type anywhere in the cause chain — the throwable
      * itself or one of its nested causes. Cycle-safe, null-safe; {@code null} when absent.
      */
+    @SuppressWarnings("null")
     public static <T extends Throwable> T findCause(Throwable throwable, Class<T> type) {
         if (throwable == null) return null;
         var seen = new IdentityHashMap<Throwable, Boolean>();

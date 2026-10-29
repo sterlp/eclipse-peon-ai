@@ -179,6 +179,7 @@ class AgentToolConfigTest {
         assertThat(names).containsExactly("eclipseGrepFiles", "eclipseMcp");
     }
 
+    @SuppressWarnings("null")
     @Test
     void resolveActiveToolsMatchesRuntimeFilter() {
         // GIVEN a stored allowlist and a preview of the SAME value

@@ -111,6 +111,7 @@ public class ToolService {
      * preview source (R-ATC-8): classFilter applies to the built-in executors, nameFilter to
      * both built-in and MCP names.
      */
+    @SuppressWarnings("null")
     public List<String> activeNames(Predicate<SmartToolExecutor> classFilter,
             Predicate<String> nameFilter) {
         var builtIns = getExecutors().stream()
