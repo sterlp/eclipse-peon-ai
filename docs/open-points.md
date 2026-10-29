@@ -3,6 +3,16 @@
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.md).
 
+## 2026-10-29 — R-AEM-3 Trigger-Entscheidung (Jon autonom aus Pauls Zweckvorgabe)
+
+- ⏳ **Trigger „nutzlose Message" = blank ODER Message == Cause-Klassenname (JDK-Envelope):** die
+  ursprüngliche reine Blank-Bedingung war nach Messung im Produktionspfad unwirksam (refused kommt
+  als `CompletionException`-Envelope mit bloßem Klassennamen durch). Erweitert auf beide Formen;
+  Mid-Stream-`"closed"` und verschachtelte Envelopes bewusst außen (Revisit mit R-CC-7).
+  Grundlage: Pauls Zweckvorgabe („zwischen MCP-Connect und Model-Connect unterscheiden").
+  **Rückversicherung:** Paul bestätigt die Trigger-Semantik — oder entscheidet sich für den
+  Root-Cause-Ansatz (wrapt dann auch inhaltstragende Provider-Messages).
+
 ## Release-Doku-Auflösung (2026-10-20) — github-eclipse-repo.md aufgelöst (ADR-0072)
 
 - ⏳ **Compact-Briefing-Schema (compressor.md):** 3 Ergänzungen vorgeschlagen — STANDING-RULES-Slot
@@ -368,4 +378,3 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 - ❓ **`PoDelegateTool.dispatch` fängt nur `IllegalStateException`** (`PoDelegateTool.java:267`):
   andere RuntimeExceptions schlagen als roher Stacktrace-Dump zum PO durch statt als ehrliche
   Meldung „Delegation nicht möglich: <Grund>". Beide im nächsten Bug-Zyklus triagen.
-  Meldung „Delegation nicht möglich: <Grund>". Im nächsten Bug-Zyklus triagen.

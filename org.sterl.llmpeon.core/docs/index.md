@@ -36,7 +36,12 @@ Trail, ADR-Links). Status: ✅ done · 🚧 design/WIP · ❌ not done · ⏳ ge
 * [API-Fehler ins Agent-Memory](agent-error-memory.md) - **✅ done (2026-09-30, AiChatView-Wiring = Paul-Smoke steht aus):**
   terminale API-Fehler (nach ApiRetry erschöpft, nie Cancel) landen als kompakte `e.getMessage()`-
   Message (Dedup 1×) im Agent-Memory — der Agent sieht den Abbruch und kann reagieren
-  (z. B. selbst compact rufen). Einfügepunkt: AiChatView-catch.
+  (z. B. selbst compact rufen). Einfügepunkt: AiChatView-catch. **R-AEM-3 ✅ done (2026-10-29,
+  `story/aem-error-url`):** nutzlose Provider-Fehler-Messages (blank oder bloßer
+  Cause-Klassenname — JDK-Envelope) werden am Choke-Point `ToolLoopRequest.call` mit
+  `AI call to <effective URL> failed: <Klasse> — <cause>` angereichert — Model-API- vs.
+  MCP-Connect-Fehler unterscheidbar; Mid-Stream-`"closed"` + verschachtelte Envelopes bewusst
+  außen (R-CC-7-Revisit).
 * [System Prompts — Übersicht](system-prompts.md) - **✅ Bestand** — wann / warum welcher System-Prompt (13 Dateien, `src/main/resources/org/sterl/llmpeon/prompts/`); Editing rights: nur Jon, 4-Augen bei größeren Änderungen.
 
 ## context & compact

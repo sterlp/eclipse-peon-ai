@@ -48,40 +48,56 @@ nicht.
 - GIVEN der Fehler ist bereits im Memory WHEN ein identischer terminaler Fehler auftritt THEN
   keine zweite Kopie.
 
-### R-AEM-3 — Message-lose Provider-Fehler nennen URL, Klasse, Ursache ❌ specified
+### R-AEM-3 — Nutzlose Provider-Fehler-Messages nennen URL, Klasse, Ursache ✅ done (2026-10-29, Da-Dok-Review nach REJECTED-Delta; Trigger-Form nach Messung, Paul-Rückversicherung ⏳)
 
-JDK 25 wirft bei tot/geschlossenem Channel eine `ConnectException` **ohne Message**
-(`Utils.toConnectException` — die zugrunde liegende `ClosedChannelException` trägt per Definition
-keine): die PROBLEM-Zeile im Chat bleibt leer, und ein Model-API-Connect-Fehler ist nicht von einem
-MCP-Connect-Fehler unterscheidbar. Am Choke-Point `ToolLoopRequest.call` wird eine `RuntimeException`
-**ohne (leere) Message** daher neu geworfen als
+Ein Model-API-Connect-Fehler ist in der Chat-PROBLEM-Zeile nicht von einem MCP-Connect-Fehler
+unterscheidbar — die Wrapper-Schichten (JDK-`CompletableFuture`-Umschlag, langchain4j
+`ExceptionMapper` mit cause-only-Konstruktoren) liefern am Choke-Point blank Messages oder bloße
+Klassennamen. Am Choke-Point `ToolLoopRequest.call` wird eine `RuntimeException` mit **nutzloser
+Message** daher neu geworfen als
 `AI call to <effective URL> failed: <Exception-Klasse> — <cause>` (Cause bleibt in der Chain).
-  **Rendering:** Klassen = einfacher Name; Cause-Message (erste Zeile) wird als
-  `<cause>: <message>` angehängt, wenn vorhanden; **fehlt der Cause, entfällt das `—`-Suffix**;
-  leere/nicht auflösbare URL → `(no url configured)`.
+
+**Nutlos ist die Message, wenn** sie blank ist **oder** exakt dem Klassennamen ihres Causes
+entspricht (JDK-Envelope: `CompletionException` mit `getMessage() == cause.getClass().getName()`).
 
 - **Nur der AI-Call-Pfad** — Tool-Fehler laufen nicht durch `ToolLoopRequest.call` (siehe
   [agents-retry.md](agents-retry.md)).
-- **Cancel-Parität:** `CancellationException` wird **nie** gewrappt (R-AEM-1: Cancel ist kein
-  Fehlerzustand).
-- **Exception mit Message bleibt unverändert** — keine Doppel-Anreicherung.
+- **Cancel-Parität:** `CancellationException` wird **nie** gewrappt — auch nicht, wenn sie nur als
+  Cause in der Kette steckt (`ExceptionUtil.isCanceled`, cause-chain-basiert).
+- **Inhaltstragende Message bleibt unverändert** — keine Doppel-Anreicherung (z. B.
+  Provider-Fehlertexte, `"closed"` beim Mid-Stream-Abbruch).
+- **Rendering:** Klassen = einfacher Name; Cause-Message (erste Zeile, getrimmt) wird als
+  `<cause>: <message>` angehängt, wenn vorhanden; **fehlt der Cause, entfällt das `—`-Suffix**;
+  leere/nicht auflösbare URL → `(no url configured)`.
+- **Bewusste Grenze:** Mid-Stream-Abbrüche (`LangChain4jException` mit Message `"closed"`) bleiben
+  unverändert — Revisit im Fehlerklassen-Zyklus (R-CC-7). Ebenso **verschachtelte Envelopes**
+  (`RuntimeException(CompletionException(…))`): geprüft wird nur die äußere Stufe — eine
+  Root-Cause-basierte Anreicherung (auch inhaltstragende Provider-Messages) ist ein eigener
+  Entscheid, nicht jetzt.
 - **Zweck:** Model-API-Fehler (URL sichtbar) von MCP-Connect-Fehlern unterscheidbar; Diagnose
   ohne Message-Rätselraten.
 
-#### UC-AEM-4 — messageLessExceptionNamesUrlAndClass ❌
+#### UC-AEM-4 — messageLessExceptionNamesUrlAndClass ✅
 
-- GIVEN eine `RuntimeException` ohne Message WHEN der AI-Call scheitert THEN die geworfene
+- GIVEN eine `RuntimeException` mit blank Message WHEN der AI-Call scheitert THEN die geworfene
   Exception nennt effective URL + Exception-Klasse + Ursache, der Cause bleibt in der Chain.
 
-#### UC-AEM-5 — cancellationIsNeverWrapped ❌
+#### UC-AEM-5 — cancellationIsNeverWrapped ✅
 
 - GIVEN eine `CancellationException` WHEN der Call abbricht THEN sie fliegt unverändert hoch —
   kein Wrap, kein Retry.
 
-#### UC-AEM-6 — exceptionWithMessageUntouched ❌
+#### UC-AEM-6 — exceptionWithMessageUntouched ✅
 
-- GIVEN eine `RuntimeException` MIT Message WHEN der Call scheitert THEN die Message bleibt
-  unverändert (keine Doppel-Anreicherung).
+- GIVEN eine `RuntimeException` mit inhaltstragender Message (nicht blank, nicht
+  Cause-Klassenname) WHEN der Call scheitert THEN die Message bleibt unverändert (keine
+  Doppel-Anreicherung).
+
+#### UC-AEM-7 — envelopeWithCauseClassNameIsEnriched ✅
+
+- GIVEN die Produktionsschichten werfen eine `CompletionException`-Form mit
+  `getMessage() == Cause-Klassenname` (z. B. `ConnectException` ohne Message) WHEN der Call
+  scheitert THEN die Exception wird mit URL + Klasse + Ursache angereichert.
 
 ## Verifikation
 
