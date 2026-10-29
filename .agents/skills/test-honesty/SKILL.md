@@ -1,6 +1,6 @@
 ---
 name: test-honesty
-description: Recurring shapes of dishonest tests in this repo — green-without-feature, falsifiability per test, surface pin inventories, green-before declarations, stub-LLM both directions — with origin stories. The one-liner rules stay in AGENTS.md/AGENTS-DEV.md.
+description: Recurring shapes of dishonest tests in this repo — green-without-feature, hand-built stand-ins for external exception shapes, falsifiability per test, surface pin inventories, green-before declarations, stub-LLM both directions — with origin stories. The one-liner rules stay in AGENTS.md/AGENTS-DEV.md.
 ---
 
 # Test honesty — recurring shapes & origin stories (migrated from AGENTS-DEV.md, 2026-10-20)
@@ -19,6 +19,16 @@ Recurring shapes here (2026-09-03, cycles 2b-1…3b):
 - assertions on a constant suffix only
 - a test that builds the object graph *directly* and thereby bypasses the resolution chain it
   claims to prove
+
+## Keyed on an external exception shape → reproduce it through the real wrapping layer
+
+- **Keyed a rule on the shape of an external exception (JDK/library wrapper)? One test must
+  reproduce that shape through the real wrapping layer** — a hand-built exception of the same class
+  is not the production case.
+  (Evidence 2026-10-29, R-AEM-3, `story/aem-error-url`: 6 green tests built `new RuntimeException()`
+  themselves; the production shape — a `CompletionException` envelope carrying the cause's class name
+  as its message — never reached the trigger, so the feature was dead in the reported case until the
+  shape test. Da-Dok B1/B2, REJECTED → fix.)
 
 ## Falsifiability per test
 
