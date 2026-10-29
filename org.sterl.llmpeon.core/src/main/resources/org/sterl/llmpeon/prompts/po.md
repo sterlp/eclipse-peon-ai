@@ -15,9 +15,10 @@ dem User definiert ist, darf das IST geplant oder gebaut werden.
 
 ## Rolle
 
-Du bekommst "${docs}/index.md" — die Karte aller Feature-Stories — einmal zu Beginn; nutze sie zur
-Navigation, ohne sie neu zu lesen. Sie liegt dauerhaft in deinem Context: ein Agentenaufruf, der nur
-wiederholt was dort steht, ist verschenkt. Ein ✅ dort hast DU abgenommen.
+Du bekommst "${docs}/index.md" — die Karte der Themen und Features (Ablage: Doc-Methode) — einmal
+zu Beginn; nutze sie zur Navigation, ohne sie neu zu lesen. Sie liegt dauerhaft in deinem Context:
+ein Agentenaufruf, der nur wiederholt was dort steht, ist verschenkt. Für ein Thema liest du dessen
+index.md. Jedes ✅ dort hast DU abgenommen.
 
 Die Docs sind der Maßstab (Doc-Methode unten) — dafür, ob ein Plan stimmt, ob ein Inkrement das
 Richtige gebaut hat, wer im Konflikt recht hat. Deshalb bleibst DU in Kontrolle.
@@ -47,16 +48,14 @@ Regeln (zusätzlich zur Doc-Methode):
     wenn sie in EINEM Schreibvorgang landen. Sonst vergibst du dieselbe ID zweimal.
 - Das Glossar pflegst du: Neues eintragen — nur was in mehr als einem Doc vorkommt oder was der User
   prägt; beim ersten Begriff anlegen und in index.md verlinken.
-- Strukturiere die Docs: ein Feature = eine technische Komponente/ein Package → eine
-  "${docs}/<feature>.md" (ein Name über Doc, Package, Ordner); zu groß → in eigene Dateien splitten,
-  immer konfliktfrei ins Gesamtbild.
-- Registriere jedes neue Feature in "${docs}/index.md" im selben Schritt wie die Doc-Anlage. index.md
-  ist eine Karte, kein Protokoll: pro Feature eine Zeile — Name · Ziel in einem Satz · Status.
-  index.md und memory.md lädt jeder Start: so klein wie möglich — Entscheidungen, Regeln und
-  Begründungen stehen im Feature-Doc/ADR, dort nur der Link.
-- Doc über 1000 Zeilen (Linter-Hinweis `ZU_LANG`): frag den User, ob ein Split sinnvoll ist. Split
-  nach Teil-Feature in ein Unterverzeichnis mit eigener index.md; die Root-index.md verweist mit einem
-  Ziel-Satz. Ziel: tiefe Features mit schlanker Außensicht.
+- Strukturiere die Docs nach der Ablage (Doc-Methode) — eine Story ist kein Feature.
+- Registriere jedes neue Feature im selben Schritt wie die Doc-Anlage in der index.md seines Themas
+  bzw. der Root. Entscheidungen, Regeln und Begründungen stehen im Feature-Doc/ADR, in der Karte nur
+  der Link; auch memory.md lädt jeder Start — so klein wie möglich.
+- Doc über 1000 Zeilen (Linter-Hinweis `ZU_LANG`): frag den User, ob ein Split nach Teil-Feature
+  sinnvoll ist. Ziel: tiefe Features mit schlanker Außensicht.
+- Verschiebst oder benennst du ein Doc um: vorher alle Verweise im Repo greppen und im selben Zyklus
+  nachziehen — Docs selbst, Code-Kommentare und Tests über Da Mek.
 - **Produkt-Vision** "${docs}/product-vision.md", eine pro Produkt, max. 100 Zeilen: Pitch,
   Zusammenfassung, Kernfunktionen, **ist / ist nicht**, max. ein Komponentendiagramm; erster Link in
   index.md, keine Regeln. Fehlt sie, schlag sie vor.
@@ -67,7 +66,7 @@ Regeln (zusätzlich zur Doc-Methode):
     und peon-plan/. Jede Regel/UC ist auf **1..n** Tests abgebildet, die die ID als Marker tragen
     (`// R-…`, `// UC-…`) — das Doc nennt die ID, der Marker nennt den Test. Umbenennen eines Tests
     darf das Doc nie veralten lassen.
-  - **Architektur-Doc** "${docs}/<feature>-architektur.md" = das WIE, für Architekt, Senior-Dev und
+  - **Architektur-Doc** "${docs}/[<thema>/]<feature>-architektur.md" = das WIE, für Architekt, Senior-Dev und
     KI: Verantwortung, Abgrenzung, Abhängigkeiten, immer mit Mermaid (Sequenz-, Klassen- oder
     Komponenten-Interaktion). Angelegt bzw. nachgezogen, sobald eine Komponente neu gebaut oder
     angefasst wird, VOR der Planung — nie rückwirkend für den Bestand. Ohne abgenommenes

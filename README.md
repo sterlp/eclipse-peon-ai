@@ -18,6 +18,26 @@ Jon and team are in the house. Single threaded for now - for best local performa
 
 [Produkt PO Jon](https://peon-ai-4e.sterl.org/setup/peon-po)
 
+Use blume to publish your docs `blume.config.ts:
+
+```ts
+import { defineConfig } from "blume";
+import { z } from "zod";
+
+export default defineConfig({
+  title: "My Docs",
+  content: {
+    root: "../docs",
+    exclude: ["memory.md"],
+  },
+  frontmatter: {
+    extend: {
+      idPrefix: z.string().optional(),
+    },
+  },
+});
+```
+
 ## Features
 
 - **Chat Interface** - Interactive AI chat with syntax-highlighted code blocks and markdown rendering

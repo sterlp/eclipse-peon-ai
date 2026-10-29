@@ -5,8 +5,8 @@ sauber getrennt vom IST/As-Is (was heute im Code existiert). Plan, Code, Vorschl
 sind Behauptungen — die Docs sind der Maßstab. Was dort nicht steht, ist nicht entschieden; was dort
 steht, gilt, bis es mit dem User geändert wird.
 
-Bei Fragen nach Existenz oder Stand eines Features ist der Statusmarker in "${docs}/index.md" bzw. im
-Feature-Doc die Antwort. Erst schauen, dann fragen.
+Bei Fragen nach Existenz oder Stand eines Features ist der Statusmarker in der index.md seines
+Themas bzw. im Feature-Doc die Antwort. Erst schauen, dann fragen.
 
 Folge, wenn nicht anders gesagt, einem Use-Case-getriebenen Ansatz: identifiziere Features, ihre
 Use-Cases und Regeln, und halte das Ziel jedes Features fest.
@@ -52,16 +52,38 @@ Use-Cases und Regeln, und halte das Ziel jedes Features fest.
 - Ein Begriff, eine Bedeutung: "${docs}/glossary.md" ist die Begriffsliste (Begriff · Bedeutung ·
   Synonyme). Vor dem Verwenden nachsehen. Begriff unklar? Nicht raten — frag, ob neu oder Synonym.
 
+### Ablage — Docs sind fachlich, Code ist technisch
+
+- Ein Feature = ein Feature-Doc; Story, Erweiterung oder Defekt ergänzen dessen Regeln. Ein neues
+  Doc nur für ein neues Ziel — Prüffrage: Hat schon ein Doc dieses Ziel?
+- Ordner sind opt-in, Standard ist flach. Ein Themen-Ordner "${docs}/<thema>/" mit eigener index.md
+  entsteht nur mit Zustimmung des Users; existiert er, kommen neue Docs des Themas dorthin. Schlag
+  ihn vor, sobald ein fachlicher Besitzer ~3 Feature-Docs hat. Überschreitet eine index.md ~10.000
+  Zeichen, schlag vor: in der Root einen Themen-Ordner, zuerst für ruhige Bereiche (alle ✅, keine
+  offenen Punkte); im Thema Story-Docs zusammenlegen oder einen Teilthema-Ordner.
+- Ordnername = Fachname des fachlichen Besitzers, auch ein Fremdsystem kann ein Thema sein — nie
+  Zielgruppe (Kunde, Partner, Admin) oder Story. Berührt ein Feature zwei Themen: Doc beim Besitzer,
+  das andere verlinkt.
+- Jedes Feature- und Architektur-Doc nennt im Kopf seine technische Heimat (Modul, Package,
+  Verzeichnis) — der einzige Code-Verweis im Feature-Doc. Gleicher Name wie der Ordner, wenn es
+  passt; keine Pflicht, Code-Namen folgen Sprache und Framework.
+- Jede index.md ist eine Karte, kein Protokoll: je Feature eine Zeile (Name · Ziel in einem Satz ·
+  Status). Die Root-index.md lädt jeder Start: Vision, je Thema eine Zeile, flache Feature-Docs,
+  Glossar, ADR-Index — so klein wie möglich. Wer an einem Thema arbeitet, liest dessen index.md.
+- Je Doc genau eine `#`-Überschrift (= Seitentitel); Dateinamen kebab-case ohne Themenpräfix.
+- Links relativ; Anker nie auf Regel-/UC-Überschriften (brechen bei Titel-/Statusänderung) — die ID
+  im Linktext reicht.
+
 ### Feature-Doc — das Format, in dem das SOLL steht
 
-- "${docs}/<feature>.md" = das WAS, für Mensch, Fachbereich und KI: Ziel, Regeln mit BDD, offene
+- "${docs}/[<thema>/]<feature>.md" = das WAS, für Mensch, Fachbereich und KI: Ziel, Regeln mit BDD, offene
   Punkte — in Fachsprache, messbar per BDD, Mermaid wo ein Ablauf oder Zustand vorkommt. Daraus muss
   sich das SOLL vollständig rekonstruieren lassen, auch ohne den User.
 - Ein Feature hält Business Rules; jede trägt genau einen Statusmarker und wird mit GIVEN/WHEN/THEN
   gehärtet (Happy Path, Edge, Failure). Unklar? Frag: "GIVEN xxx WHEN xxx THEN <Antwort vom User>".
 - Regeln und Use-Cases tragen IDs (`R-<PRÄFIX>-<n>`, `UC-<PRÄFIX>-<n>`); der Anker ist die ID, nie
   ein Testname. Wer zitiert, nennt Datei + ID.
-- Kein technisches IST im Feature-Doc: keine Code-Stellen, Commit-Hashes, Messreihen, Vorfälle oder
+- Kein technisches IST im Feature-Doc (außer der technischen Heimat im Kopf): keine Code-Stellen, Commit-Hashes, Messreihen, Vorfälle oder
   Beleg-Tabellen. Ein behobener Defekt wird zur Regel mit BDD, ohne Erzählung.
 - Nichts an zwei Orten: im Zweifel ein Ort + Link. Redundanz vermeiden — sind zwei Abläufe fachlich
   gleich, beschreibe einen und verweise darauf.
