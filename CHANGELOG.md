@@ -45,11 +45,11 @@ Releases before `2.12.4` are documented via [GitHub Releases](https://github.com
 - **A queued message no longer unlocks the running turn.** Input sent while an agent is busy used
   to clear its busy flag, letting a second turn run in parallel on the same conversation memory;
   the queued message now reliably waits its turn.
-- **A dead endpoint now names itself.** An AI-call error without a message (JDK 25 throws a bare
-  `ConnectException` on a closed channel) is rethrown as
-  `AI call to <url> failed: <class> — <cause>`, carrying the agent's effective endpoint — a
-  model-API connect error is now tellable from an MCP one, and the PROBLEM line is never empty.
-  Cancellations and errors that already carry a message are left untouched. (R-AEM-3)
+- **A dead endpoint now names itself.** An AI-call error whose message says nothing — blank, or a
+  `CompletionException` envelope carrying nothing but its cause's class name (the JDK form over a
+  message-less `ConnectException`) — is rethrown as `AI call to <url> failed: <class> — <cause>`,
+  carrying the agent's effective endpoint: a model-API connect error is now tellable from an MCP
+  one. Cancellations and errors that carry real information are left untouched. (R-AEM-3)
 
 ## [2.15.0] — 2026-10-25
 

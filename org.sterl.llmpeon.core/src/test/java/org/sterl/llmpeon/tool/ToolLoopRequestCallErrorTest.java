@@ -4,9 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.nio.channels.ClosedChannelException;
 import java.time.Instant;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletionException;
 
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.ai.AgentConfig;
@@ -23,8 +25,8 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
  * R-AEM-3 (org.sterl.llmpeon.core/docs/agent-error-memory.md) at the AI-call choke-point: the agent's
- * own endpoint must show up in a message-less failure, a cancel and an already-messaged error must
- * pass through untouched.
+ * own endpoint must show up in a failure whose message says nothing (blank, or just its cause's
+ * class name), a cancel and an informative error must pass through untouched.
  */
 class ToolLoopRequestCallErrorTest {
 
@@ -128,5 +130,41 @@ class ToolLoopRequestCallErrorTest {
         assertThat(thrown.getMessage())
                 .startsWith("AI call to (no url configured) failed: RuntimeException")
                 .doesNotContain(AGENT_URL);
+    }
+
+    // UC-AEM-7
+    @Test
+    void envelopeWithCauseClassNameIsEnriched() {
+        // the production shape — nothing hand-made: JDK CompletableFuture envelope whose message is
+        // its cause's class name, over a cause that itself has no message.
+        var closed = new ClosedChannelException();
+        var connect = new ConnectException();
+        connect.initCause(closed);
+        var envelope = new CompletionException(connect);
+        var request = requestThrowing(envelope);
+
+        var thrown = assertThrows(RuntimeException.class, () -> request.call(REQUEST));
+
+        assertThat(thrown.getMessage())
+                .isEqualTo("AI call to " + AGENT_URL + " failed: CompletionException — ConnectException")
+                .doesNotContain(BASE_URL);
+        assertThat(thrown.getCause()).isSameAs(envelope);
+        assertThat(envelope.getCause()).isSameAs(connect);
+        assertThat(connect.getCause()).isSameAs(closed);
+    }
+
+    // UC-AEM-6
+    @Test
+    void messageThatOnlyContainsTheCauseClassNameStaysUntouched() {
+        // containing the class name is not being it — this message carries information, so no wrap.
+        // without the cause this test could not tell equals from contains.
+        var withText = new RuntimeException("connect to java.net.ConnectException failed");
+        withText.initCause(new ConnectException());
+        var request = requestThrowing(withText);
+
+        var thrown = assertThrows(RuntimeException.class, () -> request.call(REQUEST));
+
+        assertThat(thrown).isSameAs(withText);
+        assertThat(thrown.getMessage()).isEqualTo("connect to java.net.ConnectException failed");
     }
 }

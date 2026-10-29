@@ -11,10 +11,11 @@
 - **Uncommitted (ride mit nächstem Inkrement-Commit):** CHANGELOG (+25/−3, Restructure),
   docs/open-points.md, `.agents/skills/wiki/skill-impact.md` + `test-honesty`-Patch,
   `peon-plan/overview-done-2026-10-28-14-22.md` (untracked).
-- **R-AEM-3 gebaut + committed (Branch `story/aem-error-url`, 2026-10-29):** message-lose
-  Provider-Fehler → `AI call to <effective URL> failed: <Klasse> — <cause>` am Choke-Point
-  `ToolLoopRequest.call`; Model-API- vs. MCP-Connect-Fehler unterscheidbar. Tests UC-AEM-4/5/6
-  grün ([agent-error-memory.md](../org.sterl.llmpeon.core/docs/agent-error-memory.md)).
+- **R-AEM-3 gebaut + committed (Branch `story/aem-error-url`, 2026-10-29):** Trigger = nutzlose
+  Message — blank **oder** JDK-Envelope mit bloßem Cause-Klassennamen →
+  `AI call to <effective URL> failed: <Klasse> — <cause>` am Choke-Point `ToolLoopRequest.call`;
+  Model-API- vs. MCP-Connect-Fehler unterscheidbar. Tests UC-AEM-4/5/6/7
+  ([agent-error-memory.md](../org.sterl.llmpeon.core/docs/agent-error-memory.md)).
   Status-Flip ❌→✅ = Jon nach Review.
 - **Danach:** Codegraph-Toolset-Slice (R-CG-6-Änderung, `CODEGRAPH_MCP_TOOLS=explore,search,files`,
   Paul 2026-10-29: ja) + **Homepage-Update 2.15.0** (Paul: müssen wir machen — AGENTS.md-Verstoß

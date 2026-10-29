@@ -124,16 +124,30 @@ public class ToolLoopRequest {
         try {
             return retry.call(monitor, () -> bridge.call(chatModel.modelFor(getAgentConfig()), chatRequest, monitor, turnStart));
         } catch (RuntimeException e) {
-            // R-AEM-3: a cancel is never an error, and an existing message is never enriched twice.
-            if (ExceptionUtil.isCanceled(e) || StringUtil.hasValue(e.getMessage())) throw e;
+            // R-AEM-3: a cancel is never an error, and a useful message is never enriched twice.
+            if (ExceptionUtil.isCanceled(e) || !hasUselessMessage(e)) throw e;
             throw new RuntimeException(messageLessFailure(e), e);
         }
     }
 
     /**
-     * R-AEM-3 (org.sterl.llmpeon.core/docs/agent-error-memory.md): the diagnosis a message-less
-     * provider error lacks — effective endpoint, exception class and cause on one line, so a
-     * model-API connect error is distinguishable from an MCP one.
+     * R-AEM-3: useless means blank, or nothing but the cause's class name — the JDK
+     * {@code CompletableFuture} envelope, whose {@code getMessage()} is {@code cause.toString()}
+     * and reduces to exactly that when the cause itself carries no message
+     * (e.g. {@code CompletionException} over a message-less {@code ConnectException}).
+     */
+    private static boolean hasUselessMessage(RuntimeException e) {
+        var message = StringUtil.stripToNull(e.getMessage());
+        if (message == null) return true;
+        var cause = e.getCause();
+        return cause != null && message.equals(cause.getClass().getName());
+    }
+
+    /**
+     * R-AEM-3 (org.sterl.llmpeon.core/docs/agent-error-memory.md): the diagnosis a useless provider
+     * error lacks — blank or envelope-shaped (see {@link #hasUselessMessage}). Effective endpoint,
+     * exception class and cause on one line, so a model-API connect error is distinguishable from
+     * an MCP one.
      */
     private String messageLessFailure(RuntimeException e) {
         var url = EffectiveConnection.of(getConfig(), getAgentConfig()).identity().url();
