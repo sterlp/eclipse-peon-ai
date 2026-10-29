@@ -3,6 +3,7 @@ package org.sterl.llmpeon.tool;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
 import java.time.Instant;
 import java.util.concurrent.CancellationException;
@@ -34,11 +35,15 @@ class ToolLoopRequestCallErrorTest {
 
     /** The real choke-point wiring: base config plus an agent carrying its own url. */
     private static ToolLoopRequest requestThrowing(RuntimeException error) {
-        var chatModel = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", BASE_URL).build();
+        return requestThrowing(BASE_URL, AgentConfig.builder().provider(AiProvider.OLLAMA).url(AGENT_URL).model("test-model").build(), error);
+    }
+
+    private static ToolLoopRequest requestThrowing(String baseUrl, AgentConfig agentConfig, RuntimeException error) {
+        var chatModel = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", baseUrl).build();
         return ToolLoopRequest.builder()
                 .memory(new ThreadSafeMemory())
                 .chatModel(chatModel)
-                .agentConfig(AgentConfig.builder().provider(AiProvider.OLLAMA).url(AGENT_URL).model("test-model").build())
+                .agentConfig(agentConfig)
                 .bridge(new StreamingBridge() {
                     @Override
                     public ChatResponse call(StreamingChatModel model, ChatRequest request, AiMonitor monitor, Instant startedAt) {
@@ -84,5 +89,44 @@ class ToolLoopRequestCallErrorTest {
 
         assertThat(thrown).isSameAs(withMessage);
         assertThat(thrown.getMessage()).isEqualTo("connection refused").doesNotStartWith("AI call to");
+    }
+
+    // UC-AEM-4
+    @Test
+    void messageLessExceptionWithoutCauseOmitsCauseSuffix() {
+        var request = requestThrowing(new RuntimeException());
+
+        var thrown = assertThrows(RuntimeException.class, () -> request.call(REQUEST));
+
+        assertThat(thrown.getMessage())
+                .isEqualTo("AI call to " + AGENT_URL + " failed: RuntimeException")
+                .doesNotContain("—");
+    }
+
+    // UC-AEM-4
+    @Test
+    void causeMessageIsRenderedAsFirstLineOnly() {
+        var original = new RuntimeException();
+        original.initCause(new IOException("boom\nand a second line"));
+        var request = requestThrowing(original);
+
+        var thrown = assertThrows(RuntimeException.class, () -> request.call(REQUEST));
+
+        assertThat(thrown.getMessage())
+                .isEqualTo("AI call to " + AGENT_URL + " failed: RuntimeException — IOException: boom");
+    }
+
+    // UC-AEM-4
+    @Test
+    void unresolvableUrlIsNamedAsNoUrlConfigured() {
+        var original = new RuntimeException();
+        original.initCause(new ClosedChannelException());
+        var request = requestThrowing("", AgentConfig.builder().provider(AiProvider.OLLAMA).model("test-model").build(), original);
+
+        var thrown = assertThrows(RuntimeException.class, () -> request.call(REQUEST));
+
+        assertThat(thrown.getMessage())
+                .startsWith("AI call to (no url configured) failed: RuntimeException")
+                .doesNotContain(AGENT_URL);
     }
 }
