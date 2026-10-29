@@ -11,8 +11,10 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletionException;
 
 import org.junit.jupiter.api.Test;
+import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.AiProvider;
+import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
@@ -151,6 +153,32 @@ class ToolLoopRequestCallErrorTest {
         assertThat(thrown.getCause()).isSameAs(envelope);
         assertThat(envelope.getCause()).isSameAs(connect);
         assertThat(connect.getCause()).isSameAs(closed);
+    }
+
+    // UC-AEM-7
+    @Test
+    void productionEnvelopeSurvivesTheRealBridgeAndRetryLayers() {
+        // The shape the real stack reports: JdkHttpClient relays the failure through
+        // StreamingChatResponseHandler.onError as a JDK CompletionException whose message is nothing
+        // but its cause's class name. Real StreamingBridge + real ApiRetry here, so their pass-through
+        // is part of the proof, not assumed. The endpoint comes from the base config on purpose: an
+        // agent url override is not the base connection and ConfiguredChatModel would then build a
+        // real Ollama model instead of handing the fake to the bridge.
+        var jdkEnvelope = new CompletionException(new ConnectException());
+        var request = ToolLoopRequest.builder()
+                .memory(new ThreadSafeMemory())
+                .chatModel(new ConfiguredChatModel(
+                        LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", AGENT_URL),
+                        new StreamMock().buildMock(chatRequest -> { throw jdkEnvelope; })))
+                .agentConfig(AgentConfig.builder().provider(AiProvider.OLLAMA).model("test-model").build())
+                .build();
+
+        var thrown = assertThrows(RuntimeException.class, () -> request.call(REQUEST));
+
+        assertThat(thrown.getMessage())
+                .isEqualTo("AI call to " + AGENT_URL + " failed: CompletionException — ConnectException")
+                .doesNotContain(BASE_URL);
+        assertThat(thrown.getCause()).isSameAs(jdkEnvelope);
     }
 
     // UC-AEM-6
