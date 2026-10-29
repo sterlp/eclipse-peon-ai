@@ -7,11 +7,27 @@ Releases before `2.12.4` are documented via [GitHub Releases](https://github.com
 
 ## [Unreleased]
 
+### Added
+
+- **Docs linter flags oversized docs.** Docs above 1000 lines are reported as a `ZU_LANG` hint
+  (file + line count) — a hint, not a finding, so an outgrown doc gets split instead of growing
+  silently.
+
 ### Changed
 
-- **Only Jon's build cycle commits automatically.** In a Jon build cycle Da Mek commits and pushes
-  after every green increment (message = functional effect + rule/UC IDs); merging stays your call
-  (default squash). Peon-Dev used directly never commits, pushes or merges unless you ask.
+- **Search agent starts local, not Eclipse-first.** Tool priority is now "whatever this session
+  offers for files and code" (workspace *or* disk), then MCP, then web — the search sub-agent
+  behaves the same outside an Eclipse workspace.
+- **Jon applies the docs method from its own prompt.** Doc structure, splitting and the
+  one-product-vision rule live in a dedicated prompt module (`doc-method.md`); Jon asks before
+  splitting a doc the linter reports as `ZU_LANG`.
+- **The prompt's path scope comes from the write validator.** Where an agent is told it may write
+  is derived from the validator actually in force, so the prompt can no longer promise a scope the
+  validator denies.
+- **Commits follow the build cycle — and only Jon's.** In a Jon build cycle the dev agent commits
+  and pushes after every green increment (message = functional effect + rule/UC IDs, rework as its
+  own commit). Merging stays your call (default squash); Peon-Dev used directly never commits,
+  pushes or merges unless you ask.
 
 ### Fixed
 
@@ -26,6 +42,14 @@ Releases before `2.12.4` are documented via [GitHub Releases](https://github.com
   no longer blocks a later one in the same turn. A failed one ends the turn with the error instead
   of sending calls over budget, and compressor API errors are retried with the turn's normal retry
   logic.
+- **A queued message no longer unlocks the running turn.** Input sent while an agent is busy used
+  to clear its busy flag, letting a second turn run in parallel on the same conversation memory;
+  the queued message now reliably waits its turn.
+- **A dead endpoint now names itself.** An AI-call error without a message (JDK 25 throws a bare
+  `ConnectException` on a closed channel) is rethrown as
+  `AI call to <url> failed: <class> — <cause>`, carrying the agent's effective endpoint — a
+  model-API connect error is now tellable from an MCP one, and the PROBLEM line is never empty.
+  Cancellations and errors that already carry a message are left untouched. (R-AEM-3)
 
 ## [2.15.0] — 2026-10-25
 

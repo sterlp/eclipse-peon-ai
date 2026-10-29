@@ -48,6 +48,41 @@ nicht.
 - GIVEN der Fehler ist bereits im Memory WHEN ein identischer terminaler Fehler auftritt THEN
   keine zweite Kopie.
 
+### R-AEM-3 — Message-lose Provider-Fehler nennen URL, Klasse, Ursache ❌ specified
+
+JDK 25 wirft bei tot/geschlossenem Channel eine `ConnectException` **ohne Message**
+(`Utils.toConnectException` — die zugrunde liegende `ClosedChannelException` trägt per Definition
+keine): die PROBLEM-Zeile im Chat bleibt leer, und ein Model-API-Connect-Fehler ist nicht von einem
+MCP-Connect-Fehler unterscheidbar. Am Choke-Point `ToolLoopRequest.call` wird eine `RuntimeException`
+**ohne (leere) Message** daher neu geworfen als
+`AI call to <effective URL> failed: <Exception-Klasse> — <cause>` (Cause bleibt in der Chain).
+  **Rendering:** Klassen = einfacher Name; Cause-Message (erste Zeile) wird als
+  `<cause>: <message>` angehängt, wenn vorhanden; **fehlt der Cause, entfällt das `—`-Suffix**;
+  leere/nicht auflösbare URL → `(no url configured)`.
+
+- **Nur der AI-Call-Pfad** — Tool-Fehler laufen nicht durch `ToolLoopRequest.call` (siehe
+  [agents-retry.md](agents-retry.md)).
+- **Cancel-Parität:** `CancellationException` wird **nie** gewrappt (R-AEM-1: Cancel ist kein
+  Fehlerzustand).
+- **Exception mit Message bleibt unverändert** — keine Doppel-Anreicherung.
+- **Zweck:** Model-API-Fehler (URL sichtbar) von MCP-Connect-Fehlern unterscheidbar; Diagnose
+  ohne Message-Rätselraten.
+
+#### UC-AEM-4 — messageLessExceptionNamesUrlAndClass ❌
+
+- GIVEN eine `RuntimeException` ohne Message WHEN der AI-Call scheitert THEN die geworfene
+  Exception nennt effective URL + Exception-Klasse + Ursache, der Cause bleibt in der Chain.
+
+#### UC-AEM-5 — cancellationIsNeverWrapped ❌
+
+- GIVEN eine `CancellationException` WHEN der Call abbricht THEN sie fliegt unverändert hoch —
+  kein Wrap, kein Retry.
+
+#### UC-AEM-6 — exceptionWithMessageUntouched ❌
+
+- GIVEN eine `RuntimeException` MIT Message WHEN der Call scheitert THEN die Message bleibt
+  unverändert (keine Doppel-Anreicherung).
+
 ## Verifikation
 
 `AiChatView` = SWT-UI — Automatisierung nur soweit die Memory-Logik im Core testbar ist (Dedup,

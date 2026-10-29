@@ -3,6 +3,37 @@
 
 Geklärte Punkte, die in kein Feature-Doc passen. Offene Punkte: [open-points.md](open-points.md).
 
+## Release-Infra: JAR-Signing, GitHub-Auto-Release, p2-Pfad-Verifikation — verworfen (Paul 2026-10-29)
+
+**Punkt:** Signing-Zertifikat für die Update-Site, Auto-Create GitHub Releases in `release.yml`,
+p2-Pfad-Rückversicherung nach dem nächsten Release.
+**Entscheidung:** unwichtig — Aufwand ohne aktuellen Nutzen; entfällt ersatzlos.
+
+## Issue #163 Rescue-Heuristik „Tool-Call als Text" — erstmal vergessen (Paul 2026-10-29)
+
+**Punkt:** Rescue-Heuristik im `ToolService`-Loop bauen, die `function=<name>`-Fließtexte zu
+`ToolExecutionRequest` rettet?
+**Entscheidung:** zurückgestellt, kein Bau. Erkenntnis bleibt: langchain4j ist **nicht** das Problem —
+alle drei Provider mappen ausschließlich strukturierte Tool-Call-Felder (OpenAI `OpenAiUtils`,
+Anthropic `AnthropicMapper`, Ollama `InternalOllamaHelper`); ein Call, der als Fließtext mit
+XML-artigen Function-Tags ankommt, ist korrekt verarbeiteter Text (schwache/lokale Modelle,
+Unicode-fragil). **Kein Upstream-Issue.** Bei Bedarf: Fix-Idee stand 2026-10-23 in open-points.md
+(git-Historie).
+
+## Skill-Roots First-Launch — unverändert lassen (Paul 2026-10-29)
+
+**Punkt:** Soll First-Launch zusätzlich `~/.agents/skills` anlegen oder gar kein Skills-Dir mehr
+vorsorglich erzeugen?
+**Entscheidung:** lassen — `LlmPreferenceInitializer.buildConfigDirs()` bleibt unverändert;
+das Doc-SOLL („fehlendes Dir = leer, kein Fehler") deckt den Fall ab.
+
+## webSearch Snippet-Disclosure — Footer-Zeile behalten (Paul 2026-10-29)
+
+**Punkt:** Genügt das `…` allein als Kennzeichnung gekürzter Snippets (Da-Dok-Review-F5)?
+**Entscheidung:** behalten — die Footer-Zeile `snippets truncated to 200 characters` bleibt
+(R-WEB-10, gebaut + getestet), aus der AGENTS.md-Regel abgeleitet (jede Truncation ist im eigenen
+Output benannt).
+
 ## SLF4J Multiple Providers — gelöst (Paul gemeldet 2026-10-17)
 
 **Punkt:** `SLF4J(W): Class path contains multiple SLF4J providers` — `EclipseSlf4jProvider`

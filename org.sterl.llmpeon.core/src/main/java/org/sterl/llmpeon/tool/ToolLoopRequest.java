@@ -9,9 +9,12 @@ import org.jspecify.annotations.Nullable;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
+import org.sterl.llmpeon.ai.EffectiveConnection;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.streaming.ApiRetry;
 import org.sterl.llmpeon.streaming.AsyncStreamingBridge;
 import org.sterl.llmpeon.streaming.AsyncStreamingBridge.SteamHandler;
@@ -118,7 +121,33 @@ public class ToolLoopRequest {
     }
     
     public ChatResponse call(ChatRequest chatRequest) {
-        return retry.call(monitor, () -> bridge.call(chatModel.modelFor(getAgentConfig()), chatRequest, monitor, turnStart));
+        try {
+            return retry.call(monitor, () -> bridge.call(chatModel.modelFor(getAgentConfig()), chatRequest, monitor, turnStart));
+        } catch (RuntimeException e) {
+            // R-AEM-3: a cancel is never an error, and an existing message is never enriched twice.
+            if (ExceptionUtil.isCanceled(e) || StringUtil.hasValue(e.getMessage())) throw e;
+            throw new RuntimeException(messageLessFailure(e), e);
+        }
+    }
+
+    /**
+     * R-AEM-3 (org.sterl.llmpeon.core/docs/agent-error-memory.md): the diagnosis a message-less
+     * provider error lacks — effective endpoint, exception class and cause on one line, so a
+     * model-API connect error is distinguishable from an MCP one.
+     */
+    private String messageLessFailure(RuntimeException e) {
+        var url = EffectiveConnection.of(getConfig(), getAgentConfig()).identity().url();
+        var cause = causeSummary(e.getCause());
+        return "AI call to " + StringUtil.getOrDefault(url, "(no url configured)") + " failed: "
+                + e.getClass().getSimpleName() + (cause == null ? "" : " — " + cause);
+    }
+
+    /** {@code Klasse} or {@code Klasse: <erste Zeile>}; {@code null} without a cause — then the suffix drops. */
+    private static String causeSummary(Throwable cause) {
+        if (cause == null) return null;
+        var name = cause.getClass().getSimpleName();
+        var message = StringUtil.stripToNull(cause.getMessage());
+        return message == null ? name : name + ": " + message.lines().findFirst().orElse("").strip();
     }
     
     public CompletableFuture<SteamHandler> asyncCall(ChatRequest chatRequest) {

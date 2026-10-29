@@ -57,3 +57,12 @@ Recurring shapes here (2026-09-03, cycles 2b-1…3b):
   (Origin 2026-09-11: `AiCompressorAgent` dedup was inverted → compact input always empty; both
   existing tests asserted only the system prompt / the response side and stayed green for the broken
   send path.)
+
+## Removing a gate or trigger → inventory tests by their USAGE
+
+- **When removing a gate/trigger (hook, flag, pre-turn check, event listener), inventory the affected
+  tests by their USAGE of the removed thing, not by its name** — tests that need the gate as their
+  trigger (no tool round / alternate path of their own) go red or NPE.
+  (Origin 2026-10-28, R-CC-18.5: removing the per-turn compact flag left
+  `AbstractAgentCompactResultTest.autoCompactRetriesAfterFailure` outside the plan inventory — second
+  occurrence of this shape, first one 2026-10-19 with two tests missing from the same kind of list.)
