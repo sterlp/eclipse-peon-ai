@@ -24,16 +24,22 @@
 
 ## Offen für Paul (je eine Frage)
 
-1. **R-AEM-3 Trigger-Semantik** (⏳ in open-points): blank+Envelope bestätigen oder Root-Cause-Ansatz?
-2. **Deferred-Reset Compact-UI** (⏳, open-points) — „müssen wir klären".
-3. `@SuppressWarnings`-Rauschen (siehe oben) — von der IDE gewollt? Dann committen oder verwerfen.
-4. ⏳-Rückversicherungen in [open-points.md](open-points.md): Delegations-Compact-Kosten (ADR-0071),
+1. **Deferred-Reset Compact-UI** (⏳, open-points) — „müssen wir klären".
+2. ⏳-Rückversicherungen in [open-points.md](open-points.md): Delegations-Compact-Kosten (ADR-0071),
    Compact-Briefing-Schema, `codegraph`-Name reserviert, R-CG-15, R-CC-19, Windows-`cmd /c`,
    Pauls ShellTool-WIP, Read-Tools-OutputTrim, `PeonAiService.current()`.
-5. Bug-Triage (noch offen): totes MCP-Tool in Spec-Liste, `PoDelegateTool.dispatch`-Catch
+3. Bug-Triage (noch offen): totes MCP-Tool in Spec-Liste, `PoDelegateTool.dispatch`-Catch
    (jetzt zusätzlich durch R-AEM-3-Wrap minimal leichter erreichbar — Suspicion aus Review),
    ApiRetry-Fehlerklassen-Tabelle, Header-State-Leak, Auto-Compact bei Context-Overflow
    (nächster Zyklus laut Order 2026-10-14), `org.sterl.llmpeon.test` baut nicht.
+
+## Neu aufgenommen (Paul 2026-10-29, Backlog — nicht gestartet)
+
+- **„Kein `throw` ohne Message"** (Regel-Kandidatin, ❓ open-points) — Inventar message-loser
+  Throws, SOLL in ground-rules.md, dann Batches.
+- **Warnungs-Aufräum-Zyklus** (❓ open-points): core + plugin, eigener Branch, Inkrement 1 =
+  VOLL-Inventar + Triage (nichts ändern), dann Batches je Warnklasse. `@SuppressWarnings`-Rauschen
+  (5 Dateien, uncommitted) im selben Zyklus klären.
 
 ## Backlog
 

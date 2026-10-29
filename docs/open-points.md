@@ -5,13 +5,28 @@ Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.
 
 ## 2026-10-29 — R-AEM-3 Trigger-Entscheidung (Jon autonom aus Pauls Zweckvorgabe)
 
-- ⏳ **Trigger „nutzlose Message" = blank ODER Message == Cause-Klassenname (JDK-Envelope):** die
+- 🔒 **Trigger „nutzlose Message" = blank ODER Message == Cause-Klassenname (JDK-Envelope):** die
   ursprüngliche reine Blank-Bedingung war nach Messung im Produktionspfad unwirksam (refused kommt
-  als `CompletionException`-Envelope mit bloßem Klassennamen durch). Erweitert auf beide Formen;
+  als `CompletionException`-Envelope mit bloßem Klassennamen durch). **Paul bestätigt 2026-10-29.**
   Mid-Stream-`"closed"` und verschachtelte Envelopes bewusst außen (Revisit mit R-CC-7).
-  Grundlage: Pauls Zweckvorgabe („zwischen MCP-Connect und Model-Connect unterscheiden").
-  **Rückversicherung:** Paul bestätigt die Trigger-Semantik — oder entscheidet sich für den
-  Root-Cause-Ansatz (wrapt dann auch inhaltstragende Provider-Messages).
+
+## 2026-10-29 — Neue Regel-Kandidatin: „Wir werfen keine Fehler ohne Message" (Paul)
+
+- ❓ **Alle eigenen `throw new X(...)` sollen eine inhaltvolle Message tragen** (was, wo, warum) —
+  R-AEM-3 (URL-Enrichment am Choke-Point) ist der Spezialfall für die Wrapper-Grenze. Paul
+  2026-10-29: „wir werfen keine Fehler ohne message" — als TODO aufgeschrieben, **nicht jetzt
+  gebaut**. Bei der Ausarbeitung: Inventar der message-losen Throws (VOLL-Grep), SOLL-Regel
+  (vermutlich [ground-rules.md](../org.sterl.llmpeon.core/docs/ground-rules.md)), dann Batches.
+
+## 2026-10-29 — Warnungs-Aufräum-Zyklus (Paul: „die Warnungen müssen aus dem Code")
+
+- ❓ **Eclipse-Compiler-/Null-Analysis-Warnungen aus core + plugin räumen** — „das Projekt verkommt".
+  Verabredeter Ablauf (Paul 2026-10-29, **nicht jetzt gestartet**): eigener Branch, **Inkrement 1 =
+  VOLL-Inventar + Triage-Liste, nichts ändern** (Paul will erst sehen, was da ist), dann Batches je
+  Warnklasse. Verwandt: die uncommitteten `@SuppressWarnings("null")`-IDE-Quickfixes in
+  `ExceptionUtil.java`, `ToolService.java`, `ShellTool.java`, `AgentToolConfigTest.java`,
+  `DefaultCodegraphProbeTest.java` (2026-10-29, 11:52) — im selben Zyklus klären (behalten als
+  bewusste Suppress oder Issue fixen; `@SuppressWarnings` nie als Dämpfer gegen echten Befund).
 
 ## Release-Doku-Auflösung (2026-10-20) — github-eclipse-repo.md aufgelöst (ADR-0072)
 

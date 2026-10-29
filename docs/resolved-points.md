@@ -3,6 +3,13 @@
 
 Geklärte Punkte, die in kein Feature-Doc passen. Offene Punkte: [open-points.md](open-points.md).
 
+## R-AEM-3 Trigger-Semantik — bestätigt (Paul 2026-10-29)
+
+**Punkt:** Ist „nutzlose Message" (blank ODER bloßer Cause-Klassenname — JDK-Envelope) der richtige
+Trigger für die URL-Anreicherung am Choke-Point?
+**Entscheidung:** bestätigt; alles mit echtem Provider-Text bleibt unverändert, Grenzen
+(verschachtelte Envelopes, `"closed"`) stehen im Feature-Doc (R-AEM-3, Revisit mit R-CC-7).
+
 ## Release-Infra: JAR-Signing, GitHub-Auto-Release, p2-Pfad-Verifikation — verworfen (Paul 2026-10-29)
 
 **Punkt:** Signing-Zertifikat für die Update-Site, Auto-Create GitHub Releases in `release.yml`,
