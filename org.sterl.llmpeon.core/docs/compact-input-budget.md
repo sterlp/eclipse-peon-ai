@@ -4,7 +4,7 @@ idPrefix: CIB
 
 # Compressor-Input-Budget (R-CIB) — budgetierter Compact-Input
 
-> **Status:** R-CIB-1…6 **✅ done** (2026-09-25, Da Dok Review ACCEPTED, 1001 Tests grün).
+> **Status:** R-CIB-1…6 **✅ done** (2026-09-25, Review ACCEPTED, 1001 Tests grün).
 > **Einstiegs-Doc:** [compact.md](compact.md) (Zähler & Result, Präfix CC) ·
 > **ADR:** [ADR-0056](../../docs/adr/0056-compact-component-and-render-modes.md) ·
 > **Architektur:** [compact-architektur.md](compact-architektur.md).
@@ -89,14 +89,14 @@ jeder Stufe. Gilt **nur im Compacter** — der Live-Context an das LLM wird nich
    ([tagged-results.md](tagged-results.md) R-TR-7). Gleichzeitig: vom Textcontent der
    User-Messages nur die **letzte mit echtem User-Text** — frühere User-Messages sind nur
    „State" (gleiche Semantik wie die Chat-Darstellung). **Echter User-Text = letzter
-   TextContent** der UserMessage — code-verifiziert (Da Thinka 2026-09-24): Turn-Context-Items
+   TextContent** der UserMessage — code-verifiziert (Plan 2026-09-24): Turn-Context-Items
    werden **zuerst** angehängt, der echte User-Text **zuletzt** (`AbstractAgent.doCall:271-274`,
    `ThreadSafeMemory.add:73-77`, Compact-Restore `AbstractAgent:320-326`); Pauls Erst-These
    „erster TextContent" war am Code falsch herum und wurde korrigiert. Die Insert-Ordnung ist
    damit eine Regel — kein Raten mehr ([context-message-concept.md](context-message-concept.md)).
    **Ausgeschlossen von „letzte":** `COMPACT_HINT`, Queued-Marker, System-Nachrichten —
    Hint/Marker werden als **Konstanten** referenziert (nie verstreute String-Literale), damit
-   der Ausschluss robust bleibt (Da-Dok F1: der Hint liegt real als UserMessage in der Memory).
+   der Ausschluss robust bleibt (Review F1: der Hint liegt real als UserMessage in der Memory).
    AI-Text voll.
 2. **Re-Estimate** nach dem Join (`System.lineSeparator`) — estimate ≤ Budget → fertig.
 3. **Stufe 2 — Tool-Results, Tool-Arguments, Thinking auf 6000:** immer noch drüber → Cap 6000
@@ -145,7 +145,7 @@ gegen die der Endstufen-Cap gerechnet wird).
 - **Zum Agenten:** die `CompactResult`-Zeile (Tool-Ergebnis an das LLM) trägt dieselben Zahlen
   („compressed 61 messages ~114k → input ~40k, result 2.3k, stage: tool results 6000") — das
   LLM versteht im nächsten Turn, was passiert ist. `CompactResult` wurde dafür vom Enum zum
-  **Record** mit den Zahlen erweitert (Da-Dok F9; alle `compact()`-Caller per Grep verifiziert).
+  **Record** mit den Zahlen erweitert (Review F9; alle `compact()`-Caller per Grep verifiziert).
 
 ## BDD
 

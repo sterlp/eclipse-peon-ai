@@ -200,11 +200,10 @@ class AgentOrderTest extends AbstractMemoryFileTest {
     }
 
     @Test
-    void defaultOrderContentReferencesThePoAgentByName() {
+    void defaultOrderContentPinsTheJonFirstPattern() {
         // GIVEN - AgentOrder.DEFAULT_ORDER_CONTENT exists
         // WHEN - (none, static content)
-        // THEN
-        assertThat(AgentOrder.DEFAULT_ORDER_CONTENT).contains(AiPoAgent.NAME);
+        // THEN — the pattern implies the name, so only it is pinned
         assertThat(AgentOrder.DEFAULT_ORDER_CONTENT).contains("^Jon$");
     }
 

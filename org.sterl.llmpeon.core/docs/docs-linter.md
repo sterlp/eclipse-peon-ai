@@ -62,7 +62,7 @@ hierarchisch (`UC-FEATURE_NAME-3-3`, Erstanwender). `idPattern` ist damit **Pfli
 Nice-to-have**: der Request-Regex mit `+` würde unser flaches Schema still nicht finden — exakt der
 Null-Treffer-Fehlerzustand aus R-DL-6. Der Parameter FULL-matcht die ID (`matches()`, kein
 Präfix-Match) — `UC-PP-\d+` findet `UC-PP-12`, aber nicht `UC-PP-12-3a`; Werkzeuge, die das
-Gegenteil erwarten, erzeugen genau den stillen 0/0 (zweimal passiert: 2026-09-16 + Da-Dok/Da-Mek).
+Gegenteil erwarten, erzeugen genau den stillen 0/0 (zweimal passiert: 2026-09-16 + Review/Dev).
 
 ### Doc-Template (verbindlich — der Parser ist nur so gut wie das Template)
 
@@ -90,7 +90,7 @@ Drei harte Struktur-Regeln, alles andere ist für den Parser unsichtbarer Fließ
 3. **UC-Überschrift genau eine Ebene tiefer** als ihre Regel — daraus leitet sich die Zugehörigkeit
    und damit die Status-Vererbung (R-DL-3) ab.
 
-> **Autor-Konvention (2026-09-22, Da-Dok-Fund):** Regel-Überschrift `### R-<FEATURE>-<n>`, UC
+> **Autor-Konvention (2026-09-22, Review-Fund):** Regel-Überschrift `### R-<FEATURE>-<n>`, UC
 > `#### UC-<FEATURE>-<n>`. Ein neues Feature-Doc schreibt die Regeln von Anfang an auf `###` —
 > ein `##` erzeugt `UC_OHNE_REGEL` (Fall: tool-time-disclosure.md, Erstfassung).
 
@@ -150,20 +150,20 @@ darüber (alle im Package `org.sterl.llmpeon.docslinter`):
 | Fassade | exponiert | Wer bekommt sie |
 |---|---|---|
 | `DocsIdTool` | `nextIds` | **nur Jon** |
-| `DocsLinterTool` | `lintDocs`, `lintDocsAndTests` | Jon · Da Thinka · Da Mek · Da Dok |
+| `DocsLinterTool` | `lintDocs`, `lintDocsAndTests` | Jon · Plan · Dev · Review |
 
 Beide teilen **eine** Kern-Instanz und damit **ein** `workingDir` — zwei Instanzen mit
 auseinanderlaufendem Root wären der stille Ausfall aus R-DL-6 („falscher Pfad sieht aus wie sauberer
 Bestand"), nur eine Ebene höher. Muster und Begründung wie bei `PlanReadTool` über `PlanTool`
 ([ADR-0048](../../docs/adr/0048-docs-linter-read-only-and-tool-split.md)).
 
-> **Warum Da Thinka auch `lintDocsAndTests` bekommt** (Korrektur 2026-09-15): Eine frühere Fassung
+> **Warum Plan auch `lintDocsAndTests` bekommt** (Korrektur 2026-09-15): Eine frühere Fassung
 > gab ihm nur `lintDocs` über eine dritte Fassade. Das scheiterte an `ToolService`, der je
 > Methodenname genau **einen** Executor zulässt (`ToolService.java:47`) — zwei Fassaden mit
 > `lintDocs` im selben Service kollidieren. Die Alternative wäre ein Overlay-`ToolService` gewesen:
 > ein Architektur-Umbau, um einem Agenten einen Call vorzuenthalten, den er schlicht *nicht
 > braucht*. **Die Trennung, die zählt, ist `nextIds`** — „vergeben darf einer, prüfen dürfen alle".
-> Prüfen darf Da Thinka.
+> Prüfen darf Plan.
 
 `nextIds` ist nicht Komfort, sondern das strukturelle Gegenmittel gegen `DOPPELT_DEFINIERT`:
 Doppelvergabe entsteht, weil niemand weiß, welche Nummer frei ist.
@@ -776,11 +776,11 @@ Die ID-Vergabe (`nextIds`, Tool `DocsIdTool`) liegt **allein beim PO**. Die Prü
 | Agent | `nextIds` | `lintDocs` | `lintDocsAndTests` | warum |
 |---|---|---|---|---|
 | **Jon** (PO) | ✅ | ✅ | ✅ | vergibt IDs, prüft vor dem `❌`→`✅`-Flip |
-| **Da Thinka** (Plan) | ❌ | ✅ | ✅ | liest die UC-IDs eines Docs, um sie je Inkrement in den Plan zu schreiben (nutzt dafür `lintDocs`) |
-| **Da Mek** (Dev) | ❌ | ✅ | ✅ | prüft sich selbst vor der Fertigmeldung; **kopiert** IDs, erfindet nie welche |
-| **Da Dok** (Review) | ❌ | ✅ | ✅ | 3-Seiten-Prüfung beim Review-Start |
+| **Plan** | ❌ | ✅ | ✅ | liest die UC-IDs eines Docs, um sie je Inkrement in den Plan zu schreiben (nutzt dafür `lintDocs`) |
+| **Dev** | ❌ | ✅ | ✅ | prüft sich selbst vor der Fertigmeldung; **kopiert** IDs, erfindet nie welche |
+| **Review** | ❌ | ✅ | ✅ | 3-Seiten-Prüfung beim Review-Start |
 
-> **WEIL** — Vergäbe Da Mek IDs selbst, entstünden sie zum **Bauzeitpunkt**, während der PO später
+> **WEIL** — Vergäbe Dev IDs selbst, entstünden sie zum **Bauzeitpunkt**, während der PO später
 > eine andere ins Doc schreibt. Ergebnis: gleichzeitig `VERWAIST` (seine ID) und
 > `UNBELEGT_ERLEDIGT` (die des Docs) — der Linter meldete dann Rauschen statt Befund, also exakt den
 > Zustand, gegen den er gebaut wurde. Ein Prompt-Satz („nie erfinden") ist eine Bitte; ein fehlendes
@@ -791,10 +791,10 @@ Die ID-Vergabe (`nextIds`, Tool `DocsIdTool`) liegt **allein beim PO**. Die Prü
 > `"nextIds"` bricht bei einem Rename **still**, die Fassade ist compile-gebunden. Präzedenz im
 > eigenen Code: `planSave` wird Jon über `PlanReadTool` entzogen, nicht per Filter.
 
-**Die Kette:** Jon vergibt (`nextIds`) → Doc → Da Thinka trägt die IDs je Inkrement in den Plan →
-Da Mek kopiert sie an die Tests → Da Dok prüft per `lintDocsAndTests`.
+**Die Kette:** Jon vergibt (`nextIds`) → Doc → Plan trägt die IDs je Inkrement in den Plan →
+Dev kopiert sie an die Tests → Review prüft per `lintDocsAndTests`.
 
-#### UC-DL-48 — Da Mek kann keine ID vergeben ✅ done
+#### UC-DL-48 — Dev kann keine ID vergeben ✅ done
 GIVEN der Dev-Agent WHEN seine Tool-Liste aufgebaut wird THEN enthält sie `lintDocs` und
 `lintDocsAndTests`, aber **nicht** `nextIds`.
 
@@ -802,7 +802,7 @@ GIVEN der Dev-Agent WHEN seine Tool-Liste aufgebaut wird THEN enthält sie `lint
 GIVEN der PO-Agent WHEN seine Tool-Liste aufgebaut wird THEN enthält sie `nextIds`, `lintDocs` und
 `lintDocsAndTests`.
 
-#### UC-DL-50 — Da Thinka darf prüfen, nicht vergeben ✅ done
+#### UC-DL-50 — Plan darf prüfen, nicht vergeben ✅ done
 GIVEN der Plan-Agent WHEN seine Tool-Liste aufgebaut wird THEN enthält sie `lintDocs` und
 `lintDocsAndTests`, aber **nicht** `nextIds`.
 
@@ -811,7 +811,7 @@ GIVEN ein Projektwechsel setzt das `workingDir` WHEN anschließend über `DocsId
 `DocsLinterTool` gelintet wird THEN arbeiten beide auf demselben Root — es gibt keine zweite
 Kern-Instanz mit eigenem Zustand.
 
-#### UC-DL-51 — Da Dok prüft, vergibt nicht ✅ done
+#### UC-DL-51 — Review prüft, vergibt nicht ✅ done
 GIVEN der Review-Agent WHEN seine Tool-Liste aufgebaut wird THEN enthält sie `lintDocs` und
 `lintDocsAndTests`, aber **nicht** `nextIds`.
 
@@ -821,7 +821,7 @@ Beide Tools sind **immer** registriert, unabhängig von `diskToolsEnabled`.
 
 > **🐞 WEIL** — Befund 2026-09-15: `DocsLinterTool` wurde nur bei `diskToolsEnabled == true`
 > registriert (`SharedToolsComponent.java:67-70`), Default ist `false` (`LlmConfig.java:92`). In der
-> Standard-Konfiguration existierte das Tool damit für **niemanden** — auch nicht für Da Dok, dessen
+> Standard-Konfiguration existierte das Tool damit für **niemanden** — auch nicht für Review, dessen
 > Prompt es beim Review-Start verlangt. Ein Prompt, der auf ein nicht vorhandenes Tool zeigt, lässt
 > den Agenten halluzinieren oder blockieren, und niemand sieht es.
 >
@@ -839,7 +839,7 @@ GIVEN `diskToolsEnabled` wird von `true` auf `false` geschaltet WHEN der **gemei
 danach gelesen wird THEN sind die drei Disk-Tools verschwunden und **`DocsLinterTool` ist noch da**.
 
 > **Zwei Besitzverhältnisse, ein Gate — nicht verwechseln:** `DocsLinterTool` liegt im *shared*
-> Service (deshalb sehen es Da Thinka, Da Mek und Da Dok). `DocsIdTool` liegt **absichtlich nicht**
+> Service (deshalb sehen es Plan, Dev und Review). `DocsIdTool` liegt **absichtlich nicht**
 > dort, sondern nur in Jons kuratiertem Service — genau dadurch wird es den Sklaven entzogen
 > (R-DL-14). Der Gate-Übergang ist folglich **nur am shared Bestand** beobachtbar; dort greift die
 > Mutation nachweislich (Gate-false-Zweig entfernt zusätzlich die Linter-Fassade → Test rot).
@@ -1033,18 +1033,18 @@ Die Prompt-Dateien gehören dem PO ([prompts.md](prompts.md)); die Agenten ände
 | Rolle | Ergänzung |
 |---|---|
 | **PO-Agent (Jon)** | Vergibt IDs ausschließlich über `nextIds` — nie von Hand weitergezählt. Vor jedem Flip `❌` → `✅` läuft `lintDocsAndTests`. Ein `✅` ohne belegten Test ist ein Defekt, kein Versehen. |
-| **Plan-Agent (Da Thinka)** | Ermittelt die UC-IDs des Feature-Docs per `lintDocs` und schreibt in **jedes Inkrement**, welche UC-IDs es abdeckt. Ein Inkrement ohne genannte UC-ID ist nur zulässig, wenn es nachweislich keinen Use-Case berührt (Wiring, Refactoring). |
-| **Dev-Agent (Da Mek)** | Jeder Test, der einen im Plan genannten Use-Case belegt, trägt dessen ID als reine Kommentarzeile unmittelbar über dem Test (`// UC-X-1`, `# UC-X-1`, `-- UC-X-1`). Mehrere IDs kommagetrennt. Rename/Move → Kommentar wandert mit. **IDs werden aus Plan/Doc kopiert, nie erfunden** — er hat `nextIds` nicht. |
-| **Review-Agent (Da Dok)** | Jedes Review startet mit `lintDocsAndTests`. `UNBELEGT_ERLEDIGT` und `VERWAIST` sind Blocker, kein Hinweis. Fehlt das Tool oder nimmt das Doc nicht teil: im Report vermerken und weitermachen — nie ein Review verweigern. |
+| **Plan-Agent** | Ermittelt die UC-IDs des Feature-Docs per `lintDocs` und schreibt in **jedes Inkrement**, welche UC-IDs es abdeckt. Ein Inkrement ohne genannte UC-ID ist nur zulässig, wenn es nachweislich keinen Use-Case berührt (Wiring, Refactoring). |
+| **Dev-Agent** | Jeder Test, der einen im Plan genannten Use-Case belegt, trägt dessen ID als reine Kommentarzeile unmittelbar über dem Test (`// UC-X-1`, `# UC-X-1`, `-- UC-X-1`). Mehrere IDs kommagetrennt. Rename/Move → Kommentar wandert mit. **IDs werden aus Plan/Doc kopiert, nie erfunden** — er hat `nextIds` nicht. |
+| **Review-Agent** | Jedes Review startet mit `lintDocsAndTests`. `UNBELEGT_ERLEDIGT` und `VERWAIST` sind Blocker, kein Hinweis. Fehlt das Tool oder nimmt das Doc nicht teil: im Report vermerken und weitermachen — nie ein Review verweigern. |
 
 ## Offene Punkte (vor dem Bau zu klären)
 
 | # | Frage | Status |
 |---|---|---|
 | Q3 | Lieferform → **🔒 nur Dateisystem-Zugriff, ein `root`-Parameter mit Default = Disk-Pfad des gewählten Projekts.** Kein `eclipse*`-Gegenstück, kein `FileTreeReader`-Interface, keine Änderung an den bestehenden Read-Tools ([ADR-0047](../../docs/adr/0047-docs-linter-disk-only-single-root.md)). | 🔒 |
-| Q4 | Da Dok ist read-only, Tool schrieb einen Report → **🔒 `reportPath` ersatzlos gestrichen** (User 2026-09-15). Der Rückgabewert enthält bereits alles ungekappt; die Datei war reine Aufbereitung. Damit ist das Tool echt read-only (R-DL-7). | 🔒 |
+| Q4 | Review ist read-only, Tool schrieb einen Report → **🔒 `reportPath` ersatzlos gestrichen** (User 2026-09-15). Der Rückgabewert enthält bereits alles ungekappt; die Datei war reine Aufbereitung. Damit ist das Tool echt read-only (R-DL-7). | 🔒 |
 | Q5 | Tool-Filter je Agent → **🔒 Split in `DocsIdTool` (nur Jon) und `DocsLinterTool` (alle)** (User 2026-09-15). Begründung korrigiert (ADR-0048, Ergänzung 2026-09-25): der Filter ist method-weit möglich; Fassade wegen Präzedenz (`PlanReadTool`) — neue Fälle: erst Filter, mit Tool-Namen als statischen Konstanten ([agent-tool-filter.md](agent-tool-filter.md) R-TF-3), Fassade nur bei echtem Ownership-Split (R-DL-14). | 🔒 |
-| Q10 | 🐞 Linter hing am `diskToolsEnabled`-Gate (Default `false`) und fehlte Jon ganz → **🔒 immer registrieren, Jon + Da Thinka bekommen ihn** (User 2026-09-15). R-DL-15, R-DL-14. | 🔒 |
+| Q10 | 🐞 Linter hing am `diskToolsEnabled`-Gate (Default `false`) und fehlte Jon ganz → **🔒 immer registrieren, Jon + Plan bekommen ihn** (User 2026-09-15). R-DL-15, R-DL-14. | 🔒 |
 | Q1 | **Dogfooding:** llmpeon-Docs kennen keine UC-IDs (Ist: `R1`/`R2` doc-lokal, ~200 `→ Klasse.methode`-Verweise in 33 Docs). → **🔒 Tool bauen + Prompts anpassen, Bestand NICHT rückwirkend nachziehen**; ID-Pflicht ab jetzt bei jedem angefassten Use-Case (Einführung Schritt 3), Teilnahme per Opt-in (R-DL-11). | 🔒 |
 | Q2 | Migrationshilfe `suggestIds` → **🔒 separat, nach dem Grundgerüst** (User 2026-09-15). Begründung: die drei Kernmethoden sind deterministische Mengenabgleiche, `suggestIds` muss heuristisch **raten** — anderer Charakter, andere Testbarkeit. Und da Opt-in bei uns ohnehin ein Doc-Umbau ist (Q6), spart es uns weniger als dem Erstanwender. | 🔒 |
 | Q6 | **Definitionsform → 🔒 nur Überschriften** (`#### UC-…`), keine Bullet-Variante. User 2026-09-15: „Konsistenz ist besser als Optionen, das Tool soll Fehler melden wenn wir abweichen." Preis: Opt-in eines Bestands-Docs ist ein Umbau, kein Handgriff — passiert beim ohnehin-Anfassen. | 🔒 |

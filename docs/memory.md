@@ -7,23 +7,21 @@
 
 - **Alle 6 Inkremente + Docs/Prompt-Commits + Delta-Inkrement grün & gepusht** auf
   `web-factory-goon` (`c025695c` · `8c35da01` · `63bbfe3a` · `7680b1d6` · `db48c3f8` · `1ec40ef1` ·
-  `afd8890b` · `7bf3181b` · **`4260475b`**). Delta `4260475b` = Da-Dok-Review-Fixes: LOW-1..4
+  `afd8890b` · `7bf3181b` · **`4260475b`**). Delta `4260475b` = Review-Fixes: LOW-1..4
   (NAME-Konstanten, `AgentNames.isJon` statisch, SseTurnMonitor-Abhängigkeit raus, Kommentar),
   BUG-1-Pin `AgentsMdContextItemTest#test_jon_resolvesOnlyToCleanBreakNames`, Mutation-Nachweis
-  `OwnerMonitor` (fill-if-null → 2 rote Tests wie prognostiziert, revertet). Gates: Core **1424**,
-  Fabrik **108/0/0/0**, UI **25/25**, PDE-gezielt 3/0+6/0 (volle PDE-Suite im Delta **nicht**
-  gefahren), Lint 10 = Baseline.
-- **Da-Dok-Review abgeschlossen (REJECTED → Befunde behandelt):** BUG-2/3/5 + Homepage-Reste von Jon in
+  `OwnerMonitor` (fill-if-null → 2 rote Tests wie prognostiziert, revertet). Lint = Baseline.
+- **Review-Durchgang abgeschlossen (REJECTED → Befunde behandelt):** BUG-2/3/5 + Homepage-Reste von Jon in
   Docs gefixt (ADR-0078 an gebauten Mechanismus angepasst, `aifactory/docs/memory.md` „Jetzt" neu,
   header-Doc-Ork-Namen gezogen); BUG-1 per Clean Break entschieden (⏳ open-points: Paul
   bestätigen lassen); BUG-4 = ❓ Paul (AGENTS.md); BUG-6 = ADR-0078-Abweichungsnotiz. P1
-  (Queue-Drain-Race), V1 (setStaticContext), P2 (Peon-Scaffold) → ❓ open-points.
-- **⚠️ Eigene `AGENTS-PO.md` dieses Repos lädt für Jon nicht mehr** — Paul bei Gelegenheit in
-  `AGENTS-JON.md` umbenennen (steht auch in der Release-Note).
+  (Queue-Drain-Race) → ❓ open-points.
+- **⚠️ Rename `AGENTS-PO.md` → `AGENTS-JON.md` liegt uncommittet im Working Tree** (`git mv`) —
+  Agenten committen `AGENTS*.md` nie: Paul bestätigen und selbst committen (⏳ open-points).
 - **Manuelle Nachweise offen (Paul):** Browser-Proof Fabrik auf 8099 + Plugin-Harness
-  (`test-chat.html`, zwei Klicks) — Da Mek kann sie nicht allein fahren.
+  (`test-chat.html`, zwei Klicks) — Dev kann sie nicht allein fahren.
 - **⏳/❓ offen:** siehe [open-points.md](open-points.md) Abschnitt 2026-10-30.
-- **Rules für den Bau:** Paul committet selbst · Core-Baseline **1424** · `lintDocsAndTests` je
+- **Rules für den Bau:** Paul committet selbst · `lintDocsAndTests` je
   Inkrement, UC-Anker bleiben · keine Tool-Call-Id-Buchführung (ADR-0078 Decision 6) ·
   `AgentsTool` = Paul WIP, out of scope (`AgentsTool.java:126,136,193,195` Virtual-Thread-Emission).
 - **SOLL:** ADR-0078 (D1–D6, Accepted, 2026-10-30 angepasst) + ADR-0079 (Namen); `aifactory/docs/chat.md`

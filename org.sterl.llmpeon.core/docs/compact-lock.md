@@ -20,7 +20,7 @@ idPrefix: CT
 
 ## Ziel
 
-Während ein Agent kompaktiert (User-Compact über Header/Actions-Bar, Da Boss wie Sklave), ist er
+Während ein Agent kompaktiert (User-Compact über Header/Actions-Bar, Jon wie Sklave), ist er
 **`working`** — der Roster zeigt ihn als aktiv, Eingaben werden gequeued statt parallel verarbeitet,
 und nach dem Compact werden gequekte Nachrichten verarbeitet. Damit ist der dokumentierte
 Memory-Race (Send während Compact = paralleler `call()` gegen dieselbe Memory, während
@@ -106,8 +106,8 @@ Drain-on-Abort-Semantik greift hier nicht.
 Während ein Agent kompaktiert, zeigt seine Roster-Zeile einen **eigenen Compact-Status** (🟡-Präfix
 in `AiAgentStatusWidget.text()`, zweiter Anzeige-Zustand `compacting`) — nicht nur das generische
 🟢 `working`. Der Compact ist damit im Roster direkt erkennbar und vom regulären Turn unterscheidbar.
-Die Blatt-Regel bleibt unverändert: ein kompaktierender Sklave lässt Da Boss nicht leuchten
-(🟡 zählt für die Blatt-Regel als **busy** — hält Da Boss dunkel —, aber nicht als `working`:
+Die Blatt-Regel bleibt unverändert: ein kompaktierender Sklave lässt Jon nicht leuchten
+(🟡 zählt für die Blatt-Regel als **busy** — hält Jon dunkel —, aber nicht als `working`:
 kein 🟢 durch Compact; die kompaktierende Zeile selbst zeigt 🟡 statt 🟢).
 
 > **WEIL** (Paul 2026-10-23): „Wir wollen den Status vom Compact setzen." Die alte Entscheidung
@@ -161,7 +161,7 @@ Root-/Sklaven-Sonderweg, kein Responsibility-Bleed):
 
 - **Start-Zeile** (existiert, R-CT-6): `🗜 Compressing <Agent>: …` via `onTool`.
 - **End-Zeile** via `onTool` — die EINE Abschlussmeldung mit Agent-Namen, Ergebnisgröße, Dauer,
-  Uhrzeit und chars (CallStats-`suffix()`-Muster, ADR-0053), z. B. `🗜 Da Mek compacted: 6 → 2
+  Uhrzeit und chars (CallStats-`suffix()`-Muster, ADR-0053), z. B. `🗜 Dev compacted: 6 → 2
   messages, ~969 → ~210 tokens (4s, 09:40) (1200 chars)`. Die doppelte Meldung `<Agent> compact.`
   (AgentsTool `reportAction` nach `subAgentCompact`) entfällt; die Pre-Turn-Abschlusszeile nutzt
   dieselbe End-Zeile. **Kante zu [R-CC-16](compact.md)** (externes Review 2026-10-24): R-CC-16

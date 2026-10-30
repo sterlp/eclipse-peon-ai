@@ -2,7 +2,7 @@
 idPrefix: LSR
 ---
 
-# Search Agent Tool (Da Sniffa)
+# Search Agent Tool
 
 > Architektur/Abgrenzung: [search-agent-tool-architektur.md](search-agent-tool-architektur.md)
 
@@ -12,7 +12,7 @@ idPrefix: LSR
 
 ### R1 — Read-only tool scope ✅
 
-Da Sniffa gets only read tools — no writes, no shell, no user interaction, no memory curation.
+Search gets only read tools — no writes, no shell, no user interaction, no memory curation.
 
 - **GIVEN** `searchAgent` is invoked **WHEN** the tool loop starts **THEN** the agent's tool filter excludes: all edit tools, `SearchAgentTool` (no recursion), `ShellTool`, `AskUserTool`, `WorkspaceMemoryTool`
 - **GIVEN** a read tool is available **WHEN** the agent needs it **THEN** it can call it (e.g. `diskReadFile`, `diskGrep`, `eclipseReadFile`, `eclipseGrep`)
@@ -20,7 +20,7 @@ Da Sniffa gets only read tools — no writes, no shell, no user interaction, no 
 
 ### R2 — Dedicated search model, no thinking ✅
 
-Da Sniffa uses a dedicated search model (`searchModel` in `LlmConfig`) with thinking disabled — research should be fast and cheap.
+Search uses a dedicated search model (`searchModel` in `LlmConfig`) with thinking disabled — research should be fast and cheap.
 
 - **GIVEN** `LlmConfig` has a `searchModel` set **WHEN** `searchAgent` runs **THEN** it uses `searchModel` (not the parent agent's model)
 - **GIVEN** `searchAgent` is configured **WHEN** it calls the provider **THEN** think/reasoning is disabled (no `reasoning.effort` sent)
@@ -29,10 +29,10 @@ Da Sniffa uses a dedicated search model (`searchModel` in `LlmConfig`) with thin
 
 ### R3 — Stateless one-shot execution ✅
 
-Da Sniffa is created fresh per call — no persistent memory, no context carry-over between invocations.
+Search is created fresh per call — no persistent memory, no context carry-over between invocations.
 
 - **GIVEN** `searchAgent` is called twice with different prompts **WHEN** the second call starts **THEN** it has an empty `ThreadSafeMemory` (no history from the first call)
-- **GIVEN** a search completes **WHEN** the tool returns **THEN** the parent agent's memory is untouched (Da Sniffa's memory is discarded)
+- **GIVEN** a search completes **WHEN** the tool returns **THEN** the parent agent's memory is untouched (Search's memory is discarded)
 - **Tag:** unit (verify `new ThreadSafeMemory()` per call in `SearchAgentTool.searchAgent`)
 
 Carry-over exists ONLY as the explicitly labelled `last-search-rolling` block in the static
@@ -48,7 +48,7 @@ The search agent reports wall-clock timing and lights a transient header chip wh
 
 ## Rolling Search Context — `last-search-rolling` (✅ done, 2026-10-24 Paul)
 
-Da Sniffa sieht bei jeder Suche den Hot-Block der vorherigen Suchen derselben Chat-View: Prompt +
+Search sieht bei jeder Suche den Hot-Block der vorherigen Suchen derselben Chat-View: Prompt +
 finale Antwort, append-only, gekappt auf die letzten 10.000 Zeichen. Ein-rollendes Fenster statt
 Historie — der Such-Agent muss nicht wiederholen, was er gerade herausgefunden hat. Kein
 Config-Schalter (immer an, YAGNI — Paul 2026-10-24).
@@ -65,7 +65,7 @@ Antwort: …
 
 ### R-LSR-1 — Append nur bei vollständigem Ergebnis ✅
 
-Nach jeder **vollständigen** Suche hängt Da Sniffa ein Paar `Frage: <prompt>` + `Antwort: <finale
+Nach jeder **vollständigen** Suche hängt Search ein Paar `Frage: <prompt>` + `Antwort: <finale
 Antwort>` an den Hot-Block. Gespeichert wird nur der finale Antworttext — kein Thinking, keine
 Trefferliste, keine Tool-Rohdaten (die finale Antwort ist die Destillation; ADR-0075 für die
 Trim-Entscheidung).
@@ -131,7 +131,7 @@ Such-Agent). Kein Keying pro Parent-Agent.
 ## Components
 
 - **`SearchAgentTool`** (`llmpeon-core`): tool wrapping the one-shot agent loop; owns the rolling hot block.
-- **`search-agent.md`** (`llmpeon-core`, `prompts/`): system prompt for Da Sniffa (**no** `default.txt` prepended — `default.txt` is for full agents, not stateless tools; Da Sniffa doesn't need askUser/queue rules).
+- **`search-agent.md`** (`llmpeon-core`, `prompts/`): system prompt for Search (**no** `default.txt` prepended — `default.txt` is for full agents, not stateless tools; Search doesn't need askUser/queue rules).
 - **`AgentConfig.searchAgentConfig()`** (`llmpeon-core`): per-agent config with search model + think disabled.
 
 ## ADRs

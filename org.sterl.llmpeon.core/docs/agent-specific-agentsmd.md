@@ -27,13 +27,17 @@ The system derives the agent name key from the active agent's display name:
 
 ## Case-Insensitive Fallback
 
-For the agent-specific file, the system tries these names in order:
+For the agent-specific file the system offers these names in this order
+(`AgentsMdContextItem.resolveAgentNames` — verbatim first, then the case variants):
 
-1. `AGENTS-DEV.md` — uppercase, exact key
-2. `AGENTS-dev.md` — lowercase, exact key
-3. `AGENTS-Dev.md` — title case (if different from 1 and 2)
-4. `AGENTS-Dev-Agent.md` — blanks replaced with hyphens, uppercase
-5. `AGENTS-dev-agent.md` — blanks replaced with hyphens, lowercase
+1. `AGENTS-<Agent>.md` — exactly the display name
+2. `agents-<agent>.md` — lowercase prefix and lowercase name
+3. `AGENTS-<Agent>.md` — title case, only when it differs from 1 and 2
+4. `AGENTS-<AGENT>.md` — blanks replaced with hyphens, uppercase
+5. `agents-<agent>.md` — blanks replaced with hyphens, lowercase, only when it differs from 2
+
+For `Dev` that is exactly `AGENTS-Dev.md`, `agents-dev.md`, `AGENTS-DEV.md` — 3 and 5 collapse into the
+earlier variants and are skipped.
 
 The first file found is used. If none exist, no agent-specific content is loaded.
 

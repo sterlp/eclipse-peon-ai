@@ -1,6 +1,6 @@
 # Compact Architektur
 
-> **Status:** ✅ (2026-09-26, Da-Dok-Review) ·
+> **Status:** ✅ (2026-09-26, Review) ·
 > **Δ 2026-10-18:** R-CC-18 ✅ done (2026-10-28, Revision „zustandslos"; Tool-Loop-Entscheidung, Abschnitt „Tool-Loop-Auslöser" unten) ·
 > **Δ 2026-10-24:** R-CT-8 ✅ done (Paul-Smoke) — Compressor-Streaming an den Caller-Monitor
 > (UI, nie Log), log-only-Monitor-Konzept entfallen ·
@@ -18,7 +18,7 @@
 
 ## Verantwortung & Abgrenzung
 
-- **Zweck:** Kompaktiert die Chat-History eines Agenten budgetiert per LLM („Da Scribe") — Stufenkürzung
+- **Zweck:** Kompaktiert die Chat-History eines Agenten budgetiert per LLM („Compact") — Stufenkürzung
   des Inputs (R-CIB), Compressor-Call, Ehrliches `CompactResult` (R-CC-3), Diagnose-Dreiklang (R-CC-10).
 - **In-Scope:** Trigger-Funnel, Guard/Policy, Staging, LLM-Call, Stats/Result, Log, Token-Diagnose-Format.
 - **Out-of-Scope:** Live-Context (kein Think-Stripping im laufenden Turn), UI-State (Lock/Queue →
@@ -130,7 +130,7 @@ anzuzeigenden Stand hat (Pre-Turn: nach dem Anfügen der frischen Frage). Absend
 sequenceDiagram
     autonumber
     participant J as Jon (AbstractAgent)
-    participant Mk as Da Mek (AbstractAgent)
+    participant Mk as Dev (AbstractAgent)
     participant S as CompactService / Bridge
     participant V as View (Monitor-Zuhörer)
 
@@ -142,7 +142,7 @@ sequenceDiagram
     Mk->>S: Calls (turnStart 10:05)
     S-->>V: Chunks "Started 10:05" + onChatMessage
     Note over V: absenderlos → kein Rebuild
-    Mk-->>V: onCompactCompleted("Da Mek")
+    Mk-->>V: onCompactCompleted("Dev")
     V->>V: Absender ≠ aktiver Agent (Jon) → kein Rebuild
     Mk-->>J: Antwort
     J->>S: nächster Call (turnStart 10:00)

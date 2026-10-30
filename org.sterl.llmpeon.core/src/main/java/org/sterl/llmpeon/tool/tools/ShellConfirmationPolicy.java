@@ -26,7 +26,7 @@ public final class ShellConfirmationPolicy {
 
     /**
      * R-TC-6: autonomous = the active agent is Jon ({@link AiPoAgent}). Slaves inherit —
-     * the turn owner decides, not the slave. Standalone Peon-Plan is NOT autonomous.
+     * the turn owner decides, not the slave. Standalone Plan is NOT autonomous.
      * null → false (fail-closed: a missing agent never skips the prompt).
      */
     public static boolean isAutonomous(AiAgent agent) {

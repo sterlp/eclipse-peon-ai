@@ -38,4 +38,3 @@ Paul: **ein Thema pro Nachricht**, kurz. Nur Jon schreibt `docs/`. Branch: Core-
 * Port 8080 = IDE → Nachweise auf 8099; `~/.peon` vor/nach vergleichen.
 * Lint immer mit `docRoots`/`testRoots` eingeschränkt; **Plan-Gate**: `lintDocsAndTests` je Inkrement,
   umgeschriebene Tests behalten ihre `// UC-…`-Anker (sonst UNBELEGT beim ✅-Flip).
-* Core-Tests-Baseline: **1424** (Jon-Messung 2026-10-30, nach Origin-Reihe).

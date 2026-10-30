@@ -5,29 +5,39 @@ Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.
 ## 2026-10-30 — Namensalignment-Nachzieh-Zyklus (Jon, Nachtzyklus)
 
 - ⏳ **Jons Agent-File lädt jetzt `AGENTS-JON.md` (Clean Break — Jon 2026-10-30, Nachtzyklus).**
-  Gemessen: `AgentsMdContextItem.resolveAgentKey` strippt nur das Präfix `Peon-` — für `NAME = "Jon"`
-  lauten die Kandidaten `AGENTS-Jon.md`/`agents-jon.md`/`AGENTS-JON.md`, eine bestehende
-  `AGENTS-PO.md` verliert still ihre Wirkung. Entscheidung nach Repo-Regel „Clean break over
+  Der Resolver bietet die Kandidaten aus dem **Display-Namen unverändert** an
+  (`AGENTS-Jon.md`/`agents-jon.md`/`AGENTS-JON.md`) — der `Peon-`-Strip ist ersatzlos weg. Eine
+  bestehende `AGENTS-PO.md` verliert still ihre Wirkung. Entscheidung nach Repo-Regel „Clean break over
   migration" + ADR-0079: **kein Alias**, Docs/Release-Note/CHANGELOG auf `AGENTS-JON.md` gezogen,
   Jon-Fall als Test gepinnt (Delta-Inkrement). **Paul bitte bestätigen** — falls du das Alias-
   Verhalten `Jon → AGENTS-PO.md` willst, sagen (dann Resolver-Änderung + Docs zurück).
-- ⏳ **Rest-Ork-/Peon-Namen in älteren SOLL-Docs:** docs-linter.md (UC-DL-Titel, Rollen-Tabellen),
-  agent-specific-agentsmd.md (Reste außerhalb der Tabelle), agent-tool-config*.md, java-debugger-tool.md,
-  chat-job-lifecycle.md, header-state-leak.md, model-config-widget.md, architecture.md, pipeline.md,
-  agenten-status-im-header-mvp-plan.md, homepage `setup/advanced-configuration.md:20` +
-  `setup/mcp-configuration.md:66` u.a. — Altbestand (Glossar-Regel: Angleich bei Berührung), eigener
-  Aufräum-Zyklus mit Paul. `(Da Mek)`-Rollenbegriff „Sklave" in agenten-status-im-header.md bleibt
-  bewusst (Terminologie-Entscheid, kein Name).
+- ⏳ **`AGENTS-PO.md` → `AGENTS-JON.md` liegt uncommittet im Working Tree** (`git mv`, 2026-10-30) —
+  Agenten committen `AGENTS*.md` nie: Paul bitte bestätigen und **selbst** committen. Kein
+  Zwischenzustand mit beiden Dateien.
+- ⏳ **Rest-Ork-/Peon-Namen in älteren SOLL-Docs (Altbestand, Rest-Inventar 2026-10-30):** nach dem
+  Inc-6-Durchzug bleiben ~35 Doc-Dateien mit alten Namen — core/docs u.a. `prompts.md`,
+  `plan-dev-agent-design.md`, `skill-evolution-loop.md`, `async-agent-tools-proposal.md`,
+  `builtin-agent-prompt-tracked.md`, `write-path-validator.md`, `web-tools.md`, `temp-file-tool.md`,
+  `sklaven-kontext-plan.md`, `shell-tool.md`, `search-agent-tool-architektur.md`,
+  `queued-user-messages.md`, `provider.md`, `per-agent-think.md`, `tool-output-disclosure.md`,
+  `tool-result-size.md`, `tagged-results.md`, `review-agent.md`, `codegraph.md`, `mcp.md`,
+  `agent-tool-config.md`, `agent-error-memory.md`, `bounded-caches.md`, `output-trim-service.md`,
+  `context-message-concept.md`; plugin-Docs `default-inheritance.md`, `icons.md`, `plan-tool.md`,
+  `advanced-configuration.md:291`, `project-problems-tool.md`, `workspace-nesting.md`; dazu
+  `agenten-status-im-header-mvp-plan.md` und `docs/adr/**` (Protokolle, bleiben alt). Glossar-Regel:
+  Angleich bei Berührung; ein Massen-Rename braucht Paul (Glossar-Regel 6).
+- ⏳ **P3: SSE-Client-Kopien in den Fabrik-Tests extrahieren (nächster Zyklus).** Fünf Kopien des
+  Live-Test-Client (Delegation-, TeamInternals-, WritePinning-, ChatTurn-Test je eine, plus
+  `eventNames()`-Duplikat in `DelegatedAnswerTest.LiveStream`) — Infrastruktur, keine doppelte Szene;
+  eigener rein mechanischer Refactor über ~500 Test-Zeilen mit eigenem Gate.
 - ❓ **`AGENTS.md:3` nennt weiter `Peon-PO`/`Peon-Plan`/`Peon-Dev`** — Paul-WIP (AGENTS*.md wird nie
   von mir committet/berührt); Zeile bei Gelegenheit von Paul auf Jon/Plan/Dev ziehen.
 - ❓ **Manuelle Nachweise Agenten-Namen/Origin (Paul):** Browser-Proof Fabrik auf 8099 + Plugin-Harness
   `test-chat.html` („Delegation (Jon · Dev · Jon)“, „AI without origin“) — braucht Pauls Modell-Konfig
   und Augen.
-- ❓ **Pre-existing aus Da-Dok-Review 2026-10-30 (nächster Bug-Zyklus):** (1) Queue-Drain-Race
-  `AbstractAgent.call` — Eingabe zwischen letztem `pollNext()` und `working.set(false)` liegt bis zum
-  nächsten Send in der Queue, und mit A1 (`done` je Turn) folgt für sie kein `done` → Web wartet
-  sichtbar. (2) V1-Verdacht: `AiPoAgent.setStaticContext` überschreibt evtl. die
-  `"Your name is X."`-Zeile aus `BuildPoAgentComponent` (Aufrufreihenfolge klären).
+- ❓ **Queue-Drain-Race (nächster Bug-Zyklus, Inc 8 des Reparatur-Zyklus):** Eingabe zwischen letztem
+  `pollNext()` und `working.set(false)` (`AbstractAgent.call`) liegt bis zum nächsten Send in der
+  Queue, und mit A1 (`done` je Turn) folgt für sie kein `done` → Web wartet sichtbar.
 - 🔒 **Scaffold heißt `Scaffold` (Jon 2026-10-30).** Der Name zieht **jetzt** mit, nicht in V2 —
   ADR-0079 verlangt die Rolle ohne Präfix, und die Homepage-Anleitung sagt bereits „Select
   **Scaffold**". Clean Break: kein Alias, keine Migration (der Agent wird ohne State-Verzeichnis

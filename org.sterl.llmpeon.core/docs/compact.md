@@ -5,13 +5,13 @@ idPrefix: CC
 # Compact (core) — ehrlicher Compact: Zähler, Result, Logging
 
 > **Status:** R-CC-1…6 **✅ done** (2026-09-23, Hotfix Paul, Mutations-Nachweis)
-> · R-CC-8/9 **✅ done** (2026-09-25, Inc 3/3.1, Da Dok Review ACCEPTED)
+> · R-CC-8/9 **✅ done** (2026-09-25, Inc 3/3.1, Review-Agent ACCEPTED)
 > · R-CC-10 **✅ done** (2026-09-26) · R-CC-11…14 **✅ done** (2026-09-26, Nachbau-Review)
 > · R-CC-7 **🚧 in design** (Retry/Fehlerklassen, zusammen mit ApiRetry-Tabelle)
-> · R-CC-18 **✅ done** (Revision 2026-10-28: zustandslos, Fehlschlag → Retry → User; gebaut, Da Dok CONCERNS ohne Blocker)
+> · R-CC-18 **✅ done** (Revision 2026-10-28: zustandslos, Fehlschlag → Retry → User; gebaut, Review CONCERNS ohne Blocker)
 > Grundregel ✅ seit 2026-10-19).
 > **Input-Budget-Regeln (Präfix CIB):** eigenes Doc
-> [compact-input-budget.md](compact-input-budget.md) — ✅ done (2026-09-25, Da Dok ACCEPTED).
+> [compact-input-budget.md](compact-input-budget.md) — ✅ done (2026-09-25, Review ACCEPTED).
 > **Komponente:** eigens core-Package `compact` ([ADR-0056](../../docs/adr/0056-compact-component-and-render-modes.md)) —
 > der Compact ist kein Konversations-Agent. **UI-Teil** (Compact-Button, Compact-Lock/Queue,
 > working-Flag) liegt getrennt in [compact-lock.md](compact-lock.md) → künftig Plugin-Docs.
@@ -254,7 +254,7 @@ Stack; LLM erfährt nichts, Header hängt ([header-state-leak.md](../../org.ster
   > „nur ins Log" ist gestrichen — Tokens streamen ins UI und gehen nie ins Log; der Compact
   > meldet Start/Ende wie ein langlaufendes Tool (R-CT-8).
 
-### R-CC-10 ✅ — Diagnose-Dreiklang im Compact-Log: Memory vs. Modell vs. Schätzung (Da-Dok-Review: Code-Seite sauber)
+### R-CC-10 ✅ — Diagnose-Dreiklang im Compact-Log: Memory vs. Modell vs. Schätzung (Review: Code-Seite sauber)
 
 **Anlass (2026-09-25, Paul, Main-Log):** `Compact hint … 289493 tokens of 240000 used` bei einem
 Agenten mit **256k-Modell-Limit**, danach `Compact called but skipped because of small context` —
@@ -279,7 +279,7 @@ Response-`inputTokenCount()` → Summe läuft davon). Vor jedem Fix wird gemesse
 
 **Fix:** Nested-Request in `SearchAgentTool` mit `.agent(null)` (alle 3 `getAgent()`-Reader
 null-safe: `CompactSessionTool:23-26` ehrlicher Fehler, `ToolService:166-169`/`:221` guarded) +
-`compactSession` aus dem Sniffa-Filter + **per-request** Hint-Check (`toolSpecifications(req)`
+`compactSession` aus dem Search-Filter + **per-request** Hint-Check (`toolSpecifications(req)`
 statt Registry — Custom Agents ohne Allowlist bekommen denselben ehrlichen Fallback) +
 `ToolLoopRequest`-Klassenkopf-Warnung (toBuilder erbt `agent`/`memory`). Tests:
 `shouldNotExposeParentAgentToNestedLoop` ·
@@ -288,16 +288,16 @@ UC-CC-1).
 
 **Hotfix Paul (2026-09-27, ToolService:216):** `agent == null || !hasCompactTool` → Fallback-Hint
 („cannot be compacted") — **Compact geht nur mit Agent**; `agent == null` ist damit die
-ausdrückliche Semantik „dieser Loop kann nicht kompaktieren" (statt nur der Sniffa-Sonderfall).
+ausdrückliche Semantik „dieser Loop kann nicht kompaktieren" (statt nur der Search-Sonderfall).
 Damit hat sich der ehrliche Fallback von „ohne Compact-Tool" auf „ohne Compact-Tool **oder** ohne
 Agent" erweitert. **Spam-Guard (Bug A):** der Fallback-Hint kommt **genau einmal pro
-Memory** (`!memory.containsMessage(msg)`, ToolService:220 — Pauls Ersteinbau war invertiert, Da Mek
+Memory** (`!memory.containsMessage(msg)`, ToolService:220 — Pauls Ersteinbau war invertiert, Dev
 hat die Negation gefixt). Test: `fallbackHintIsAddedOnce`. Nebenbefund: der agent==null-Zweig
 lenkte bestehende Hint-Tests in den Fallback — diese fahren jetzt mit minimalen Mock-Agenten
 (`hintAgent()`) und testen wie beabsichtigt den COMPACT_HINT-Zweig (R-CC-4/R-CC-10);
 Doppeltester gestrichen/merged.
 
-**toBuilder-Entscheid (Da-Mek-Analyse, ADR-0058):** nur **1** Prod-Call-Site (`SearchAgentTool:47`);
+**toBuilder-Entscheid (Dev-Analyse, ADR-0058):** nur **1** Prod-Call-Site (`SearchAgentTool:47`);
 Sklaven bauen fresh (`PoDelegateTool:239` → `AbstractAgent:286-297` mit `.agent(this)` = Sklave) —
 keine weitere Lücke. toBuilder bleibt (implizite Vererbung von 7 Feldern ist der Vorteil; eine
 Factory verschiebt das Risiko nur in den Factory-Body). Nebenbefund (eigener Punkt, s.
@@ -307,24 +307,24 @@ Nested-Calls würden sich bewerfen (sequenziell harmlos).
 **Root Cause (verifiziert, Paul markiert die Stelle):** `SearchAgentTool.java:47-51` baut den
 Nested-Request per `this.request.toBuilder()` und überschreibt `staticMessages`, `toolFilter`,
 `memory`, `agentConfig` — **aber nicht `.agent()`**. Der Sub-Loop trägt daher den **Parent-Agenten**
-(Jon). `CompactSessionTool.java:23` löst im Sniffa-Loop Jons Agent auf → Sniffas
-Context-Warning-Lese-Compact hat **Jons Memory gecleart und mit Sniffas Summary re-geseed**
+(Jon). `CompactSessionTool.java:23` löst im Search-Loop Jons Agent auf → der
+Context-Warning-Lese-Compact von Search hat **Jons Memory gecleart und mit dessen Summary re-geseed**
 (`AbstractAgent.java:337`). Kein Usage-Summen-Bug — `addResult` setzt (addiert nicht,
 `ThreadSafeMemory.java:233/251`); der Smoke-Sprung `memory=31002 / estimate=1902` war
 post-Compact-Re-Seed neben Pre-Compact-Call-Input. Selbe Wurzel erklärt: Hint-Fehlzuschreibung
 (`ToolService.java:221` — Sub-Loop-Hints landen auf dem Parent) und den Static-Swap
-(`ToolService.java:166-169` — Sniffa bekam Jons System-Prompt). Sniffa **hat** `compactSession`
+(`ToolService.java:166-169` — Search bekam Jons System-Prompt). Search **hat** `compactSession`
 (Filter schließt es nicht aus) — entgegen der bisherigen Annahme „kein Compact-Tool".
 
 **SOLL:**
 1. Der Nested-Request überschreibt `.agent()` — **nie** erbt er den Parent-Agenten. Damit fallen
    Compact-auf-Parent, Hint-Fehlzuschreibung und Static-Swap mit derselben Wurzel weg.
-2. `compactSession` fliegt aus dem Sniffa-Tool-Filter — ohne Compact-Tool antwortet der Sub-Loop
+2. `compactSession` fliegt aus dem Search-Tool-Filter — ohne Compact-Tool antwortet der Sub-Loop
    ehrlich („cannot be compacted"-Fallback, `ToolService.java:213-215`).
 3. `ToolLoopRequest` bekommt am Klassenkopf eine **Warnung**: `toBuilder()` erbt `agent` (und
    `memory`) — Nested-Requests müssen beide explizit setzen.
 4. `toBuilder` bleibt **grundsätzlich** erhalten (implizite Vererbung der unveränderten Felder ist
-   der Vorteil) — Kosten/Nutzen-Abgleich durch Da Mek mit Evidenz; bricht die Analyse die
+   der Vorteil) — Kosten/Nutzen-Abgleich durch Dev mit Evidenz; bricht die Analyse die
    Annahme (Entfernung klar billiger/sicherer), STOP-AND-ASK an Jon statt still umdrehen.
 
 #### UC-CC-1 — Usage-/Agent-Trennung Parent/Sub-Agent
@@ -336,13 +336,13 @@ post-Compact-Re-Seed neben Pre-Compact-Call-Input. Selbe Wurzel erklärt: Hint-F
 - GIVEN der Sub-Loop feuert einen Compact-Hint WHEN die Zeile emittiert wird THEN die
   Zuschreibung nennt den Sub-Agenten, nicht den Parent.
 
-**Tests (Da Mek, Estimates statt echter Usage):** `shouldNotExposeParentAgentToNestedLoop` (heute
+**Tests (Dev, Estimates statt echter Usage):** `shouldNotExposeParentAgentToNestedLoop` (heute
 rot) · `subCompactMustNotClearParentMemory` (heute rot) · `subLoopHintAttributesToSubAgent`.
 Roboter-Smoke danach durch Paul (Branch bleibt `story/compact-input-budget`).
 
-### R-CC-16 ❌ — Da Scribe schreibt die neue Context-Größe in die Compact-End-Zeile (2026-09-27, Paul; Ziel-Zeile 2026-10-24 auf R-CT-8 nachgezogen)
+### R-CC-16 ❌ — Compressor schreibt die neue Context-Größe in die Compact-End-Zeile (2026-09-27, Paul; Ziel-Zeile 2026-10-24 auf R-CT-8 nachgezogen)
 
-Der Compact (Da Scribe / `compactSession`) ergänzt in der uniformen Compact-End-Zeile
+Der Compact (`compactSession`) ergänzt in der uniformen Compact-End-Zeile
 ([R-CT-8](compact-lock.md)) die **vom Compressor-LLM gemeldete Input-Größe** (was der Compact-Call
 selbst an Context sah — ohne die Static-Inhalte). Die bisherige Estimate-Anzeige bleibt unverändert
 (nebeneinander): die Schätzung zählt ContextItems mit und liegt dadurch bewusst über der nackten
@@ -355,7 +355,7 @@ LLM-Größe.
 
 ### R-CC-17 ✅ done — „Log biggest overflow": größte Message beim Compact loggen (2026-09-30, Paul; U1–U4)
 
-Anlass: Thinka-Overflow `974105 tokens` vs `n_ctx 170240` — der Status zeigte 23k; die Ursache
+Anlass: Plan-Overflow `974105 tokens` vs `n_ctx 170240` — der Status zeigte 23k; die Ursache
 (eine Riesen-Message in der History, vermutlich ein Tool-Result) ist im Log unsichtbar. **Das
 Logging kommt VOR dem Auto-Compact-Feature** (offen) — Diagnose zuerst.
 
@@ -375,7 +375,7 @@ Compact-only. Sichtbarkeit für den 400-Fall kommt stattdessen über ein neues F
 Agent den Abbruch kennt und nachfolgend reagieren kann.
 
 
-### R-CC-18 — Voller Context: Compact direkt statt auf den Hint warten ✅ done (2026-10-28, Revision „zustandslos, Fehlschlag → Retry → User"; Da Dok CONCERNS ohne Blocker; zuvor ✅ 2026-10-18/27)
+### R-CC-18 — Voller Context: Compact direkt statt auf den Hint warten ✅ done (2026-10-28, Revision „zustandslos, Fehlschlag → Retry → User"; Review CONCERNS ohne Blocker; zuvor ✅ 2026-10-18/27)
 
 **Anlass:** Der Compact-Hint (R-CC-4) ist eine *Bitte* ans Modell. Ist der Context bereits über dem
 Budget, kommt sie zu spät — der nächste Provider-Call geht unverändert raus und stirbt am

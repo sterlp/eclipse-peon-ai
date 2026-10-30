@@ -27,7 +27,7 @@ Trigger push/PR auf `main` (paths-ignore `docs/**`, `skills/**`). CI ist **headl
    den headless-Fall — Removal darf in headless CI nicht crashen. Guard feuert lokal nie
    (bewusst — B ist auch der **Validierungs-Vektor**: zeigt, dass genau dieser Pfad es war).
    Mechanics: `SWTError`-catch um `removeConsoles` ODER Display-Probe ohne Device-Creation —
-   Da Mek verifiziert am SWT-Quellcode, welcher Probe sicher ist (STOP-AND-ASK bei Unklarheit).
+   Dev verifiziert am SWT-Quellcode, welcher Probe sicher ist (STOP-AND-ASK bei Unklarheit).
 2. **R-PI2 (A) — xvfb in der Pipeline:** NACH User-Bestätigung „B: Fehler weg in CI" wird B
    **deaktiviert** (Validierung, dass A ALLEINE genügt — B würde maskieren) und `maven.yml`
    läuft `xvfb-run -a mvn -B clean verify`. Kanonisch für SWT in CI: CI bekommt ein Display,

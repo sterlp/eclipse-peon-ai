@@ -89,7 +89,7 @@ WHEN Jon die memory.md ändert
 THEN wird sie NICHT erneut injiziert (Dedup nach Pfad, nicht nach Content)
 
 GIVEN memory.md wird automatisch geladen
-WHEN der Plan-Agent (Plan) startet
+WHEN der Plan-Agent startet
 THEN bekommt er memory.md NICHT automatisch injiziert
 ```
 
@@ -503,7 +503,7 @@ in as a normal **chat
 message**. The key standing order is the **plan link**, once a plan exists. **Plan and Dev** are handled
 the same way: `plan link` (standing order) **+** Jon's question (chat message).
 
-Crucially, Jon does **not** forward his *own* standing orders (his `AGENTS-PO.md`, R1) to Plan and Dev —
+Crucially, Jon does **not** forward his *own* standing orders (his `AGENTS-JON.md`, R1) to Plan and Dev —
 those are Jon's identity. Jon sets **separate** standing orders **for** each slave. (A richer
 cross-agent shared context Jon curates via a tool is a **future** extension, not the MVP.)
 
@@ -520,7 +520,7 @@ small changes Jon reviews inline; the dedicated Reviewer agent stays a future ex
 ```
 GIVEN Jon calls jonAskDev with a released plan
 THEN Jon sets a standing order (via the PoDelegateTool additional-context supplier) carrying the plan link plus the instruction to call planImplemented() when done, and his prompt arrives as a chat message
-AND Jon's own AGENTS-PO.md standing orders are NOT forwarded to the Dev slave
+AND Jon's own AGENTS-JON.md standing orders are NOT forwarded to the Dev slave
 
 GIVEN the Dev agent calls planImplemented()
 THEN the plan is flipped to done, Jon gets the done-marker and reviews the result
