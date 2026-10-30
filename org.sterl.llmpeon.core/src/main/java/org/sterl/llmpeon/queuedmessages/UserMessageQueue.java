@@ -6,6 +6,14 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
+/**
+ * The follow-up inputs a user sends while an agent is still working.
+ * <p>
+ * Every mutation is guarded by the <b>instance monitor</b> — {@code AbstractAgent} claims and hands
+ * over its turn slot under that same monitor, which is what keeps an input from arriving between a
+ * turn's last poll and its release. Changing the locking here (a private lock, a concurrent queue)
+ * silently breaks that hand-over; the queue instance must also stay stable for a running turn.
+ */
 public class UserMessageQueue {
 
     /**

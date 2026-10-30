@@ -220,7 +220,9 @@ public abstract class AbstractAgent implements AiAgent {
         memory.add(UserMessage.from(text));
     }
 
-    /** Test seam: swap the queue (fixed {@code Clock} for Rule 9 Queued-At tests). Package-private. */
+    /** Test seam: swap the queue (fixed {@code Clock} for Rule 9 Queued-At tests). Package-private.
+     *  The instance is also the monitor of the turn-slot hand-over — swap it before a turn, never
+     *  during one, or claim and release stop being ordered against the enqueues. */
     void setMessageQueue(UserMessageQueue queue) { this.messageQueue = queue; }
 
     /** Test seam: fixed clock for R20 turn-time tests. Package-private. */
@@ -252,13 +254,11 @@ public abstract class AbstractAgent implements AiAgent {
         // Same acquired-guard as compact(): a queued call must not release the working flag of
         // the turn that already holds it, else the next caller wins the CAS and runs parallel
         // on the same memory instead of queueing.
-        boolean acquired = working.compareAndSet(false, true);
+        boolean acquired = claimTurnSlotOrQueue(initialMessage);
         if (acquired) turnStart = Instant.now(clock);
+        boolean slotReleased = false; // the loop's hand-over may already have released it
         try {
-            if (!acquired) {
-                messageQueue.add(initialMessage); // already running: queue it
-                return null;
-            }
+            if (!acquired) return null;
 
             var stillQueued = messageQueue.drainAll();
             String next;
@@ -281,6 +281,12 @@ public abstract class AbstractAgent implements AiAgent {
                     throw e;
                 }
                 var queued = messageQueue.pollNext();
+                if (queued == null && lastResponse != null && !monitor.isCanceled()) {
+                    // nothing polled and the turn is over: hand the slot over — under the queue's
+                    // monitor, so an input that arrived since the poll stays ours to answer
+                    queued = nextQueuedEntryOrReleaseSlot();
+                    slotReleased = queued == null;
+                }
                 if (queued != null) {
                     monitor.onTool("Reading queued User message: " + queued.text()
                             + " (queued " + messageQueue.queuedLabel(queued.queuedAt()) + ")");
@@ -297,7 +303,45 @@ public abstract class AbstractAgent implements AiAgent {
 
             return lastResponse;
         } finally {
-            if (acquired) working.set(false);
+            if (acquired && !slotReleased) working.set(false);
+        }
+    }
+
+    /**
+     * Takes the turn slot, or hands the input to whoever holds it — both under the queue's monitor,
+     * which is the monitor every enqueue takes. That single critical section is what closes the
+     * release window: a caller either finds the slot free and runs its own turn, or it joins a turn
+     * that provably has not released yet and therefore still has a look at the queue coming. Claim in
+     * one section and queue in the next, and an input could be rejected by a turn that released in
+     * between and then queued behind that release — waiting for nobody.
+     *
+     * @return true if the caller owns the slot; false if the input is queued for the running turn
+     */
+    private boolean claimTurnSlotOrQueue(String initialMessage) {
+        synchronized (messageQueue) {
+            if (working.compareAndSet(false, true)) return true;
+            messageQueue.add(initialMessage); // already running: that turn answers it
+            return false;
+        }
+    }
+
+    /**
+     * Ends a turn's claim on its queue atomically with the last look at it: under the queue's monitor
+     * it returns the entry that arrived since the caller's poll, or releases {@code working} when the
+     * queue really is empty (only the slot holder polls, so an empty poll means empty queue).
+     * <p>
+     * Releasing without that atomicity left an input that arrived between the last
+     * {@code pollNext()} and {@code working.set(false)} waiting for a turn that had already ended: no
+     * answer, and with one {@code done} per turn (aifactory {@code ProjectRuntime#submit}) no
+     * end-of-turn event either — it waited until an unrelated send picked it up.
+     *
+     * @return the entry this turn still has to answer; {@code null} means the slot was released
+     */
+    private UserMessageQueue.QueuedMessage nextQueuedEntryOrReleaseSlot() {
+        synchronized (messageQueue) {
+            var entry = messageQueue.pollNext();
+            if (entry == null) working.set(false);
+            return entry;
         }
     }
 

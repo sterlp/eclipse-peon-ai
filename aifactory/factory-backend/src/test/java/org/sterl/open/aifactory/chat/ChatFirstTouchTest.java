@@ -166,6 +166,14 @@ class ChatFirstTouchTest {
             return history.stream().anyMatch(text -> text.contains("ERSTE-EINGABE"))
                     && history.stream().anyMatch(text -> text.contains("ZWEITE-EINGABE"));
         });
+        // AND — the same two texts at the provider. Waited for like the history above: the turn adds
+        // its payload to the memory before the request leaves, so the history can be complete while
+        // the request is still on its way (a burst joins both inputs into that one request).
+        awaitUntil("both inputs at the provider", () -> {
+            List<String> atProvider = modelUserTexts();
+            return atProvider.stream().anyMatch(text -> text.contains("ERSTE-EINGABE"))
+                    && atProvider.stream().anyMatch(text -> text.contains("ZWEITE-EINGABE"));
+        });
         assertThat(modelUserTexts())
                 .as("and one Jon answered them — the provider saw both on one conversation")
                 .anySatisfy(text -> assertThat(text).contains("ERSTE-EINGABE"))

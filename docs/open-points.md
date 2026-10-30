@@ -35,9 +35,12 @@ Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.
 - ❓ **Manuelle Nachweise Agenten-Namen/Origin (Paul):** Browser-Proof Fabrik auf 8099 + Plugin-Harness
   `test-chat.html` („Delegation (Jon · Dev · Jon)“, „AI without origin“) — braucht Pauls Modell-Konfig
   und Augen.
-- ❓ **Queue-Drain-Race (nächster Bug-Zyklus, Inc 8 des Reparatur-Zyklus):** Eingabe zwischen letztem
-  `pollNext()` und `working.set(false)` (`AbstractAgent.call`) liegt bis zum nächsten Send in der
-  Queue, und mit A1 (`done` je Turn) folgt für sie kein `done` → Web wartet sichtbar.
+- 🔒 **Queue-Drain-Race (Jon 2026-10-30, bestätigt + gefixt):** Claim+Enqueue atomar
+  (`claimTurnSlotOrQueue`), Release nur noch mit letztem Queue-Blick
+  (`nextQueuedEntryOrReleaseSlot`); roter Test
+  `AbstractAgentQueueReleaseRaceTest#inputArrivingWhileTheTurnReleasesItsSlotIsAnsweredByThatTurn`.
+  Bewusst offen: Plugin-Seite `queueMessage` (`AIChatView:618-620`) prüft `isWorking()` außerhalb des
+  Fensters — Contract-Verhalten, kein Core-Fix.
 - 🔒 **Scaffold heißt `Scaffold` (Jon 2026-10-30).** Der Name zieht **jetzt** mit, nicht in V2 —
   ADR-0079 verlangt die Rolle ohne Präfix, und die Homepage-Anleitung sagt bereits „Select
   **Scaffold**". Clean Break: kein Alias, keine Migration (der Agent wird ohne State-Verzeichnis
