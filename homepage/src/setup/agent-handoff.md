@@ -10,18 +10,18 @@ Agent handoff lets any agent pass work to another. Click the **Handoff → [Agen
 ## How it works
 
 1. Select a project in Eclipse so Peon AI knows where to read and write files.
-2. Pick an agent from the dropdown (e.g. **Peon-Plan**).
+2. Pick an agent from the dropdown (e.g. **Plan**).
 3. Describe what you want done and hit **Send** — the agent works on the task.
 4. When ready to hand off, click the **Handoff → [Agent]** button next to the input.
    Control transfers to the target agent, seeded with the previous agent's work.
 
-For example, [Peon-Plan](./agents) hands off to Peon-Dev by default — the plan file
-(`peon-plan/overview.md`) is passed to Peon-Dev for implementation.
+For example, [Plan](./agents) hands off to Dev by default — the plan file
+(`peon-plan/overview.md`) is passed to Dev for implementation.
 
 ## The handoff button
 
 Any agent with a configured handover target shows a **Handoff → [Agent]** button next to the chat input.
-[Peon-Plan](./agents) hands off to Peon-Dev by default.
+[Plan](./agents) hands off to Dev by default.
 [Custom agents](./custom-agents) set a target with the `handover:` frontmatter field, which lets you chain your own workflows
 (e.g. plan → dev → review).
 

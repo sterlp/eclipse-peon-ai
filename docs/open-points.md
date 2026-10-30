@@ -2,6 +2,24 @@
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.md).
+## 2026-10-30 — Namensalignment-Nachzieh-Zyklus (Jon, Nachtzyklus)
+
+- ⏳ **Lädt Jons `AgentsMdContextItem` nach dem Rename noch `AGENTS-PO.md`?** A13/ADR-0079 hat
+  `AiPoAgent.NAME` → `Jon` gezogen; die Homepage (`setup/agents-and-skills.md`) und
+  [po-agent-jon.md](../org.sterl.llmpeon.core/docs/po-agent-jon.md) R1 behaupten Key `Jon → PO`.
+  **Messen:** Resolution für `NAME = "Jon"` verifizieren (explizite Map? `hyphenatedUpper` gäbe
+  `JON`/`AGENTS-JON.md`) — falls still nichts mehr lädt, Fix + Regel-Nachzug.
+- ⏳ **Rest-Ork-/Peon-Namen in älteren SOLL-Docs:** docs-linter.md (UC-DL-Titel, Rollen-Tabellen),
+  agent-specific-agentsmd.md („part after Peon-“), agent-tool-config*.md, java-debugger-tool.md,
+  chat-job-lifecycle.md, header-state-leak.md, model-config-widget.md, architecture.md, pipeline.md,
+  agenten-status-im-header-mvp-plan.md, homepage `setup/index.md` u.a. — Altbestand (Glossar-Regel:
+  Angleich bei Berührung), eigener Aufräum-Zyklus mit Paul, Ordnung wie die Warn-Batches.
+- ❓ **Manuelle Nachweise Agenten-Namen/Origin (Paul):** Browser-Proof Fabrik auf 8099 + Plugin-Harness
+  `test-chat.html` („Delegation (Jon · Dev · Jon)“, „AI without origin“) — braucht Pauls Modell-Konfig
+  und Augen.
+- ⏳ **Fehler-Ergebnis einer Delegation erscheint wörtlich als Mitglieder-Zeile** (aifactory
+  open-points) — so gebaut („wie es ist“), andersfall = neuer Core-Mechanismus. unverändert offen.
+
 
 ## 2026-10-29 — R-AEM-3 Trigger-Entscheidung (Jon autonom aus Pauls Zweckvorgabe)
 

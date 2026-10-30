@@ -239,8 +239,8 @@ hätte einen Wert für zwei Agenten).
 - **GIVEN** ein Turn startet um 14:32:05 **WHEN** Statusleiste rendert nach 3m 15s **THEN** zeigt `Started 14:32 · working since 3m 15s`
 - **GIVEN** ein Turn startet um 9:07 **WHEN** Statusleiste rendert **THEN** zeigt `Started 09:07` (leading zero)
 - **GIVEN** Jon arbeitet seit 10:00 **WHEN** er im Turn kompaktiert (Pre-Turn, In-Loop, `compactSession`) **THEN** zeigen auch die Compressor-Chunks und alle folgenden Chunks `Started 10:00`
-- **GIVEN** Jon (seit 10:00) delegiert um 10:05 an Da Mek **WHEN** Da Mek streamt **THEN** tragen seine Chunks `Started 10:05`; Jons nächster Chunk trägt wieder `Started 10:00`
-- **GIVEN** Da Mek ist idle **WHEN** Jon ihn kompaktieren lässt **THEN** ist das ein eigener Turn von Da Mek mit neuer Startzeit
+- **GIVEN** Jon (seit 10:00) delegiert um 10:05 an Dev **WHEN** Dev streamt **THEN** tragen seine Chunks `Started 10:05`; Jons nächster Chunk trägt wieder `Started 10:00`
+- **GIVEN** Dev ist idle **WHEN** Jon ihn kompaktieren lässt **THEN** ist das ein eigener Turn von Dev mit neuer Startzeit
 - **GIVEN** ein Turn wurde abgebrochen **WHEN** der nächste Turn desselben Agenten startet **THEN** gilt dessen neue Startzeit, nie die des abgebrochenen
 - **Tag:** unit (Format) + core (Startzeit kommt vom Agenten, nicht von der Bridge; Compact im Turn erbt sie)
 

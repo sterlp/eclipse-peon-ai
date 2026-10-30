@@ -15,13 +15,13 @@ Agent-Logik, Tools und Prompts kommen unverändert aus `llmpeon-core`
 ### R-WP-4 — Der Nutzer spricht immer mit Jon ✅
 
 Keine Agent-Auswahl, keine weiteren Built-in- oder Custom-Agenten
-([PR-1](index.md)). Eine Delegation an Da Thinka/Da Mek/Da Dok/Da Sniffa erscheint als
+([PR-1](index.md)). Eine Delegation an Plan/Dev/Review/Search erscheint als
 Werkzeug-Zeilen im Chat, die das Mitglied nennen — Start und Abschluss, Parität zum Plugin.
 
 **Herkunft je Zeile — der Core stempelt, der Consumer mappt ([ADR-0078](../../docs/adr/0078-origin-in-core-owner-monitor.md)).**
-Jede Zeile trägt `origin` = Core-Id des sprechenden Agenten; die Fabrik übersetzt sie in den
-**Anzeigenamen** des Agenten (heute noch Da Thinka/Da Mek/Da Dok/Da Sniffa, ab Agent-Dateien V2
-Plan/Dev/Review/Search), Jons Zeilen heißen „Jon" (er besitzt den Verlauf). Die **finale Antwort eines
+Jede Zeile trägt `origin` = Core-Id des sprechenden Agenten; die Fabrik zeigt den Namen —
+**ids = Anzeigenamen seit [ADR-0079](../../docs/adr/0079-display-names-without-ork-names.md)**
+(Jon · Plan · Dev · Review · Search), Jons Zeilen heißen „Jon" (er besitzt den Verlauf). Die **finale Antwort eines
 Team-Mitglieds ist das Ergebnis des Delegations-Werkzeugs** in Jons Verlauf, ihr Urheber folgt aus dem
 Werkzeug (`talkPlan`/`planWithPlanAgent` → Plan, `askDev`/`buildWithDev` → Dev, `reviewPlanAgent` →
 Review, `searchAgent` → Search). Eine Zeile ohne Agenten-Bezug (`origin` null, außerhalb eines
@@ -40,7 +40,7 @@ genau **einen** Gesprächsstrang.
 - GIVEN der Chat-View WHEN der Nutzer eine Nachricht sendet THEN antwortet Jon; ein Agenten-Wechsel
   ist nirgends möglich.
 
-#### UC-WP-39 — everyLineCarriesItsAuthor ❌
+#### UC-WP-39 — everyLineCarriesItsAuthor ✅
 - GIVEN eine Antwort von Jon oder von einem Team-Mitglied WHEN sie im Chat erscheint THEN nennt die
   Zeile den Agenten-Namen, der sie erzeugt hat; hat eine Zeile keinen Agenten-Bezug, trägt sie keinen
   Namen statt eines erfundenen.
@@ -48,9 +48,9 @@ genau **einen** Gesprächsstrang.
   Herkunft — Jons Texte aus dem Besitzer des Verlaufs, Team-Antworten aus dem Delegations-Werkzeug;
   keine zweite Ablage.
 
-#### UC-WP-40 — onlyFinalAnswersFromTheTeam ❌
-- GIVEN Jon delegiert per `askDev` an Da Mek WHEN der Turn endet (`done`) THEN steht dessen **finale**
-  Antwort (das Werkzeug-Ergebnis, wie es ist — inkl. der angehängten Statistik-Zeile) als Zeile „Da Mek"
+#### UC-WP-40 — onlyFinalAnswersFromTheTeam ✅
+- GIVEN Jon delegiert per `askDev` an Dev WHEN der Turn endet (`done`) THEN steht dessen **finale**
+  Antwort (das Werkzeug-Ergebnis, wie es ist — inkl. der angehängten Statistik-Zeile) als Zeile „Dev"
   im Chat; war das Ergebnis leer, erscheint ebenfalls eine Zeile („returned no result").
 - GIVEN dieselbe Delegation WHEN man den Chat betrachtet THEN sind die Zwischenschritte des
   Teammitglieds (Denken, eigene Werkzeug-Aufrufe, Teilantworten) **nicht** sichtbar — sichtbar sind nur
@@ -137,8 +137,8 @@ Jon und sein Team bekommen **alle** Core-Werkzeuge inklusive Shell (`disk*`, `we
 
 ### R-WP-7 — Eine Kachel je Agent mit Kontext, Status, Clear und Compact 🚧
 
-Kopf des Chat-Views: eine Kachel für jeden Agenten von Jons Team (Jon, Da Thinka, Da Mek, Da Dok,
-Da Sniffa) — Name, Kontextgröße, Statusanzeige, **Clear**- und **Compact**-Knopf. Kontextgröße ist
+Kopf des Chat-Views: eine Kachel für jeden Agenten von Jons Team (Jon, Plan, Dev, Review,
+Search) — Name, Kontextgröße, Statusanzeige, **Clear**- und **Compact**-Knopf. Kontextgröße ist
 dieselbe Zahl wie im Plugin-Header: genutzte Tokens gegen das Auto-Compact-Budget des Agenten.
 
 #### UC-WP-11 — teamTilesShowContextAndStatus ❌

@@ -54,10 +54,15 @@ class AiPoAgentTest {
     @Test
     void systemPrompt_carriesTheDelegationPlaybook() {
         var p = newAgent().getSystemPrompt();
-        // Structural checks — proves po-delegation.txt was loaded, without duplicating tool names
-        assertThat(p).contains("Bauen delegieren"); // section header from po-delegation.txt
+        // Structural checks — proves po-delegation.md was loaded, without duplicating tool names
+        assertThat(p).contains("Bauen delegieren"); // section header from po-delegation.md
         assertThat(p).contains("Rollen-Grenze"); // section header
-        assertThat(p).contains("Da Thinka").contains("Da Mek"); // team members
+        // the three team roles, pinned by their playbook sentence (Rollen-Grenze, tool list) — never by
+        // a bare display name, which a rename could satisfy vacuously
+        assertThat(p).as("Plan · Dev · Review named in the playbook")
+                .contains("Plan (Plan-Agent) hat schreibend nur das Plantool")
+                .contains("Dev (Dev-Agent) hat grundsätzlich Schreibtools")
+                .contains("Review (dein Review-Agent)");
         assertThat(p).contains("Plan vor Build"); // core rule
         assertThat(p).doesNotContain("${"); // no unresolved placeholders
     }

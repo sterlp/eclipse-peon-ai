@@ -111,24 +111,24 @@ public class PoDelegateTool extends AbstractTool {
         this.autoCompactAfter = autoCompactAfter;
     }
 
-    @Tool(name = PoDelegateTool.TALK_PLAN, value = "Ask your Peon-Plan team member (Da Thinka) a direct question or discuss an approach — no plan is written. Use planWithPlanAgent when you want the plan itself. Returns the team member's reply.")
+    @Tool(name = PoDelegateTool.TALK_PLAN, value = "Ask your Plan team member a direct question or discuss an approach — no plan is written. Use planWithPlanAgent when you want the plan itself. Returns the team member's reply.")
     public String talkPlan(@P(name = "prompt") String prompt) {
         return dispatch(plan, prompt, ordersFor.apply(plan));
     }
     
-    @Tool("Wipe Da Thinka back to blank — the next task is UNRELATED and the old state would only create drift. Use compactPlan instead when the same task continues.")
+    @Tool("Wipe Plan back to blank — the next task is UNRELATED and the old state would only create drift. Use compactPlan instead when the same task continues.")
     public void clearPlan() {
         plan.agent().getMemory().clear();
         reportAction(plan, "reset");
     }
     
-    @Tool("Compact Da Thinka — the SAME task continues but the history got long. Keeps the gist, frees context. Use resetPlan instead when the next task is unrelated.")
+    @Tool("Compact Plan — the SAME task continues but the history got long. Keeps the gist, frees context. Use resetPlan instead when the next task is unrelated.")
     public String compactPlan() {
         return compact(plan);
     }
 
     @Tool(name = PoDelegateTool.PLAN_WITH_PLAN_AGENT, 
-            value = "Have your Peon-Plan team member (Da Thinka) write/refine the plan into "
+            value = "Have your Plan team member write/refine the plan into "
             + PeonPaths.PLAN_FILE
             + " with the plan tools (can only write a plan file), it plans continuously and asks you if something is unclear. Returns the team member's reply.")
     public String planWithPlanAgent(@P(name = "prompt") String prompt) {
@@ -138,7 +138,7 @@ public class PoDelegateTool extends AbstractTool {
     }
     
     @Tool(name = PoDelegateTool.REVIEW_PLAN_AGENT,
-            value = "Review team member (Da Dok) reviews a plan's implementation. "
+            value = "Review team member reviews a plan's implementation. "
                   + "Pass planPath (" + PeonPaths.PLAN_FILE + ") to set the plan — stays sticky across calls. "
                   + "Omit to reuse the last plan. Use for review questions, feedback, or approval.")
     public String reviewPlanAgent(@P(name = "prompt") String prompt,
@@ -152,24 +152,24 @@ public class PoDelegateTool extends AbstractTool {
         return dispatch(review, prompt, orders);
     }
 
-    @Tool("Wipe Da Dok back to blank — the next task is UNRELATED and the old state would only create drift. Use compactReview instead when the same task continues.")
+    @Tool("Wipe Review back to blank — the next task is UNRELATED and the old state would only create drift. Use compactReview instead when the same task continues.")
     public void clearReview() {
         review.agent().getMemory().clear();
         reportAction(review, "reset");
     }
 
-    @Tool("Compact Da Dok — the SAME task continues but the history got long. Keeps the gist, frees context. Use clearReview instead when the next task is unrelated.")
+    @Tool("Compact Review — the SAME task continues but the history got long. Keeps the gist, frees context. Use clearReview instead when the next task is unrelated.")
     public String compactReview() {
         return compact(review);
     }
 
-    @Tool(name = PoDelegateTool.ASK_DEV, value = "Ask your Peon-Dev team member (Da Mek) a direct question about the code or its progress — no build is triggered. Use buildWithDev to make it implement the plan. Returns the team member's reply.")
+    @Tool(name = PoDelegateTool.ASK_DEV, value = "Ask your Dev team member a direct question about the code or its progress — no build is triggered. Use buildWithDev to make it implement the plan. Returns the team member's reply.")
     public String askDev(@P(name = "prompt") String prompt) {
         return dispatch(dev, prompt, ordersFor.apply(dev));
     }
 
     @Tool(name = PoDelegateTool.BUILD_WITH_DEV, 
-            value = "Have your Peon-Dev team member (Da Mek) implement the released plan, increment by increment. Pass planPath (" 
+            value = "Have your Dev team member implement the released plan, increment by increment. Pass planPath (" 
                     + PeonPaths.PLAN_FILE
                     + ") — it stays sticky as a standing order so it survives the team member's compaction. Returns the team member's reply.")
     public String buildWithDev(@P(name = "prompt") String prompt,
@@ -189,13 +189,13 @@ public class PoDelegateTool extends AbstractTool {
         return dispatch(dev, prompt, orders);
     }
     
-    @Tool("Wipe Da Mek back to blank — the next task is UNRELATED and the old state would only create drift. Use compactDev instead when the same task continues.")
+    @Tool("Wipe Dev back to blank — the next task is UNRELATED and the old state would only create drift. Use compactDev instead when the same task continues.")
     public void clearDev() {
         dev.agent().getMemory().clear();
         reportAction(dev, "reset");
     }
     
-    @Tool("Compact Da Mek — the SAME task continues but the history got long. Keeps the gist, frees context. Use resetDev instead when the next task is unrelated.")
+    @Tool("Compact Dev — the SAME task continues but the history got long. Keeps the gist, frees context. Use resetDev instead when the next task is unrelated.")
     public String compactDev() {
         return compact(dev);
     }

@@ -11,14 +11,14 @@ Im Header — neben dem Session-Token-Readout (`↑ sent ↓ received`) — steh
 mit Namen, Kontextgröße und 🟢 auf dem arbeitenden Blatt-Worker:
 
 ```
-Jon (Peon-PO) aktiv, idle:
-│ ↑12k ↓8k  ·  Da Boss (12k) · Da Thinka (8k) · Da Mek (45k) · Da Dok (3k)      🔨 │
+Jon aktiv, idle:
+│ ↑12k ↓8k  ·  Jon (12k) · Plan (8k) · Dev (45k) · Review (3k)      🔨 │
 
-Jon delegiert an Da Mek → der Sklave glüht, Da Boss bleibt ruhig (Blatt-Regel):
-│ ↑12k ↓8k  ·  Da Boss (12k) · Da Thinka (8k) · 🟢 Da Mek (45k) · Da Dok (3k)   🔨 │
+Jon delegiert an Dev → der Sklave glüht, Jon bleibt ruhig (Blatt-Regel):
+│ ↑12k ↓8k  ·  Jon (12k) · Plan (8k) · 🟢 Dev (45k) · Review (3k)   🔨 │
 
-Da Mek kompaktiert → eigener Compact-Status 🟡 statt 🟢, Da Boss bleibt weiter ruhig (R-CT-4):
-│ ↑12k ↓8k  ·  Da Boss (12k) · Da Thinka (8k) · 🟡 Da Mek (45k) · Da Dok (3k)   🔨 │
+Dev kompaktiert → eigener Compact-Status 🟡 statt 🟢, Jon bleibt weiter ruhig (R-CT-4):
+│ ↑12k ↓8k  ·  Jon (12k) · Plan (8k) · 🟡 Dev (45k) · Review (3k)   🔨 │
 
 Nicht-PO-Agent aktiv:
 │ ↑12k ↓8k  ·                                                                     🔨 │
@@ -27,7 +27,7 @@ Nicht-PO-Agent aktiv:
 **Gebautes Design (MVP, Pull/MVC statt Observer):**
 
 - **`NamedAgent(String uiName, AiAgent agent)`** — schlichter Record. `AiPoAgent.getTeam()` hält die
-  feste Reihenfolge **Da Boss (=`this`) → Da Thinka → Da Mek → Da Dok** (BuildPoAgentComponent.java:135);
+  feste Reihenfolge **Jon (=`this`) → Plan → Dev → Review** (BuildPoAgentComponent.java:135);
   die Sklaven-Instanzen werden einmal erzeugt und an `AiPoAgent` **und** `PoDelegateTool` geteilt.
 - **`PeonAiService.getStatusAgents()`** — der eine `instanceof`-Choke-Point:
   `getActiveAgent() instanceof AiPoAgent po ? po.getTeam() : List.of()`. Kein Orchestrierungs-State
@@ -106,9 +106,9 @@ THEN gibt es keine Sklaven-Zeilen und damit keine Compact-Buttons
 ## Tests (gebaut)
 
 - `AiAgentStatusModelTest` (headless): Blatt-Regel — alle-idle → kein Ball · Boss arbeitet allein →
-  nur Boss · Da Mek arbeitet → nur Da Mek, Boss ruhig · Da Mek kompaktiert → 🟡, Boss ruhig ·
+  nur Boss · Dev arbeitet → nur Dev, Boss ruhig · Dev kompaktiert → 🟡, Boss ruhig ·
   leere Liste → keine Zeilen.
-- `AiPoAgentTest.getTeam()` — genau 4 Einträge (Da Boss + 3 Sklaven) auf die geteilten Instanzen.
+- `AiPoAgentTest.getTeam()` — genau 4 Einträge (Jon + 3 Sklaven) auf die geteilten Instanzen.
 - `PeonAiServiceTest.getStatusAgents()` — PO aktiv → 4, Dev aktiv → leer (`assumeTrue`-geskippt
   headless, läuft in der IDE).
 - **SWT-Darstellung** (Plugin-Test-Bundle, `AbstractSwtUiTest`): `HeaderRosterStructureTest`
@@ -128,7 +128,7 @@ produziert (Environment-Trigger: Theme-Engine ohne aktives Theme im Recovered-Wo
    Ergebnis.
 2. `HeaderRosterStructureTest` setzt das Theme **explizit** vor dem Widget-Bau — der Test verlässt
    sich nicht darauf, dass die Umgebung ein aktives Theme liefert.
-3. Da Mek prüft per Grep weitere `getActiveTheme()`-Aufrufstellen auf dasselbe Muster (guardt engine,
+3. Dev prüft per Grep weitere `getActiveTheme()`-Aufrufstellen auf dasselbe Muster (guardt engine,
    nicht theme) und meldet Befunde — auch außerhalb dieses Widgets.
 
 **WEIL:** „A guard that never fires is worse than none" — hier feuert der Guard unvollständig: er

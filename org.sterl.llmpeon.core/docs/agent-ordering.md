@@ -7,7 +7,7 @@ Chat-Dropdown. Implementierung: `agentorder.AgentOrder` (core), geladen in
 Nutzung dokumentiert für End-User in [Homepage „Ordering the agent list in UI"](../../homepage/src/setup/custom-agents.md) und README; der Scaffold-Agent bietet Order-Updates an
 ([scaffold-agent.md](../src/main/resources/org/sterl/llmpeon/prompts/scaffold-agent.md)).
 
-**WEIL:** Die Dropdown-Reihenfolge ist Präsentation, keine Korrektheit — Peon-PO zuerst,
+**WEIL:** Die Dropdown-Reihenfolge ist Präsentation, keine Korrektheit — Jon zuerst,
 spezifische Agenten gruppiert, ohne dass der User Code anfassen muss. Eine Datei im
 Config-Dir ist die schlankste Form: config-only (ADR-0041-konform), versionierbar,
 vom Scaffold-Agent verwaltbar.
@@ -18,30 +18,30 @@ Pfad: `<configDir>/agents/agent-order.txt` — **in** den Agenten-Verzeichnissen
 (`AgentService.reloadAgents()` lädt sie aus `agentsDirectory`).
 
 - GIVEN kein agent-order.txt im agents-Verzeichnis, WHEN Agenten laden, THEN wird die Datei
-  mit Default-Inhalt `^Peon-PO$` erzeugt und das Laden läuft weiter
+  mit Default-Inhalt `^Jon$` erzeugt und das Laden läuft weiter
   → `AgentOrderTest.loadCreatesDefaultFileWhenAbsent`, `AgentServiceTest.defaultFileCreated`
 - GIVEN vorhandene agent-order.txt, WHEN Agenten laden, THEN wird sie **nicht** überschrieben
   → `AgentOrderTest.loadDoesNotOverwriteAnExistingFile`
 - GIVEN nur Kommentare (`#`) und Leerzeilen, WHEN geparst, THEN gelten die Default-Patterns
-  (`^Peon-PO$`)
+  (`^Jon$`)
   → `AgentOrderTest.sortFallsBackToDefaultPatternsWhenOrderFileHasOnlyComments`
 
 ## R2 — Pattern-Matching & Gruppierung
 
 Jede Zeile = Java-Regex, geprüft mit **Full-Match** (`Pattern.matcher(name).matches()`) —
-`^`/`$` sind dadurch redundant; `Peon` matcht **nicht** `Peon-Dev`, Prefixe brauchen `Peon.*`.
+`^`/`$` sind dadurch redundant; `Dev` matcht **nicht** `Dev-2`, Prefixe brauchen `Dev.*`.
 Top-down: erster Match bestimmt die Gruppe; innerhalb einer Gruppe alphabetisch; ein Agent
 erscheint nur einmal (Gruppe des ersten Matches). Reihenfolge gilt für die Vereinigung aus
 Custom- und Built-in-Agenten.
 
-- GIVEN Patterns `^Peon-PO$` dann `Peon.*`, WHEN sortiert, THEN Peon-PO vor allen anderen
-  Peon-Agenten, Rest alphabetisch → `AgentOrderTest.sortGroupsByPatternThenAlphabeticalWithinGroup`
+- GIVEN Patterns `^Jon$` dann `.*`, WHEN sortiert, THEN Jon vor allen anderen
+  Agenten, Rest alphabetisch → `AgentOrderTest.sortGroupsByPatternThenAlphabeticalWithinGroup`
 - GIVEN ein Agent matcht mehrere Patterns, WHEN sortiert, THEN er erscheint nur einmal
   (Gruppe des ersten Matches) → `AgentOrderTest.sortDoesNotDuplicateAnAgentMatchedByMultiplePatterns`
 - GIVEN `.*` als erste Zeile, WHEN sortiert, THEN schluckt sie alle Agenten — spätere
   Patterns sind wirkungslos („spezifische Patterns zuerst")
   → `AgentOrderTest.sortIsAlphabeticalWhenPatternsMatchNothing` (Gegenprobe)
-- GIVEN Built-in `^Peon-Dev$` vor Custom-Agent-Patterns, WHEN sortiert, THEN Built-ins
+- GIVEN Built-in `^Dev$` vor Custom-Agent-Patterns, WHEN sortiert, THEN Built-ins
   erscheinen an patternbestimmter Position, nicht als Block
   → `AgentServiceTest.getAgentsWithOrdering`
 
@@ -60,7 +60,7 @@ namensbasiert — zwei Instanzen gleichen Namens wären im UI ununterscheidbar).
 gewollt (R2); der Bug war ausschließlich die Stille (Triage #5). Beide Duplikat-Fälle bleiben
 sichtbar geloggt.
 
-- GIVEN ein Agent matcht mehrere Patterns (z. B. `^Peon-PO$` und `Peon.*`), WHEN sortiert, THEN
+- GIVEN ein Agent matcht mehrere Patterns (z. B. `^Jon$` und `.*`), WHEN sortiert, THEN
   erscheint der Agent nur einmal (Gruppe der **ersten** Zeile, R2) UND ein `log.warn` nennt die
   übergehende Zeile + Agent
   → `AgentOrderTest.sortWarnsWhenAnAgentMatchesMultiplePatterns`

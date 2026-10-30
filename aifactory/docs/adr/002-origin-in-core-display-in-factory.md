@@ -30,7 +30,8 @@ jeden Turn, Reflection-Weiche für Overrides), `onAgentCallCompleted` (zweites T
    holt den Core-Weg für beide Consumer in den Core ([agent-origin-proposal](../../../proposals/agent-origin-proposal.md) §7a).
 5. **Grenze der Werkzeug→Name-Tabelle:** sie kennt nur das feste Jon-Team. Kommen Custom Agents ins
    Web, trägt sie nicht mehr — dann ist `origin` aus dem Core (Proposal) der Weg, nicht eine längere Tabelle.
-   → ADR-0078 setzt genau das um.
+   → ADR-0078 setzt genau das um — **umgesetzt 2026-10-30** (Zyklus „Origin im Core", Inc 0–4:
+   `isJon(origin)`-Filter in `SseTurnMonitor`, UC-WP-39/40 ✅ in [chat.md](../chat.md)).
 4. **Der Fabrik-Code darf bis dahin defekt sein** (Paul) — nur die Docs werden nachgezogen.
 
 ## Consequences

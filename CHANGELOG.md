@@ -5,7 +5,25 @@ All notable changes to Peon AI are documented here. Format loosely follows
 
 Releases before `2.12.4` are documented via [GitHub Releases](https://github.com/sterlp/eclipse-peon-ai/releases).
 
-## v2.5.2
+## [Unreleased]
+
+### Changed
+
+- **Built-in agents are named Jon, Plan, Dev, Review** (sub-loops `Search`/`Compact`) — display
+  name = agent id everywhere (header, roster, history files, prompts); the Ork names are gone.
+  Config keys (`llm.agent.*`, model slots) are unchanged ([ADR-0079](docs/adr/0079-display-names-without-ork-names.md))
+- **Agent histories start fresh** — history files follow the display name (`Dev-history.jsonl`
+  instead of `Peon-Dev-history.jsonl`); old `Peon-*-history.jsonl` files are not read, rename them
+  manually to keep a conversation. `agent-order.txt` default is now `^Jon$`; an existing file with
+  `^Peon-PO$` no longer matches — Jon falls back to alphabetical order until the file is updated.
+
+### Added
+
+- **Every AI chat line names its speaker.** The core stamps each line with the speaking agent's
+  id (`origin`, ADR-0078): the Eclipse plugin header shows who is talking instead of a generic
+  "Peon" (lines without an agent carry no header; groups merge only when role and sender match),
+  and the web factory attributes final team answers by the stamped sender instead of the tool name.
+
 
 ### New Features
 

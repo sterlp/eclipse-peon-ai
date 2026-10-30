@@ -27,7 +27,7 @@ Token, dann ein Leerzeichen, dann der bestehende Text.
   bis Paul sie vergibt (kein stiller Wildwuchs — neue Symbole nur hier eintragen).
 - Legende für den User: README.md (§ Symbole); die Homepage-Doku ist optional zu ergänzen, wenn
   weitere Symbole dazukommen.
-- Da Sniffa hat 🔍 dafür freigegeben — die Agenten-Personen reservieren es nicht mehr.
+- Search hat 🔍 dafür freigegeben — die Agenten-Personen reservieren es nicht mehr.
 
 ## Rollen → Icons (UI)
 
@@ -43,11 +43,11 @@ Token, dann ein Leerzeichen, dann der bestehende Text.
 
 | Rolle | Icon (Vorschlag) | Kontext | Status |
 |---|---|---|---|
-| Peon-PO (Jon) | 🧙 | Chat-Header, Status-Leiste | ❌ offen (Q1) |
-| Peon-Plan (Da Thinka) | 📐 | Chat-Header, Status-Leiste | ❌ offen (Q1) |
-| Peon-Dev (Da Mek) | 🔨 | Chat-Header, Status-Leiste | ❌ offen (Q1) |
-| Da Sniffa (Search) | *(offen)* | Chat-Header, Status-Leiste | ❌ offen (Q1) — 🔍 an die Tool-Output-Symbole übergeben (2026-10-16, Paul) |
-| Da Scribe | ✍️ | Chat-Header, Status-Leiste | ❌ offen (Q1) |
+| Jon | 🧙 | Chat-Header, Status-Leiste | ❌ offen (Q1) |
+| Plan | 📐 | Chat-Header, Status-Leiste | ❌ offen (Q1) |
+| Dev | 🔨 | Chat-Header, Status-Leiste | ❌ offen (Q1) |
+| Search | *(offen)* | Chat-Header, Status-Leiste | ❌ offen (Q1) — 🔍 an die Tool-Output-Symbole übergeben (2026-10-16, Paul) |
+| Compact | ✍️ | Chat-Header, Status-Leiste | ❌ offen (Q1) |
 | Custom Agent | 📦 | Chat-Header, Status-Leiste | ❌ offen (Q1 + Q3) |
 
 ## Kandidaten-Pool
@@ -66,10 +66,10 @@ Token, dann ein Leerzeichen, dann der bestehende Text.
 | ❌ | frei | Status-Icon? (Q2) |
 | 🎯 | frei | |
 | ⚡ | frei | |
-| 🧙 | reserviert | Peon-PO (Q1) |
-| 📐 | reserviert | Peon-Plan (Q1) |
-| 🔨 | reserviert | Peon-Dev (Q1) |
-| ✍️ | reserviert | Da Scribe (Q1) |
+| 🧙 | reserviert | Jon (Q1) |
+| 📐 | reserviert | Plan (Q1) |
+| 🔨 | reserviert | Dev (Q1) |
+| ✍️ | reserviert | Compact (Q1) |
 | 📝 | frei | Write/Edit-Kandidat (bewusst frei, Paul 2026-10-16: Read = 📜) |
 | ⇄ | in Benutzung | Cache-Reads im Token-Header (2c, R5 caching.md) |
 

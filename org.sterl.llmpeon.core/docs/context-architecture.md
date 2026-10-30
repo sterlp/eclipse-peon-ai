@@ -57,7 +57,7 @@ Snapshot in der History, alter bleibt bis zum Compact.
   daher trägt der Hash die Änderungs-Erkennung).
 - **R2:** Der `turnContextSupplier` (`PeonAiService.get()`) hängt das Item an jeden Turn des
   aktiven Agenten.
-- **R3:** Die Sklaven (Da Thinka/Da Mek) bekommen ihn über den Orders-Supplier des Delegate-Tools
+- **R3:** Die Sklaven (Plan/Dev) bekommen ihn über den Orders-Supplier des Delegate-Tools
   (`PoDelegateTool`, früher `JonDelegateTool`) als drittes Item (nach Plan + AGENTS.md,
   `BuildPoAgentComponent`) — lazy pro Delegation, das Tool selbst bleibt ihnen entzogen (nur Jon
   schreibt).
@@ -81,7 +81,7 @@ WHEN der nächste Turn beginnt
 THEN ein neuer Snapshot inkl. E2 wird injiziert (gleicher dedupKey)
 AND der alte Snapshot bleibt in der History bis zum Compact
 
-GIVEN Jon delegiert an Da Thinka (buildWithDev/talkPlan)
+GIVEN Jon delegiert an Plan (buildWithDev/talkPlan)
 WHEN die Orders-Erstnachricht des Slaven gebaut wird
 THEN sie enthält Plan-Referenz + AGENTS.md + den aktuellen Memory-Snapshot
 
@@ -240,7 +240,7 @@ THEN nichts wird injiziert und keine Exception / kein Status-Eintrag
 ## Offene Punkte
 
 > **Slaves & AGENTS-\<agent\>.md (Namens-Bug):** Solange der `NamedAgent`-Wrapper existiert
-> (UI-Name "Da Thinka" ≠ Agent-Name "Peon-Plan"), bekommen Slaves nur die base `AGENTS.md`.
+> (UI-Name "Plan" ≠ Agent-Name), bekommen Slaves nur die base `AGENTS.md`.
 > `AGENTS-da-thinka.md` / `AGENTS-da-mek.md` funktionieren erst wenn die Slaves direkt benannt
 > sind (Side Quest, Backlog).
 

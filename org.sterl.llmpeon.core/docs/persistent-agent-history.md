@@ -2,11 +2,11 @@
 
 ## Goal
 
-Persist the current chat memory for Peon-Dev, Peon-Plan, and custom agents across Eclipse/plugin restarts.
+Persist the current chat memory for Dev, Plan, and custom agents across Eclipse/plugin restarts.
 
 ## Rules
 
-- ✅ Peon-Dev, Peon-Plan, and all custom agents persist their current `ThreadSafeMemory`.
+- ✅ Dev, Plan, and all custom agents persist their current `ThreadSafeMemory`.
 - ✅ Scaffold, Search sub-agent, and Compressor history are not persisted.
 - ✅ History is stored as one JSONL file per agent under `<configDir>/state/<safe-agent-name>-history.jsonl`.
 - ✅ Agent names keep display case and replace every character outside `[A-Za-z0-9._-]` with `_`; blank sanitized names become `_agent`.
@@ -25,10 +25,10 @@ Persist the current chat memory for Peon-Dev, Peon-Plan, and custom agents acros
 
 GIVEN a `FileAgentHistoryStore` with `configDir=/tmp/.peon`  
 AND Dev history contains `UserMessage("hello")` and `AiMessage("world")`  
-WHEN the store persists messages for `Peon-Dev`  
-AND a new agent-scoped store loads messages for `Peon-Dev`  
+WHEN the store persists messages for `Dev`  
+AND a new agent-scoped store loads messages for `Dev`  
 THEN it returns both messages in original order  
-AND the file exists as `state/Peon-Dev-history.jsonl`.
+AND the file exists as `state/Dev-history.jsonl`.
 
 Status: ✅ `FileAgentHistoryStoreTest.loadReturnsMessagesWrittenAsSingleAgentFile`
 
@@ -67,7 +67,7 @@ Status: ✅ `AgentServiceTest.customAgentHistoryPersistsWithoutHistoryFlag`
 
 GIVEN `AgentService` is created with built-in agents and a history config directory  
 WHEN Dev and Plan receive messages  
-THEN both write `state/Peon-Dev-history.jsonl` and `state/Peon-Plan-history.jsonl`  
+THEN both write `state/Dev-history.jsonl` and `state/Plan-history.jsonl`  
 AND no Scaffold history is written by this service wiring.
 
 Status: ✅ `AgentServiceTest.enablesHistoryForPlanDevAndCustomOnly`
@@ -118,10 +118,10 @@ Status: ✅ `FileAgentHistoryStoreTest.roundTripsToolExecutionMessages`
 
 ### Scenario 9 — Corrupt history is deleted and agent starts empty
 
-GIVEN `<configDir>/state/Peon-Dev-history.jsonl` contains invalid JSON  
-WHEN `FileAgentHistoryStore.load("Peon-Dev")` runs  
+GIVEN `<configDir>/state/Dev-history.jsonl` contains invalid JSON  
+WHEN `FileAgentHistoryStore.load("Dev")` runs  
 THEN it returns empty history  
-AND deletes `Peon-Dev-history.jsonl`  
+AND deletes `Dev-history.jsonl`  
 AND agent startup is not blocked.
 
 Status: ✅ `FileAgentHistoryStoreTest.corruptHistoryIsDeletedAndReturnsEmptyHistory`

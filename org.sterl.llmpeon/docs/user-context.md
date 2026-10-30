@@ -15,7 +15,7 @@ jeder Chat-Nachricht (Snippet mit Zeilennummern + Pfad der Datei). Die Statuszei
 ## Symptom (Paul, 2026-09-16)
 
 Selektierter Text fehlt im gesendeten Kontext **und** in der Statuszeile (README.md, Zeilen 9-10
-selektiert) — Regression gegenüber dem vorletzten Release. Diagnose (Da Mek): Verdächtiger ist
+selektiert) — Regression gegenüber dem vorletzten Release. Diagnose (Dev): Verdächtiger ist
 Jedes Nicht-Text-Selektions-Event
 (`AIChatView.onSelection(Object)`, `AIChatView.java:255`: erst `setTextSelection(null)`, dann
 `setSelectedResource(...)`) räumt die Editor-Selektion weg, bevor sie gesendet werden kann.
