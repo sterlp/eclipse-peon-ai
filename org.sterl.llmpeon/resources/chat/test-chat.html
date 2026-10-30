@@ -78,6 +78,8 @@
         <button class="test-btn" onclick="testQuestionMessage()">Question Message</button>
         <button class="test-btn" onclick="testQuestionFormatted()">Question (formatted)</button>
         <button class="test-btn" onclick="testMultipleMessages()">Multiple Alternating</button>
+        <button class="test-btn" onclick="testDelegatedTurn()">Delegation (Jon · Dev · Jon)</button>
+        <button class="test-btn" onclick="testAiMessageWithoutOrigin()">AI without origin (no heading)</button>
 
         <h3>Streaming</h3>
         <button class="test-btn" onclick="testLiveResponseThinking()">Live Response (thinking)</button>
@@ -124,11 +126,11 @@
         }
 
         function testAiMessage() {
-            send({role: 'AI', message: 'Of course! Here\'s a simple example:\n\n```java\npublic class Hello {\n    public static void main(String[] args) {\n        System.out.println("Hello!");\n    }\n}\n```'});
+            send({role: 'AI', message: 'Of course! Here\'s a simple example:\n\n```java\npublic class Hello {\n    public static void main(String[] args) {\n        System.out.println("Hello!");\n    }\n}\n```', origin: 'Jon'});
         }
 
         function testToolMessage() {
-            send({role: 'TOOL', message: 'Reading file: src/main/java/Hello.java'});
+            send({role: 'TOOL', message: 'Reading file: src/main/java/Hello.java', origin: 'Jon'});
         }
 
         function testProblemMessage() {
@@ -145,9 +147,22 @@
 
         function testMultipleMessages() {
             send({role: 'USER', message: 'First user message'});
-            send({role: 'AI', message: 'First AI response with **bold** and *italic*.'});
+            send({role: 'AI', message: 'First AI response with **bold** and *italic*.', origin: 'Jon'});
             send({role: 'USER', message: 'Second user message'});
-            send({role: 'AI', message: 'Second AI response.'});
+            send({role: 'AI', message: 'Second AI response.', origin: 'Jon'});
+        }
+
+        // consecutive AI lines of DIFFERENT agents must stay two blocks with two headings
+        function testDelegatedTurn() {
+            send({role: 'AI', message: 'Ich delegiere das an Dev.', origin: 'Jon'});
+            send({role: 'TOOL', message: 'Dev start: baue die Sache', origin: 'Jon'});
+            send({role: 'AI', message: 'Erledigt — zwei Dateien geändert.', origin: 'Dev'});
+            send({role: 'AI', message: 'Dev hat geliefert.', origin: 'Jon'});
+        }
+
+        // origin == null → NO heading at all (nothing is invented)
+        function testAiMessageWithoutOrigin() {
+            send({role: 'AI', message: 'Diese Zeile hat keinen Absender und deshalb keine Überschrift.'});
         }
 
         function testLiveResponseThinking() {

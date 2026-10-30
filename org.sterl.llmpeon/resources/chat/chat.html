@@ -49,9 +49,16 @@
             border-left: 3px solid #1a7f37;
         }
 
+        /* the speaking agent's name, stamped by the core as SimpleMessage.origin */
         .message.AI::before {
-            content: "Peon";
+            content: attr(data-agent);
             color: #1a7f37;
+        }
+
+        /* no origin → no heading: an unstamped line gets no invented name */
+        .message.AI:not([data-agent])::before,
+        .message.AI[data-agent=""]::before {
+            content: none;
         }
 
         .message.diff {
@@ -390,11 +397,14 @@
             if (message.role === 'TOOL') {toolMessage(message.message); return;}
             const container = document.getElementById("chat");
             const lastMessage = container.lastElementChild;
-            if (lastMessage && lastMessage.classList.contains(message.role)) {
+            // merge only into the same role AND the same speaker, else two agents share one heading
+            if (lastMessage && lastMessage.classList.contains(message.role)
+                && lastMessage.dataset.agent === (message.origin || undefined)) {
                 lastMessage.insertAdjacentHTML('beforeend', md.render(message.message ?? ""));
             } else {
                 const div = document.createElement("div");
                 div.className = "message " + message.role;
+                if (message.origin) div.dataset.agent = message.origin;
                 div.innerHTML = md.render(message.message ?? "");
                 container.appendChild(div);
             }
