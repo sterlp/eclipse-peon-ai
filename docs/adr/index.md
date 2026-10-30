@@ -82,6 +82,7 @@ isn't clear from a rule/BDD.
 | [0075](0075-last-search-rolling-rohschnitt.md) | Last-Search-Rolling (Da Sniffa): Hot-Block roh auf 10k Zeichen kappen — Fragmente bewusst akzeptiert statt Paar-Grenzen; kein Schalter | Accepted |
 | [0076](0076-compact-reseed-marker-in-user-message.md) | Compact-Reseed ist **eine** UserMessage (Turn-Context zuerst, Marker `Session compacted:` + Summary als letzter Content); die AiMessage-Form ist verworfen — sie ließe den Folge-Request auf einer Assistant-Message enden (Prefill statt Antwort) | Accepted |
 | [0077](0077-agent-config-file-first-eclipse-fallback.md) | Agent-Config: `agents/<id>/AGENT.md` sticht, Eclipse-Prefs nur noch `@Deprecated`-Lese-Fallback; Speichern schreibt immer komplett in die Datei (Migration nur durch Speichern, kein Migrationslauf) | Accepted |
+| [0078](0078-origin-in-core-owner-monitor.md) | Origin im Core: `OwnerMonitor`-Decorator am Turn-Besitzer (`AbstractAgent` doCall/asyncCall/runCompact, fill-if-null), `origin` = Core-Id immer gestempelt; `ToolLoopRequest` `agent`+`agentConfig` → `LoopOwner`; kein zweiter Abschluss-/Delegations-Kanal; Anzeige-Policy beim Consumer — löst Teile von AF-ADR-002 ab, setzt agent-origin-proposal §7a um | Accepted (2026-10-29) |
 
 
 

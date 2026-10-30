@@ -1,25 +1,28 @@
 # Open Ends / Memory — Session-Zwischenstand
 
 > Zwischenstand, kein Protokoll: Erledigtes fliegt raus.
-> Branch `story/aem-error-url` (gepusht), Base = main `b2fd5564`.
+> Branch `main` — R-AEM-3 ist gemergt (`27ed5b21`, Tag 2.15.1).
 
-## Jetzt
+## Jetzt — Origin im Core ([ADR-0078](adr/0078-origin-in-core-owner-monitor.md), 2026-10-30)
 
-- **R-AEM-3 ✅ gebaut + geflippt:** Commits `bb39bb06`, `e728e50e`, `6a4bd29d`, `68abc9d5` auf
-  `story/aem-error-url` (alle gepusht). Ablauf: Inkrement 1 → Da Dok **REJECTED** (B1: Blank-Trigger
-  erreicht den Choke-Point nie; B2: Tests bauten den Trigger selbst) → Messung über echte Schichten →
-  SOLL korrigiert (Trigger = „nutzlose Message": blank ODER Cause-Klassenname, UC-AEM-7) → Delta
-  `6a4bd29d` → Da Dok CONCERNS ohne Blocker → Herkunfts-Test über echte `StreamingBridge`-Schicht
-  (`68abc9d5`). Surefire core **1407/0**, Lint 29 Baseline ohne UC-AEM, Mutationen bewiesen.
-  Docs geflippt (R-AEM-3, UC-AEM-4/5/6/7 ✅); open-points ⏳ Trigger-Rückversicherung eingetragen.
-  **Plan-Archivierung (planImplemented) direkt nach diesem Abschnitt.**
-- **Merge/Release:** Paul merged `story/aem-error-url` (squash) + Release; **Homepage-Update 2.15.0
-  im selben Zug** (Paul 2026-10-29: HP wird im Release aktualisiert — webSearch, Compact-Sichtbarkeit,
-  Skill-Roots, last-search-rolling, R-AEM-3-Fehlermeldung).
+- **Plan:** [peon-plan/overview.md](../peon-plan/overview.md) — 5 Inkremente: 0 Fabrik-Entgiftung ·
+  1 Core `OwnerMonitor` (+ 3 Emitter-Stempel) · 2 `LoopOwner`-Cleanup · 3 Plugin-Sicht ·
+  4 Fabrik-Sicht auf `origin`. Von Jon abgenommen; Da-Dok-REJECTED (6 Bugs) abgearbeitet (§8 im Plan).
+- **SOLL:** ADR-0078 (D1–D6, Accepted) — `[AF-ADR-002](aifactory/docs/adr/002-…)` teilweise abgelöst;
+  `aifactory/docs/chat.md` (R-WP-4, UC-WP-39/40 + Fehler-Fall) und `aifactory-architektur.md` nachgezogen.
+- **Regeln für den Bau:** Paul committet selbst (kein Commit/Push durch Agenten) · Core-Tests-Baseline
+  **1407** · `lintDocsAndTests` je Inkrement als Gate, umgeschriebene Tests behalten ihre `// UC-…`-Anker ·
+  **keine** Tool-Call-Id-Buchführung (Decision 6) · `AgentsTool` = Paul WIP, out of scope ·
+  Fabrik hängt am stale Core-Jar (2.8.1 vom 26.10.) — Inc 0 entgiftet, danach erst `install`.
+- **⏳ für Paul:** Fehler-Ergebnis einer Delegation erscheint wörtlich als Mitglieder-Zeile
+  ([aifactory open-points](../aifactory/docs/open-points.md)) — so gebaut, andersfall = neuer Core-Mechanismus.
+
+## Danach
+
 - **Arbeitsbaum-Rauschen (Paul fragen):** `@SuppressWarnings("null")`-Zeilen in `ExceptionUtil.java`,
   `ToolService.java`, `ShellTool.java`, `AgentToolConfigTest.java`, `DefaultCodegraphProbeTest.java`
   (11:52, IDE-Quickfix?) — uncommitted, nicht committet.
-- **Danach geplant:** Codegraph-Toolset-Slice (R-CG-6-Änderung, `CODEGRAPH_MCP_TOOLS=explore,search,files`,
+- **Codegraph-Toolset-Slice** (R-CG-6-Änderung, `CODEGRAPH_MCP_TOOLS=explore,search,files`,
   Paul 2026-10-29: ja).
 
 ## Offen für Paul (je eine Frage)
@@ -44,7 +47,7 @@
 ## Backlog
 
 - **Async-Shell-Tool (Paul-Prio)**, danach async Agents ([async-agents.md](../org.sterl.llmpeon.core/docs/async-agents.md)) — Merge-Check-Item „geteilte disk-Tool-Instanzen / mutable `AbstractTool.request`" VOR dem Async-Bau festlegen (open-points, Night-Cycle 4).
-- agent-origin (Plugin, später) · Bug-Triage T-1/T-1a/T-3/T-4/T-9 · E2E E2/Refresh-Seam · `result 0k`.
+- agent-origin: **läuft** (siehe oben) · Bug-Triage T-1/T-1a/T-3/T-4/T-9 · E2E E2/Refresh-Seam · `result 0k`.
 - Klein: `MutableClock` 7× → Fixture · `AbstractAgent.asyncCall` ohne Aufrufer · Lint-Baseline Core
   (14 UNBELEGT_ERLEDIGT, 13 VERWAIST UC-DEF-*) · historische `*-plan.md` löschen? ·
   `StringUtil.oneLine`-Konsolidierung (Da-Dok-LOW, 4. „eine Zeile"-Implementierung) ·

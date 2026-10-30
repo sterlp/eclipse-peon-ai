@@ -18,17 +18,18 @@ Keine Agent-Auswahl, keine weiteren Built-in- oder Custom-Agenten
 ([PR-1](index.md)). Eine Delegation an Da Thinka/Da Mek/Da Dok/Da Sniffa erscheint als
 Werkzeug-Zeilen im Chat, die das Mitglied nennen — Start und Abschluss, Parität zum Plugin.
 
-**Herkunft je Zeile — ohne Core-Änderung.** Jede Zeile trägt den Namen dessen, der sie erzeugt hat:
-Jons Texte heißen „Jon" (er besitzt den Verlauf); die **finale Antwort eines Team-Mitglieds ist das
-Ergebnis des Delegations-Werkzeugs** in Jons Verlauf, ihr Urheber folgt aus dem Werkzeug
-(`talkPlan`/`planWithPlanAgent` → Plan, `askDev`/`buildWithDev` → Dev, `reviewPlanAgent` → Review,
-`searchAgent` → Search); angezeigt wird der **Anzeigename** des Agenten aus dem Core (heute noch
-Da Thinka/Da Mek/Da Dok/Da Sniffa, ab Agent-Dateien V2 Plan/Dev/Review/Search). Eine Zeile ohne
-Agenten-Bezug trägt **keinen** Namen statt eines erfundenen (kein „System", kein „Peon"). Nutzer-Zeilen
-tragen den Namen des Menschen, sobald es ihn gibt ([R-WP-25](user.md)). Das wachsende Fragment eines
-laufenden Turns trägt keinen Namen, weil live nur Jon spricht und damit nichts zu verwechseln ist.
-**Im Web ist das der Standard** — das Plugin bekommt dieselbe Darstellung später als
-Experten-Einstellung ([agent-origin-proposal](../../proposals/agent-origin-proposal.md)).
+**Herkunft je Zeile — der Core stempelt, der Consumer mappt ([ADR-0078](../../docs/adr/0078-origin-in-core-owner-monitor.md)).**
+Jede Zeile trägt `origin` = Core-Id des sprechenden Agenten; die Fabrik übersetzt sie in den
+**Anzeigenamen** des Agenten (heute noch Da Thinka/Da Mek/Da Dok/Da Sniffa, ab Agent-Dateien V2
+Plan/Dev/Review/Search), Jons Zeilen heißen „Jon" (er besitzt den Verlauf). Die **finale Antwort eines
+Team-Mitglieds ist das Ergebnis des Delegations-Werkzeugs** in Jons Verlauf, ihr Urheber folgt aus dem
+Werkzeug (`talkPlan`/`planWithPlanAgent` → Plan, `askDev`/`buildWithDev` → Dev, `reviewPlanAgent` →
+Review, `searchAgent` → Search). Eine Zeile ohne Agenten-Bezug (`origin` null, außerhalb eines
+Agent-Turns) trägt **keinen** Namen statt eines erfundenen (kein „System", kein „Peon"). Nutzer-Zeilen
+tragen den Namen des Menschen, sobald es ihn gibt ([R-WP-25](user.md)). Das wachsende Live-Fragment
+trägt die Core-Id des Agenten, der es erzeugt — das Web blendet Mitglieder-Interna aus (unten), das
+Plugin zeigt sie als Überschrift
+([agenten-namen-im-chat](../../org.sterl.llmpeon/docs/agenten-namen-im-chat.md)).
 
 **Man sieht nur Jon und die finalen Antworten seines Teams** — nicht die Unterhaltung eines
 Teammitglieds mit sich selbst: dessen **Denk- und Zwischenschritte** erscheinen im Chat **nie**,
@@ -48,8 +49,9 @@ genau **einen** Gesprächsstrang.
   keine zweite Ablage.
 
 #### UC-WP-40 — onlyFinalAnswersFromTheTeam ❌
-- GIVEN Jon delegiert per `askDev` an Da Mek WHEN Da Mek fertig ist THEN steht dessen **finale**
-  Antwort (das Werkzeug-Ergebnis) als Zeile „Da Mek" im Chat.
+- GIVEN Jon delegiert per `askDev` an Da Mek WHEN der Turn endet (`done`) THEN steht dessen **finale**
+  Antwort (das Werkzeug-Ergebnis, wie es ist — inkl. der angehängten Statistik-Zeile) als Zeile „Da Mek"
+  im Chat; war das Ergebnis leer, erscheint ebenfalls eine Zeile („returned no result").
 - GIVEN dieselbe Delegation WHEN man den Chat betrachtet THEN sind die Zwischenschritte des
   Teammitglieds (Denken, eigene Werkzeug-Aufrufe, Teilantworten) **nicht** sichtbar — sichtbar sind nur
   die Delegations-Zeilen und die finale Antwort, es gibt genau einen Gesprächsstrang, keinen zweiten
@@ -57,6 +59,9 @@ genau **einen** Gesprächsstrang.
 - GIVEN ein Reload nach einer Delegation WHEN der Chat neu aufgebaut wird THEN ist die finale Antwort
   des Team-Mitglieds weiterhin Teil des Verlaufs (Live-Zeilen ausgenommen, R-WP-11) — in Jons Verlauf,
   nicht in einer zweiten Ablage.
+- GIVEN eine Delegation, deren Werkzeug-Aufruf fehlschlägt WHEN Jon das Fehler-Ergebnis bekommt THEN
+  erscheint auch dieses Ergebnis wörtlich als Mitglieder-Zeile — kein Parsen, kein Unterdrücken; der
+  Nutzer sieht, warum keine Antwort kam.
 
 ### R-WP-5 — Antworten erscheinen laufend ✅
 

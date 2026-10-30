@@ -5,6 +5,11 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
 
 ## ⏳ selbst entschieden (2026-10-25/26) — bitte überfliegen
 
+* **⏳ Fehler-Ergebnis einer Delegation erscheint wörtlich als Mitglieder-Zeile** (2026-10-30,
+  Da-Dok-Befund B4) — [UC-WP-40](chat.md) hat den Fall jetzt ausdrücklich; abgeleitet aus „wie es ist"
+  (AF-ADR-002): ein Java-Stacktrace im Web-Chat ist hässlich, aber ehrlich, und Parsen/Kürzen ist
+  verboten. *Andersfall:* soll der Stacktrace nicht erscheinen, muss der Core Fehler-Ergebnisse
+  kennzeichnen — ein neuer Core-Mechanismus, keine Fabrik-Heuristik.
 * **⏳ UC-WP-9 klargestellt: die sichtbare Ablehnung ist immer Jons** (2026-10-26, Abnahmefrage A1 von
   Inc 4) — [UC-WP-9](files.md) trägt jetzt zwei GIVEN: Jons eigener Schreibversuch hinterlässt die
   Werkzeug-Zeile im Chat, die Ablehnung eines **Team-Mitglieds** endet beim Modell (Werkzeug-Ergebnis,
