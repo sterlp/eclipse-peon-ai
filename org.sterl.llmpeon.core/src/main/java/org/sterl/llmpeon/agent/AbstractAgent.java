@@ -250,10 +250,8 @@ public abstract class AbstractAgent implements AiAgent {
     @Override
     public ChatResponse call(String initialMessage, AiMonitor monitor) {
         monitor = stamped(monitor);
-        // Self-enforcing guard: prevents concurrent invocations regardless of caller thread.
-        // Same acquired-guard as compact(): a queued call must not release the working flag of
-        // the turn that already holds it, else the next caller wins the CAS and runs parallel
-        // on the same memory instead of queueing.
+        // Self-enforcing slot claim, atomic with the enqueue under the queue's monitor — contract and
+        // boundary (claim side): Rule 10, org.sterl.llmpeon.core/docs/queued-user-messages.md
         boolean acquired = claimTurnSlotOrQueue(initialMessage);
         if (acquired) turnStart = Instant.now(clock);
         boolean slotReleased = false; // the loop's hand-over may already have released it

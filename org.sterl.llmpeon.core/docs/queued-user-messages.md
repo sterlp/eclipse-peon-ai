@@ -164,6 +164,23 @@ View-Verdrahtung (`AIChatView.resolveOutgoingMessage`) ist compile-grün, aber *
 getestet — Smoke M1–M6 offen (Paul).
 
 ### 9. Queued-At Disclosure — Uhrzeit in onTool + Marker ✅ done (2026-09-23 specified, gebaut)
+### 10. Turn-Slot Handover — Claim/Release atomar zur Queue ✅ done (2026-10-30 gebaut, 2026-10-31 dokumentiert)
+- **Rule:** Der Turn-Slot (`working`) wird nur unter dem Monitor der `UserMessageQueue` genommen oder
+  freigegeben. **Claim und Enqueue sind EIN kritischer Abschnitt** (`claimTurnSlotOrQueue`): ein Call
+  findet entweder einen freien Slot und läuft selbst, oder er joint nachweisbar einem Turn, der die
+  Queue noch garantiert ansieht — der Release ist atomar mit dem letzten Queue-Blick
+  (`nextQueuedEntryOrReleaseSlot`). Ein Input kann dadurch nie zwischen letztem `pollNext()` und
+  Release stranden (kein `done`, sichtbares Warten — P1-Fix 2026-10-30).
+```
+GIVEN ein Turn hält den Slot
+WHEN eine Eingabe im Release-Fenster eintrifft (nach dem letzten pollNext, vor dem Release)
+THEN der laufende Turn beantwortet sie noch (Hand-over), der späte Caller startet keinen eigenen Turn
+→ AbstractAgentQueueReleaseRaceTest#inputArrivingWhileTheTurnReleasesItsSlotIsAnsweredByThatTurn
+```
+- **Grenze (bewusst):** die Claim-Seite (CAS-fail → Enqueue atomar gegen Release) ist dieselbe
+  Monitor-Paar-Invariante, aber per Rendezvous nicht deterministisch erzeugbar — sie lebt als
+  Code-Invariante + dieser Regel, nicht als eigener Mutations-Test. Wer den Queue-Monitor ersetzt
+  (privater Lock, ConcurrentQueue), muss die Invariante neu ableiten und den Race-Test neu fahren.
 
 Jeder Queue-Eintrag trägt einen **queuedAt**-Zeitstempel (Zeitpunkt des Queueings). Beim Konsum zeigt
 **beides** die Uhrzeit — onTool-Zeile im Format `(queued HH:mm)`, LLM-Marker im Format `(HH:mm)` (2026-09-26, Paul):
@@ -198,9 +215,12 @@ AIChatView.resolveOutgoingMessage() → OverrideMessageResolver.resolve(text, wo
   → empty: active.queueMessage(trailing) [batching in core]
   → if isNewEntry: show "Noted..." echo (conditional on boolean return)
 AbstractAgent.call(initial, monitor):
-  CAS working true → loop { doCall(msg) → pollNext() } while next && success && !canceled
+  claimTurnSlotOrQueue — unter dem Queue-Monitor: CAS working true (Turn übernommen)
+    oder enqueue → return null (der laufende Turn antwortet)
+  loop { doCall(msg) → pollNext() } while next && success && !canceled
     catch Exception → handleAbortAndDrain(memory.add + TOOL msg) → rethrow
-  finally: working false
+  Release atomar mit letztem Queue-Blick (nextQueuedEntryOrReleaseSlot);
+    finally: Release, falls nicht schon per Hand-over übergeben
 AIChatView.handleDoneChatResponse():
   on ex/cancel: active.drainQueue() → memory.add + TOOL msg (for propagated failures)
   lockWhileWorking(false) — single unlock, no chaining logic in UI

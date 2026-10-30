@@ -41,6 +41,13 @@ Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.
   `AbstractAgentQueueReleaseRaceTest#inputArrivingWhileTheTurnReleasesItsSlotIsAnsweredByThatTurn`.
   Bewusst offen: Plugin-Seite `queueMessage` (`AIChatView:618-620`) prüft `isWorking()` außerhalb des
   Fensters — Contract-Verhalten, kein Core-Fix.
+- ⏳ **P1-Variante Cancel-/Fehler-Pfad (nächster Bug-Zyklus, test-first):** das Release nach
+  `handleAbortAndDrain` (`finally: working.set(false)`) sieht die Queue nicht atomar — ein Input im
+  Fenster strandet bis zum nächsten Send. Geringere Severity (der User bricht gerade ab), deshalb nicht
+  in diesem Zyklus.
+- ⏳ **P1 Claim-Seite als Monitor-Paar-Invariante akzeptiert (Jon):** per Rendezvous nicht
+  deterministisch erzeugbar; die Release-Seite ist durch den roten Test bewiesen, die Invariante steht in
+  `org.sterl.llmpeon.core/docs/queued-user-messages.md` Rule 10 — Paul zur Rückversicherung.
 - 🔒 **Scaffold heißt `Scaffold` (Jon 2026-10-30).** Der Name zieht **jetzt** mit, nicht in V2 —
   ADR-0079 verlangt die Rolle ohne Präfix, und die Homepage-Anleitung sagt bereits „Select
   **Scaffold**". Clean Break: kein Alias, keine Migration (der Agent wird ohne State-Verzeichnis
