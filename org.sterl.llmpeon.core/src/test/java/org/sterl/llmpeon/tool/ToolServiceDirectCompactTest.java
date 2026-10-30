@@ -72,7 +72,11 @@ class ToolServiceDirectCompactTest {
                 .build(), List.of());
         var toolLines = new ArrayList<String>();
         var monitor = new AiMonitor() {
-            @Override public void onChatResponse(SimpleMessage m) {}
+            // the in-loop compact runs on the real agent, which wraps this monitor: its lines arrive
+            // as TOOL chat messages (ADR-0078)
+            @Override public void onChatResponse(SimpleMessage m) {
+                if (m.role() == SimpleMessage.Type.TOOL) toolLines.add(m.message());
+            }
             @Override public void onTool(String message) { toolLines.add(message); }
         };
 

@@ -496,7 +496,11 @@ class HandleToolLoopCompactComponentTest {
                         new StreamMock().buildMock(r -> ChatResponse.builder()
                                 .aiMessage(AiMessage.from("never sent")).build())))
                 .monitor(new AiMonitor() {
-                    @Override public void onChatResponse(SimpleMessage m) {}
+                    // a monitor below an agent entry receives tool lines as TOOL chat messages —
+                    // an OwnerMonitor builds them there (ADR-0078)
+                    @Override public void onChatResponse(SimpleMessage m) {
+                        if (m.role() == SimpleMessage.Type.TOOL) toolLines.add(m.message());
+                    }
                     @Override public void onTool(String message) { toolLines.add(message); }
                     @Override public boolean isCanceled() { return canceled; }
                 })

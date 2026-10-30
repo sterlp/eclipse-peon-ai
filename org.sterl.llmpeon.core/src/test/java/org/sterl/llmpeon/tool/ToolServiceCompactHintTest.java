@@ -339,7 +339,11 @@ class ToolServiceCompactHintTest {
 
     private static AiMonitor hintCapturingMonitor(List<String> hints) {
         return new AiMonitor() {
-            @Override public void onChatResponse(SimpleMessage m) {}
+            // a monitor below an agent entry receives the loop's tool lines as TOOL chat messages
+            // — an OwnerMonitor builds them there (ADR-0078)
+            @Override public void onChatResponse(SimpleMessage m) {
+                if (m.role() == SimpleMessage.Type.TOOL) onTool(m.message());
+            }
             @Override public void onTool(String message) {
                 if (message.contains("🗜 Compact hint")) hints.add(message);
             }

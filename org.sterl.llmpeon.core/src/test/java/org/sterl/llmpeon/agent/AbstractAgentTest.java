@@ -37,6 +37,7 @@ import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
+import org.sterl.llmpeon.tool.model.SimpleMessage.Type;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -80,7 +81,9 @@ class AbstractAgentTest {
         agent.setMessageQueue(new UserMessageQueue(10_000, fixedClock1432()));
         List<String> toolLines = new ArrayList<>();
         var monitor = new AiMonitor() {
-            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            // below an agent entry TOOL lines arrive as SimpleMessages — OwnerMonitor builds them and
+            // never calls onTool on its delegate (ADR-0078); both channels feed one list
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolLines.add(m.message()); }
             @Override public void onTool(String message) { toolLines.add(message); }
         };
 
@@ -196,7 +199,7 @@ class AbstractAgentTest {
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
         AtomicReference<String> toolMessage = new AtomicReference<>();
         var monitor = new AiMonitor() {
-            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolMessage.set(m.message()); }
             @Override public void onTool(String message) { toolMessage.set(message); }
         };
 
@@ -253,7 +256,7 @@ class AbstractAgentTest {
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
         AtomicReference<String> toolMessage = new AtomicReference<>();
         var monitor = new AiMonitor() {
-            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolMessage.set(m.message()); }
             @Override public void onTool(String message) { toolMessage.set(message); }
         };
 
@@ -867,7 +870,7 @@ class AbstractAgentTest {
 
         // WHEN — one turn
         agent.call("test", new AiMonitor() {
-            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolLines.add(m.message()); }
             @Override public void onTool(String message) { toolLines.add(message); }
         });
 
@@ -910,7 +913,7 @@ class AbstractAgentTest {
 
         // WHEN — one turn
         agent.call("test", new AiMonitor() {
-            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolLines.add(m.message()); }
             @Override public void onTool(String message) { toolLines.add(message); }
         });
 
@@ -1081,7 +1084,7 @@ class AbstractAgentTest {
 
         List<String> toolMessages = new ArrayList<>();
         AiMonitor monitor = new AiMonitor() {
-            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolMessages.add(m.message()); }
             @Override public void onTool(String message) { toolMessages.add(message); }
         };
 
@@ -1105,7 +1108,7 @@ class AbstractAgentTest {
 
         List<String> toolMessages = new ArrayList<>();
         AiMonitor monitor = new AiMonitor() {
-            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolMessages.add(m.message()); }
             @Override public void onTool(String message) { toolMessages.add(message); }
         };
 
@@ -1173,7 +1176,7 @@ class AbstractAgentTest {
 
         List<String> toolMessages = new ArrayList<>();
         AiMonitor monitor = new AiMonitor() {
-            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolMessages.add(m.message()); }
             @Override public void onTool(String message) { toolMessages.add(message); }
         };
 
@@ -1206,7 +1209,7 @@ class AbstractAgentTest {
 
         List<String> toolMessages = new ArrayList<>();
         AiMonitor monitor = new AiMonitor() {
-            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolMessages.add(m.message()); }
             @Override public void onTool(String message) { toolMessages.add(message); }
         };
 
@@ -1362,7 +1365,7 @@ class AbstractAgentTest {
 
         List<String> toolMessages = new ArrayList<>();
         AiMonitor monitor = new AiMonitor() {
-            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolMessages.add(m.message()); }
             @Override public void onTool(String message) { toolMessages.add(message); }
         };
 

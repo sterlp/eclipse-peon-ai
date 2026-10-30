@@ -28,6 +28,7 @@ import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.CallStats;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
+import org.sterl.llmpeon.shared.OwnerMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolPolicy;
@@ -235,9 +236,17 @@ public abstract class AbstractAgent implements AiAgent {
         return this.memory.containsUserMessage(message);
     }
 
+    /**
+     * Stamps every line emitted below this entry with our id — the one place a turn's own lines get
+     * their owner (ADR-0078). Nested producers wrap it again and win, see {@link OwnerMonitor}.
+     */
+    private AiMonitor stamped(AiMonitor monitor) {
+        return new OwnerMonitor(getName(), monitor);
+    }
+
     @Override
     public ChatResponse call(String initialMessage, AiMonitor monitor) {
-        monitor = AiMonitor.nullSafety(monitor);
+        monitor = stamped(monitor);
         // Self-enforcing guard: prevents concurrent invocations regardless of caller thread.
         // Same acquired-guard as compact(): a queued call must not release the working flag of
         // the turn that already holds it, else the next caller wins the CAS and runs parallel
@@ -421,7 +430,7 @@ public abstract class AbstractAgent implements AiAgent {
 
     @Override
     public CompactResult compact(AiMonitor monitor) {
-        var mon = AiMonitor.nullSafety(monitor);
+        var mon = stamped(monitor);
         var run = runCompact(mon);
         announce(mon, run);
         return run.result();
@@ -563,8 +572,9 @@ public abstract class AbstractAgent implements AiAgent {
 
     @Override
     public List<ChatMessage> buildStaticMessages(AiMonitor monitor) {
+        // Runs outside a turn too (compact tooling) — the 📋 Loading lines still belong to us.
         var messages = new ArrayList<ChatMessage>();
-        messages.add(SystemMessage.from(buildSystemPrompt(monitor)));
+        messages.add(SystemMessage.from(buildSystemPrompt(stamped(monitor))));
         return messages;
     }
 

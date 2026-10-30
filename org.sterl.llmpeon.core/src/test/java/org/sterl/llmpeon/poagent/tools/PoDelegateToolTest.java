@@ -416,7 +416,11 @@ class PoDelegateToolTest {
                 .memory(new ThreadSafeMemory())
                 .chatModel(model)
                 .monitor(new AiMonitor() {
-                    @Override public void onChatResponse(SimpleMessage m) {}
+                    // the real slave wraps this monitor: its lines arrive as TOOL chat messages, the
+                    // stamping owner being the slave (ADR-0078)
+                    @Override public void onChatResponse(SimpleMessage m) {
+                        if (m.role() == SimpleMessage.Type.TOOL) toolLines.add(m.message());
+                    }
                     @Override public void onTool(String message) { toolLines.add(message); }
                 })
                 .build());
@@ -475,7 +479,11 @@ class PoDelegateToolTest {
                 .memory(new ThreadSafeMemory())
                 .chatModel(model)
                 .monitor(new AiMonitor() {
-                    @Override public void onChatResponse(SimpleMessage m) {}
+                    // the real slave wraps this monitor: its lines arrive as TOOL chat messages, the
+                    // stamping owner being the slave (ADR-0078)
+                    @Override public void onChatResponse(SimpleMessage m) {
+                        if (m.role() == SimpleMessage.Type.TOOL) toolLines.add(m.message());
+                    }
                     @Override public void onTool(String message) { toolLines.add(message); }
                 })
                 .build());
@@ -510,7 +518,11 @@ class PoDelegateToolTest {
                 .memory(new ThreadSafeMemory())
                 .chatModel(model)
                 .monitor(new AiMonitor() {
-                    @Override public void onChatResponse(SimpleMessage m) {}
+                    // the real slave wraps this monitor: its lines arrive as TOOL chat messages, the
+                    // stamping owner being the slave (ADR-0078)
+                    @Override public void onChatResponse(SimpleMessage m) {
+                        if (m.role() == SimpleMessage.Type.TOOL) toolLines.add(m.message());
+                    }
                     @Override public void onTool(String message) { toolLines.add(message); }
                 })
                 .build());

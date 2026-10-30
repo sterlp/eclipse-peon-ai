@@ -20,6 +20,7 @@ import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
+import org.sterl.llmpeon.tool.model.SimpleMessage.Type;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -228,7 +229,9 @@ class AbstractAgentPreTurnCompactTest {
         var order = new ArrayList<String>();
         var memoryAtEvent = new ArrayList<String>();
         var monitor = new AiMonitor() {
-            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) {
+                if (m.role() == Type.TOOL) onTool(m.message()); // stamped lines (ADR-0078)
+            }
             @Override public void onTool(String message) {
                 if (message.startsWith(CompactFeedback.START_PREFIX)) order.add("start-line");
                 else if (message.contains(CompactFeedback.END_MARKER)) order.add("end-line");
@@ -345,16 +348,27 @@ class AbstractAgentPreTurnCompactTest {
                 .orElseThrow();
     }
 
+    /**
+     * TOOL lines reach a monitor below an agent entry as {@code SimpleMessage}s — an
+     * {@link org.sterl.llmpeon.shared.OwnerMonitor} builds them there and never calls
+     * {@code onTool} on its delegate (ADR-0078). Both channels feed the same list, so the count
+     * assertions read the same as before.
+     */
     private AiMonitor monitor(List<String> toolLines) {
         return new AiMonitor() {
-            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) {
+                if (m.role() == Type.TOOL) toolLines.add(m.message());
+            }
             @Override public void onTool(String message) { toolLines.add(message); }
         };
     }
 
     private AiMonitor monitor(List<String> toolLines, List<String> problems) {
         return new AiMonitor() {
-            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) {
+                if (m.role() == Type.TOOL) toolLines.add(m.message());
+                else if (m.role() == Type.PROBLEM) problems.add(m.message());
+            }
             @Override public void onTool(String message) { toolLines.add(message); }
             @Override public void onProblem(String message) { problems.add(message); }
         };

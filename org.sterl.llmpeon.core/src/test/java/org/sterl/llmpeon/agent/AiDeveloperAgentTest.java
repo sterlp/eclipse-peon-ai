@@ -81,10 +81,14 @@ public class AiDeveloperAgentTest {
         @Override public void withToolRequest(ToolLoopRequest request) {}
     }
 
-    /** Captures the onTool lines the loop emits. */
+    /**
+     * Captures the tool lines of a turn: below an agent entry they arrive as TOOL chat lines, because
+     * an {@link org.sterl.llmpeon.shared.OwnerMonitor} builds them there (ADR-0078). Both channels
+     * feed one list, so the assertions read as before.
+     */
     static class CapturingMonitor implements AiMonitor {
         final List<String> toolLines = new ArrayList<>();
-        @Override public void onChatResponse(SimpleMessage m) {}
+        @Override public void onChatResponse(SimpleMessage m) { if (m.role() == SimpleMessage.Type.TOOL) toolLines.add(m.message()); }
         @Override public void onTool(String message) { toolLines.add(message); }
     }
     
