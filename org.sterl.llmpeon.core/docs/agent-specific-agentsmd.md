@@ -21,7 +21,9 @@ The system derives the agent name key from the active agent's display name:
   `AGENTS-Jon.md`, `agents-jon.md` and `AGENTS-JON.md`.
 - **Custom agents:** the display name is used as-is.
 - **Clean break (2026-10-30):** the former `Peon-` prefix stripping (`Peon-PO` → `PO`) is gone —
-  an old `AGENTS-PO.md` is no longer loaded for Jon; rename it to `AGENTS-JON.md`.
+  an old `AGENTS-PO.md` is no longer loaded for Jon; rename it to `AGENTS-JON.md`. It also means a
+  custom agent named `Peon-Dev` is resolved by its display name only: it gets
+  `AGENTS-Peon-Dev.md` / `AGENTS-PEON-DEV.md`, never the built-in Dev agent's `AGENTS-DEV.md`.
 
 ## Case-Insensitive Fallback
 
@@ -45,15 +47,15 @@ The agent name is evaluated at request time, so switching agents immediately cha
 
 ## Examples
 
-### Peon-Dev with both files
+### Docs-Assistant with both files
 ```
 AGENTS.md: "Be concise. One question at a time."
-AGENTS-DEV.md: "Write tests first. Use JUnit 5."
+AGENTS-Docs-Assistant.md: "Cite the rule id. Run the docs linter before finishing."
 ```
-Both are included in standing orders when Peon-Dev is active.
+Both are included in standing orders when Docs-Assistant is active.
 
-### Peon-Plan with only agent-specific file
+### Docs-Assistant with only the agent-specific file
 ```
-AGENTS-PLAN.md: "Write BDD use cases. Use GIVEN/WHEN/THEN."
+AGENTS-Docs-Assistant.md: "One doc per feature, ids allocated by the linter."
 ```
-Only AGENTS-PLAN.md content is included when Peon-Plan is active.
+Only AGENTS-Docs-Assistant.md content is included when Docs-Assistant is active.
