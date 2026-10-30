@@ -15,7 +15,6 @@ import org.sterl.llmpeon.agent.AiReviewAgent;
 import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
-import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.poagent.AiPoAgent;
 import org.sterl.llmpeon.poagent.tools.PoDelegateTool;
 import org.sterl.llmpeon.tool.WriteValidator;
@@ -94,8 +93,9 @@ final class ProjectRuntime {
                 return writeValidator;
             }
         };
-        // the slaves' own naming is the core's job, this one line is the factory's (D6)
-        this.jon.setStaticContext(List.of(ContextItem.of("Your name is " + AiPoAgent.NAME + ".")));
+        // shared static context only — the identity lines are the core's job: this call is what hands
+        // every slave its own name (AiPoAgent.setStaticContext), a name of its own must never ride along
+        this.jon.setStaticContext(List.of());
 
         // keyed by the core's tool names, filled with the names this factory built, so the product names
         // a member in exactly one place (D1) and a history line needs no second record of its author

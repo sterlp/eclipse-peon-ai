@@ -213,7 +213,6 @@ class ChatTurnTest {
 
             assertThat(MODEL.getLastRequestBody())
                     .as("both turns went to one and the same agent")
-                    .contains("Your name is Jon.")
                     .contains("erste Frage")
                     .contains("zweite Frage");
             assertThat(MODEL.getCapturedTool("buildWithDev"))

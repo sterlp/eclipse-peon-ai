@@ -48,6 +48,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 
+import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.poagent.AiPoAgent;
@@ -182,6 +183,35 @@ class DelegatedAnswerTest {
                     .startsWith(MEMBER_ANSWER + System.lineSeparator())
                     .contains("Dev done.");
         }
+    }
+
+    /**
+     * The identity of a member is the core's work, never a line of the shared static context: the request
+     * the delegated member sends names the member and speaks as nobody else. Internal, no own id — it
+     * guards the one rule the delegation rests on, that a member answers as itself.
+     */
+    @Test
+    @Timeout(60)
+    void devTurnNeverCarriesJonsIdentityLine() throws Exception {
+        writeFactoryConfig("inc1-identity");
+        CreatedProject project = createProject("delegated-identity");
+
+        try (LiveStream stream = new LiveStream(project.id())) {
+            scriptDelegation();
+            assertThat(send(project.id(), QUESTION).getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+            stream.awaitEvent("done", 1);
+        }
+
+        List<String> devRequests = model.getRequestBodies().stream()
+                .filter(body -> body.contains("Your name is " + AiDevAgent.NAME))
+                .toList();
+        assertThat(devRequests)
+                .as("the delegation really ran as its own request, carrying its own name")
+                .isNotEmpty();
+        assertThat(devRequests)
+                .as("a member's request never carries another agent's identity — the shared static"
+                        + " context holds no name but the member's own")
+                .allSatisfy(body -> assertThat(body).doesNotContain("Your name is " + AiPoAgent.NAME + "."));
     }
 
     /**
