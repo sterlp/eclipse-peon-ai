@@ -4,7 +4,7 @@ idPrefix: CIB
 
 # Compressor-Input-Budget (R-CIB) — budgetierter Compact-Input
 
-> **Status:** R-CIB-1…6 **✅ done** (2026-09-25, Review ACCEPTED, 1001 Tests grün).
+> **Status:** R-CIB-1…6 **✅ done** (2026-09-25, Review ACCEPTED).
 > **Einstiegs-Doc:** [compact.md](compact.md) (Zähler & Result, Präfix CC) ·
 > **ADR:** [ADR-0056](../../docs/adr/0056-compact-component-and-render-modes.md) ·
 > **Architektur:** [compact-architektur.md](compact-architektur.md).

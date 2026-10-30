@@ -1131,9 +1131,9 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         // THEN the sub-loop's tool set stays plan-free and keeps the read tools
         var names = sniffaSubLoopToolNames(searchAgent);
         for (var name : names) {
-            assertFalse("Sniffa sub-loop must not offer " + name, name.startsWith("plan"));
+            assertFalse("Search sub-loop must not offer " + name, name.startsWith("plan"));
         }
-        assertTrue("Sniffa keeps eclipseGrepFiles", names.contains("eclipseGrepFiles"));
+        assertTrue("Search keeps eclipseGrepFiles", names.contains("eclipseGrepFiles"));
 
         // AND the search slot's allowlist narrows the sub-loop (parent-independent, not inherited)
         aiService.updateConfig(aiService.getConfig().toBuilder()
@@ -1141,11 +1141,11 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         var narrowed = sniffaSubLoopToolNames(searchAgent);
         assertFalse("sub-loop must still offer tools", narrowed.isEmpty());
         for (var name : narrowed) {
-            assertTrue("Sniffa sub-loop restricted to eclipse*: " + name, name.startsWith("eclipse"));
+            assertTrue("Search sub-loop restricted to eclipse*: " + name, name.startsWith("eclipse"));
         }
     }
 
-    /** Runs Da Sniffa's sub-loop against the mock model and returns the tool names sent to the model. */
+    /** Runs Search's sub-loop against the mock model and returns the tool names sent to the model. */
     private List<String> sniffaSubLoopToolNames(SearchAgentTool searchAgent) {
         var ccm = new ConfiguredChatModel(aiService.getConfig());
         ccm.setChatModel(streamMock.buildOkMock());

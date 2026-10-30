@@ -270,7 +270,7 @@ class SearchAgentToolRollingContextTest {
         fixture.under("Peon-Dev");
         fixture.search("qB", "aB");
 
-        // THEN — Da Sniffa answers B with A's pair, although B's agent never searched for it
+        // THEN — Search answers B with A's pair, although B's agent never searched for it
         assertThat(fixture.sentSystemText.get("qB")).contains("Frage: qA", "Antwort: aA");
 
         // AND — the parent memories are untouched by the sub-loop

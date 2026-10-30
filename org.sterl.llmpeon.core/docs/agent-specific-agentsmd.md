@@ -10,10 +10,10 @@ The system derives the agent name key from the active agent's display name:
 
 | Agent | Name Key | File Loaded |
 |-------|----------|-------------|
-| Dev | `DEV` | `AGENTS-DEV.md` |
-| Plan | `PLAN` | `AGENTS-PLAN.md` |
-| Review | `REVIEW` | `AGENTS-REVIEW.md` |
-| Jon | `Jon` | `AGENTS-JON.md` |
+| Dev | `Dev` | `AGENTS-Dev.md` |
+| Plan | `Plan` | `AGENTS-Plan.md` |
+| Review | `Review` | `AGENTS-Review.md` |
+| Jon | `Jon` | `AGENTS-Jon.md` |
 | Custom (name="Docs-Assistant") | `Docs-Assistant` | `AGENTS-Docs-Assistant.md` |
 
 - **Built-in agents:** the key is the display name (ADR-0079: `Dev`, `Plan`, `Review`, `Jon`).

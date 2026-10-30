@@ -83,9 +83,6 @@ zeigt) in den System-Prompt — zentral, nicht pro Prompt-Datei.
   genau `[Env, Name + AGENT_MODE]`, keine Doppelung.
   - GIVEN ein Slave von Jon WHEN der Static-Context-Bake läuft THEN sein System-Prompt enthält
     `Your name is Plan/Dev/Review` + AGENT_MODE, genau einmal.
-  - GIVEN ein Slave wurde standalone/headless gebaut (ohne Jon-Bake) WHEN `build()` lief THEN
-    trägt er den Namen bereits aus der Fallback-Injektion in `BuildPoAgentComponent` — ohne
-    AGENT_MODE (das kommt erst mit dem Fan-out).
 - **R-N2 — Agent Mode (Antwort = Chat-Kanal):** `AGENT_MODE` (AiPoAgent.java): „You are in Agent
   Mode and report to Jon. You have someone to ask — use that. Save your state to the plan/task file
   first, then ask him directly, with more questions rather than fewer. Never assume." Slaven
