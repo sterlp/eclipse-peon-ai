@@ -65,7 +65,13 @@ public class AiPoAgent extends AbstractAgent {
         this.slaves = List.copyOf(slaves);
     }
 
-    // jon delegates also the static content to the slaves ...
+    /**
+     * The one writer of a slave's identity line. {@code context} is <b>shared</b> content: it is copied
+     * verbatim into every slave (Replace-Semantik, fan-out rule R-N1 in
+     * org.sterl.llmpeon.core/docs/sklaven-kontext-plan.md), so it must never contain an identity — a name
+     * in here speaks out of every member at once. Each member gets exactly one identity item of its own
+     * here ({@code uiName} plus {@link #AGENT_MODE}); an agent's own identity stays in its prompt.
+     */
     @Override
     public void setStaticContext(List<ContextItem> context) {
         super.setStaticContext(context);
