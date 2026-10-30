@@ -80,7 +80,7 @@ class ToolServiceCompactResultTest {
                 .memory(memory)
                 .chatModel(configuredModel)
                 .monitor(monitor)
-                .agent(agent)
+                .owner(LoopOwner.of(agent, LlmConfig::devAgentConfig))
                 .build());
 
         // THEN — the compressor was actually called (FAILED_EMPTY, not the < 3 small-context guard)
@@ -147,7 +147,7 @@ class ToolServiceCompactResultTest {
                 .memory(memory)
                 .chatModel(configuredModel)
                 .monitor(monitor)
-                .agent(agent)
+                .owner(LoopOwner.of(agent, LlmConfig::devAgentConfig))
                 .build());
 
         // THEN — only the first call reached the compressor; the second was an honest SKIPPED_SMALL

@@ -8,6 +8,7 @@ import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.tool.LoopOwner;
 import org.sterl.llmpeon.tool.ToolPolicy;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
@@ -21,6 +22,9 @@ import lombok.Getter;
 import lombok.Setter;
 
 public class SearchAgentTool extends AbstractTool {
+
+    /** The sub-loop's own name — stamped as {@code origin} on its lines (ADR-0078) and the label of its start line. */
+    public static final String LOOP_NAME = "Search";
 
     private final SystemMessage system = SystemMessage.systemMessage(PromptLoader.load("search-agent.md"));
 
@@ -79,12 +83,12 @@ public class SearchAgentTool extends AbstractTool {
                 .toolFilter(filter.and(exec -> allow.test(exec.getSpec().name())))
                 .toolNameFilter(allow)
                 .memory(messages)
-                .agentConfig(cfg.searchAgentConfig())
-                // R-CC-15: never inherit the parent agent — a sub-loop compactSession would
-                // clear/re-seed the PARENT memory (toBuilder inherits every field, see ToolLoopRequest)
-                .agent(null);
+                // R-CC-15: an owner of its own — no parent agent to delegate back to (a sub-loop
+                // compactSession would clear/re-seed the PARENT memory, toBuilder inherits every field,
+                // see ToolLoopRequest) — and its own name on every line it emits (ADR-0078).
+                .owner(LoopOwner.named(LOOP_NAME, base -> base.searchAgentConfig()));
 
-            onTool("Search "
+            onTool(LOOP_NAME + " "
                     + (modelName == null ? "" : "(" + modelName + ")")
                     + " start:" + System.lineSeparator() + System.lineSeparator() + prompt);
             long startNanos = System.nanoTime();
@@ -99,7 +103,8 @@ public class SearchAgentTool extends AbstractTool {
                 rolling.append(prompt, answer);
             }
             String result = StringUtil.hasValue(answer) ? answer : "Search completed but returned no result";
-            onTool("Search done. (" + StringUtil.humanElapsed(elapsedMillis) + ")" + " " + StringUtil.charsSuffix(result));
+            onTool(LOOP_NAME + " done. (" + StringUtil.humanElapsed(elapsedMillis) + ")" + " "
+                    + StringUtil.charsSuffix(result));
             return result;
 
         } catch (Exception e) {

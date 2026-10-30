@@ -26,6 +26,7 @@ import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.OnPartialAiResponse;
+import org.sterl.llmpeon.tool.LoopOwner;
 import org.sterl.llmpeon.tool.SmartTool;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
@@ -64,7 +65,13 @@ class SearchAgentToolTest {
     static class CapturingMonitor implements AiMonitor {
         final List<String> toolLines = new ArrayList<>();
         final List<String> problems = new ArrayList<>();
-        @Override public void onChatResponse(SimpleMessage m) {}
+        final List<SimpleMessage> lines = new ArrayList<>();
+        @Override public void onChatResponse(SimpleMessage m) {
+            lines.add(m);
+            // a stamped loop builds TOOL/PROBLEM lines as chat messages — OwnerMonitor (ADR-0078)
+            if (m.role() == SimpleMessage.Type.TOOL) toolLines.add(m.message());
+            else if (m.role() == SimpleMessage.Type.PROBLEM) problems.add(m.message());
+        }
         @Override public void onTool(String message) { toolLines.add(message); }
         @Override public void onProblem(String message) { problems.add(message); }
     }
@@ -85,11 +92,12 @@ class SearchAgentToolTest {
         parentMemory.add(UserMessage.from("parent message"));
         var parent = mock(AiAgent.class);
         when(parent.getName()).thenReturn("Peon-PO");
+        var monitor = new CapturingMonitor();
         var request = ToolLoopRequest.builder()
                 .memory(parentMemory)
                 .chatModel(new ConfiguredChatModel(LlmConfig.newOpenAi("foo"), cm))
-                .monitor(new CapturingMonitor())
-                .agent(parent)
+                .monitor(monitor)
+                .owner(LoopOwner.of(parent, LlmConfig::devAgentConfig))
                 .build();
         var sniffa = service.getTool(SearchAgentTool.class).get();
         sniffa.withToolRequest(request);
@@ -97,9 +105,17 @@ class SearchAgentToolTest {
         // WHEN
         sniffa.searchAgent("find something");
 
-        // THEN — the nested request must not carry the parent agent (R-CC-15)
+        // THEN — the nested request owns itself: the sub-loop's name, no agent to delegate back to
+        // (R-CC-15 — a compactSession in the sub-loop must never reach the parent)
         assertThat(service.loops).hasSize(1);
-        assertThat(service.loops.get(0).getAgent()).isNotSameAs(parent);
+        var nested = service.loops.get(0);
+        assertThat(nested.owner().name()).isEqualTo("Search");
+        assertThat(nested.owner().agent()).isNull();
+        // AND — the loop stamp gives the sub-loop's own answer its name on the parent monitor
+        assertThat(monitor.lines)
+                .filteredOn(m -> m.role() == SimpleMessage.Type.AI && "found it".equals(m.message()))
+                .singleElement()
+                .satisfies(m -> assertThat(m.origin()).isEqualTo("Search"));
     }
 
     // UC-CC-1
@@ -135,7 +151,7 @@ class SearchAgentToolTest {
                 .memory(parentMemory)
                 .chatModel(new ConfiguredChatModel(LlmConfig.newOpenAi("foo"), cm))
                 .monitor(new CapturingMonitor())
-                .agent(parent)
+                .owner(LoopOwner.of(parent, LlmConfig::devAgentConfig))
                 .build();
         var sniffa = service.getTool(SearchAgentTool.class).get();
         sniffa.withToolRequest(request);
@@ -172,7 +188,7 @@ class SearchAgentToolTest {
                 .chatModel(new ConfiguredChatModel(
                         LlmConfig.newOpenAi("foo").toBuilder().autoCompactAfter(1).build(), cm))
                 .monitor(monitor)
-                .agent(parent)
+                .owner(LoopOwner.of(parent, LlmConfig::devAgentConfig))
                 .build();
         var sniffa = service.getTool(SearchAgentTool.class).get();
         sniffa.withToolRequest(request);

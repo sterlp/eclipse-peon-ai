@@ -35,9 +35,10 @@ import lombok.NonNull;
  * All other fields have sensible defaults.
  *
  * <p><b>WARNING (R-CC-15):</b> {@code toBuilder()} inherits <b>every</b> field of the source request —
- * including {@code agent} and {@code memory}. A nested request (e.g. a sub-agent loop) MUST override
- * both explicitly: inheriting the parent's {@code agent} lets a sub-loop {@code compactSession}
- * clear/re-seed the PARENT memory, and inheriting {@code memory} would corrupt the parent history.
+ * including {@code owner} and {@code memory}. A nested request (e.g. a sub-agent loop) MUST override
+ * both explicitly: inheriting the parent's {@code owner} hands a sub-loop {@code compactSession} the
+ * PARENT agent (so it would clear/re-seed the parent memory) and stamps the parent's name on its lines,
+ * and inheriting {@code memory} would corrupt the parent history.
  *
  * Keep in mind any change to the message history may kill the kv cache!!
  * https://github.com/sterlp/eclipse-peon-ai/issues/60
@@ -92,20 +93,17 @@ public class ToolLoopRequest {
     @Getter
     public WriteValidator writeValidator = WriteValidator.ALLOW_ALL;
     /**
-     * Per-agent config (provider, model, think, temperature). Set by every agent via
-     * {@link org.sterl.llmpeon.agent.AbstractAgent#getConfig()}. When unset (e.g. a bare
-     * builder in a test), {@link #getAgentConfig()} falls back to the dev config.
+     * Who owns this loop — stamped name, back-delegation agent and model config ({@link LoopOwner}).
+     * {@link LoopOwner#NONE} keeps the bare-builder behaviour: dev-slot config, no {@code origin} stamp.
      */
-    @Nullable
-    public AgentConfig agentConfig;
+    @NonNull
+    @Default
+    public LoopOwner owner = LoopOwner.NONE;
 
-    /**
-     * Owning agent for this tool loop. Set by {@link org.sterl.llmpeon.agent.AbstractAgent#doCall(String, AiMonitor)}
-     * so tools can delegate back to the agent (e.g. {@code compactSession}).
-     */
-    @Nullable
-    @Getter
-    public AiAgent agent;
+    /** The fluent accessor of {@link #owner} — a loop asks its owner, never a {@code getX} of two former fields. */
+    public LoopOwner owner() {
+        return owner;
+    }
 
     public void addMessage(ChatMessage message) {
         memory.add(message);
@@ -115,9 +113,14 @@ public class ToolLoopRequest {
         return chatModel.getConfig();
     }
 
-    /** Per-agent config for this loop; falls back to the dev config when not explicitly set. */
+    /** Per-agent config for this loop, read live from {@link #owner()}. */
     public AgentConfig getAgentConfig() {
-        return agentConfig != null ? agentConfig : chatModel.getConfig().devAgentConfig();
+        return owner.config(getConfig());
+    }
+
+    /** The agent tools may delegate back to (e.g. {@code compactSession}); {@code null} for an agent-less loop. */
+    public @Nullable AiAgent getAgent() {
+        return owner.agent();
     }
     
     public ChatResponse call(ChatRequest chatRequest) {
@@ -190,13 +193,8 @@ public class ToolLoopRequest {
         return this;
     }
 
-    public ToolLoopRequest agentConfig(AgentConfig agentConfig) {
-        this.agentConfig = agentConfig;
-        return this;
-    }
-
-    public ToolLoopRequest agent(AiAgent agent) {
-        this.agent = agent;
+    public ToolLoopRequest owner(LoopOwner owner) {
+        this.owner = owner;
         return this;
     }
 }

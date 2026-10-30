@@ -548,5 +548,44 @@ class ToolServiceTest {
         // THEN — searchAgent survives both filters; shellRunCommand is gone via classFilter
         assertThat(names).containsExactly("searchAgent");
     }
+
+    // ADR-0078 (D1): executeLoop is THE loop stamp — one place, every line of the loop
+    @Test
+    @Timeout(20)
+    void defaultLoopIsNotStamped() {
+        // GIVEN — a monitor recording every chat line the loop emits
+        var lines = new ArrayList<SimpleMessage>();
+        AiMonitor capture = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) { lines.add(m); }
+        };
+
+        // WHEN — a bare loop (LoopOwner.NONE, the shape of a test or a voice call) answers
+        runAnsweringLoop(capture, LoopOwner.NONE);
+
+        // THEN — the line is there, and nothing invented an owner for it
+        assertThat(lines).isNotEmpty();
+        assertThat(lines).allSatisfy(line -> assertThat(line.origin()).isNull());
+
+        // WHEN — the same loop with a named, agent-less owner (the shape of the search sub-loop)
+        lines.clear();
+        runAnsweringLoop(capture, LoopOwner.named("Search", LlmConfig::searchAgentConfig));
+
+        // THEN — every line of that loop carries the owner's name
+        assertThat(lines).isNotEmpty();
+        assertThat(lines).allSatisfy(line -> assertThat(line.origin()).isEqualTo("Search"));
+    }
+
+    /** One answering round through the real loop, on the given monitor with the given owner. */
+    private void runAnsweringLoop(AiMonitor monitor, LoopOwner owner) {
+        var cm = mockWithHandler(req -> ChatResponse.builder().aiMessage(AiMessage.from("Hello")).build());
+        var memory = new ThreadSafeMemory();
+        memory.add(UserMessage.from("Hello"));
+        subject.executeLoop(ToolLoopRequest.builder()
+                .memory(memory)
+                .chatModel(new ConfiguredChatModel(LlmConfig.newOpenAi("foo"), cm))
+                .monitor(monitor)
+                .owner(owner)
+                .build());
+    }
 }
 

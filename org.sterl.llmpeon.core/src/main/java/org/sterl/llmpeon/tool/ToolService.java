@@ -14,6 +14,7 @@ import org.jspecify.annotations.NonNull;
 import org.sterl.llmpeon.compact.HandleToolLoopCompactComponent;
 import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.mcp.McpService;
+import org.sterl.llmpeon.shared.OwnerMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 import org.sterl.llmpeon.tool.model.ToSimpleMessage;
@@ -149,6 +150,12 @@ public class ToolService {
      */
     @NonNull
     public ChatResponse executeLoop(@NonNull ToolLoopRequest req) {
+        // ADR-0078: THE loop stamp — every line of this loop (model answer, tool line, validator
+        // denial) carries the owner's name, whoever emits it. No owner means no stamp, never an
+        // invented one; a member loop already stamped by its agent keeps that name (fill-if-null).
+        var ownerName = req.owner().name();
+        if (ownerName != null) req.monitor(new OwnerMonitor(ownerName, req.getMonitor()));
+
         ChatResponse response = null;
 
         int iterations = 0;

@@ -17,6 +17,7 @@ import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.prompt.PromptYmlParser;
+import org.sterl.llmpeon.tool.LoopOwner;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 
@@ -80,7 +81,7 @@ class CustomAgentConnectionE2ETest {
                 ToolLoopRequest.builder()
                         .memory(memory)
                         .chatModel(ccm)
-                        .agentConfig(agent.getConfig())
+                        .owner(LoopOwner.named(null, live -> agent.getConfig()))
                         .build());
 
         // THEN — the request landed at the agent's own stub with the full per-agent payload
@@ -122,7 +123,7 @@ class CustomAgentConnectionE2ETest {
                 ToolLoopRequest.builder()
                         .memory(memory)
                         .chatModel(ccm)
-                        .agentConfig(agent.getConfig())
+                        .owner(LoopOwner.named(null, live -> agent.getConfig()))
                         .build());
 
         // THEN — legacy think_supported: false resolves to the explicit off ("false");

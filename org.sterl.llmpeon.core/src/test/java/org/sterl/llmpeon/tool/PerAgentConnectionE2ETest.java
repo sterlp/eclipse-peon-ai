@@ -273,7 +273,7 @@ class PerAgentConnectionE2ETest {
                 ToolLoopRequest.builder()
                         .memory(memory)
                         .chatModel(ccm)
-                        .agentConfig(agent)
+                        .owner(LoopOwner.named(null, base -> agent))
                         .build());
     }
 

@@ -30,6 +30,7 @@ import org.sterl.llmpeon.shared.CallStats;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.OwnerMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.tool.LoopOwner;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolPolicy;
 import org.sterl.llmpeon.tool.ToolService;
@@ -356,8 +357,7 @@ public abstract class AbstractAgent implements AiAgent {
                     .toolFilter(getToolFilter())
                     .toolNameFilter(getToolNameFilter())
                     .writeValidator(getWriteValidator())
-                    .agentConfig(getConfig())
-                    .agent(this)
+                    .owner(LoopOwner.of(this, base -> getConfig()))
                     .turnStart(turnStart)
                     .build()
                 );
@@ -390,8 +390,7 @@ public abstract class AbstractAgent implements AiAgent {
                     .toolFilter(getToolFilter())
                     .toolNameFilter(getToolNameFilter())
                     .writeValidator(getWriteValidator())
-                    .agentConfig(getConfig())
-                    .agent(this)
+                    .owner(LoopOwner.of(this, base -> getConfig()))
                     .turnStart(turnStart)
                     .build()
                 );

@@ -10,6 +10,7 @@ import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
+import org.sterl.llmpeon.shared.OwnerMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.data.message.ChatMessage;
@@ -30,6 +31,12 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 public class CompactService {
 
     private static final SystemMessage COMPRESS_SYSTEM = SystemMessage.systemMessage(PromptLoader.load("compressor.md"));
+
+    /**
+     * Name of the compressor loop (ADR-0078 D5): its streaming lines carry it, while the compact's
+     * start/end lines stay with the compacting agent — those are emitted by the caller, not here.
+     */
+    public static final String LOOP_NAME = "Compact";
 
     private final ConfiguredChatModel chatModel;
     private final ContextTrimComponent stager;
@@ -72,7 +79,7 @@ public class CompactService {
      */
     public CompactResult compact(String agentName, List<ChatMessage> messages, String tokenDiagnosis,
                                  @Nullable Integer requestTokens, AiMonitor callerMonitor, Instant turnStart) {
-        var caller = callerMonitor;
+        var caller = new OwnerMonitor(LOOP_NAME, AiMonitor.nullSafety(callerMonitor));
         var budgetTokens = chatModel.getConfig().getAutoCompactAfter();
         var requestIsEstimate = requestTokens == null;
         var compactCfg = chatModel.getConfig().compactAgentConfig();

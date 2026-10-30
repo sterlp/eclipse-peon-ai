@@ -85,7 +85,7 @@ class ToolServiceDirectCompactTest {
                 .memory(memory)
                 .chatModel(configuredModel)
                 .monitor(monitor)
-                .agent(agent)
+                .owner(LoopOwner.of(agent, LlmConfig::devAgentConfig))
                 .build());
 
         // THEN — exactly one compressor call: the direct compact fired, no hint was asked
@@ -156,7 +156,7 @@ class ToolServiceDirectCompactTest {
                 .memory(memory)
                 .chatModel(configuredModel)
                 .monitor(monitor)
-                .agent(agent)
+                .owner(LoopOwner.of(agent, LlmConfig::devAgentConfig))
                 .build();
 
         // WHEN — round 1 ends over budget and the direct compact does not help
