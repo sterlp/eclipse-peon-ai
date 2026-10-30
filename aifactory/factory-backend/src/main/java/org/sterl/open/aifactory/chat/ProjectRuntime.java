@@ -19,6 +19,7 @@ import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.poagent.AiPoAgent;
 import org.sterl.llmpeon.poagent.tools.PoDelegateTool;
 import org.sterl.llmpeon.tool.WriteValidator;
+import org.sterl.llmpeon.tool.tools.SearchAgentTool;
 import org.sterl.open.aifactory.config.TurnNotConfiguredException;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -42,8 +43,7 @@ final class ProjectRuntime {
 
     private static final Logger LOG = LoggerFactory.getLogger(ProjectRuntime.class);
 
-    /** The core's search sub-loop ({@code @Tool(name = "searchAgent")}) — a tool of the core, not a member of this team. */
-    private static final String SEARCH_AGENT_TOOL = "searchAgent";
+    /** This factory's label for a search result line — its own word, not the core's loop stamp ({@code SearchAgentTool.LOOP_NAME}). */
     private static final String SEARCH_AGENT_DISPLAY_NAME = "Search";
 
     private final String projectId;
@@ -72,9 +72,9 @@ final class ProjectRuntime {
 
         JonToolSet toolSet = JonToolSet.forProject(projectRoot);
         WriteValidator writeValidator = toolSet.writeValidator();
-        NamedAgent plan = new NamedAgent("Plan", new AiPlanAgent(model, toolSet.tools()));
-        NamedAgent review = new NamedAgent("Review", new AiReviewAgent(model, toolSet.tools()));
-        NamedAgent dev = new NamedAgent("Dev", new AiDevAgent(model, toolSet.tools()) {
+        NamedAgent plan = new NamedAgent(AiPlanAgent.NAME, new AiPlanAgent(model, toolSet.tools()));
+        NamedAgent review = new NamedAgent(AiReviewAgent.NAME, new AiReviewAgent(model, toolSet.tools()));
+        NamedAgent dev = new NamedAgent(AiDevAgent.NAME, new AiDevAgent(model, toolSet.tools()) {
             @Override
             public WriteValidator getWriteValidator() {
                 // UC-WP-8/9 name the team too, and the core default is ALLOW_ALL — Dev gets exactly
@@ -95,12 +95,12 @@ final class ProjectRuntime {
             }
         };
         // the slaves' own naming is the core's job, this one line is the factory's (D6)
-        this.jon.setStaticContext(List.of(ContextItem.of("Your name is Jon.")));
+        this.jon.setStaticContext(List.of(ContextItem.of("Your name is " + AiPoAgent.NAME + ".")));
 
         // keyed by the core's tool names, filled with the names this factory built, so the product names
         // a member in exactly one place (D1) and a history line needs no second record of its author
         this.names = authorTable(plan.uiName(), dev.uiName(), review.uiName());
-        this.monitor = new SseTurnMonitor(projectId, streams, this.names);
+        this.monitor = new SseTurnMonitor(projectId, streams);
     }
 
     /**
@@ -117,7 +117,7 @@ final class ProjectRuntime {
                 .withTool(PoDelegateTool.REVIEW_PLAN_AGENT, reviewName)
                 // the search sub-loop is a tool of the core, not a member of this team — R-WP-4 asks for
                 // the author of a line, not for a seat in the team
-                .withTool(SEARCH_AGENT_TOOL, SEARCH_AGENT_DISPLAY_NAME);
+                .withTool(SearchAgentTool.NAME, SEARCH_AGENT_DISPLAY_NAME);
     }
 
     /**

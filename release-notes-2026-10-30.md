@@ -15,6 +15,10 @@ werden sie gebraucht, einfach umbenennen (`Peon-Dev-history.jsonl` → `Dev-hist
 **`agent-order.txt`:** Der Default-Match ist jetzt `^Jon$`. Eine bestehende eigene Datei mit
 `^Peon-PO$` matcht **nicht** mehr — Jon erscheint bis zur Anpassung alphabetisch statt zuerst.
 
+**`AGENTS-<Agent>.md` für Jon:** Jon lädt jetzt `AGENTS-JON.md` (bzw. `AGENTS-Jon.md`/
+`agents-jon.md`) — eine bestehende `AGENTS-PO.md` wird **nicht** mehr gelesen; bei Bedarf in
+`AGENTS-JON.md` umbenennen.
+
 ## Wer spricht, steht jetzt an jeder Zeile
 
 Der Core stempelt jede AI-Zeile mit dem sprechenden Agenten (`origin`):

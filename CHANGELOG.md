@@ -16,6 +16,8 @@ Releases before `2.12.4` are documented via [GitHub Releases](https://github.com
   instead of `Peon-Dev-history.jsonl`); old `Peon-*-history.jsonl` files are not read, rename them
   manually to keep a conversation. `agent-order.txt` default is now `^Jon$`; an existing file with
   `^Peon-PO$` no longer matches — Jon falls back to alphabetical order until the file is updated.
+  Same clean break for the agent-specific standing orders: Jon now loads `AGENTS-JON.md` — an
+  existing `AGENTS-PO.md` is no longer read, rename it.
 
 ### Added
 

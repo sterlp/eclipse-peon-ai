@@ -38,12 +38,10 @@ class SseTurnMonitor implements AiMonitor {
 
     private final String projectId;
     private final ChatStreamRegistry streams;
-    private final AgentNames names;
 
-    SseTurnMonitor(String projectId, ChatStreamRegistry streams, AgentNames names) {
+    SseTurnMonitor(String projectId, ChatStreamRegistry streams) {
         this.projectId = projectId;
         this.streams = streams;
-        this.names = names;
     }
 
     @Override
@@ -81,6 +79,6 @@ class SseTurnMonitor implements AiMonitor {
      * agent turn carries its stamp, so this branch is the honest fallback and not the rule.</p>
      */
     private boolean isJon(String origin) {
-        return origin == null || names.isJon(origin);
+        return origin == null || AgentNames.isJon(origin);
     }
 }

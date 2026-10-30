@@ -45,7 +45,7 @@ public class AiPoAgent extends AbstractAgent {
     // sign-off → build → mandatory post-build review, then planImplemented as the closing step.
     private static final String DELEGATION_PROMPT = PeonPaths.resolve(PromptLoader.load("po-delegation.md"));
 
-    /** Jon's own ork slaves, shown in the header. Empty when Jon runs without delegation (e.g. tests). */
+    /** Jon's delegation partners, shown in the header; empty when he runs without delegation (tests). */
     private final List<NamedAgent> slaves;
 
     public AiPoAgent(ConfiguredChatModel configuredModel, ToolService toolService) {
@@ -89,7 +89,7 @@ public class AiPoAgent extends AbstractAgent {
      */
     public List<NamedAgent> getTeam() {
         var team = new ArrayList<NamedAgent>(this.slaves.size() + 1);
-        team.add(new NamedAgent("Jon", this));
+        team.add(new NamedAgent(NAME, this));
         team.addAll(this.slaves);
         return List.copyOf(team);
     }

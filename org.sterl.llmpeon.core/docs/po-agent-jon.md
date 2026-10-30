@@ -319,9 +319,11 @@ Dev** — Jon is opt-in.
 - Lives in the **`core`** module: package `org.sterl.llmpeon.po`, class `AiPoAgent extends
   AbstractAgent` — fully unit-testable in core (headless disk tools, no Eclipse runtime)
 - Registered via `addPersistentAgent()` — survives `clearAgents()` on reload (same as Peon-Scaffold)
-- Auto-loads **`AGENTS-PO.md`** (if present) via the **existing generic** agent-specific-AGENTS.md
+- Auto-loads **`AGENTS-JON.md`** (if present) via the **existing generic** agent-specific-AGENTS.md
   mechanism ([agent-specific-agentsmd.md](agent-specific-agentsmd.md)) — Jon needs **no new feature**,
-  he just slots in with key **`Jon → PO`**, exactly like `Dev → DEV` / `Plan → PLAN`.
+  he just slots in with key **`Jon`** (candidates `AGENTS-Jon.md` / `agents-jon.md` / `AGENTS-JON.md`),
+  like `Dev → DEV` / `Plan → PLAN`.
+  Clean break: an old `AGENTS-PO.md` is **no longer** loaded for Jon — rename it (release note 2026-10-30).
   As that mechanism lives in the Eclipse `AgentsMdService`, the load happens in the **plugin** layer
   (headless core simply has no `AGENTS-*.md`, same as every other agent — so core tests are unaffected).
   These are **Jon's own** standing orders — he does **not** pass them down to Plan and Dev (R7).

@@ -1,6 +1,6 @@
 # ADR-0078 — Origin im Core: `OwnerMonitor` am Turn-Besitzer, `ToolLoopRequest` → `LoopOwner`
 
-**Status:** Accepted (2026-10-29, Paul) — löst Teile von [AF-ADR-002](../../aifactory/docs/adr/002-origin-in-core-display-in-factory.md)
+**Status:** Accepted (2026-10-29, Paul; 2026-10-30 an den gebauten Mechanismus angepasst — Da-Dok-Review) — löst Teile von [AF-ADR-002](../../aifactory/docs/adr/002-origin-in-core-display-in-factory.md)
 ab (dort: „Core-Weg bleibt Plugin-Thema" — jetzt Core-Wege für beide Consumer) und setzt
 [agent-origin-proposal](../../proposals/agent-origin-proposal.md) §7a um.
 
@@ -22,19 +22,20 @@ ist ein ausgehender Beobachter, kein Service-Locator; `NULL_MONITOR` müsste ein
 
 ## Decision
 
-1. **`origin` = Core-Id des sprechenden Agenten (`Peon-PO`, `Peon-Dev`, …), immer gestempelt;
+1. **`origin` = Core-Id des sprechenden Agenten (`Jon`, `Dev`, … — [ADR-0079](0079-display-names-without-ork-names.md)), immer gestempelt;
    `null` = außerhalb eines Agent-Turns.** Kein UI-Name im Core (`AgentNames`-JavaDoc), kein Policy-Missbrauch
    von `null` („null = Jon" wäre Fabrik-Policy, nicht Core-Tatsache).
 2. **Stempeln im Decorator am Turn-Besitzer:** neuer zustandsloser `OwnerMonitor(origin, delegate)`
    (Core `shared/`, ~30 Zeilen, fill-if-null — bereits gestempelt bleibt, `isCanceled()` transparent),
-   gebunden in `AbstractAgent` an genau drei Stellen (`doCall`, `asyncCall`, `runCompact`) — analog
-   `turnStart` (ADR-0071-Linie: der Agent besitzt den Turn). Ein Architekturtest hält die drei
-   Bindestellen gegen künftige Einstiegspfade fest; Mutationstest: Jon-Decorator zuerst ⇒ Mitglieder-Events
+   gebunden in `AbstractAgent` je **Emitter** (`call`, `compact`, `buildStaticMessages`) — analog
+   `turnStart` (ADR-0071-Linie: der Agent besitzt den Turn). Statt eines Reflexions-Architekturtests
+   pinnt ein Guard-Test je Emitter die Bindestelle; Mutationstest: Jon-Decorator zuerst ⇒ Mitglieder-Events
    fälschlich als Jon ⇒ muss rot werden.
 3. **Sub-Loops ohne Agenten benennen sich selbst:** `SearchAgentTool` und `CompactService` wickeln mit
-   `LoopOwner.named(...)` bzw. eigenem Label (Ork-Namen: `Da Sniffa`, `Da Scribe` — D5).
+   `LoopOwner.named(...)` bzw. eigenem Label (`Search`, `Compact` — [ADR-0079](0079-display-names-without-ork-names.md)).
 4. **`ToolLoopRequest`: `agent` + `agentConfig` → ein Feld `LoopOwner`** (`name()`, `@Nullable agent()`
-   für Rückdelegation, `config(base)`; Default `named("(none)", dev)`). Zwei Wahrheiten werden eine, der
+   für Rückdelegation, `config(base)`; Default `LoopOwner.NONE = named(null, dev)` — `null` stempelt
+   nicht, kein stiller Kopf). Zwei Wahrheiten werden eine, der
    R-CC-15-Kommentarwächter wird Typ-Invariante. `config()` liest live aus `chatModel.getConfig()`
    (Präferenzwechsel wirkt in der nächsten Runde, UC-WP-24 GIVEN 3 — Testpflicht).
 5. **Kein zweiter Abschluss-Kanal, kein Delegations-Antwort-Event** (Leitplanken AF-ADR-002 bleiben):
@@ -55,5 +56,8 @@ ist ein ausgehender Beobachter, kein Service-Locator; `NULL_MONITOR` müsste ein
   das gelieferte Core-Artefakt), danach folgt die Live-Trennung auf dem gestempelten `origin`
   (`isJon(origin)` + Null-Fallback, keine Id-Buchführung).
 * Grenze: agentenlose Loops stempeln nur, wenn sie sich benennen — ein neuer Einstiegspfad ohne Bindung
-  bleibt ungestempelt (`null` = ehrlicher Fallback, kein stiller Jon). Der Architekturtest fängt das.
+  bleibt ungestempelt (`null` = ehrlicher Fallback, kein stiller Jon). Die Emitter-Guards fangen das.
 * PR-3-Ausnahme bewusst freigegeben (Paul): Signatur-Entfernung in `ToolLoopRequest` (kein Plugin-Leser).
+* Plan-Abweichung (Inc 2): der geplante `OriginStampTest#subLoopsCarryTheirOwnName` entfiel — die
+  Sub-Loop-Namen sind stattdessen durch `SearchAgentToolTest` (`owner().name() == "Search"`, Zeile
+  trägt `Search`) und `CompactServiceTest#compressorChunksCarryTheCompactLoopName` gepinnt.

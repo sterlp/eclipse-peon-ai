@@ -17,7 +17,7 @@ Different agents can use different models to optimize for cost, speed, or capabi
 | **PO (Jon)** | Coordinating the agent team and clarifying requirements | Strong conversational and reasoning models (e.g., `Sonnet`) |
 | **Dev (default)** | Implementing the plan / code generation | Reasoning-capable models (e.g., `Sonnet`) |
 | **Plan** | Creating task plans and strategies | Reasoning-capable models (e.g., `Opus`) |
-| **Review** | Reviewing plan, code and docs (Da Dok) | Strong reasoning models (e.g., `Opus`) |
+| **Review** | Reviewing plan, code and docs | Strong reasoning models (e.g., `Opus`) |
 | **Search** | Finding relevant context and information | Fast, smaller models (e.g., `Haiku`) |
 | **Compact** | Conversation compression for context management | Fast, smaller models (e.g., `Haiku`) |
 

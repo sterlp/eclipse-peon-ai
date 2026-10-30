@@ -38,15 +38,15 @@ Nicht-PO-Agent aktiv:
   `🟡 ` bei `compacting` (R-CT-4 — eigener Compact-Status, 🟡 gewinnt über 🟢); Text `uiName (Xk)` mit
   `getMemory().getTotalTokenUsed()`. State-los — jeder `refresh()` zieht live.
 - **Blatt-Regel** (in `AiAgentStatusModel`, headless getestet): Sklave glüht bei eigenem
-  `isWorking()`; **Da Boss** nur, wenn er arbeitet **und kein Sklave arbeitet**. Ein kompaktierender
-  Sklave ist dabei beschäftigt (er hält `working`): er zeigt 🟡 und hält Da Boss dunkel.
+  `isWorking()`; **Jon** nur, wenn er arbeitet **und kein Sklave arbeitet**. Ein kompaktierender
+  Sklave ist dabei beschäftigt (er hält `working`): er zeigt 🟡 und hält Jon dunkel.
 - **Refresh-Trigger:** `onChatMessage` (🟢 an), `lockWhileWorking(false)`/Turn-Ende (🟢 aus),
   Agenten-Wechsel, Token/Response — idempotente Live-Pulls. Compact: die Start-Zeile
   (`onTool` → `onChatResponse`) zieht den 🟡, das Job-Ende (`lockWhileWorking(false)`) löscht ihn.
 
 ## Per-Agent Compact-Buttons — ✅ done (2026-09-14; Decision 2026-09-13, User)
 
-Jede **Sklaven-Zeile** (Da Thinka, Da Mek, Da Dok) bekommt einen kleinen **Icon-Button** (Compact-Icon,
+Jede **Sklaven-Zeile** (Plan, Dev, Review) bekommt einen kleinen **Icon-Button** (Compact-Icon,
 keine Beschriftung, Tooltip `Compact Da X`). Klick komprimiert **genau diesen Agenten**.
 
 **Warum:** Beim Compact von Jon lief bisher ein impliziter Cascade über alle drei Sklaven
@@ -56,7 +56,7 @@ gezielt einen Sklaven-Kontext freigeben kann, gibt es den **expliziten** Button.
 
 **Regeln:**
 
-1. **Nur die drei Sklaven-Zeilen** bekommen den Button. **Da Boss nicht** — als aktiver Agent hat er
+1. **Nur die drei Sklaven-Zeilen** bekommen den Button. **Jon nicht** — als aktiver Agent hat er
    den Compact-Button in der Action Bar (der nach R18 nur noch Jon selbst komprimiert).
 2. Klick → Eclipse `Job` (gleiche Mechanik wie `AIChatView.doCompressContext`:
    `inFlightTurns`/`monitorRef`/`lockWhileWorking`): `agent.compact(viewMonitor)` für **diesen einen**
@@ -65,7 +65,7 @@ gezielt einen Sklaven-Kontext freigeben kann, gibt es den **expliziten** Button.
    for AI…", R-CT-5), 🟡 im Roster (R-CT-4) und die uniforme End-Zeile `🗜 <Agent> compacted: …`.
 3. **Disabled**, während der Agent `isWorking()` oder ein Turn/Compact in-flight ist
    (`inFlightTurns > 0`) — kein Concurrent-Compact auf einem Agenten, der gerade arbeitet.
-4. **Feedback:** Job-Ergebnis in der Statuszeile (`Compacted Da Mek`); Skip (< 3 Messages, R16 —
+4. **Feedback:** Job-Ergebnis in der Statuszeile (`Compacted Dev`); Skip (< 3 Messages, R16 —
    nach jedem Compact bleiben exakt 2, Re-Compact = Noop) →
    `Nothing to compact` statt Stillstand. Danach Roster-Refresh (Kontextgröße fällt sichtbar).
 5. Reuse: `SwtUtil.createIconButton` (SwtUtil.java:30, Flat-Icon-Pattern wie der Header-Hammer).
@@ -73,24 +73,24 @@ gezielt einen Sklaven-Kontext freigeben kann, gibt es den **expliziten** Button.
    Button je Sklave) umgestellt; Nicht-PO-Modus bleibt ohne Roster.
    **UI-Detail (2026-09-14):** beide RowLayouts mit `wrap=false` (in der aktuellen
    SWT-Generation ist `wrap` per Default `true` — deshalb umbrauchte das Roster bei schmalem
-   Fenster; jetzt wird rechts **geclippt**, Da Dok fällt zuerst weg) und `center=true` (Label und
+   Fenster; jetzt wird rechts **geclippt**, Review fällt zuerst weg) und `center=true` (Label und
    Button sitzen mittig — das Icon liegt exakt auf der Hammer-Mittelachse, auch in der 🟢-Zeile).
    Compact-Icon **theme-aware** (`compact.svg`/`compact_dark.svg`, Selektion wie beim Hammer).
 6. Kein Auto-Refresh-Zwang über neue Observer — die bestehenden Pull-Trigger reichen.
 
 **BDD:**
 ```
-GIVEN Jon ist aktiv und Da Mek idle
-WHEN der User drückt Da Meks Compact-Button
-THEN wird AUSSCHLIESSLICH Da Mek komprimiert (ein LLM-Call), Da Boss/Da Thinka/Da Dok unverändert
-AND die Statuszeile meldet "Compacted Da Mek" und die Kontextgröße fällt im Roster
+GIVEN Jon ist aktiv und Dev idle
+WHEN der User drückt Devs Compact-Button
+THEN wird AUSSCHLIESSLICH Dev komprimiert (ein LLM-Call), Jon/Plan/Review unverändert
+AND die Statuszeile meldet "Compacted Dev" und die Kontextgröße fällt im Roster
 
-GIVEN Da Mek hat < 3 Messages (nach jedem Compact exakt 2)
-WHEN der User drückt Da Meks Compact-Button
+GIVEN Dev hat < 3 Messages (nach jedem Compact exakt 2)
+WHEN der User drückt Devs Compact-Button
 THEN kein LLM-Call, Statuszeile meldet "Nothing to compact" (R16-Skip, Noop-Guard)
 
-GIVEN Da Mek arbeitet gerade (🟢) oder ein Turn ist in-flight
-THEN ist Da Meks Compact-Button disabled
+GIVEN Dev arbeitet gerade (🟢) oder ein Turn ist in-flight
+THEN ist Devs Compact-Button disabled
 
 GIVEN ein Nicht-PO-Agent ist aktiv
 THEN gibt es keine Sklaven-Zeilen und damit keine Compact-Buttons
@@ -101,7 +101,7 @@ THEN gibt es keine Sklaven-Zeilen und damit keine Compact-Buttons
 | Anzeige | Quelle | Bedeutung |
 | --- | --- | --- |
 | `↑ sent ↓ received` ([token-usage.md](../../org.sterl.llmpeon.core/docs/token-usage.md)) | `TokenStats`, `addTokenUsage` | **Session-kumulativ**, cross-agent, monoton |
-| `Da Mek (45k)` | `agent.getMemory().getTotalTokenUsed()` | **Momentaner Kontext** des Agenten — fällt beim Compact |
+| `Dev (45k)` | `agent.getMemory().getTotalTokenUsed()` | **Momentaner Kontext** des Agenten — fällt beim Compact |
 
 ## Tests (gebaut)
 

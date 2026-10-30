@@ -95,7 +95,7 @@ public class BuildPoAgentComponent {
             }
         };
         planSlave.setStaticContext(ContextItem.newList(staticContent,
-                ContextItem.of("Your name is Plan.")));
+                ContextItem.of("Your name is " + AiPlanAgent.NAME + ".")));
         
         var reviewSlave = new AiReviewAgent(configuredModel, sharedToolService) {
             @Override protected Predicate<SmartToolExecutor> classFilter() {
@@ -103,7 +103,7 @@ public class BuildPoAgentComponent {
             }
         };
         reviewSlave.setStaticContext(ContextItem.newList(staticContent,
-                ContextItem.of("Your name is Review.")));
+                ContextItem.of("Your name is " + AiReviewAgent.NAME + ".")));
 
         var devSlave = new AiDevAgent(configuredModel, sharedToolService) {
             @Override protected Predicate<SmartToolExecutor> classFilter() {
@@ -111,11 +111,11 @@ public class BuildPoAgentComponent {
             }
         };
         devSlave.setStaticContext(ContextItem.newList(staticContent,
-                ContextItem.of("Your name is Dev.")));
+                ContextItem.of("Your name is " + AiDevAgent.NAME + ".")));
 
-        var planMember = new NamedAgent("Plan", planSlave);
-        var reviewMember = new NamedAgent("Review", reviewSlave);
-        var devMember = new NamedAgent("Dev", devSlave);
+        var planMember = new NamedAgent(AiPlanAgent.NAME, planSlave);
+        var reviewMember = new NamedAgent(AiReviewAgent.NAME, reviewSlave);
+        var devMember = new NamedAgent(AiDevAgent.NAME, devSlave);
         // Slaves also need the same relevant context as the active agent (Jon gets it via userContext).
         // The shared memory rides in their system prompt (static context — re-baked by
         // PeonAiService.initStaticContext); the turn orders below carry the plan file

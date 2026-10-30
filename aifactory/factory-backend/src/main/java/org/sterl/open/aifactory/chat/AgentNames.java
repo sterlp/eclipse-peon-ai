@@ -18,8 +18,8 @@ import org.sterl.llmpeon.poagent.AiPoAgent;
  * contract) and names the member in the factory's own words. A tool nobody in this table owns is not a
  * member speaking, and gets no line.</p>
  *
- * <p>{@code null} is nobody: neither question invents an author (R-WP-4). Immutable, so a runtime can
- * hand it to its monitor and forget it.</p>
+ * <p>{@code null} is nobody: neither question invents an author (R-WP-4). Immutable; the runtime keeps one
+ * instance for its author table.</p>
  */
 final class AgentNames {
 
@@ -48,7 +48,7 @@ final class AgentNames {
     }
 
     /** The agent the one conversation of a project belongs to — the only author the live stream shows. */
-    boolean isJon(String origin) {
+    static boolean isJon(String origin) {
         return AiPoAgent.NAME.equals(origin);
     }
 }

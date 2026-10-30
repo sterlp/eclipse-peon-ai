@@ -10,13 +10,18 @@ The system derives the agent name key from the active agent's display name:
 
 | Agent | Name Key | File Loaded |
 |-------|----------|-------------|
-| Peon-Dev | `DEV` | `AGENTS-DEV.md` |
-| Peon-Plan | `PLAN` | `AGENTS-PLAN.md` |
-| Peon-PO | `PO` | `AGENTS-PO.md` |
+| Dev | `DEV` | `AGENTS-DEV.md` |
+| Plan | `PLAN` | `AGENTS-PLAN.md` |
+| Review | `REVIEW` | `AGENTS-REVIEW.md` |
+| Jon | `Jon` | `AGENTS-JON.md` |
 | Custom (name="Docs-Assistant") | `Docs-Assistant` | `AGENTS-Docs-Assistant.md` |
 
-- **Built-in agents:** the key is the part after "Peon-", uppercased. "Peon-Dev" → "DEV", "Peon-Plan" → "PLAN".
+- **Built-in agents:** the key is the display name (ADR-0079: `Dev`, `Plan`, `Review`, `Jon`).
+  `Dev`/`Plan`/`Review` resolve case-insensitively (see fallback below); `Jon` tries
+  `AGENTS-Jon.md`, `agents-jon.md` and `AGENTS-JON.md`.
 - **Custom agents:** the display name is used as-is.
+- **Clean break (2026-10-30):** the former `Peon-` prefix stripping (`Peon-PO` → `PO`) is gone —
+  an old `AGENTS-PO.md` is no longer loaded for Jon; rename it to `AGENTS-JON.md`.
 
 ## Case-Insensitive Fallback
 

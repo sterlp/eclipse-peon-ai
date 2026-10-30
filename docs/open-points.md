@@ -4,19 +4,32 @@ Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User
 Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.md).
 ## 2026-10-30 — Namensalignment-Nachzieh-Zyklus (Jon, Nachtzyklus)
 
-- ⏳ **Lädt Jons `AgentsMdContextItem` nach dem Rename noch `AGENTS-PO.md`?** A13/ADR-0079 hat
-  `AiPoAgent.NAME` → `Jon` gezogen; die Homepage (`setup/agents-and-skills.md`) und
-  [po-agent-jon.md](../org.sterl.llmpeon.core/docs/po-agent-jon.md) R1 behaupten Key `Jon → PO`.
-  **Messen:** Resolution für `NAME = "Jon"` verifizieren (explizite Map? `hyphenatedUpper` gäbe
-  `JON`/`AGENTS-JON.md`) — falls still nichts mehr lädt, Fix + Regel-Nachzug.
+- ⏳ **Jons Agent-File lädt jetzt `AGENTS-JON.md` (Clean Break — Jon 2026-10-30, Nachtzyklus).**
+  Gemessen: `AgentsMdContextItem.resolveAgentKey` strippt nur das Präfix `Peon-` — für `NAME = "Jon"`
+  lauten die Kandidaten `AGENTS-Jon.md`/`agents-jon.md`/`AGENTS-JON.md`, eine bestehende
+  `AGENTS-PO.md` verliert still ihre Wirkung. Entscheidung nach Repo-Regel „Clean break over
+  migration" + ADR-0079: **kein Alias**, Docs/Release-Note/CHANGELOG auf `AGENTS-JON.md` gezogen,
+  Jon-Fall als Test gepinnt (Delta-Inkrement). **Paul bitte bestätigen** — falls du das Alias-
+  Verhalten `Jon → AGENTS-PO.md` willst, sagen (dann Resolver-Änderung + Docs zurück).
 - ⏳ **Rest-Ork-/Peon-Namen in älteren SOLL-Docs:** docs-linter.md (UC-DL-Titel, Rollen-Tabellen),
-  agent-specific-agentsmd.md („part after Peon-“), agent-tool-config*.md, java-debugger-tool.md,
+  agent-specific-agentsmd.md (Reste außerhalb der Tabelle), agent-tool-config*.md, java-debugger-tool.md,
   chat-job-lifecycle.md, header-state-leak.md, model-config-widget.md, architecture.md, pipeline.md,
-  agenten-status-im-header-mvp-plan.md, homepage `setup/index.md` u.a. — Altbestand (Glossar-Regel:
-  Angleich bei Berührung), eigener Aufräum-Zyklus mit Paul, Ordnung wie die Warn-Batches.
+  agenten-status-im-header-mvp-plan.md, homepage `setup/advanced-configuration.md:20` +
+  `setup/mcp-configuration.md:66` u.a. — Altbestand (Glossar-Regel: Angleich bei Berührung), eigener
+  Aufräum-Zyklus mit Paul. `(Da Mek)`-Rollenbegriff „Sklave" in agenten-status-im-header.md bleibt
+  bewusst (Terminologie-Entscheid, kein Name).
+- ❓ **`AGENTS.md:3` nennt weiter `Peon-PO`/`Peon-Plan`/`Peon-Dev`** — Paul-WIP (AGENTS*.md wird nie
+  von mir committet/berührt); Zeile bei Gelegenheit von Paul auf Jon/Plan/Dev ziehen.
 - ❓ **Manuelle Nachweise Agenten-Namen/Origin (Paul):** Browser-Proof Fabrik auf 8099 + Plugin-Harness
   `test-chat.html` („Delegation (Jon · Dev · Jon)“, „AI without origin“) — braucht Pauls Modell-Konfig
   und Augen.
+- ❓ **Pre-existing aus Da-Dok-Review 2026-10-30 (nächster Bug-Zyklus):** (1) Queue-Drain-Race
+  `AbstractAgent.call` — Eingabe zwischen letztem `pollNext()` und `working.set(false)` liegt bis zum
+  nächsten Send in der Queue, und mit A1 (`done` je Turn) folgt für sie kein `done` → Web wartet
+  sichtbar. (2) V1-Verdacht: `AiPoAgent.setStaticContext` überschreibt evtl. die
+  `"Your name is X."`-Zeile aus `BuildPoAgentComponent` (Aufrufreihenfolge klären). (3) Scope:
+  `AiScaffoldAgent.NAME = "Peon-Scaffold"` trägt weiter das alte Muster — in V2 mit den Config-Ids
+  mitziehen oder jetzt?
 - ⏳ **Fehler-Ergebnis einer Delegation erscheint wörtlich als Mitglieder-Zeile** (aifactory
   open-points) — so gebaut („wie es ist“), andersfall = neuer Core-Mechanismus. unverändert offen.
 

@@ -23,7 +23,18 @@ import lombok.Setter;
 
 public class SearchAgentTool extends AbstractTool {
 
-    /** The sub-loop's own name — stamped as {@code origin} on its lines (ADR-0078) and the label of its start line. */
+    /**
+     * Wire name of the tool — the key the factory's author table resolves a history line by
+     * ({@code ToolExecutionResultMessage.toolName()}). <b>Not</b> the loop label: that is
+     * {@link #LOOP_NAME}.
+     */
+    public static final String NAME = "searchAgent";
+
+    /**
+     * The sub-loop's own name — stamped as {@code origin} on its lines (ADR-0078) and the label of its
+     * start line. Deliberately separate from {@link #NAME}: one is the tool contract on the wire, the
+     * other who the lines are attributed to.
+     */
     public static final String LOOP_NAME = "Search";
 
     private final SystemMessage system = SystemMessage.systemMessage(PromptLoader.load("search-agent.md"));
@@ -56,7 +67,7 @@ public class SearchAgentTool extends AbstractTool {
         return toolService.activeNames(filter, ToolPolicy.nameFilter(rawCsv));
     }
 
-    @Tool(name = "searchAgent", value = "Sub-agent for complex multi-step search/research - to save tokens.")
+    @Tool(name = NAME, value = "Sub-agent for complex multi-step search/research - to save tokens.")
     public String searchAgent(@P(name = "prompt") String prompt) {
         ArgsUtil.requireNonBlank(prompt, "prompt");
         // the field is re-set per tool call — read it once, so a parallel call's cancel state can never
