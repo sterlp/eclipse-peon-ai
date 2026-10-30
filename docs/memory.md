@@ -3,32 +3,31 @@
 > Zwischenstand, kein Protokoll: Erledigtes fliegt raus.
 > Branch `main` — R-AEM-3 ist gemergt (`27ed5b21`, Tag 2.15.1).
 
-## Jetzt — Origin im Core + Namensalignment: GEBAUT, Review steht aus (2026-10-30)
+## Jetzt — Origin im Core + Namensalignment: GEBAUT, Review + Delta abgeschlossen (2026-10-30)
 
-- **Alle 6 Inkremente grün + gepusht** auf Branch `web-factory-goon` (`c025695c` · `8c35da01` ·
-  `63bbfe3a` · `7680b1d6` · `db48c3f8` · `1ec40ef1`) — Core **1424**, Plugin **443/0/0/53**,
-  Fabrik **108/0/0/0**, UI **25/25**, Lint-Gate UC-WP-39/40 belegt.
-- **Danach Jon:** Prompt-Edits (A13: po.md, po-delegation.md, po-tutorial.md, scaffold-agent.md,
-  `@Tool`-Beschreibungen) ✓ · Namens-Doku-Zug (Inc-0b Schritt 7) ✓ · Release-Note
-  `release-notes-2026-10-30.md` + CHANGELOG `[Unreleased]` ✓ · `agenten-namen-im-chat.md` auf
-  Ist-Stand (origin/Merge/null⇒kein Kopf) ✓ · UC-WP-39/40 auf ✅ ✓ · AF-ADR-002 „umgesetzt" ✓.
-  **Ein Test-Pin zog mit:** `AiPoAgentTest#systemPrompt_carriesTheDelegationPlaybook` (Anker alt
-  „Da Thinka/Da Mek" → neue Playbook-Anker, Da Mek) — **Core-Zahl prüfen, bevor Commit geht.**
-- **Nächster Schritt: EIN vollständiges Da-Dok-Review** über alles (Plan + chat.md +
-  agenten-namen-im-chat.md + ADR-0078/0079 + aifactory-architektur.md), Delta-Plan je Befund,
-  dann Completion-Report an Paul. `planImplemented` erst nach bestandenem Review.
+- **Alle 6 Inkremente + Docs/Prompt-Commits + Delta-Inkrement grün & gepusht** auf
+  `web-factory-goon` (`c025695c` · `8c35da01` · `63bbfe3a` · `7680b1d6` · `db48c3f8` · `1ec40ef1` ·
+  `afd8890b` · `7bf3181b` · **`4260475b`**). Delta `4260475b` = Da-Dok-Review-Fixes: LOW-1..4
+  (NAME-Konstanten, `AgentNames.isJon` statisch, SseTurnMonitor-Abhängigkeit raus, Kommentar),
+  BUG-1-Pin `AgentsMdContextItemTest#test_jon_resolvesOnlyToCleanBreakNames`, Mutation-Nachweis
+  `OwnerMonitor` (fill-if-null → 2 rote Tests wie prognostiziert, revertet). Gates: Core **1424**,
+  Fabrik **108/0/0/0**, UI **25/25**, PDE-gezielt 3/0+6/0 (volle PDE-Suite im Delta **nicht**
+  gefahren), Lint 10 = Baseline.
+- **Da-Dok-Review abgeschlossen (REJECTED → Befunde behandelt):** BUG-2/3/5 + Homepage-Reste von Jon in
+  Docs gefixt (ADR-0078 an gebauten Mechanismus angepasst, `aifactory/docs/memory.md` „Jetzt" neu,
+  header-Doc-Ork-Namen gezogen); BUG-1 per Clean Break entschieden (⏳ open-points: Paul
+  bestätigen lassen); BUG-4 = ❓ Paul (AGENTS.md); BUG-6 = ADR-0078-Abweichungsnotiz. P1
+  (Queue-Drain-Race), V1 (setStaticContext), P2 (Peon-Scaffold) → ❓ open-points.
+- **⚠️ Eigene `AGENTS-PO.md` dieses Repos lädt für Jon nicht mehr** — Paul bei Gelegenheit in
+  `AGENTS-JON.md` umbenennen (steht auch in der Release-Note).
 - **Manuelle Nachweise offen (Paul):** Browser-Proof Fabrik auf 8099 + Plugin-Harness
   (`test-chat.html`, zwei Klicks) — Da Mek kann sie nicht allein fahren.
-- **⏳/❓ neu (open-points):** (1) Lädt Jons `AgentsMdContextItem` nach dem Rename noch
-  `AGENTS-PO.md`? (Key-Mapping `Jon → PO` messen, Homepage agenten-and-skills behauptet es.)
-  (2) Rest-Ork-Namen in älteren SOLL-Docs (docs-linter.md, agent-specific-agentsmd.md,
-  agent-tool-config*.md, java-debugger-tool.md u.a.) — Altbestand, Angleich bei Berührung;
-  eigener Aufräum-Zyklus mit Paul. (3) `AiPoAgentTest`-Pin-Anker final gegen Prompt-Text prüfen.
+- **⏳/❓ offen:** siehe [open-points.md](open-points.md) Abschnitt 2026-10-30.
 - **Rules für den Bau:** Paul committet selbst · Core-Baseline **1424** · `lintDocsAndTests` je
-  Inkrement, UC-Anker bleiben · keine Tool-Call-Id-Buchführung (Decision 6) · `AgentsTool` =
-  Paul WIP, out of scope (`AgentsTool.java:126,136,193,195` Virtual-Thread-Emission beobachtet).
-- **SOLL:** ADR-0078 (D1–D6, Accepted) + ADR-0079 (Namen); `aifactory/docs/chat.md` (R-WP-4,
-  UC-WP-39/40 ✅ + ⏳ Fehler-Fall), `aifactory-architektur.md` und AF-ADR-002 nachgezogen.
+  Inkrement, UC-Anker bleiben · keine Tool-Call-Id-Buchführung (ADR-0078 Decision 6) ·
+  `AgentsTool` = Paul WIP, out of scope (`AgentsTool.java:126,136,193,195` Virtual-Thread-Emission).
+- **SOLL:** ADR-0078 (D1–D6, Accepted, 2026-10-30 angepasst) + ADR-0079 (Namen); `aifactory/docs/chat.md`
+  (R-WP-4, UC-WP-39/40 ✅ + ⏳ Fehler-Fall), `aifactory-architektur.md`, AF-ADR-002 nachgezogen.
 
 ## Danach
 
