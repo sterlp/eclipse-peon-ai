@@ -134,73 +134,6 @@ class TeamInternalsTest {
         registry.add("aifactory.home", home::toString);
     }
 
-    @Test
-    @Timeout(60)
-    // UC-WP-40
-    void onlyFinalAnswersFromTheTeam() throws Exception {
-        writeFactoryConfig("inc3f2-internals");
-        CreatedProject project = createProject("team-internals");
-
-        try (LiveStream stream = new LiveStream(project.id())) {
-            scriptDelegation(true);
-
-            assertThat(send(project.id(), "frag Dev nach einer Frucht").getStatusCode())
-                    .as("the composer's send stays a send — filtering changes nothing about the turn")
-                    .isEqualTo(HttpStatus.ACCEPTED);
-            stream.awaitEvent("done", 1);
-
-            List<String> toolResults = toolResultTexts();
-            assertThat(toolResults)
-                    .as("the member really worked: its own tool ran and its answer reached Jon — what the "
-                            + "wire does not show is something that happened, not something that never did")
-                    .anySatisfy(result -> assertThat(result).contains(MEMBER_COMMAND_MARKER))
-                    .anySatisfy(result -> assertThat(result).contains(MEMBER_ANSWER));
-
-            List<String> toolLines = stream.payloads("tool");
-            assertThat(String.join("|", stream.payloads("partial")))
-                    .as("no partial carries the member's thinking, its tool run or its answer (R-WP-4)")
-                    .doesNotContain(MEMBER_ANSWER)
-                    .doesNotContain(MEMBER_COMMAND_MARKER);
-            assertThat(String.join("|", toolLines))
-                    .as("no tool line of Jon's quotes the member's tool run or answer either (R-WP-4)")
-                    .doesNotContain(MEMBER_ANSWER)
-                    .doesNotContain(MEMBER_COMMAND_MARKER);
-            assertThat(stream.wireText())
-                    .as("the member's answer is not on the wire either — its line comes with the history, and"
-                            + " without it no channel would carry a member text at all (UC-WP-40)")
-                    .doesNotContain(MEMBER_ANSWER);
-            assertThat(stream.partialsBetween("Dev start:", "Dev done."))
-                    .as("while the member works, the wire is silent — its conversation with itself")
-                    .isZero();
-            assertThat(stream.answerText())
-                    .as("Jon's own answer still grows live, thinking included (UC-WP-7)")
-                    .isEqualTo(JON_ANSWER);
-
-            assertThat(toolLines)
-                    .as("the member's tool line is gone; Jon keeps his own two delegation lines")
-                    .hasSize(2);
-            assertThat(toolLines.get(0)).contains("Dev start:").contains(MEMBER_PROMPT);
-            assertThat(toolLines.get(1)).contains("Dev done.");
-            assertThat(stream.eventNames())
-                    .as("the wire speaks exactly the three known names — a member line leaking under a"
-                            + " fourth name is red here, not merely unnamed")
-                    .containsOnly("partial", "tool", "done");
-            assertThat(stream.countOf("done"))
-                    .as("one turn is one done")
-                    .isEqualTo(1);
-            assertThat(stream.countOf("error")).isZero();
-        }
-
-        assertThat(messages(project.id()))
-                .as("the member's answer is a line of the history — its tool result, verbatim, under the"
-                        + " member's name; what the wire filters, the reading shows")
-                .filteredOn(line -> "Dev".equals(line.origin()))
-                .singleElement()
-                .satisfies(line -> assertThat(line.text())
-                        .startsWith(MEMBER_ANSWER + System.lineSeparator())
-                        .contains("Dev done."));
-    }
-
     /**
      * Two members of two different names in one {@code AiMessage} (UC-WP-40, UC-WP-39) — the case a
      * bookkeeping would break on. The monitor is told neither which delegation is running nor which
@@ -280,7 +213,7 @@ class TeamInternalsTest {
         CreatedProject project = createProject("member-done");
 
         try (LiveStream stream = new LiveStream(project.id())) {
-            scriptDelegation(false);
+            scriptDelegation();
             send(project.id(), "frag Dev nach einer Frucht");
             stream.awaitEvent("done", 1);
 
@@ -301,17 +234,11 @@ class TeamInternalsTest {
     // ------------------------------------------------------------------
 
     /**
-     * Jon calls {@code askDev}, the member answers — optionally after a tool call of its own, which is
-     * what produces a member tool line to be filtered — then Jon answers the user. All of it goes to the
-     * same double: the factory's file carries no {@code llm.agent.*} key, so every agent runs on the
-     * base model.
+     * Jon calls {@code askDev}, the member answers, then Jon answers the user. All of it goes to the same
+     * double: the factory's file carries no {@code llm.agent.*} key, so every agent runs on the base model.
      */
-    private void scriptDelegation(boolean memberUsesATool) {
+    private void scriptDelegation() {
         model.queueResponse(toolCall("call_dev", "askDev", "{\"prompt\":\"" + MEMBER_PROMPT + "\"}"));
-        if (memberUsesATool) {
-            model.queueResponse(toolCall("call_shell", "shellRunCommand",
-                    "{\"command\":\"echo " + MEMBER_COMMAND_MARKER + "\",\"timeout\":20}"));
-        }
         model.queueResponse(MEMBER_ANSWER);
         model.queueResponse(JON_ANSWER);
     }

@@ -126,17 +126,6 @@ class OwnerMonitorTest {
         assertThat(capture.chunks).extracting(OnPartialAiResponse::origin).containsOnlyNulls();
     }
 
-    @Test
-    void aLinesOwnerIsNeverInvented() {
-        var unstamped = new SimpleMessage(Type.AI, "shared line");
-
-        new OwnerMonitor("Dev", capture).onChatResponse(unstamped);
-
-        // THEN — the stamped line is a copy, the producer's own instance keeps its value
-        assertThat(capture.lines).singleElement().extracting(SimpleMessage::origin).isEqualTo("Dev");
-        assertThat(unstamped.origin()).isNull();
-    }
-
     /** Records every channel apart, so a channel lost in the wrapper cannot hide as another one. */
     private static class Capture implements AiMonitor {
         final List<SimpleMessage> lines = new ArrayList<>();

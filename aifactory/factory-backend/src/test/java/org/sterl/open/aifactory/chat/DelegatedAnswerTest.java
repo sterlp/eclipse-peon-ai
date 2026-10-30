@@ -158,12 +158,19 @@ class DelegatedAnswerTest {
             assertThat(stream.wireText())
                     .as("its tool line stays invisible: only its result becomes a line (R-WP-4)")
                     .doesNotContain(MEMBER_COMMAND_MARKER);
+            assertThat(stream.payloads("tool").get(0))
+                    .as("of Jon's own two delegation lines, the start line names the member's task")
+                    .contains(MEMBER_PROMPT);
             assertThat(toolResultTexts())
                     .as("the member really ran its own tool — what is filtered did happen")
                     .anySatisfy(result -> assertThat(result).contains(MEMBER_COMMAND_MARKER));
             assertThat(stream.answerText())
                     .as("Jon's own answer still grows live on the same wire")
                     .isEqualTo(JON_ANSWER);
+            assertThat(stream.eventNames())
+                    .as("the wire speaks exactly the three known names — a member line leaking under a"
+                            + " fourth name is red here, not merely unnamed")
+                    .containsOnly("partial", "tool", "done");
             assertThat(stream.countOf("done"))
                     .as("and it stays one done for the whole turn — the team's line is not a second answer")
                     .isEqualTo(1);
@@ -301,36 +308,6 @@ class DelegatedAnswerTest {
         assertThat(history.get(1).text())
                 .as("and it says so in the member's own words, not in a reworded form")
                 .startsWith("Dev returned no result");
-    }
-
-    @Test
-    @Timeout(60)
-    // UC-WP-39
-    void userAndJonLinesCarryTheirOrigin() throws Exception {
-        writeFactoryConfig("inc3f3-origins");
-        CreatedProject project = createProject("delegated-origins");
-
-        try (LiveStream stream = new LiveStream(project.id())) {
-            scriptDelegation();
-            send(project.id(), QUESTION);
-            stream.awaitEvent("done", 1);
-        }
-
-        List<ChatMessageDto> history = messages(project.id());
-        assertThat(history)
-                .as("every line states its author (R-WP-4, R-WP-17): the typed input names nobody, the"
-                        + " member's result names the member, Jon's answer names Jon")
-                .extracting(ChatMessageDto::role, ChatMessageDto::origin)
-                .containsExactly(
-                        tuple("user", null),
-                        tuple("jon", "Dev"),
-                        tuple("jon", AiPoAgent.NAME));
-        assertThat(history.get(0).origin())
-                .as("the input keeps no name — not a system, not an invented user")
-                .isNull();
-        assertThat(history.get(1).text())
-                .as("and the member's line is its tool result, not a summary of it")
-                .startsWith(MEMBER_ANSWER + System.lineSeparator());
     }
 
     // ------------------------------------------------------------------
@@ -501,6 +478,11 @@ class DelegatedAnswerTest {
 
         int countOf(String name) {
             return (int) names.stream().filter(name::equals).count();
+        }
+
+        /** Every {@code event:} name seen, in arrival order — duplicates kept, the name set is asserted. */
+        List<String> eventNames() {
+            return List.copyOf(names);
         }
 
         List<String> payloads(String name) {

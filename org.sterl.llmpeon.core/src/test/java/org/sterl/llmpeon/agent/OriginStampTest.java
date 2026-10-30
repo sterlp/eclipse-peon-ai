@@ -75,6 +75,13 @@ class OriginStampTest {
                 .as("origin of %s", m.message()).isEqualTo("Dev"));
     }
 
+    /**
+     * Not a repeat of {@link #callEntryLinesCarryTheCallingAgent()}: here the turn runs <b>inside</b>
+     * another agent's frame — {@code AbstractAgent} wraps whatever monitor it was handed in its own
+     * {@link OwnerMonitor} ({@code AbstractAgent:244}), so this is the only agent-level case showing a
+     * member stamps its lines within Jon's monitor and is not renamed by it. The fill-if-null rule itself
+     * is pinned by {@code OwnerMonitorTest#stampsOnlyUnstampedLines}.
+     */
     @Test
     void delegatedTurnLinesCarryTheMemberName() {
         // GIVEN — a member turn running on the monitor Jon passes down (its own wrapper is outside)
