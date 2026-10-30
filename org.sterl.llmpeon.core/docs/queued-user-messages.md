@@ -164,23 +164,6 @@ View-Verdrahtung (`AIChatView.resolveOutgoingMessage`) ist compile-grün, aber *
 getestet — Smoke M1–M6 offen (Paul).
 
 ### 9. Queued-At Disclosure — Uhrzeit in onTool + Marker ✅ done (2026-09-23 specified, gebaut)
-### 10. Turn-Slot Handover — Claim/Release atomar zur Queue ✅ done (2026-10-30 gebaut, 2026-10-31 dokumentiert)
-- **Rule:** Der Turn-Slot (`working`) wird nur unter dem Monitor der `UserMessageQueue` genommen oder
-  freigegeben. **Claim und Enqueue sind EIN kritischer Abschnitt** (`claimTurnSlotOrQueue`): ein Call
-  findet entweder einen freien Slot und läuft selbst, oder er joint nachweisbar einem Turn, der die
-  Queue noch garantiert ansieht — der Release ist atomar mit dem letzten Queue-Blick
-  (`nextQueuedEntryOrReleaseSlot`). Ein Input kann dadurch nie zwischen letztem `pollNext()` und
-  Release stranden (kein `done`, sichtbares Warten — P1-Fix 2026-10-30).
-```
-GIVEN ein Turn hält den Slot
-WHEN eine Eingabe im Release-Fenster eintrifft (nach dem letzten pollNext, vor dem Release)
-THEN der laufende Turn beantwortet sie noch (Hand-over), der späte Caller startet keinen eigenen Turn
-→ AbstractAgentQueueReleaseRaceTest#inputArrivingWhileTheTurnReleasesItsSlotIsAnsweredByThatTurn
-```
-- **Grenze (bewusst):** die Claim-Seite (CAS-fail → Enqueue atomar gegen Release) ist dieselbe
-  Monitor-Paar-Invariante, aber per Rendezvous nicht deterministisch erzeugbar — sie lebt als
-  Code-Invariante + dieser Regel, nicht als eigener Mutations-Test. Wer den Queue-Monitor ersetzt
-  (privater Lock, ConcurrentQueue), muss die Invariante neu ableiten und den Race-Test neu fahren.
 
 Jeder Queue-Eintrag trägt einen **queuedAt**-Zeitstempel (Zeitpunkt des Queueings). Beim Konsum zeigt
 **beides** die Uhrzeit — onTool-Zeile im Format `(queued HH:mm)`, LLM-Marker im Format `(HH:mm)` (2026-09-26, Paul):
@@ -207,6 +190,24 @@ WHEN konsumiert THEN die Zeit des ersten Eintrags steht im Präfix
 `AbstractAgentTest.callNullInitialWithQueuedProcessesQueueAsPayload` (Follow-up-Marker mit fixierter
 14:32-Clock und `[Queued Message] (14:32):`-Assert). Die onTool-Zeile („Reading queued User message:
 … (queued 14:32)") ist am IST vorhanden (`AbstractAgent:262-263`), aber nicht separat assertiert.
+
+### 10. Turn-Slot Handover — Claim/Release atomar zur Queue ✅ done (2026-10-30)
+- **Rule:** Der Turn-Slot (`working`) wird nur unter dem Monitor der `UserMessageQueue` genommen oder
+  freigegeben. **Claim und Enqueue sind EIN kritischer Abschnitt** (`claimTurnSlotOrQueue`): ein Call
+  findet entweder einen freien Slot und läuft selbst, oder er joint nachweisbar einem Turn, der die
+  Queue noch garantiert ansieht — der Release ist atomar mit dem letzten Queue-Blick
+  (`nextQueuedEntryOrReleaseSlot`). Ein Input kann dadurch nie zwischen letztem `pollNext()` und
+  Release stranden (kein `done`, sichtbares Warten — P1-Fix 2026-10-30).
+```
+GIVEN ein Turn hält den Slot
+WHEN eine Eingabe im Release-Fenster eintrifft (nach dem letzten pollNext, vor dem Release)
+THEN der laufende Turn beantwortet sie noch (Hand-over), der späte Caller startet keinen eigenen Turn
+→ AbstractAgentQueueReleaseRaceTest#inputArrivingWhileTheTurnReleasesItsSlotIsAnsweredByThatTurn
+```
+- **Grenze (bewusst):** die Claim-Seite (CAS-fail → Enqueue atomar gegen Release) ist dieselbe
+  Monitor-Paar-Invariante, aber per Rendezvous nicht deterministisch erzeugbar — sie lebt als
+  Code-Invariante + dieser Regel, nicht als eigener Mutations-Test. Wer den Queue-Monitor ersetzt
+  (privater Lock, ConcurrentQueue), muss die Invariante neu ableiten und den Race-Test neu fahren.
 
 ## Data Flow
 ```
