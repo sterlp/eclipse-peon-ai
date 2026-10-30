@@ -15,7 +15,6 @@ import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.context.AgentsMdContextItem;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.EclipseFileContextItem;
-import org.sterl.llmpeon.context.StaticContextItem;
 import org.sterl.llmpeon.parts.tools.AskUserTool;
 import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
@@ -39,13 +38,6 @@ public class BuildPoAgentComponent {
     private final ToolService sharedToolService;
     /** Directory holding Jon's {@code <agent>-history.jsonl} directly (ADR-0041 R2); null = RAM-only. */
     private final Path historyStateDir;
-    /**
-     * Fallback static context (env info only) handed to the slaves in {@link #build()}. In fully wired
-     * operation {@code PeonAiService.initStaticContext()} overrides it with the same Env-only list
-     * Jon's static context is set to (memory rides dynamically per turn, ADR-0032 Rev); this list only
-     * matters for headless builds without that wiring.
-     */
-    private final List<ContextItem> staticContent = List.of(new StaticContextItem());
 
     public BuildPoAgentComponent(ConfiguredChatModel configuredModel,
             Supplier<IProject> projectRef,
@@ -94,24 +86,18 @@ public class BuildPoAgentComponent {
                 return super.classFilter().and(noPrivilegedTools);
             }
         };
-        planSlave.setStaticContext(ContextItem.newList(staticContent,
-                ContextItem.of("Your name is " + AiPlanAgent.NAME + ".")));
         
         var reviewSlave = new AiReviewAgent(configuredModel, sharedToolService) {
             @Override protected Predicate<SmartToolExecutor> classFilter() {
                 return super.classFilter().and(noPrivilegedTools);
             }
         };
-        reviewSlave.setStaticContext(ContextItem.newList(staticContent,
-                ContextItem.of("Your name is " + AiReviewAgent.NAME + ".")));
 
         var devSlave = new AiDevAgent(configuredModel, sharedToolService) {
             @Override protected Predicate<SmartToolExecutor> classFilter() {
                 return super.classFilter().and(noPrivilegedTools);
             }
         };
-        devSlave.setStaticContext(ContextItem.newList(staticContent,
-                ContextItem.of("Your name is " + AiDevAgent.NAME + ".")));
 
         var planMember = new NamedAgent(AiPlanAgent.NAME, planSlave);
         var reviewMember = new NamedAgent(AiReviewAgent.NAME, reviewSlave);
