@@ -10,12 +10,13 @@ import org.sterl.llmpeon.tool.model.SimpleMessage;
  * queue drain re-uses the agent's monitor, so a per-turn monitor would lose the streaming events of the
  * second input.
  *
- * <p><b>What reaches the browser</b> (R-WP-4): the core says <em>who</em> spoke, this class decides who
- * is <em>shown</em> — the conversation's own agent, plus the lines no agent claimed. A team member's
- * thinking, tool lines and half answers are its conversation with itself and are dropped here, while
- * the delegation's own trace lines stay because Jon's tool produced them. The rule is policy and
- * therefore lives in the factory, not in the core: the Eclipse plugin hands the same callback stream to
- * its views and goes on showing every member line.</p>
+ * <p><b>What reaches the browser</b> (R-WP-4): the core stamps every callback with the agent that produced
+ * it, and this class decides who is <em>shown</em> — the lines stamped with the conversation's own agent,
+ * plus the lines carrying no stamp. A team member's thinking, tool lines and half answers are its
+ * conversation with itself and are dropped here <b>by their stamp</b>, while the delegation's own trace
+ * lines stay because Jon's tool emitted them under Jon's name. The rule is policy and therefore lives in
+ * the factory, not in the core: the Eclipse plugin hands the same callback stream to its views and goes on
+ * showing every member line.</p>
  *
  * <p><b>The member's final answer is not a live line.</b> It has no callback of its own — it is the
  * result of Jon's delegation tool, and the browser reads it as a history line when {@code done} makes it
@@ -47,7 +48,7 @@ class SseTurnMonitor implements AiMonitor {
 
     @Override
     public void onStreamingChunk(OnPartialAiResponse chunk) {
-        if (!isTheConversation(chunk.origin())) {
+        if (!isJon(chunk.origin())) {
             return;
         }
         switch (chunk.type()) {
@@ -61,7 +62,7 @@ class SseTurnMonitor implements AiMonitor {
 
     @Override
     public void onChatResponse(SimpleMessage message) {
-        if (!isTheConversation(message.origin())) {
+        if (!isJon(message.origin())) {
             return;
         }
         if (message.role() == SimpleMessage.Type.TOOL || message.role() == SimpleMessage.Type.PROBLEM) {
@@ -70,10 +71,16 @@ class SseTurnMonitor implements AiMonitor {
     }
 
     /**
-     * Jon's lines and the lines no agent produced belong to the conversation. An origin that is not his
-     * is never shown as one of them — neither a member's nor a stranger's.
+     * The stamp is the whole decision: shown is what the conversation's own agent said, and an origin that
+     * is not his never becomes one of his lines — neither a member's nor a stranger's. No book over open
+     * delegations, no tool-call id, nothing remembered from the line before (ADR-0078 Decision 6), so two
+     * members delegating in one {@code AiMessage} cannot be told apart by this class and do not have to be.
+     *
+     * <p>An unstamped line stays visible instead of vanishing: it names no author, so showing it attributes
+     * nothing, while dropping it would hide a fact the user should have seen (R-WP-4). Every line of an
+     * agent turn carries its stamp, so this branch is the honest fallback and not the rule.</p>
      */
-    private boolean isTheConversation(String origin) {
+    private boolean isJon(String origin) {
         return origin == null || names.isJon(origin);
     }
 }

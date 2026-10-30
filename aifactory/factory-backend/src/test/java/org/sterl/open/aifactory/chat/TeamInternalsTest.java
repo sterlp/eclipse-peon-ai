@@ -1,6 +1,7 @@
 package org.sterl.open.aifactory.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import java.io.IOException;
 import java.net.URI;
@@ -49,6 +50,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
+import org.sterl.llmpeon.poagent.AiPoAgent;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
 import org.sterl.open.aifactory.project.FakeGitConfig;
@@ -84,6 +86,10 @@ class TeamInternalsTest {
     private static final String MEMBER_ANSWER = "MITGLIEDS-ANTWORT: Birne";
     /** Jon's own follow-up answer — it has to arrive live, chunk by chunk. */
     private static final String JON_ANSWER = "JONS-FOLGE-ANTWORT: die Birne";
+    /** The second member of one turn, of a <b>different</b> name — a filter knowing one member is red here. */
+    private static final String PLAN_PROMPT = "PLAN-MITGLIEDS-AUFGABE: nenne genau einen Wein";
+    private static final String PLAN_COMMAND_MARKER = "plan-mitglieds-kommando";
+    private static final String PLAN_ANSWER = "PLAN-MITGLIEDS-ANTWORT: Riesling";
 
     /** HTTP/1.1 on purpose — the SSE edge is what the browser talks (see {@code ChatTurnTest}). */
     private static final HttpClient STREAMS = HttpClient.newBuilder()
@@ -195,6 +201,78 @@ class TeamInternalsTest {
                         .contains("Dev done."));
     }
 
+    /**
+     * Two members of two different names in one {@code AiMessage} (UC-WP-40, UC-WP-39) — the case a
+     * bookkeeping would break on. The monitor is told neither which delegation is running nor which
+     * tool-call belongs to which member; every line of both members carries its own stamp, and that stamp
+     * alone has to drop it. Jon's own four trace lines are stamped too, so a filter that dropped
+     * <em>everything</em> stamped would be red on them.
+     */
+    @Test
+    @Timeout(60)
+    // UC-WP-40
+    void memberLinesAreDroppedByTheirStamp() throws Exception {
+        writeFactoryConfig("inc4-two-members");
+        CreatedProject project = createProject("two-members");
+
+        try (LiveStream stream = new LiveStream(project.id())) {
+            scriptTwoMembersOfDifferentName();
+
+            assertThat(send(project.id(), "frag Plan und Dev nach je einer Speise").getStatusCode())
+                    .isEqualTo(HttpStatus.ACCEPTED);
+            stream.awaitEvent("done", 1);
+
+            List<String> toolResults = toolResultTexts();
+            assertThat(toolResults)
+                    .as("both members really worked — each ran its own command and handed an answer back")
+                    .anySatisfy(result -> assertThat(result).contains(PLAN_COMMAND_MARKER))
+                    .anySatisfy(result -> assertThat(result).contains(PLAN_ANSWER))
+                    .anySatisfy(result -> assertThat(result).contains(MEMBER_COMMAND_MARKER))
+                    .anySatisfy(result -> assertThat(result).contains(MEMBER_ANSWER));
+
+            assertThat(stream.wireText())
+                    .as("neither member's command, thinking or answer is on the wire — each was dropped by"
+                            + " its own stamp, and this class knows no delegation and no tool-call id")
+                    .doesNotContain(PLAN_COMMAND_MARKER)
+                    .doesNotContain(PLAN_ANSWER)
+                    .doesNotContain(MEMBER_COMMAND_MARKER)
+                    .doesNotContain(MEMBER_ANSWER);
+
+            List<String> toolLines = stream.payloads("tool");
+            assertThat(toolLines)
+                    .as("Jon's own trace of both delegations stays, in the order he ran them")
+                    .hasSize(4);
+            assertThat(toolLines.get(0)).contains("Plan start:").contains(PLAN_PROMPT);
+            assertThat(toolLines.get(1)).contains("Plan done.");
+            assertThat(toolLines.get(2)).contains("Dev start:").contains(MEMBER_PROMPT);
+            assertThat(toolLines.get(3)).contains("Dev done.");
+            assertThat(stream.partialsBetween("Plan start:", "Plan done."))
+                    .as("the first member thought to itself")
+                    .isZero();
+            assertThat(stream.partialsBetween("Dev start:", "Dev done."))
+                    .as("and so did the second — a second member changes nothing about the filter")
+                    .isZero();
+            assertThat(stream.answerText())
+                    .as("Jon's answer over two members stays one answer, live (UC-WP-7)")
+                    .isEqualTo(JON_ANSWER);
+            assertThat(stream.eventNames())
+                    .as("still exactly the three known names — no member line under a fourth")
+                    .containsOnly("partial", "tool", "done");
+            assertThat(stream.countOf("done")).as("two members, one turn, one done").isEqualTo(1);
+            assertThat(stream.countOf("error")).isZero();
+        }
+
+        assertThat(messages(project.id()))
+                .as("the history names each member its own — read off the tool that produced the result,"
+                        + " with no book over which delegation was which (UC-WP-39)")
+                .extracting(ChatMessageDto::role, ChatMessageDto::origin)
+                .containsExactly(
+                        tuple("user", null),
+                        tuple("jon", "Plan"),
+                        tuple("jon", "Dev"),
+                        tuple("jon", AiPoAgent.NAME));
+    }
+
     @Test
     @Timeout(60)
     void memberCompletionSendsNoDone() throws Exception {
@@ -236,6 +314,29 @@ class TeamInternalsTest {
         }
         model.queueResponse(MEMBER_ANSWER);
         model.queueResponse(JON_ANSWER);
+    }
+
+    /**
+     * One {@code AiMessage} carrying two delegations — Plan first, then Dev, each with a shell run of its
+     * own — and Jon's answer last. Every agent runs on the same double, so the queue order is the order
+     * the core executes the two tool requests.
+     */
+    private void scriptTwoMembersOfDifferentName() {
+        model.queueResponse(new AiMessage(null, List.of(
+                request("call_plan", "talkPlan", PLAN_PROMPT),
+                request("call_dev", "askDev", MEMBER_PROMPT))));
+        model.queueResponse(toolCall("call_plan_shell", "shellRunCommand",
+                "{\"command\":\"echo " + PLAN_COMMAND_MARKER + "\",\"timeout\":20}"));
+        model.queueResponse(PLAN_ANSWER);
+        model.queueResponse(toolCall("call_dev_shell", "shellRunCommand",
+                "{\"command\":\"echo " + MEMBER_COMMAND_MARKER + "\",\"timeout\":20}"));
+        model.queueResponse(MEMBER_ANSWER);
+        model.queueResponse(JON_ANSWER);
+    }
+
+    private static ToolExecutionRequest request(String id, String toolName, String prompt) {
+        return ToolExecutionRequest.builder().id(id).name(toolName)
+                .arguments("{\"prompt\":\"" + prompt + "\"}").build();
     }
 
     private static AiMessage toolCall(String id, String toolName, String arguments) {
