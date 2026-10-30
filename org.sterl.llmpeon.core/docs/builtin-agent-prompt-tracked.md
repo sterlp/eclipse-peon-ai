@@ -42,9 +42,13 @@ andere Agenten aufrufbar und wandert damit ins generische Agent-Tool-System
 | `scaffold` | Scaffold | – | heute ohne Config-Slot |
 | `paco` | Paco | – | fachlicher PO; Prompt im Core, aktiv nur im Web ([aifactory/docs/paco.md](../../aifactory/docs/paco.md)) |
 
-Die Team-Namen **Da Thinka · Da Mek · Da Dok · Da Sniffa entfallen in V2** — nur Jon behält seinen
-Namen (Persönlichkeit). Folge: Prompts (`po.md`, Delegate-Tool-Beschreibungen) und Web-Chat-Absender
-(R-WP-4) zeigen dann die Anzeigenamen.
+**Vorgezogen (Paul 2026-10-30, V1 — [ADR-0079](../../docs/adr/0079-display-names-without-ork-names.md)):**
+die Team-Namen **Da Thinka · Da Mek · Da Dok · Da Sniffa entfallen jetzt**, nicht erst in V2 — die
+Anzeigenamen sind Jon · Plan · Dev · Review, die Sub-Loop-Stempel `Search`/`Compact`. Nur Jon behält
+seinen Namen (Persönlichkeit). **Config-Ids und `llm.agent.*`-Keys bleiben bis V2 unverändert.**
+Folge: Prompts (`po.md`, Delegate-Tool-Beschreibungen) und Web-Chat-Absender (R-WP-4) zeigen die
+Anzeigenamen. **History-Dateinamen** (`<getName()>-history.jsonl`) folgen dem Namen — bewusster
+Clean Break (ADR-0079), alte `Peon-*-history.jsonl` lassen sich bei Bedarf umbenennen.
 
 ## Abgrenzung
 
