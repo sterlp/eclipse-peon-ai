@@ -30,7 +30,7 @@ import org.sterl.llmpeon.agent.AiAgent;
  * <li>Patterns are applied top-to-bottom: agents matching an earlier line appear first.
  * <li>Within a pattern group agents are sorted alphabetically; unmatched agents are appended alphabetically at the end.
  * <li>When the file yields no patterns, {@link #DEFAULT_PATTERNS} - parsed from {@link #DEFAULT_ORDER_CONTENT} - is used instead, so
- * "Peon-PO first" has a single source of truth: the default file content, not a type check against a concrete agent class.
+ * "Jon first" has a single source of truth: the default file content, not a type check against a concrete agent class.
  * </ul>
  */
 @Slf4j
@@ -42,8 +42,8 @@ public class AgentOrder {
             # Patterns are applied top-to-bottom: agents matching an earlier line appear first.
             # Within each pattern group, agents are sorted alphabetically.
             # Unmatched agents are appended alphabetically at the end.
-            # Falls back to Peon-PO first, then alphabetical, when no valid patterns exist.
-            ^Peon-PO$
+            # Falls back to Jon first, then alphabetical, when no valid patterns exist.
+            ^Jon$
             """;
 
     static final List<Pattern> DEFAULT_PATTERNS = parse(DEFAULT_ORDER_CONTENT.lines().toList());

@@ -22,7 +22,7 @@ import dev.langchain4j.agent.tool.Tool;
 
 /**
  * Jon's delegate tools. Each drives one of his own, RAM-only slaves — a
- * Peon-Plan ("Da Thinka"), a Peon-Review ("Da Dok") and a Peon-Dev ("Da Mek")
+ * Plan, a Review and a Dev member
  * instance — for a single turn and returns the slave's reply verbatim as the
  * tool result. Verbs per slave: a direct question ({@code talkPlan} /
  * {@code askDev}), the real work ({@code planWithPlanAgent} writes the plan,
@@ -92,9 +92,9 @@ public class PoDelegateTool extends AbstractTool {
      */
     private final IntSupplier autoCompactAfter;
 
-    private final NamedAgent plan; // "Da Thinka" — the Peon-Plan slave
-    private final NamedAgent review; // "Da Dok" — the Peon-Review slave
-    private final NamedAgent dev; // "Da Mek" — the Peon-Dev slave
+    private final NamedAgent plan; // the Plan slave
+    private final NamedAgent review; // the Review slave
+    private final NamedAgent dev; // the Dev slave
 
     /**
      * Sticky plan path shared by the Dev and Review slaves — survives across
@@ -177,7 +177,7 @@ public class PoDelegateTool extends AbstractTool {
         if (StringUtil.hasValue(planPath)) this.planPath = planPath.trim(); // sticky across calls
 
         var orders = new LinkedList<>(ordersFor.apply(dev));
-        // Hand Da Mek the path AND the build discipline (task-by-task, green
+        // Hand Dev the path AND the build discipline (task-by-task, green
         // gate, compactSession) as its way of working — never the whole plan; the file is the durable handover.
         if (StringUtil.hasValue(this.planPath)) {
             // the plan itself is injected by the agentOrders
@@ -215,7 +215,7 @@ public class PoDelegateTool extends AbstractTool {
     }
 
     /**
-     * The Plan slave (Da Thinka), an eager shared instance also exposed via the
+     * The Plan slave, an eager shared instance also exposed via the
      * PO team.
      */
     public AiAgent getPlanSlave() {
@@ -223,7 +223,7 @@ public class PoDelegateTool extends AbstractTool {
     }
 
     /**
-     * The Review slave (Da Dok), an eager shared instance also exposed via the
+     * The Review slave, an eager shared instance also exposed via the
      * PO team.
      */
     public AiAgent getReviewSlave() {
@@ -231,7 +231,7 @@ public class PoDelegateTool extends AbstractTool {
     }
 
     /**
-     * The Dev slave (Da Mek), an eager shared instance also exposed via the PO
+     * The Dev slave, an eager shared instance also exposed via the PO
      * team.
      */
     public AiAgent getDevSlave() {

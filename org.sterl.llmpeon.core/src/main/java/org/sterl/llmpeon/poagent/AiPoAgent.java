@@ -23,7 +23,7 @@ import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.WriteValidator;
 
 /**
- * Peon-PO ("Jon") — a docs-owning agent. Reads freely, writes only under docs/ (via
+ * Jon — a docs-owning agent. Reads freely, writes only under docs/ (via
  * {@link WriteValidator#DOCS}). Unlike {@link AiPlanAgent} he keeps the edit tools (the validator, not
  * a tool filter, scopes him). Uses his own {@link AgentConfig} for provider/model/think.
  */
@@ -36,7 +36,7 @@ public class AiPoAgent extends AbstractAgent {
             questions rather than fewer. Never assume.
             """;
 
-    public static final String NAME = "Peon-PO";
+    public static final String NAME = "Jon";
     // ${docs}/${plan} placeholders resolved from PeonPaths so the paths live in one constant, not the prompt.
     private static final String BASE_PROMPT = PeonPaths.resolve(PromptLoader.loadWithDefault("po.md"));
     private static final String DOCS_PROMPT = PeonPaths.resolve(PromptLoader.loadWithDefault("doc-method.md"));
@@ -82,15 +82,14 @@ public class AiPoAgent extends AbstractAgent {
     }
 
     /**
-     * Jon's visible slaves for the header status widget (ADR-0025): <b>Da Boss</b> (Jon himself) first,
-     * then his ork slaves in lifecycle order <b>Da Thinka</b> (Plan), <b>Da Mek</b> (Dev) and
-     * <b>Da Dok</b> (Review).
+     * Jon's visible team for the header status widget (ADR-0025): <b>Jon</b> himself first, then his
+     * team members in lifecycle order <b>Plan</b>, <b>Dev</b> and <b>Review</b> (ADR-0079).
      * Always the same instances
      * {@code PoDelegateTool} drives, so the widget reads their live {@code isWorking()}/context.
      */
     public List<NamedAgent> getTeam() {
         var team = new ArrayList<NamedAgent>(this.slaves.size() + 1);
-        team.add(new NamedAgent("Da Boss", this));
+        team.add(new NamedAgent("Jon", this));
         team.addAll(this.slaves);
         return List.copyOf(team);
     }

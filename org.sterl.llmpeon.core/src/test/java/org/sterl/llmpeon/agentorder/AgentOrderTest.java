@@ -71,7 +71,7 @@ class AgentOrderTest extends AbstractMemoryFileTest {
         // THEN
         Path orderFile = dir.resolve(AgentOrder.AGENT_ORDER_FILE);
         assertThat(orderFile).exists();
-        assertThat(Files.readString(orderFile)).contains("^Peon-PO$");
+        assertThat(Files.readString(orderFile)).contains("^Jon$");
     }
 
     @Test
@@ -90,10 +90,10 @@ class AgentOrderTest extends AbstractMemoryFileTest {
     @Test
     void sortFallsBackToDefaultPatternsWhenNoneLoaded() {
         // GIVEN - a fresh AgentOrder, load() never called
-        List<AiAgent> agents = new AgentOrder().sort(List.of(agent("Zeta-Agent"), agent("Peon-PO"), agent("Alpha-Agent")));
+        List<AiAgent> agents = new AgentOrder().sort(List.of(agent("Zeta-Agent"), agent(AiPoAgent.NAME), agent("Alpha-Agent")));
 
         // THEN - without DEFAULT_PATTERNS this would fall through to plain alphabetical
-        assertThat(agents).extracting(AiAgent::getName).containsExactly("Peon-PO", "Alpha-Agent", "Zeta-Agent");
+        assertThat(agents).extracting(AiAgent::getName).containsExactly(AiPoAgent.NAME, "Alpha-Agent", "Zeta-Agent");
     }
 
     @Test
@@ -103,13 +103,13 @@ class AgentOrderTest extends AbstractMemoryFileTest {
                 # Only comments
                 # Nothing here
                 """);
-        List<AiAgent> agents = List.of(agent("Zeta-Agent"), agent("Peon-PO"), agent("Alpha-Agent"));
+        List<AiAgent> agents = List.of(agent("Zeta-Agent"), agent(AiPoAgent.NAME), agent("Alpha-Agent"));
 
         // WHEN
         List<AiAgent> sorted = subject.sort(agents);
 
         // THEN
-        assertThat(sorted).extracting(AiAgent::getName).containsExactly("Peon-PO", "Alpha-Agent", "Zeta-Agent");
+        assertThat(sorted).extracting(AiAgent::getName).containsExactly(AiPoAgent.NAME, "Alpha-Agent", "Zeta-Agent");
     }
 
     @Test
@@ -205,6 +205,7 @@ class AgentOrderTest extends AbstractMemoryFileTest {
         // WHEN - (none, static content)
         // THEN
         assertThat(AgentOrder.DEFAULT_ORDER_CONTENT).contains(AiPoAgent.NAME);
+        assertThat(AgentOrder.DEFAULT_ORDER_CONTENT).contains("^Jon$");
     }
 
     /**

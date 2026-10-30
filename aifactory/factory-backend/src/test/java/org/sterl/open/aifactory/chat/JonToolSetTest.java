@@ -106,9 +106,9 @@ class JonToolSetTest {
     private JonToolSet toolSetWithTeam(Path root) {
         JonToolSet toolSet = JonToolSet.forProject(root);
         ConfiguredChatModel model = new ConfiguredChatModel(LlmConfig.newOpenAi("test-model", "http://127.0.0.1:1/v1"));
-        NamedAgent plan = new NamedAgent("Da Thinka", new AiPlanAgent(model, toolSet.tools()));
-        NamedAgent review = new NamedAgent("Da Dok", new AiReviewAgent(model, toolSet.tools()));
-        NamedAgent dev = new NamedAgent("Da Mek", new AiDevAgent(model, toolSet.tools()));
+        NamedAgent plan = new NamedAgent("Plan", new AiPlanAgent(model, toolSet.tools()));
+        NamedAgent review = new NamedAgent("Review", new AiReviewAgent(model, toolSet.tools()));
+        NamedAgent dev = new NamedAgent("Dev", new AiDevAgent(model, toolSet.tools()));
         toolSet.addDelegateTool(plan, review, dev, () -> 80_000);
         return toolSet;
     }

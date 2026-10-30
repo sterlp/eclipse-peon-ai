@@ -16,7 +16,7 @@ class AgentNamesTest {
 
     /** The real table of a runtime, with the team names the factory gives its members. */
     private static AgentNames factoryTeam() {
-        return ProjectRuntime.authorTable("Da Thinka", "Da Mek", "Da Dok");
+        return ProjectRuntime.authorTable("Plan", "Dev", "Review");
     }
 
     @Test
@@ -33,14 +33,14 @@ class AgentNamesTest {
     void toolNamesMapToTheMemberThatOwnsThem() {
         AgentNames names = factoryTeam();
 
-        assertThat(names.authorOf(PoDelegateTool.ASK_DEV)).isEqualTo("Da Mek");
-        assertThat(names.authorOf(PoDelegateTool.BUILD_WITH_DEV)).isEqualTo("Da Mek");
-        assertThat(names.authorOf(PoDelegateTool.TALK_PLAN)).isEqualTo("Da Thinka");
-        assertThat(names.authorOf(PoDelegateTool.PLAN_WITH_PLAN_AGENT)).isEqualTo("Da Thinka");
-        assertThat(names.authorOf(PoDelegateTool.REVIEW_PLAN_AGENT)).isEqualTo("Da Dok");
+        assertThat(names.authorOf(PoDelegateTool.ASK_DEV)).isEqualTo("Dev");
+        assertThat(names.authorOf(PoDelegateTool.BUILD_WITH_DEV)).isEqualTo("Dev");
+        assertThat(names.authorOf(PoDelegateTool.TALK_PLAN)).isEqualTo("Plan");
+        assertThat(names.authorOf(PoDelegateTool.PLAN_WITH_PLAN_AGENT)).isEqualTo("Plan");
+        assertThat(names.authorOf(PoDelegateTool.REVIEW_PLAN_AGENT)).isEqualTo("Review");
         assertThat(names.authorOf("searchAgent"))
                 .as("the search sub-loop has no seat in the team and still has an author")
-                .isEqualTo("Da Sniffa");
+                .isEqualTo("Search");
         assertThat(names.authorOf("diskWriteFile"))
                 .as("an ordinary tool is not a member speaking — no name, and therefore no line")
                 .isNull();
@@ -50,9 +50,9 @@ class AgentNamesTest {
     @Test
     void addingAMemberNeverRewritesTheTableItCameFrom() {
         AgentNames empty = AgentNames.empty();
-        AgentNames withMember = empty.withTool(PoDelegateTool.ASK_DEV, "Da Mek");
+        AgentNames withMember = empty.withTool(PoDelegateTool.ASK_DEV, "Dev");
 
-        assertThat(withMember.authorOf(PoDelegateTool.ASK_DEV)).isEqualTo("Da Mek");
+        assertThat(withMember.authorOf(PoDelegateTool.ASK_DEV)).isEqualTo("Dev");
         assertThat(empty.authorOf(PoDelegateTool.ASK_DEV))
                 .as("a runtime builds its table by chaining, so a chain step must not mutate its prefix")
                 .isNull();

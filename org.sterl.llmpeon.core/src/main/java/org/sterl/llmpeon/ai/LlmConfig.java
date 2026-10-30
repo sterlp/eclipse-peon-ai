@@ -245,7 +245,7 @@ public class LlmConfig {
                 .think(resolveThink(plan)).build();
     }
 
-    /** Review agent (Da Dok) — own slot; a blank model inherits the base model, not the plan slot (R7). */
+    /** Review agent — own slot; a blank model inherits the base model, not the plan slot (R7). */
     public AgentConfig reviewAgentConfig() {
         var review = modelConfigFor(AgentModelConfig.REVIEW);
         return agentBuilder(review).model(resolveModel(review.model()))

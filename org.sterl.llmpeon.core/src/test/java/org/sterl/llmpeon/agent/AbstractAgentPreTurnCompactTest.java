@@ -61,7 +61,7 @@ class AbstractAgentPreTurnCompactTest {
         // THEN — the compressor ran once …
         assertThat(compactCalls.get()).isEqualTo(1);
         // AND — R-CT-8: it shows as the uniform start/end pair, not a pre-turn wording
-        assertThat(toolLines).anyMatch(l -> l.startsWith("🗜 Peon-Dev" + CompactFeedback.END_MARKER));
+        assertThat(toolLines).anyMatch(l -> l.startsWith("🗜 Dev" + CompactFeedback.END_MARKER));
         assertThat(toolLines.stream().filter(l -> l.contains(CompactFeedback.END_MARKER)).toList()).hasSize(1);
         assertThat(toolLines).noneMatch(l -> l.contains("Pre-turn compact"));
         // AND — compacted BEFORE the provider call: the main-model request no longer carries the seed …

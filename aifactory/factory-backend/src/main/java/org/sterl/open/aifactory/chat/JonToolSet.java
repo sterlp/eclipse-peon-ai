@@ -37,7 +37,7 @@ public final class JonToolSet {
     }
 
     /**
-     * @param projectRoot the project's checkout — the write root of Jon and Da Mek, and the working
+     * @param projectRoot the project's checkout — the write root of Jon and Dev, and the working
      *                    directory of every path-based and shell tool
      */
     public static JonToolSet forProject(Path projectRoot) {
@@ -71,8 +71,8 @@ public final class JonToolSet {
     /**
      * Project checkout plus system temp — the two roots of R-WP-13. Read by the core at validate time
      * and again at prompt time, so a root is never cached and the agent's prompt cannot age behind the
-     * check. Handed to the agent through {@code getWriteValidator()} for Jon and Da Mek; Da Thinka and
-     * Da Dok keep their core validators (Q5).
+     * check. Handed to the agent through {@code getWriteValidator()} for Jon and Dev; Plan and
+     * Review keep their core validators (Q5).
      */
     public WriteValidator writeValidator() {
         return writeValidator;

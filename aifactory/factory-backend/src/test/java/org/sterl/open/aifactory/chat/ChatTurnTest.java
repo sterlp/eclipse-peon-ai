@@ -180,7 +180,7 @@ class ChatTurnTest {
             stream.awaitEvent("done", 2);
 
             Path marker = project.localPath().resolve("notes/marker.txt");
-            assertThat(marker).as("a write of Da Boss lands inside the checkout").exists();
+            assertThat(marker).as("a write of Jon lands inside the checkout").exists();
             assertThat(Files.readString(marker)).isEqualTo("fabrik-marker");
             assertThat(stream.payloads("tool"))
                     .as("the tool line names the absolute path, so the user sees where it went")
@@ -213,7 +213,7 @@ class ChatTurnTest {
 
             assertThat(MODEL.getLastRequestBody())
                     .as("both turns went to one and the same agent")
-                    .contains("Your name is Da Boss.")
+                    .contains("Your name is Jon.")
                     .contains("erste Frage")
                     .contains("zweite Frage");
             assertThat(MODEL.getCapturedTool("buildWithDev"))

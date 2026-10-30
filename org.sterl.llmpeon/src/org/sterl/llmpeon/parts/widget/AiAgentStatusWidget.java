@@ -21,12 +21,12 @@ import org.sterl.llmpeon.parts.shared.SwtUtil;
 
 /**
  * Header status of the active orchestrator's team: one row per {@link NamedAgent} it exposes (e.g.
- * {@code Da Boss (12k)} · {@code Da Thinka (0k)} · {@code Da Mek (0k)}). A green ball 🟢 marks the
- * working leaf — a busy slave glows, while Da Boss glows only when he works with nothing delegated
+ * {@code Jon (12k)} · {@code Plan (0k)} · {@code Dev (0k)}). A green ball 🟢 marks the
+ * working leaf — a busy slave glows, while Jon glows only when he works with nothing delegated
  * (the leaf rule lives in {@link AiAgentStatusModel}). A member that is compacting its context shows
  * 🟡 instead (R-CT-4). Each slave row carries a flat compact
- * button (tooltip {@code Compact Da X}); clicking it compresses exactly that agent via the
- * {@code onSlaveCompactClick} callback — Da Boss has none (the action bar owns his compact).
+ * button (tooltip {@code Compact <name>}); clicking it compresses exactly that agent via the
+ * {@code onSlaveCompactClick} callback — Jon has none (the action bar owns his compact).
  * An empty team (any non-PO agent) renders nothing.
  * <p>
  * Flat structure: label and button are DIRECT children of this composite — no per-member
@@ -68,7 +68,7 @@ public class AiAgentStatusWidget extends Composite {
         RowLayout layout = new RowLayout(SWT.HORIZONTAL);
         layout.pack = true;
         // this SWT generation defaults wrap=true — the roster must never grow a second line,
-        // overflow clips from the right (Da Dok drops first)
+        // overflow clips from the right (Review drops first)
         layout.wrap = false;
         layout.center = true;
         layout.spacing = 2; // small gap between a member's label and its compact button
@@ -131,7 +131,7 @@ public class AiAgentStatusWidget extends Composite {
 
             Image icon = null;
             Button button = null;
-            if (entry.slave()) { // Da Boss row: no button — the action bar owns his compact
+            if (entry.slave()) { // Jon's row: no button — the action bar owns his compact
                 icon = ImageUtil.loadImage(this,
                         EclipseUiUtil.DARK_THEME_NAME.equals(EclipseUiUtil.resolveTheme())
                                 ? ImageUtil.COMPACT_DARK : ImageUtil.COMPACT);

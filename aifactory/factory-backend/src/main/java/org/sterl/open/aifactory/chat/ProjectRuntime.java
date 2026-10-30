@@ -44,7 +44,7 @@ final class ProjectRuntime {
 
     /** The core's search sub-loop ({@code @Tool(name = "searchAgent")}) — a tool of the core, not a member of this team. */
     private static final String SEARCH_AGENT_TOOL = "searchAgent";
-    private static final String SEARCH_AGENT_DISPLAY_NAME = "Da Sniffa";
+    private static final String SEARCH_AGENT_DISPLAY_NAME = "Search";
 
     private final String projectId;
     private final Supplier<LlmConfig> configForTurn;
@@ -72,12 +72,12 @@ final class ProjectRuntime {
 
         JonToolSet toolSet = JonToolSet.forProject(projectRoot);
         WriteValidator writeValidator = toolSet.writeValidator();
-        NamedAgent plan = new NamedAgent("Da Thinka", new AiPlanAgent(model, toolSet.tools()));
-        NamedAgent review = new NamedAgent("Da Dok", new AiReviewAgent(model, toolSet.tools()));
-        NamedAgent dev = new NamedAgent("Da Mek", new AiDevAgent(model, toolSet.tools()) {
+        NamedAgent plan = new NamedAgent("Plan", new AiPlanAgent(model, toolSet.tools()));
+        NamedAgent review = new NamedAgent("Review", new AiReviewAgent(model, toolSet.tools()));
+        NamedAgent dev = new NamedAgent("Dev", new AiDevAgent(model, toolSet.tools()) {
             @Override
             public WriteValidator getWriteValidator() {
-                // UC-WP-8/9 name the team too, and the core default is ALLOW_ALL — Da Mek gets exactly
+                // UC-WP-8/9 name the team too, and the core default is ALLOW_ALL — Dev gets exactly
                 // Jon's two roots, from the same instance, so one rule has one source (R-WP-6)
                 return writeValidator;
             }
@@ -86,7 +86,7 @@ final class ProjectRuntime {
         // budget is a supplier so a changed config takes effect without a rebuild
         toolSet.addDelegateTool(plan, review, dev, () -> model.getConfig().getAutoCompactAfter());
 
-        // the team in the core's lifecycle order: Da Thinka, Da Mek, Da Dok (AiPoAgent.getTeam())
+        // the team in the core's lifecycle order: Plan, Dev, Review (AiPoAgent.getTeam())
         this.jon = new AiPoAgent(model, toolSet.tools(), stateDir, List.of(plan, dev, review)) {
             @Override
             public WriteValidator getWriteValidator() {
@@ -95,7 +95,7 @@ final class ProjectRuntime {
             }
         };
         // the slaves' own naming is the core's job, this one line is the factory's (D6)
-        this.jon.setStaticContext(List.of(ContextItem.of("Your name is Da Boss.")));
+        this.jon.setStaticContext(List.of(ContextItem.of("Your name is Jon.")));
 
         // keyed by the core's tool names, filled with the names this factory built, so the product names
         // a member in exactly one place (D1) and a history line needs no second record of its author

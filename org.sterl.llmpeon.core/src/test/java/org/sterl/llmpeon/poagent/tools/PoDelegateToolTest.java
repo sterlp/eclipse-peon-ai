@@ -486,7 +486,7 @@ class PoDelegateToolTest {
         // THEN — the 0.7 pre-delegation rule compacted the real slave (old history gone)
         assertThat(reply).contains("SLAVE REPLY");
         // AND — R-CT-8: it shows as the uniform start/end pair (no "auto-compact before delegation" line)
-        assertThat(toolLines).anyMatch(l -> l.startsWith(CompactFeedback.START_PREFIX + "Peon-Dev"));
+        assertThat(toolLines).anyMatch(l -> l.startsWith(CompactFeedback.START_PREFIX + "Dev"));
         assertThat(toolLines.stream().filter(l -> l.contains(CompactFeedback.END_MARKER)).toList()).hasSize(1);
         assertThat(toolLines).noneMatch(l -> l.contains("auto-compact before delegation"));
         assertThat(memory.containsUserMessage("seed 0")).isFalse();

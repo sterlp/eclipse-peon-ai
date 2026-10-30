@@ -259,8 +259,8 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         var askUser = svc.getSharedToolService().getExecutors().stream()
                 .filter(e -> e.getTool() instanceof AskUserTool).findFirst().orElseThrow();
 
-        // THEN Da Thinka / Da Dok / Da Mek still filter askUser out (R9 unchanged)
-        for (var slaveName : List.of("Da Thinka", "Da Dok", "Da Mek")) {
+        // THEN Plan / Review / Dev still filter askUser out (R9 unchanged)
+        for (var slaveName : List.of("Plan", "Review", "Dev")) {
             var slave = po.getTeam().stream().filter(n -> n.uiName().equals(slaveName))
                     .findFirst().orElseThrow().agent();
             assertFalse(slaveName + " must not get askUser (R9)", slave.isToolActive(askUser));
@@ -862,14 +862,14 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
 
     // --- Header status widget MVP (agenten-status-im-header-mvp-plan.md, ADR-0025) -------------
 
-    /** GIVEN Jon is active THEN getStatusAgents() is his team: Da Boss first, then Da Thinka, Da Mek, Da Dok. */
+    /** GIVEN Jon is active THEN getStatusAgents() is his team: Jon first, then Plan, Dev, Review. */
     @Test
     public void test_status_agents_are_jons_team_when_po_active() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         aiService.setActiveAgent(AiPoAgent.NAME);
 
         var uiNames = aiService.getStatusAgents().stream().map(n -> n.uiName()).toList();
-        assertEquals(List.of("Da Boss", "Da Thinka", "Da Mek", "Da Dok"), uiNames);
+        assertEquals(List.of("Jon", "Plan", "Dev", "Review"), uiNames);
     }
 
     /** GIVEN any other agent is active THEN the status widget shows nothing (empty list). */
@@ -1452,9 +1452,9 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
 
             // AND: the slaves get a COPY of Jon's context + exactly one name item (R-N1), leak-free
             var delegate = jon.getToolService().getTool(PoDelegateTool.class).orElseThrow();
-            assertSlaveStaticContext(delegate.getPlanSlave(), "Da Thinka", ctx, forbidden);
-            assertSlaveStaticContext(delegate.getDevSlave(), "Da Mek", ctx, forbidden);
-            assertSlaveStaticContext(delegate.getReviewSlave(), "Da Dok", ctx, forbidden);
+            assertSlaveStaticContext(delegate.getPlanSlave(), "Plan", ctx, forbidden);
+            assertSlaveStaticContext(delegate.getDevSlave(), "Dev", ctx, forbidden);
+            assertSlaveStaticContext(delegate.getReviewSlave(), "Review", ctx, forbidden);
         } finally {
             wmt.memoryReset(); // isoliert: Memory nicht in andere Tests/Runs leaken
         }

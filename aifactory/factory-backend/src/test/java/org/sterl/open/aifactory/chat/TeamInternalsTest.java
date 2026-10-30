@@ -138,7 +138,7 @@ class TeamInternalsTest {
         try (LiveStream stream = new LiveStream(project.id())) {
             scriptDelegation(true);
 
-            assertThat(send(project.id(), "frag Da Mek nach einer Frucht").getStatusCode())
+            assertThat(send(project.id(), "frag Dev nach einer Frucht").getStatusCode())
                     .as("the composer's send stays a send — filtering changes nothing about the turn")
                     .isEqualTo(HttpStatus.ACCEPTED);
             stream.awaitEvent("done", 1);
@@ -163,7 +163,7 @@ class TeamInternalsTest {
                     .as("the member's answer is not on the wire either — its line comes with the history, and"
                             + " without it no channel would carry a member text at all (UC-WP-40)")
                     .doesNotContain(MEMBER_ANSWER);
-            assertThat(stream.partialsBetween("Da Mek start:", "Da Mek done."))
+            assertThat(stream.partialsBetween("Dev start:", "Dev done."))
                     .as("while the member works, the wire is silent — its conversation with itself")
                     .isZero();
             assertThat(stream.answerText())
@@ -173,8 +173,8 @@ class TeamInternalsTest {
             assertThat(toolLines)
                     .as("the member's tool line is gone; Jon keeps his own two delegation lines")
                     .hasSize(2);
-            assertThat(toolLines.get(0)).contains("Da Mek start:").contains(MEMBER_PROMPT);
-            assertThat(toolLines.get(1)).contains("Da Mek done.");
+            assertThat(toolLines.get(0)).contains("Dev start:").contains(MEMBER_PROMPT);
+            assertThat(toolLines.get(1)).contains("Dev done.");
             assertThat(stream.eventNames())
                     .as("the wire speaks exactly the three known names — a member line leaking under a"
                             + " fourth name is red here, not merely unnamed")
@@ -188,11 +188,11 @@ class TeamInternalsTest {
         assertThat(messages(project.id()))
                 .as("the member's answer is a line of the history — its tool result, verbatim, under the"
                         + " member's name; what the wire filters, the reading shows")
-                .filteredOn(line -> "Da Mek".equals(line.origin()))
+                .filteredOn(line -> "Dev".equals(line.origin()))
                 .singleElement()
                 .satisfies(line -> assertThat(line.text())
                         .startsWith(MEMBER_ANSWER + System.lineSeparator())
-                        .contains("Da Mek done."));
+                        .contains("Dev done."));
     }
 
     @Test
@@ -203,7 +203,7 @@ class TeamInternalsTest {
 
         try (LiveStream stream = new LiveStream(project.id())) {
             scriptDelegation(false);
-            send(project.id(), "frag Da Mek nach einer Frucht");
+            send(project.id(), "frag Dev nach einer Frucht");
             stream.awaitEvent("done", 1);
 
             assertThat(toolResultTexts())

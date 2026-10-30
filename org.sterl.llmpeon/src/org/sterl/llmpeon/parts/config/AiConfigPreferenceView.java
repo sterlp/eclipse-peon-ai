@@ -80,7 +80,7 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
                 new String[][] { 
                     { "Not Required", "false" }, 
                     { "Always Required", "always" },
-                    { "Except in Peon-PO / autonomous mode", "not-autonomous" } 
+                    { "Except in Jon / autonomous mode", "not-autonomous" } 
                 },
                 getFieldEditorParent()));
 

@@ -33,8 +33,8 @@ class AiPoAgentTest {
     }
 
     @Test
-    void name_isPeonPO() {
-        assertEquals("Peon-PO", newAgent().getName());
+    void nameIsJon() {
+        assertEquals("Jon", newAgent().getName());
     }
 
     @Test
@@ -70,30 +70,30 @@ class AiPoAgentTest {
         assertThat(p).contains("docs/index.md").contains("peon-plan/overview.md");
     }
 
-    /** Without wired slaves (e.g. headless) Jon's team is just himself as Da Boss. */
+    /** Without wired slaves (e.g. headless) Jon's team is just himself. */
     @Test
-    void getTeam_withoutSlaves_isJustDaBoss() {
+    void getTeam_withoutSlaves_isJustJon() {
         var po = newAgent();
         var team = po.getTeam();
-        assertThat(team).extracting(NamedAgent::uiName).containsExactly("Da Boss");
+        assertThat(team).extracting(NamedAgent::uiName).containsExactly("Jon");
         assertSame(po, team.get(0).agent());
     }
 
-    /** ADR-0025: Da Boss (Jon) first, then the ork slaves in lifecycle order plan→build→review — shared instances, 0k idle. */
+    /** ADR-0025 + ADR-0079: Jon first, then his team in lifecycle order Plan→Dev→Review — shared instances, 0k idle. */
     @Test
-    void getTeam_daBossFirst_thenOrksInLifecycleOrder_onSharedInstances_idle() {
+    void getTeam_isJonThenPlanDevReview_onSharedInstances_idle() {
         var config = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
         var plan = new AiPlanAgent(config, new ToolService());
         var dev = new AiDevAgent(config, new ToolService());
         var review = new AiReviewAgent(config, new ToolService());
         var po = new AiPoAgent(config, new ToolService(), null,
-                List.of(new NamedAgent("Da Thinka", plan), new NamedAgent("Da Mek", dev),
-                        new NamedAgent("Da Dok", review)));
+                List.of(new NamedAgent("Plan", plan), new NamedAgent("Dev", dev),
+                        new NamedAgent("Review", review)));
 
         var team = po.getTeam();
 
         assertThat(team).extracting(NamedAgent::uiName)
-                .containsExactly("Da Boss", "Da Thinka", "Da Mek", "Da Dok");
+                .containsExactly("Jon", "Plan", "Dev", "Review");
         assertSame(po, team.get(0).agent());
         assertSame(plan, team.get(1).agent());
         assertSame(dev, team.get(2).agent());
@@ -101,16 +101,16 @@ class AiPoAgentTest {
         assertThat(team).allSatisfy(n -> assertThat(n.agent().getMemory().getTotalTokenUsed()).isZero());
     }
     @Test
-    void getTeam_daBossFirst_thenTwoOrks_onSharedInstances_idle() {
+    void getTeam_isJonThenPlanDev_onSharedInstances_idle() {
         var config = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
         var plan = new AiPlanAgent(config, new ToolService());
         var dev = new AiDevAgent(config, new ToolService());
         var po = new AiPoAgent(config, new ToolService(), null,
-                List.of(new NamedAgent("Da Thinka", plan), new NamedAgent("Da Mek", dev)));
+                List.of(new NamedAgent("Plan", plan), new NamedAgent("Dev", dev)));
 
         var team = po.getTeam();
 
-        assertThat(team).extracting(NamedAgent::uiName).containsExactly("Da Boss", "Da Thinka", "Da Mek");
+        assertThat(team).extracting(NamedAgent::uiName).containsExactly("Jon", "Plan", "Dev");
         assertSame(po, team.get(0).agent());
         assertSame(plan, team.get(1).agent());
         assertSame(dev, team.get(2).agent());

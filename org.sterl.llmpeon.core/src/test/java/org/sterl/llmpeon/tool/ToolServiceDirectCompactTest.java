@@ -101,7 +101,7 @@ class ToolServiceDirectCompactTest {
         var endLines = toolLines.stream().filter(l -> l.contains(CompactFeedback.END_MARKER)).toList();
         assertThat(endLines).hasSize(1);
         assertThat(endLines.getFirst()).matches(
-                "🗜 Peon-Dev compacted: \\d+ → 1 messages, ~\\d+ → ~\\d+ tokens \\(\\d+(?:m \\d+)?s, \\d{2}:\\d{2}\\) \\(\\d+ chars\\)");
+                "🗜 Dev compacted: \\d+ → 1 messages, ~\\d+ → ~\\d+ tokens \\(\\d+(?:m \\d+)?s, \\d{2}:\\d{2}\\) \\(\\d+ chars\\)");
         assertThat(toolLines).noneMatch(l -> l.contains("Direct compact for"));
     }
 

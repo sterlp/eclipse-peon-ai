@@ -119,9 +119,9 @@ class ChatRestartTest {
         assertThat(jon.jon().getTeam())
                 .as("Jon führt wieder sein Team")
                 .extracting(NamedAgent::uiName)
-                .containsExactly("Da Boss", "Da Thinka", "Da Mek", "Da Dok");
+                .containsExactly("Jon", "Plan", "Dev", "Review");
         assertThat(jon.jon().getTeam())
-                .filteredOn(member -> !"Da Boss".equals(member.uiName()))
+                .filteredOn(member -> !"Jon".equals(member.uiName()))
                 .allSatisfy(member -> assertThat(member.agent().getMemory().size())
                         .as("%s beginnt leer (R-WP-11, ADR-0024)", member.uiName())
                         .isZero());

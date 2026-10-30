@@ -59,7 +59,7 @@ public class BuildPoAgentComponent {
     }
 
     public AiPoAgent build() {
-        // Peon-PO (Jon): own curated tool set — docs read/write/grep only (no shell/build/test/plan).
+        // Jon: own curated tool set — docs read/write/grep only (no shell/build/test/plan).
         // Reuses the shared Eclipse tool instances so project updates + the per-request write validator
         // (WriteValidator.DOCS from AiPoAgent) apply automatically.
         var poToolService = new ToolService(false);
@@ -75,7 +75,7 @@ public class BuildPoAgentComponent {
         var wmt = sharedToolService.getTool(WorkspaceMemoryTool.class).get();
         poToolService.addTool(wmt);
         // Read-only plan access: hasPlan (returns the path) + planRead. Jon reviews & hands the path
-        // to buildWithDev but never writes the plan himself — that is his Peon-Plan agent's job.
+        // to buildWithDev but never writes the plan himself — that is his Plan agent's job.
         poToolService.addTool(new PlanReadTool(sharedToolService.getTool(PlanTool.class).get()));
         // askUser (R17): Jon may block on a direct user decision — the same instance as the shared
         // service (one presenter, same widget + queue-safety as the other agents). Absent in
@@ -95,7 +95,7 @@ public class BuildPoAgentComponent {
             }
         };
         planSlave.setStaticContext(ContextItem.newList(staticContent,
-                ContextItem.of("Your name is Da Thinka.")));
+                ContextItem.of("Your name is Plan.")));
         
         var reviewSlave = new AiReviewAgent(configuredModel, sharedToolService) {
             @Override protected Predicate<SmartToolExecutor> classFilter() {
@@ -103,7 +103,7 @@ public class BuildPoAgentComponent {
             }
         };
         reviewSlave.setStaticContext(ContextItem.newList(staticContent,
-                ContextItem.of("Your name is Da Dok.")));
+                ContextItem.of("Your name is Review.")));
 
         var devSlave = new AiDevAgent(configuredModel, sharedToolService) {
             @Override protected Predicate<SmartToolExecutor> classFilter() {
@@ -111,18 +111,18 @@ public class BuildPoAgentComponent {
             }
         };
         devSlave.setStaticContext(ContextItem.newList(staticContent,
-                ContextItem.of("Your name is Da Mek.")));
+                ContextItem.of("Your name is Dev.")));
 
-        var thinka = new NamedAgent("Da Thinka", planSlave);
-        var doc = new NamedAgent("Da Dok", reviewSlave);
-        var mek = new NamedAgent("Da Mek", devSlave);
+        var planMember = new NamedAgent("Plan", planSlave);
+        var reviewMember = new NamedAgent("Review", reviewSlave);
+        var devMember = new NamedAgent("Dev", devSlave);
         // Slaves also need the same relevant context as the active agent (Jon gets it via userContext).
         // The shared memory rides in their system prompt (static context — re-baked by
         // PeonAiService.initStaticContext); the turn orders below carry the plan file
         // + AGENTS.md (base + agent-specific AGENTS-<agent>.md, ADR-0029)
         // + the live Workspace-Memory snapshot (ADR-0032).
         // Slaves compact at 70 % via PoDelegateTool before a new task.
-        var jonDelegateTool = new PoDelegateTool(thinka, doc, mek, target -> {
+        var jonDelegateTool = new PoDelegateTool(planMember, reviewMember, devMember, target -> {
             var orders = new LinkedList<ContextItem>();
             orders.add(new EclipseFileContextItem(PlanTool.OVERVIEW_FILE, projectRef));
             orders.addAll(AgentsMdContextItem.itemsFor(target.agent().getName(), projectRef));
@@ -132,14 +132,14 @@ public class BuildPoAgentComponent {
             return orders;
         }, () -> configuredModel.getConfig().getAutoCompactAfter());
         poToolService.addTool(jonDelegateTool);
-        // Jon's own throw-away research sub-agent (Da Sniffa) — searches with his read/grep tool
+        // Jon's own throw-away research sub-agent (Search) — searches with his read/grep tool
         poToolService.addTool(sharedToolService.getTool(SearchAgentTool.class).get());
         poToolService.addTool(new CompactSessionTool());
         // ADR-0048: Jon also gets the read-only docs facades — full linter + ID allocation.
         poToolService.addTool(sharedTools.docsLinterTool());
         poToolService.addTool(sharedTools.docsIdTool());
         // Header team order = lifecycle order (user decision): plan → build → review.
-        var poAgent = new AiPoAgent(configuredModel, poToolService, historyStateDir, List.of(thinka, mek, doc));
+        var poAgent = new AiPoAgent(configuredModel, poToolService, historyStateDir, List.of(planMember, devMember, reviewMember));
 
         return poAgent;
     }

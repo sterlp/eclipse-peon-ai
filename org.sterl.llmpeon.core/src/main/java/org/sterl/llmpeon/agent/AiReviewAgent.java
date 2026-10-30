@@ -20,7 +20,7 @@ import org.sterl.llmpeon.tool.tools.ShellTool;
  */
 public class AiReviewAgent extends AbstractAgent {
 
-    public static final String NAME = "Peon-Review";
+    public static final String NAME = "Review";
     private static final String BASE_PROMPT = PromptLoader.loadWithDefault("review-agent.md");
 
     public AiReviewAgent(ConfiguredChatModel configuredModel, ToolService toolService) {
@@ -73,7 +73,7 @@ public class AiReviewAgent extends AbstractAgent {
 
     @Override
     protected Predicate<SmartToolExecutor> classFilter() {
-        // R-TF-1: Shell is Da Dok's only whitelist exception — review diagnosis needs git/build/test runs.
+        // R-TF-1: Shell is Review's only whitelist exception — review diagnosis needs git/build/test runs.
         return super.classFilter().and(t -> !t.getTool().isEditTool() || t.getTool() instanceof ShellTool);
     }
 

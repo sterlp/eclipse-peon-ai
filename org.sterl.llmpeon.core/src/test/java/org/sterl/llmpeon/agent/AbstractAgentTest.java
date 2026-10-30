@@ -285,10 +285,10 @@ class AbstractAgentTest {
     @Test
     void historyFile_derivesFromStateDir(@TempDir Path stateDir) {
         // GIVEN / WHEN
-        var file = AbstractAgent.historyFile(stateDir, "Peon-Dev");
+        var file = AbstractAgent.historyFile(stateDir, "Dev");
 
         // THEN — no state segment, file directly in the injected dir
-        assertThat(file).isEqualTo(stateDir.resolve("Peon-Dev-history.jsonl"));
+        assertThat(file).isEqualTo(stateDir.resolve("Dev-history.jsonl"));
     }
 
     /** safeAgentName: special characters in the agent name are sanitized for the file name. */
@@ -304,8 +304,8 @@ class AbstractAgentTest {
     @Test
     void clearDeletesOnlyThisAgentsPersistedHistory(@TempDir Path stateDir) throws Exception {
         // GIVEN — the injected stateDir contains the history files directly (ADR-0041 R2)
-        var devStore = new FileAgentHistoryStore(stateDir.resolve("Peon-Dev-history.jsonl"));
-        var planStore = new FileAgentHistoryStore(stateDir.resolve("Peon-Plan-history.jsonl"));
+        var devStore = new FileAgentHistoryStore(stateDir.resolve("Dev-history.jsonl"));
+        var planStore = new FileAgentHistoryStore(stateDir.resolve("Plan-history.jsonl"));
         var config = LlmConfig.builder().model("mock").build();
         var devAgent = new AiDevAgent(new ConfiguredChatModel(config, streamMock.buildMock(r -> ChatResponse.builder().aiMessage(AiMessage.from("ok")).build())), new ToolService(), stateDir);
         var planAgent = new AiPlanAgent(new ConfiguredChatModel(config, streamMock.buildMock(r -> ChatResponse.builder().aiMessage(AiMessage.from("ok")).build())), new ToolService(), stateDir);
@@ -1089,7 +1089,7 @@ class AbstractAgentTest {
         agent.call("test", monitor);
 
         // THEN — onTool called for labeled item only
-        assertThat(toolMessages).contains("📋 Loading docs/memory.md (Peon-Dev)");
+        assertThat(toolMessages).contains("📋 Loading docs/memory.md (Dev)");
         assertThat(toolMessages).noneMatch(m -> m.contains("unlabeled"));
     }
 

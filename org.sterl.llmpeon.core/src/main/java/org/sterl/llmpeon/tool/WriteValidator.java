@@ -32,6 +32,6 @@ public interface WriteValidator {
     /** Jon's scope: a docs folder at any depth, plus any Markdown file. */
     WriteValidator DOCS = new AllowlistWriteValidator("*/docs/*", "*.md");
 
-    /** Denies every write — for read-only agents like Da Dok. */
+    /** Denies every write — for read-only agents like Review. */
     WriteValidator DENY_ALL = new DenyAllWriteValidator();
 }

@@ -189,7 +189,7 @@ class WritePinningTest {
                     .isEqualTo("team-text");
             assertThat(messages(project.id()))
                     .as("die Delegation antwortet Jon, das ist ihre eigene Zeile — im Verlauf, nicht auf dem Draht")
-                    .filteredOn(line -> "Da Mek".equals(line.origin()))
+                    .filteredOn(line -> "Dev".equals(line.origin()))
                     .singleElement()
                     .satisfies(line -> assertThat(line.text())
                             .startsWith(MEMBER_ANSWER + System.lineSeparator()));
@@ -274,7 +274,7 @@ class WritePinningTest {
             assertThat(messages(project.id()))
                     .as("die Delegation selbst laeuft weiter — ihr Ergebnis ist ihre eigene Zeile im"
                             + " Verlauf, nicht ihre Ablehnung")
-                    .filteredOn(line -> "Da Mek".equals(line.origin()))
+                    .filteredOn(line -> "Dev".equals(line.origin()))
                     .singleElement()
                     .satisfies(line -> assertThat(line.text())
                             .startsWith(MEMBER_ANSWER + System.lineSeparator()));
@@ -365,7 +365,7 @@ class WritePinningTest {
     }
 
     /**
-     * Da Mek wird in {@code ProjectRuntime} mit demselben Validator gebaut wie Jon. Dieser Test geht
+     * Dev wird in {@code ProjectRuntime} mit demselben Validator gebaut wie Jon. Dieser Test geht
      * <b>ohne</b> Delegation direkt an ihn — sonst bewiese eine Delegation nur den Filter, nie den Nagel.
      */
     @Test
@@ -383,7 +383,7 @@ class WritePinningTest {
             devMek.call("schreib " + escape, AiMonitor.NULL_MONITOR);
 
             assertThat(Files.exists(escape))
-                    .as("Da Mek ist festgenagelt: dasselbe Verlangen wie bei Jon, dieselbe Ablehnung")
+                    .as("Dev ist festgenagelt: dasselbe Verlangen wie bei Jon, dieselbe Ablehnung")
                     .isFalse();
             assertThat(toolResults())
                     .as("und er liest denselben Grund wie Jon")
@@ -449,13 +449,13 @@ class WritePinningTest {
     // helpers
     // ------------------------------------------------------------------
 
-    /** Da Mek, wie Jon ihn kennt — derselbe Runtime, dieselbe Instanz, kein zweiter Agent. */
+    /** Dev, wie Jon ihn kennt — derselbe Runtime, dieselbe Instanz, kein zweiter Agent. */
     private static AiAgent devMemberOf(ProjectRuntime runtime) {
         return runtime.jon().getTeam().stream()
                 .filter(member -> AiDevAgent.NAME.equals(member.agent().getName()))
                 .map(NamedAgent::agent)
                 .findFirst()
-                .orElseThrow(() -> new AssertionError("Jons Team traegt keinen Da Mek: "
+                .orElseThrow(() -> new AssertionError("Jons Team traegt keinen Dev: "
                         + runtime.jon().getTeam()));
     }
 

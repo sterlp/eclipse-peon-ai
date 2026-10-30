@@ -69,7 +69,7 @@ class DelegatedAnswerRestartTest {
     private static final String MEMBER_PROMPT = "MITGLIEDS-AUFGABE: nenne genau eine Frucht";
     private static final String MEMBER_ANSWER = "MITGLIEDS-ANTWORT: Birne";
     private static final String JON_ANSWER = "JONS-FOLGE-ANTWORT: die Birne";
-    private static final String QUESTION = "frag Da Mek nach einer Frucht";
+    private static final String QUESTION = "frag Dev nach einer Frucht";
 
     private static MockLlmServer model;
     private static Running beforeRestart;
@@ -126,12 +126,12 @@ class DelegatedAnswerRestartTest {
     // UC-WP-39
     void everyLineCarriesItsAuthor() throws IOException {
         assertThat(historyBeforeRestart)
-                .as("vor dem Neustart trägt jede Zeile ihren Urheber: die Team-Antwort nennt Da Mek, "
+                .as("vor dem Neustart trägt jede Zeile ihren Urheber: die Team-Antwort nennt Dev, "
                         + "Jons eigene Antwort nennt Jon, die getippte Eingabe niemanden")
                 .extracting(ChatMessageDto::role, ChatMessageDto::origin)
                 .containsExactly(
                         tuple("user", null),
-                        tuple("jon", "Da Mek"),
+                        tuple("jon", "Dev"),
                         tuple("jon", AiPoAgent.NAME));
         assertThat(historyBeforeRestart.get(0).origin())
                 .as("die Eingabe bleibt namenlos — kein System, kein ersonnener Nutzer (R-WP-4, R-WP-17)")
@@ -163,13 +163,13 @@ class DelegatedAnswerRestartTest {
     void onlyFinalAnswersFromTheTeam() {
         List<ChatMessageDto> historyAfterRestart = messages(afterRestart);
 
-        assertThat(historyAfterRestart.stream().filter(line -> "Da Mek".equals(line.origin())).toList())
+        assertThat(historyAfterRestart.stream().filter(line -> "Dev".equals(line.origin())).toList())
                 .as("GIVEN 3: die Antwort des Mitglieds steht immer noch im Verlauf — genau einmal, ihr"
                         + " Werkzeug-Ergebnis wörtlich, derselbe Name")
                 .singleElement()
                 .satisfies(line -> assertThat(line.text())
                         .startsWith(MEMBER_ANSWER + System.lineSeparator())
-                        .contains("Da Mek done."));
+                        .contains("Dev done."));
         assertThat(historyAfterRestart)
                 .as("keine Zwischenzeile des Mitglieds ist darin — gespeichert wurde nur, was Jon als"
                         + " Ergebnis seines Werkzeuges zurückbekam")

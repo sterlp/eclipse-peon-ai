@@ -70,7 +70,7 @@ public interface AiAgent {
 
     /**
      * The write-path validator this agent applies to every write tool call. Default: no restriction.
-     * Peon-PO (Jon) overrides this to scope writes to docs. Provided per request, like the tool filter.
+     * Jon overrides this to scope writes to docs. Provided per request, like the tool filter.
      */
     default WriteValidator getWriteValidator() {
         return WriteValidator.ALLOW_ALL;

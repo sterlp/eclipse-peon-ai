@@ -51,7 +51,7 @@ public class CompactRosterStatusTest extends AbstractSwtUiTest {
                         slave.contains("🟡 Probe Slave"));
                 assertFalse("🟡 replaces 🟢, never both: " + slave,
                         slave.contains("🟢"));
-                assertFalse("leaf rule: a compacting slave keeps Da Boss dark: " + boss,
+                assertFalse("leaf rule: a compacting slave keeps Jon dark: " + boss,
                         boss.contains("🟢") || boss.contains("🟡"));
             } finally {
                 roster.dispose();

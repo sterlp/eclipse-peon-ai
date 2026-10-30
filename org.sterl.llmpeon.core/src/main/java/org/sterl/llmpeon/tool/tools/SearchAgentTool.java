@@ -84,7 +84,7 @@ public class SearchAgentTool extends AbstractTool {
                 // clear/re-seed the PARENT memory (toBuilder inherits every field, see ToolLoopRequest)
                 .agent(null);
 
-            onTool("Da Sniffa "
+            onTool("Search "
                     + (modelName == null ? "" : "(" + modelName + ")")
                     + " start:" + System.lineSeparator() + System.lineSeparator() + prompt);
             long startNanos = System.nanoTime();
@@ -99,7 +99,7 @@ public class SearchAgentTool extends AbstractTool {
                 rolling.append(prompt, answer);
             }
             String result = StringUtil.hasValue(answer) ? answer : "Search completed but returned no result";
-            onTool("Da Sniffa done. (" + StringUtil.humanElapsed(elapsedMillis) + ")" + " " + StringUtil.charsSuffix(result));
+            onTool("Search done. (" + StringUtil.humanElapsed(elapsedMillis) + ")" + " " + StringUtil.charsSuffix(result));
             return result;
 
         } catch (Exception e) {

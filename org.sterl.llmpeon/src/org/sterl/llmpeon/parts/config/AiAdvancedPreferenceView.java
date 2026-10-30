@@ -34,7 +34,7 @@ public class AiAdvancedPreferenceView extends FieldEditorPreferencePage implemen
     public static final List<AgentSection> AGENT_SECTIONS = List.of(
             new AgentSection(AgentModelConfig.PO, "PO agent (Jon)"),
             new AgentSection(AgentModelConfig.PLAN, "Plan agent"),
-            new AgentSection(AgentModelConfig.REVIEW, "Review agent (Da Dok)"),
+            new AgentSection(AgentModelConfig.REVIEW, "Review agent"),
             new AgentSection(AgentModelConfig.SEARCH, "Search agent"),
             new AgentSection(AgentModelConfig.COMPACT, "Compact agent"));
 

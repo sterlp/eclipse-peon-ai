@@ -20,8 +20,8 @@ interface Chat {
 const QUESTION: ChatMessage = { role: 'user', text: 'wo liegen die Dateien?' }
 const ANSWER: ChatMessage = { role: 'jon', text: 'Im Root liegen: pom.xml und README.md' }
 /** A team member's final answer — role `jon` with an author, never a third role (UC-WP-39). */
-const TEAM_ANSWER: ChatMessage = { role: 'jon', text: 'Eine Banane.', origin: 'Da Mek' }
-const JONS_ANSWER: ChatMessage = { role: 'jon', text: 'Da Mek nennt eine Banane.', origin: 'Jon' }
+const TEAM_ANSWER: ChatMessage = { role: 'jon', text: 'Eine Banane.', origin: 'Dev' }
+const JONS_ANSWER: ChatMessage = { role: 'jon', text: 'Dev nennt eine Banane.', origin: 'Jon' }
 
 let active: Chat | undefined
 
@@ -289,7 +289,7 @@ test('everyLineCarriesItsAuthor', async () => {
   await flush()
 
   // exactly two lines have an agent relationship, and exactly those two carry a name (R-WP-4)
-  expect(authorsOnScreen()).toEqual(['Da Mek', 'Jon'])
+  expect(authorsOnScreen()).toEqual(['Dev', 'Jon'])
 
   // the own input has no agent relationship: no label, and nothing standing in for one
   const own = screen.getByTestId('chat-line-user')
@@ -317,7 +317,7 @@ test('onlyFinalAnswersFromTheTeam', async () => {
   chat.setMessages([QUESTION, TEAM_ANSWER, JONS_ANSWER])
   await chat.push(event('done', { millis: 4321 }))
 
-  expect(authorsOnScreen()).toEqual(['Da Mek', 'Jon'])
+  expect(authorsOnScreen()).toEqual(['Dev', 'Jon'])
   expect(screen.getAllByTestId('chat-line-jon')).toHaveLength(2)
   expect(screen.getAllByText('Eine Banane.')).toHaveLength(1)
   expect(screen.getByTestId('chat-log').textContent).not.toContain('DENKTEXT-AUS-MITGLIED')
@@ -339,7 +339,7 @@ test('reconnectReadsTeamAnswerFromTheHistory', async () => {
   await waitFor(() => expect(chat.countOf('/events', 'GET')).toBe(2), { timeout: 1500 })
 
   expect(screen.getAllByText('Eine Banane.')).toHaveLength(1)
-  expect(authorsOnScreen()).toEqual(['Da Mek', 'Jon'])
+  expect(authorsOnScreen()).toEqual(['Dev', 'Jon'])
   expect(screen.queryByTestId('chat-live')).toBeNull()
 })
 

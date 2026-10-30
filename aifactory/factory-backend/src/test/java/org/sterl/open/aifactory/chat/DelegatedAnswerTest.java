@@ -90,7 +90,7 @@ class DelegatedAnswerTest {
     private static final String MEMBER_NO_ANSWER = "   ";
     /** Jon's own follow-up answer — it stays his line, after the team's. */
     private static final String JON_ANSWER = "JONS-FOLGE-ANTWORT: die Birne";
-    private static final String QUESTION = "frag Da Mek nach einer Frucht";
+    private static final String QUESTION = "frag Dev nach einer Frucht";
 
     /** HTTP/1.1 on purpose — the SSE edge is what the browser talks (see {@code ChatTurnTest}). */
     private static final HttpClient STREAMS = HttpClient.newBuilder()
@@ -151,7 +151,7 @@ class DelegatedAnswerTest {
                     .as("while the turn runs, no line of the wire carries the member's answer — the line"
                             + " with its name arrives with the history, not as an event")
                     .doesNotContain(MEMBER_ANSWER);
-            assertThat(stream.partialsBetween("Da Mek start:", "Da Mek done."))
+            assertThat(stream.partialsBetween("Dev start:", "Dev done."))
                     .as("the member still thinks to itself — nothing reopened that")
                     .isZero();
             assertThat(stream.wireText())
@@ -175,12 +175,12 @@ class DelegatedAnswerTest {
                     .extracting(ChatMessageDto::role, ChatMessageDto::origin)
                     .containsExactly(
                             tuple("user", null),
-                            tuple("jon", "Da Mek"),
+                            tuple("jon", "Dev"),
                             tuple("jon", AiPoAgent.NAME));
             assertThat(history.get(1).text())
                     .as("the tool result verbatim — answer and statistics line, nothing shortened")
                     .startsWith(MEMBER_ANSWER + System.lineSeparator())
-                    .contains("Da Mek done.");
+                    .contains("Dev done.");
         }
     }
 
@@ -206,11 +206,11 @@ class DelegatedAnswerTest {
             assertThat(toolLines)
                     .as("Jon's trace grows with the delegations — one start line and one done line each")
                     .hasSize(4);
-            assertThat(toolLines.get(0)).contains("Da Mek start:").contains("(erste)");
-            assertThat(toolLines.get(1)).contains("Da Mek done.");
-            assertThat(toolLines.get(2)).contains("Da Mek start:").contains("(zweite)");
-            assertThat(toolLines.get(3)).contains("Da Mek done.");
-            assertThat(stream.partialsBetween("(erste)", "Da Mek done."))
+            assertThat(toolLines.get(0)).contains("Dev start:").contains("(erste)");
+            assertThat(toolLines.get(1)).contains("Dev done.");
+            assertThat(toolLines.get(2)).contains("Dev start:").contains("(zweite)");
+            assertThat(toolLines.get(3)).contains("Dev done.");
+            assertThat(stream.partialsBetween("(erste)", "Dev done."))
                     .as("the first member still thought to itself — a second delegation changes nothing")
                     .isZero();
             assertThat(stream.answerText())
@@ -228,8 +228,8 @@ class DelegatedAnswerTest {
                 .extracting(ChatMessageDto::role, ChatMessageDto::origin)
                 .containsExactly(
                         tuple("user", null),
-                        tuple("jon", "Da Mek"),
-                        tuple("jon", "Da Mek"),
+                        tuple("jon", "Dev"),
+                        tuple("jon", "Dev"),
                         tuple("jon", AiPoAgent.NAME));
         assertThat(history.get(1).text())
                 .as("the first answer kept its own line — the second did not take it over")
@@ -258,8 +258,8 @@ class DelegatedAnswerTest {
             assertThat(toolLines)
                     .as("Jon keeps his two delegation lines — the failure stays visible to him")
                     .hasSize(2);
-            assertThat(toolLines.get(0)).contains("Da Mek start:");
-            assertThat(toolLines.get(1)).contains("Da Mek done.");
+            assertThat(toolLines.get(0)).contains("Dev start:");
+            assertThat(toolLines.get(1)).contains("Dev done.");
         }
 
         List<ChatMessageDto> history = messages(project.id());
@@ -267,10 +267,10 @@ class DelegatedAnswerTest {
                 .as("the empty result is a line with an author like any other — an author is a fact, not"
                         + " a verdict over the text (UC-WP-40)")
                 .extracting(ChatMessageDto::origin)
-                .containsExactly(null, "Da Mek", AiPoAgent.NAME);
+                .containsExactly(null, "Dev", AiPoAgent.NAME);
         assertThat(history.get(1).text())
                 .as("and it says so in the member's own words, not in a reworded form")
-                .startsWith("Da Mek returned no result");
+                .startsWith("Dev returned no result");
     }
 
     @Test
@@ -293,7 +293,7 @@ class DelegatedAnswerTest {
                 .extracting(ChatMessageDto::role, ChatMessageDto::origin)
                 .containsExactly(
                         tuple("user", null),
-                        tuple("jon", "Da Mek"),
+                        tuple("jon", "Dev"),
                         tuple("jon", AiPoAgent.NAME));
         assertThat(history.get(0).origin())
                 .as("the input keeps no name — not a system, not an invented user")

@@ -52,7 +52,7 @@ class ProjectRuntimeTest {
 
         assertThat(runtime.jon().getTeam())
                 .extracting(NamedAgent::uiName)
-                .containsExactly("Da Boss", "Da Thinka", "Da Mek", "Da Dok");
+                .containsExactly("Jon", "Plan", "Dev", "Review");
         assertThat(runtime.jon().getTeam())
                 .allSatisfy(member -> assertThat(member.agent().getMemory().size())
                         .as("%s starts empty", member.uiName())
@@ -65,8 +65,8 @@ class ProjectRuntimeTest {
         ProjectRuntime runtime = runtime(home.resolve("state").resolve("project-3"));
         var memory = runtime.jon().getMemory();
         String newline = System.lineSeparator();
-        String answered = "ANTWORT" + newline + "Da Mek done. Context: 120 token - 3% used.";
-        String withoutAnswer = "Da Mek returned no result Da Mek done. Context: 120 token - 3% used.";
+        String answered = "ANTWORT" + newline + "Dev done. Context: 120 token - 3% used.";
+        String withoutAnswer = "Dev returned no result Dev done. Context: 120 token - 3% used.";
         String failure = "Tool failed - check why and inform user java.lang.IllegalStateException: no such agent"
                 + newline + "\tat org.sterl.llmpeon.example.Caller.run(Caller.java:1)";
         memory.add(UserMessage.from("first question"));
@@ -86,11 +86,11 @@ class ProjectRuntimeTest {
                 ChatLine.user("first question"),
                 // the member line is its tool result verbatim, statistics line included: shortening it
                 // would be the factory's guess about what matters (R-WP-11)
-                ChatLine.jon(answered, "Da Mek"),
+                ChatLine.jon(answered, "Dev"),
                 // a member that answered nothing and a member whose tool threw still have a result of
                 // their own — an author is a fact, never a filter over the text (UC-WP-40)
-                ChatLine.jon(withoutAnswer, "Da Mek"),
-                ChatLine.jon(failure, "Da Mek"),
+                ChatLine.jon(withoutAnswer, "Dev"),
+                ChatLine.jon(failure, "Dev"),
                 ChatLine.jon("the answer", AiPoAgent.NAME),
                 ChatLine.user("[Queued Message] (10:15): later question"),
                 ChatLine.jon("second answer", AiPoAgent.NAME));

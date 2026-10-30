@@ -207,7 +207,7 @@ public class PeonAiService {
         // The persistent poAgent instance survives clearAgents/reloads — stable reference.
         sharedTools.registerDiskGatedRegistry(poAgent.getToolService());
 
-        // ADR-0067: MCP connects every agent-facing registry (shared + Peon-PO's own).
+        // ADR-0067: MCP connects every agent-facing registry (shared + Jon's own).
         mcpConnectionService = new McpConnectionService(List.of(sharedToolService, poAgent.getToolService()), mcpStateChange);
 
         // ADR-0068: Codegraph built-in — same agent-facing registries, own group + probe.
@@ -468,8 +468,8 @@ public class PeonAiService {
     public record PreviewTool(String name, boolean mcp) {}
 
     /**
-     * The agents shown in the header status widget: when Jon (Peon-PO) is active, his
-     * {@link AiPoAgent#getTeam() team} (Da Boss + the orks Da Thinka/Da Mek/Da Dok); for every other
+     * The agents shown in the header status widget: when Jon is active, his
+     * {@link AiPoAgent#getTeam() team} (Jon + Plan, Dev, Review); for every other
      * agent an empty list — they show nothing. This is the <b>single</b> {@code instanceof AiPoAgent}
      * choke-point (ADR-0025): the widget pulls this list and stays type-agnostic, the {@code AiAgent}
      * interface stays lean.

@@ -86,7 +86,7 @@ public class ToolLoopRequest {
     public Predicate<String> toolNameFilter = n -> true;
     /**
      * Per-agent write-path validator. Set by every agent via {@code AiAgent.getWriteValidator()}.
-     * Default: allow all — only Peon-PO (Jon) restricts it.
+     * Default: allow all — only Jon restricts it.
      */
     @Default
     @Getter
