@@ -1,6 +1,7 @@
 package org.sterl.open.aifactory.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import java.io.IOException;
 import java.net.URI;
@@ -49,20 +50,23 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
+import org.sterl.llmpeon.poagent.AiPoAgent;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
 import org.sterl.open.aifactory.project.FakeGitConfig;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
- * The final answer of a team member is a line of its own (UC-WP-40, R-WP-4): it reaches the browser live
- * as a {@code delegated} event carrying the member's name, and the very same line is in the history
- * afterwards — read out of the one file the core already writes, not from a second store.
+ * The final answer of a team member is a line of its own (UC-WP-40, R-WP-4), and it is a <b>history</b>
+ * line: the live wire carries Jon's own answer and his delegation trace, and the member's answer appears
+ * with the read that {@code done} causes — read out of the one file the core already writes, not from a
+ * second store and not from an event of its own (ADR-0078 Decision 6).
  *
  * <p>Nothing below {@code AiPoAgent} is stubbed. The delegation is a real {@code askDev} turn of the real
  * {@code AiDevAgent} against a scripted answer double, so the member's text here is the text the core
- * really handed back to Jon: the assertions show that the wire and the history carry the <b>pure</b>
- * answer and neither the status line the model additionally reads nor the member's own thinking.</p>
+ * really handed back to Jon. The assertions show that the history carries that result <b>verbatim</b> —
+ * answer and statistics line, exactly what the model reads — and that the member's thinking and its own
+ * tool run stay off the wire.</p>
  *
  * <p>The author is always asserted as a field ({@code origin}), never as text inside a line — a name in
  * the text would prove that somebody guessed (R-WP-4 "niemand rät die Herkunft"). The reading half over a
@@ -77,12 +81,12 @@ class DelegatedAnswerTest {
     private static final String MEMBER_PROMPT = "MITGLIEDS-AUFGABE: nenne genau eine Frucht";
     /** Only the member's own shell line can carry this; it must stay off the wire. */
     private static final String MEMBER_COMMAND_MARKER = "mitglieds-kommando";
-    /** What the member hands back — the final answer, and the only member text allowed to show. */
+    /** What the member hands back — a member text: no live line shows it, the history names it. */
     private static final String MEMBER_ANSWER = "MITGLIEDS-ANTWORT: Birne";
     /** Two delegations of one turn answer differently — each answer is a line of its own. */
     private static final String MEMBER_ANSWER_FIRST = "MITGLIEDS-ANTWORT-ERST: Birne";
     private static final String MEMBER_ANSWER_SECOND = "MITGLIEDS-ANTWORT-ZWEIT: Banane";
-    /** What the member "answers" when it answers nothing at all — blank is no answer (no line, no event). */
+    /** What the member "answers" when it answers nothing at all — still its result, still its line. */
     private static final String MEMBER_NO_ANSWER = "   ";
     /** Jon's own follow-up answer — it stays his line, after the team's. */
     private static final String JON_ANSWER = "JONS-FOLGE-ANTWORT: die Birne";
@@ -143,23 +147,15 @@ class DelegatedAnswerTest {
             assertThat(send(project.id(), QUESTION).getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
             stream.awaitEvent("done", 1);
 
-            List<String> delegated = stream.payloads("delegated");
-            assertThat(delegated).as("one delegation is one team line").hasSize(1);
-            assertThat((String) JsonPath.read(delegated.get(0), "$.origin"))
-                    .as("the team line names the member, in the factory's own words")
-                    .isEqualTo("Da Mek");
-            assertThat((String) JsonPath.read(delegated.get(0), "$.text"))
-                    .as("the pure answer — no status line, no Context: tail, nothing added")
-                    .isEqualTo(MEMBER_ANSWER);
-            assertThat(stream.indexOfEvent("delegated"))
-                    .as("it arrives while the turn is still running — before Jon's own closing tool line")
-                    .isLessThan(stream.indexOfToolLine("Da Mek done."));
-
+            assertThat(stream.wireText())
+                    .as("while the turn runs, no line of the wire carries the member's answer — the line"
+                            + " with its name arrives with the history, not as an event")
+                    .doesNotContain(MEMBER_ANSWER);
             assertThat(stream.partialsBetween("Da Mek start:", "Da Mek done."))
-                    .as("the member still thinks to itself — the team line did not reopen that")
+                    .as("the member still thinks to itself — nothing reopened that")
                     .isZero();
             assertThat(stream.wireText())
-                    .as("its tool line stays invisible: only the final answer is a line (R-WP-4)")
+                    .as("its tool line stays invisible: only its result becomes a line (R-WP-4)")
                     .doesNotContain(MEMBER_COMMAND_MARKER);
             assertThat(toolResultTexts())
                     .as("the member really ran its own tool — what is filtered did happen")
@@ -168,25 +164,32 @@ class DelegatedAnswerTest {
                     .as("Jon's own answer still grows live on the same wire")
                     .isEqualTo(JON_ANSWER);
             assertThat(stream.countOf("done"))
-                    .as("and it stays one done for the whole turn — the team line is not a second answer")
+                    .as("and it stays one done for the whole turn — the team's line is not a second answer")
                     .isEqualTo(1);
             assertThat(stream.countOf("error")).isZero();
-        }
 
-        assertThat(messages(project.id()))
-                .as("after the reload the same team line stands in the history: role jon, origin Da Mek,"
-                        + " the identical pure text, and Jon's own answer behind it")
-                .containsExactly(
-                        new ChatMessageDto("user", QUESTION, null),
-                        new ChatMessageDto("jon", MEMBER_ANSWER, "Da Mek"),
-                        new ChatMessageDto("jon", JON_ANSWER, "Jon"));
+            List<ChatMessageDto> history = messages(project.id());
+            assertThat(history)
+                    .as("with the read that done causes, the member's line stands in the history: its own"
+                            + " name as author, Jon's answer behind it, the typed input nameless")
+                    .extracting(ChatMessageDto::role, ChatMessageDto::origin)
+                    .containsExactly(
+                            tuple("user", null),
+                            tuple("jon", "Da Mek"),
+                            tuple("jon", AiPoAgent.NAME));
+            assertThat(history.get(1).text())
+                    .as("the tool result verbatim — answer and statistics line, nothing shortened")
+                    .startsWith(MEMBER_ANSWER + System.lineSeparator())
+                    .contains("Da Mek done.");
+        }
     }
 
     /**
      * Two delegations of one turn are two lines (internal, no own id — it sharpens UC-WP-40's rule): the
      * final answer is a fact of one delegation call, not „the last answer a member gave". A second
-     * delegation must therefore neither overwrite the first answer on the wire nor in the history, and
-     * the per-invocation attribute hand-over has to keep the two apart.
+     * delegation must therefore neither overwrite the first answer in the history nor lose it, and the
+     * reading needs no book over which call was which: two delegations are two tool results, each with
+     * its own tool name.
      */
     @Test
     @Timeout(60)
@@ -198,17 +201,6 @@ class DelegatedAnswerTest {
             scriptTwoDelegations();
             assertThat(send(project.id(), QUESTION).getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
             stream.awaitEvent("done", 1);
-
-            List<String> delegated = stream.payloads("delegated");
-            assertThat(delegated)
-                    .as("two delegations are two team lines, none swallowed by the other")
-                    .hasSize(2);
-            assertThat(delegated.stream().map(payload -> (String) JsonPath.read(payload, "$.text")).toList())
-                    .as("each delegation's own pure answer, in the order Jon asked for it")
-                    .containsExactly(MEMBER_ANSWER_FIRST, MEMBER_ANSWER_SECOND);
-            assertThat(delegated.stream().map(payload -> (String) JsonPath.read(payload, "$.origin")).toList())
-                    .as("each line names the member that handed it back")
-                    .containsExactly("Da Mek", "Da Mek");
 
             List<String> toolLines = stream.payloads("tool");
             assertThat(toolLines)
@@ -225,23 +217,32 @@ class DelegatedAnswerTest {
                     .as("Jon's own answer stays one answer over two delegations")
                     .isEqualTo(JON_ANSWER);
             assertThat(stream.countOf("done"))
-                    .as("two delegations stay one answered input")
+                    .as("two delegations stay one turn, so they stay one done")
                     .isEqualTo(1);
             assertThat(stream.countOf("error")).isZero();
         }
 
-        assertThat(messages(project.id()))
+        List<ChatMessageDto> history = messages(project.id());
+        assertThat(history)
                 .as("the history holds both team lines in the order of Jon's memory, his own answer last")
+                .extracting(ChatMessageDto::role, ChatMessageDto::origin)
                 .containsExactly(
-                        new ChatMessageDto("user", QUESTION, null),
-                        new ChatMessageDto("jon", MEMBER_ANSWER_FIRST, "Da Mek"),
-                        new ChatMessageDto("jon", MEMBER_ANSWER_SECOND, "Da Mek"),
-                        new ChatMessageDto("jon", JON_ANSWER, "Jon"));
+                        tuple("user", null),
+                        tuple("jon", "Da Mek"),
+                        tuple("jon", "Da Mek"),
+                        tuple("jon", AiPoAgent.NAME));
+        assertThat(history.get(1).text())
+                .as("the first answer kept its own line — the second did not take it over")
+                .startsWith(MEMBER_ANSWER_FIRST + System.lineSeparator());
+        assertThat(history.get(2).text())
+                .as("and the second is its own line, not a repeat of the first")
+                .startsWith(MEMBER_ANSWER_SECOND + System.lineSeparator());
     }
 
     @Test
     @Timeout(60)
-    void delegationWithoutAnswerProducesNoLine() throws Exception {
+    // UC-WP-40
+    void delegationWithoutAnswerStillProducesALine() throws Exception {
         writeFactoryConfig("inc3f3-noanswer");
         CreatedProject project = createProject("delegated-empty");
 
@@ -250,11 +251,8 @@ class DelegatedAnswerTest {
             send(project.id(), QUESTION);
             stream.awaitEvent("done", 1);
 
-            assertThat(stream.countOf("delegated"))
-                    .as("a member that answered nothing has no final answer to show")
-                    .isZero();
             assertThat(toolResultTexts())
-                    .as("the member did run, and it came back empty — the tool result carries no attributes")
+                    .as("the member did run, and it came back empty — that result is what the line reads")
                     .anySatisfy(result -> assertThat(result).contains("returned no result"));
             List<String> toolLines = stream.payloads("tool");
             assertThat(toolLines)
@@ -264,35 +262,45 @@ class DelegatedAnswerTest {
             assertThat(toolLines.get(1)).contains("Da Mek done.");
         }
 
-        assertThat(messages(project.id()))
-                .as("no line carries the member's name — and no half-invented line takes its place")
-                .doesNotHaveDuplicates();
-        assertThat(messages(project.id()))
-                .containsExactly(
-                        new ChatMessageDto("user", QUESTION, null),
-                        new ChatMessageDto("jon", JON_ANSWER, "Jon"));
+        List<ChatMessageDto> history = messages(project.id());
+        assertThat(history)
+                .as("the empty result is a line with an author like any other — an author is a fact, not"
+                        + " a verdict over the text (UC-WP-40)")
+                .extracting(ChatMessageDto::origin)
+                .containsExactly(null, "Da Mek", AiPoAgent.NAME);
+        assertThat(history.get(1).text())
+                .as("and it says so in the member's own words, not in a reworded form")
+                .startsWith("Da Mek returned no result");
     }
 
     @Test
     @Timeout(60)
+    // UC-WP-39
     void userAndJonLinesCarryTheirOrigin() throws Exception {
         writeFactoryConfig("inc3f3-origins");
         CreatedProject project = createProject("delegated-origins");
 
         try (LiveStream stream = new LiveStream(project.id())) {
-            model.queueResponse(JON_ANSWER);
+            scriptDelegation();
             send(project.id(), QUESTION);
             stream.awaitEvent("done", 1);
-            assertThat(stream.countOf("delegated"))
-                    .as("a turn without a delegation produces no team line")
-                    .isZero();
         }
 
-        assertThat(messages(project.id()))
-                .as("Jon's line names him, the typed input names nobody (R-WP-4, R-WP-17)")
+        List<ChatMessageDto> history = messages(project.id());
+        assertThat(history)
+                .as("every line states its author (R-WP-4, R-WP-17): the typed input names nobody, the"
+                        + " member's result names the member, Jon's answer names Jon")
+                .extracting(ChatMessageDto::role, ChatMessageDto::origin)
                 .containsExactly(
-                        new ChatMessageDto("user", QUESTION, null),
-                        new ChatMessageDto("jon", JON_ANSWER, "Jon"));
+                        tuple("user", null),
+                        tuple("jon", "Da Mek"),
+                        tuple("jon", AiPoAgent.NAME));
+        assertThat(history.get(0).origin())
+                .as("the input keeps no name — not a system, not an invented user")
+                .isNull();
+        assertThat(history.get(1).text())
+                .as("and the member's line is its tool result, not a summary of it")
+                .startsWith(MEMBER_ANSWER + System.lineSeparator());
     }
 
     // ------------------------------------------------------------------
@@ -502,15 +510,6 @@ class DelegatedAnswerTest {
                 }
             }
             return partials;
-        }
-
-        /** Position of the first event of that name — the order assertions read their anchors here. */
-        int indexOfEvent(String name) {
-            int index = names.indexOf(name);
-            if (index < 0) {
-                throw new AssertionError("no event '" + name + "' on the stream — got " + names);
-            }
-            return index;
         }
 
         int indexOfToolLine(String marker) {

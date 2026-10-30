@@ -18,6 +18,7 @@ import org.sterl.llmpeon.poagent.AiPoAgent;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 
 /**
@@ -59,12 +60,22 @@ class ProjectRuntimeTest {
     }
 
     @Test
+    // UC-WP-40
     void historyIsTheMemoryFilteredToUserAndJonLines() {
         ProjectRuntime runtime = runtime(home.resolve("state").resolve("project-3"));
         var memory = runtime.jon().getMemory();
+        String newline = System.lineSeparator();
+        String answered = "ANTWORT" + newline + "Da Mek done. Context: 120 token - 3% used.";
+        String withoutAnswer = "Da Mek returned no result Da Mek done. Context: 120 token - 3% used.";
+        String failure = "Tool failed - check why and inform user java.lang.IllegalStateException: no such agent"
+                + newline + "\tat org.sterl.llmpeon.example.Caller.run(Caller.java:1)";
         memory.add(UserMessage.from("first question"));
         memory.add(AiMessage.from("I will run that", List.of(ToolExecutionRequest.builder()
                 .id("1").name("shellRunCommand").arguments("{\"command\":\"pwd\"}").build())));
+        memory.add(result("1", "shellRunCommand", "/home/me/checkout"));
+        memory.add(result("2", "askDev", answered));
+        memory.add(result("3", "askDev", withoutAnswer));
+        memory.add(result("4", "askDev", failure));
         memory.add(AiMessage.from("the answer"));
         memory.add(SystemMessage.from("instructions Jon never sees in the chat"));
         // the core's own marker for a waited input — shown as it is (Q6)
@@ -73,9 +84,21 @@ class ProjectRuntimeTest {
 
         assertThat(runtime.history()).containsExactly(
                 ChatLine.user("first question"),
-                ChatLine.jon("the answer", "Jon"),
+                // the member line is its tool result verbatim, statistics line included: shortening it
+                // would be the factory's guess about what matters (R-WP-11)
+                ChatLine.jon(answered, "Da Mek"),
+                // a member that answered nothing and a member whose tool threw still have a result of
+                // their own — an author is a fact, never a filter over the text (UC-WP-40)
+                ChatLine.jon(withoutAnswer, "Da Mek"),
+                ChatLine.jon(failure, "Da Mek"),
+                ChatLine.jon("the answer", AiPoAgent.NAME),
                 ChatLine.user("[Queued Message] (10:15): later question"),
-                ChatLine.jon("second answer", "Jon"));
+                ChatLine.jon("second answer", AiPoAgent.NAME));
+    }
+
+    /** What the core hands back for one tool call — the only thing a history line is read out of. */
+    private static ToolExecutionResultMessage result(String id, String toolName, String text) {
+        return ToolExecutionResultMessage.from(id, toolName, text);
     }
 
     private ProjectRuntime runtime(Path stateDir) {

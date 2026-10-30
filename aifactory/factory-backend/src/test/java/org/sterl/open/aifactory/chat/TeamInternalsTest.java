@@ -29,8 +29,10 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -47,6 +49,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
+import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
 import org.sterl.open.aifactory.project.FakeGitConfig;
 import org.sterl.open.aifactory.shared.FactoryHome;
@@ -62,12 +65,11 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * included — before the outer agent's own {@code done}, so waiting for that one event is a
  * deterministic anchor, and the member finishes strictly before Jon anyway.</p>
  *
- * <p>The member's <em>final</em> answer is the one member text the wire does carry, and it carries it as a
- * {@code delegated} event — that is what UC-WP-40 GIVEN 1 and R-WP-4 demand („sichtbar sind nur die
- * Delegations-Zeile und die finale Antwort"). The assertions below therefore run <b>per channel</b>: what
- * must stay away from {@code partial} and {@code tool} is named, {@code delegated} is asserted
- * positively, and the set of names the whole turn used is pinned to the four known ones — so a leak
- * cannot hide under a name nobody looked at.</p>
+ * <p>The member's <em>final</em> answer is a member text like its thinking and its tool line: it is not on
+ * the wire either (ADR-0078 Decision 6). It becomes a line of the <b>history</b> — which is why the set of
+ * names the whole turn used is pinned to the three known ones below: a member line leaking under a name
+ * nobody looked at is red here, and the same turn's history is asserted positively, so a member line that
+ * quietly disappeared is red too.</p>
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(FakeGitConfig.class)
@@ -78,7 +80,7 @@ class TeamInternalsTest {
     private static final String MEMBER_PROMPT = "MITGLIEDS-AUFGABE: nenne genau eine Frucht";
     /** Only the member's own shell line can carry this; no line of Jon's ever mentions it. */
     private static final String MEMBER_COMMAND_MARKER = "mitglieds-kommando";
-    /** What the member hands back — a member text, so it may appear on the wire only as {@code delegated}. */
+    /** What the member hands back — a member text: no channel of the wire shows it, the history names it. */
     private static final String MEMBER_ANSWER = "MITGLIEDS-ANTWORT: Birne";
     /** Jon's own follow-up answer — it has to arrive live, chunk by chunk. */
     private static final String JON_ANSWER = "JONS-FOLGE-ANTWORT: die Birne";
@@ -157,15 +159,10 @@ class TeamInternalsTest {
                     .as("no tool line of Jon's quotes the member's tool run or answer either (R-WP-4)")
                     .doesNotContain(MEMBER_ANSWER)
                     .doesNotContain(MEMBER_COMMAND_MARKER);
-            assertThat(stream.payloads("delegated"))
-                    .as("the member's final answer arrives live as the one event allowed to carry it (UC-WP-40 "
-                            + "GIVEN 1) — partial, tool, delegated and done are each asserted by name, so the "
-                            + "wire has no unnamed channel left")
-                    .singleElement()
-                    .satisfies(payload -> {
-                        assertThat((String) JsonPath.read(payload, "$.origin")).isEqualTo("Da Mek");
-                        assertThat((String) JsonPath.read(payload, "$.text")).isEqualTo(MEMBER_ANSWER);
-                    });
+            assertThat(stream.wireText())
+                    .as("the member's answer is not on the wire either — its line comes with the history, and"
+                            + " without it no channel would carry a member text at all (UC-WP-40)")
+                    .doesNotContain(MEMBER_ANSWER);
             assertThat(stream.partialsBetween("Da Mek start:", "Da Mek done."))
                     .as("while the member works, the wire is silent — its conversation with itself")
                     .isZero();
@@ -179,14 +176,23 @@ class TeamInternalsTest {
             assertThat(toolLines.get(0)).contains("Da Mek start:").contains(MEMBER_PROMPT);
             assertThat(toolLines.get(1)).contains("Da Mek done.");
             assertThat(stream.eventNames())
-                    .as("the wire speaks exactly the four known names — a member line leaking under a "
-                            + "fifth name is red here, not merely unnamed")
-                    .containsOnly("partial", "tool", "delegated", "done");
+                    .as("the wire speaks exactly the three known names — a member line leaking under a"
+                            + " fourth name is red here, not merely unnamed")
+                    .containsOnly("partial", "tool", "done");
             assertThat(stream.countOf("done"))
-                    .as("one answered input is one done")
+                    .as("one turn is one done")
                     .isEqualTo(1);
             assertThat(stream.countOf("error")).isZero();
         }
+
+        assertThat(messages(project.id()))
+                .as("the member's answer is a line of the history — its tool result, verbatim, under the"
+                        + " member's name; what the wire filters, the reading shows")
+                .filteredOn(line -> "Da Mek".equals(line.origin()))
+                .singleElement()
+                .satisfies(line -> assertThat(line.text())
+                        .startsWith(MEMBER_ANSWER + System.lineSeparator())
+                        .contains("Da Mek done."));
     }
 
     @Test
@@ -254,6 +260,13 @@ class TeamInternalsTest {
     private ResponseEntity<String> send(String projectId, String text) {
         return http.postForEntity("http://127.0.0.1:" + port + "/api/projects/" + projectId + "/messages",
                 jsonEntity(new SendMessageRequest(text)), String.class);
+    }
+
+    /** The history as the browser reads it after {@code done} — the channel the member's line uses. */
+    private List<ChatMessageDto> messages(String projectId) {
+        return http.exchange("http://127.0.0.1:" + port + "/api/projects/" + projectId + "/messages",
+                HttpMethod.GET, null, new ParameterizedTypeReference<List<ChatMessageDto>>() {
+                }).getBody();
     }
 
     private HttpEntity<Object> jsonEntity(Object body) {
@@ -371,6 +384,11 @@ class TeamInternalsTest {
                 }
             }
             return result;
+        }
+
+        /** Every data line of every event, concatenated — the haystack nothing of the member may be in. */
+        String wireText() {
+            return String.join("|", payloads);
         }
 
         /** The {@code answer} chunks in order — what the user reads. */

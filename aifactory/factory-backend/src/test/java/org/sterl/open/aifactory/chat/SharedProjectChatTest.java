@@ -134,9 +134,9 @@ class SharedProjectChatTest {
                 .as("A sieht Bs Eingabe und Jons Antwort darauf in seinem eigenen Verlauf")
                 .containsExactly(
                         new ChatMessageDto("user", QUESTION_A, null),
-                        new ChatMessageDto("jon", ANSWER_A, "Jon"),
+                        new ChatMessageDto("jon", ANSWER_A, AiPoAgent.NAME),
                         new ChatMessageDto("user", QUESTION_B, null),
-                        new ChatMessageDto("jon", ANSWER_B, "Jon"));
+                        new ChatMessageDto("jon", ANSWER_B, AiPoAgent.NAME));
         assertThat(messages(userB, projectId)).isEqualTo(messages(userA, projectId));
         assertThat(runtimes.runtime(projectId))
                 .as("beide Anfragen liefen auf dieselbe Runtime — dieselbe Memory, kein zweiter Jon")

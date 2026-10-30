@@ -39,6 +39,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
+import org.sterl.llmpeon.poagent.AiPoAgent;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
 import org.sterl.open.aifactory.project.FakeGitConfig;
@@ -190,11 +191,11 @@ class ChatConfigTurnTest {
                 .as("drei Eingaben, drei Antworten, in einer Reihenfolge")
                 .containsExactly(
                         new ChatMessageDto("user", "erste Frage", null),
-                        new ChatMessageDto("jon", "erste Antwort", "Jon"),
+                        new ChatMessageDto("jon", "erste Antwort", AiPoAgent.NAME),
                         new ChatMessageDto("user", "zweite Frage", null),
-                        new ChatMessageDto("jon", "zweite Antwort", "Jon"),
+                        new ChatMessageDto("jon", "zweite Antwort", AiPoAgent.NAME),
                         new ChatMessageDto("user", "dritte Frage", null),
-                        new ChatMessageDto("jon", "dritte Antwort", "Jon"));
+                        new ChatMessageDto("jon", "dritte Antwort", AiPoAgent.NAME));
     }
 
     // ------------------------------------------------------------------

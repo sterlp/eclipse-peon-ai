@@ -179,9 +179,6 @@ public class ChatStreamRegistry {
                     .data(payload("kind", partial.kind(), "text", partial.text()), MediaType.APPLICATION_JSON);
             case ChatEvent.ToolLine toolLine -> SseEmitter.event().name("tool")
                     .data(payload("text", toolLine.text()), MediaType.APPLICATION_JSON);
-            case ChatEvent.Delegated delegated -> SseEmitter.event().name("delegated")
-                    .data(payload("origin", delegated.origin(), "text", delegated.text()),
-                            MediaType.APPLICATION_JSON);
             case ChatEvent.Done done -> SseEmitter.event().name("done")
                     .data(payload("millis", done.millis()), MediaType.APPLICATION_JSON);
             case ChatEvent.Failed failed -> SseEmitter.event().name("error")

@@ -13,13 +13,13 @@ export interface ChatMessage {
 }
 
 /**
- * A live event of the running turn (§3.3.3): `partial` is a <em>delta</em>, `delegated` is one team
- * member's <em>final</em> answer (§3f.3.6), `done` closes one answered input and `error` is a turn
- * failure — the composer stays usable either way.
+ * A live event of the running turn (§3.3.3): `partial` is a <em>delta</em>, `tool` one tool or problem
+ * line, `done` closes one <em>turn</em> — an input that queued up behind a running one is closed by that
+ * turn's `done` too — and `error` is a turn failure; the composer stays usable either way. Finished text
+ * of anybody, team member included, is never an event: it arrives with the history (`done` reads it).
  */
 export type ChatStreamEvent =
   | { kind: 'partial'; thinking: boolean; text: string }
-  | { kind: 'delegated'; origin: string; text: string }
   | { kind: 'tool'; text: string }
   | { kind: 'done'; millis: number }
   | { kind: 'error'; message: string }

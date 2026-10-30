@@ -187,9 +187,12 @@ class WritePinningTest {
             assertThat(Files.readString(teamFile))
                     .as("UC-WP-8: ein Team-Mitglied schreibt innerhalb der Projekt-Root wie im Plugin")
                     .isEqualTo("team-text");
-            List<String> delegated = stream.payloads("delegated");
-            assertThat(delegated).as("die Delegation antwortet Jon, das ist ihre eigene Zeile").hasSize(1);
-            assertThat((String) JsonPath.read(delegated.get(0), "$.text")).isEqualTo(MEMBER_ANSWER);
+            assertThat(messages(project.id()))
+                    .as("die Delegation antwortet Jon, das ist ihre eigene Zeile — im Verlauf, nicht auf dem Draht")
+                    .filteredOn(line -> "Da Mek".equals(line.origin()))
+                    .singleElement()
+                    .satisfies(line -> assertThat(line.text())
+                            .startsWith(MEMBER_ANSWER + System.lineSeparator()));
             assertThat(toolLineTexts(stream).subList(linesBeforeTeam, toolLineTexts(stream).size()))
                     .as("vom Mitglied kommt nur seine Antwort an, seine Werkzeug-Zeile bleibt sein Internum (R-WP-4)")
                     .allSatisfy(line -> assertThat(line).doesNotContain("Created file:"));
@@ -268,9 +271,13 @@ class WritePinningTest {
 
             assertThat(Files.exists(escape)).as("UC-WP-9 zweiter GIVEN: die Datei entsteht nicht").isFalse();
 
-            assertThat(stream.payloads("delegated"))
-                    .as("die Delegation selbst laeuft weiter — ihr Ergebnis ist Jons Zeile, nicht ihre Ablehnung")
-                    .hasSize(1);
+            assertThat(messages(project.id()))
+                    .as("die Delegation selbst laeuft weiter — ihr Ergebnis ist ihre eigene Zeile im"
+                            + " Verlauf, nicht ihre Ablehnung")
+                    .filteredOn(line -> "Da Mek".equals(line.origin()))
+                    .singleElement()
+                    .satisfies(line -> assertThat(line.text())
+                            .startsWith(MEMBER_ANSWER + System.lineSeparator()));
 
             assertThat(messages(project.id()))
                     .as("UC-WP-9 zweiter GIVEN/R-WP-11: auch im wiederhergestellten Verlauf steht keine Ablehnung")

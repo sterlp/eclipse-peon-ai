@@ -226,9 +226,9 @@ class ChatTurnTest {
         assertThat(runtime.jon().getName()).isEqualTo(AiPoAgent.NAME);
         assertThat(messages(project.id())).containsExactly(
                 new ChatMessageDto("user", "erste Frage", null),
-                new ChatMessageDto("jon", "erste Antwort", "Jon"),
+                new ChatMessageDto("jon", "erste Antwort", AiPoAgent.NAME),
                 new ChatMessageDto("user", "zweite Frage", null),
-                new ChatMessageDto("jon", "zweite Antwort", "Jon"));
+                new ChatMessageDto("jon", "zweite Antwort", AiPoAgent.NAME));
     }
 
     @Test
@@ -271,7 +271,7 @@ class ChatTurnTest {
 
             assertThat(messages(project.id()))
                     .as("the finished text is read from the history, it never came over the stream")
-                    .endsWith(new ChatMessageDto("jon", LONG_ANSWER, "Jon"));
+                    .endsWith(new ChatMessageDto("jon", LONG_ANSWER, AiPoAgent.NAME));
 
             try (ChatStream late = new ChatStream(project.id())) {
                 MODEL.queueResponse("zweite Antwort");
