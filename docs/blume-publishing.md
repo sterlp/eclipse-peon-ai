@@ -28,7 +28,7 @@ SEO/OG-Images, `llms.txt`, JSON-API und MCP-Server. Navigation entsteht aus **Or
 |---|---|---|---|
 | 1 | **Kein H1 im Content** — `title` kommt aus dem Frontmatter, Content beginnt bei `##` | Jedes Doc beginnt mit `# Titel` | Bulk: `# X` → `title: X` |
 | 2 | **Striktes Frontmatter** — *„Any key outside this reference fails the build"* | Bisher kein Frontmatter; `idPrefix` ist ein **eigener** Key | `frontmatter.extend` + Zod in `blume.config.ts` (Pflicht, nicht optional) |
-| 3 | **Mermaid, Callouts, Math nur in `.mdx`** — in `.md` bleiben sie Rohtext | [AGENTS-PO.md](../AGENTS-PO.md) schreibt Mermaid-Sequenz-/Klassendiagramme für jede `{name}-architektur.md` vor | Bulk-Rename `.md` → `.mdx` (User: „im Bulk während wir veröffentlichen") |
+| 3 | **Mermaid, Callouts, Math nur in `.mdx`** — in `.md` bleiben sie Rohtext | [AGENTS-JON.md](../AGENTS-JON.md) schreibt Mermaid-Sequenz-/Klassendiagramme für jede `{name}-architektur.md` vor | Bulk-Rename `.md` → `.mdx` (User: „im Bulk während wir veröffentlichen") |
 | 4 | Tags gibt es als **`search.tags: [api]`** — eine **Such-Facette**, kein Navigationsmittel | `index.md` ist unsere Landkarte | Entscheidung offen (Q-B2) |
 
 Weitere Fallstricke aus der Doku: eine Überschrift, die wörtlich auf `[toc]`/`[!toc]` endet, wird

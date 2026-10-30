@@ -115,7 +115,7 @@ projekt-spezifisch, nicht als „nur in `.mdx`"-Pauschalregel annehmen.
 
 ## Nacht-Zyklus: Scaffold leitet Agenten/Skills ab
 
-Analog zum **Skill-Evolution-Loop** aus [AGENTS-PO.md](../AGENTS-PO.md): nach Review-Zyklen fällt
+Analog zum **Skill-Evolution-Loop** aus [AGENTS-JON.md](../AGENTS-JON.md): nach Review-Zyklen fällt
 Evidenz an (was fehlte, was zum Raten zwang — Da Dok meldet Skill/Instruction-Gaps, Checklisten-Punkt
 10). Die wird in einem **Ledger** gesammelt (`.agents/skills/wiki/skill-impact.md` bzw. im Port eine
 projektlokale Ledger-Datei).
@@ -129,7 +129,7 @@ das Peon-`~/.peon/skills`.
 
 ## Entscheidung: die „Beta"-Agent-Prompts übernehmen?
 
-Die experimentellen, projekt-lokalen Ergänzungen [AGENTS-PO.md](../AGENTS-PO.md) und
+Die experimentellen, projekt-lokalen Ergänzungen [AGENTS-JON.md](../AGENTS-JON.md) und
 [AGENTS-DEV.md](../AGENTS-DEV.md) — **teils ja, teils nein:**
 
 - **Nein** zum Einbacken der projekt-spezifischen Beta-Inhalte in die portablen Agent-Prompts:
@@ -138,7 +138,7 @@ Die experimentellen, projekt-lokalen Ergänzungen [AGENTS-PO.md](../AGENTS-PO.md
   falsch. **Der richtige Kanal dafür ist die `AGENTS.md`/`AGENTS-DEV.md` des Zielprojekts** — die lädt
   Claude ohnehin automatisch. So bleiben die globalen Agenten generisch, das Projekt-Wissen reist im
   Repo.
-- **Ja** zu den **Methodik-Ideen** aus AGENTS-PO.md: der Skill-Evolution-Loop und der Nacht-Zyklus-
+- **Ja** zu den **Methodik-Ideen** aus AGENTS-JON.md: der Skill-Evolution-Loop und der Nacht-Zyklus-
   Scaffold sind keine Peon-Spezifika, sondern übertragbare Praxis. Die werden übernommen (Scaffold-
   Agent + Nacht-Zyklus, siehe oben) — das **Konzept**, nicht der projekt-gebundene Wortlaut.
 

@@ -26,7 +26,7 @@
 | Gewähltes Projekt (Pfad/Info) | `UserContext` → `EclipseUtil.projectInfo` | ✅ **gebaut** | s. „Gebaut" |
 | `AGENTS.md` (Basis-Ground-Rules) | `AgentsMdService.get()` | ❌ fehlt | **Inc 1** |
 | Datum / OS / File-Access-Regeln | `setStaticContext(dateInfo)` | ❌ fehlt | **Inc 2** |
-| `AGENTS-<agent>.md` (sklaven-spezifisch) | `AgentsMdService` (auf **aktiven** Namen gekeyt → bei Jon `AGENTS-PO.md`) | ❌ fehlt | **Backlog** |
+| `AGENTS-<agent>.md` (sklaven-spezifisch) | `AgentsMdService` (auf **aktiven** Namen gekeyt → bei Jon `AGENTS-JON.md`) | ❌ fehlt | **Backlog** |
 | Editor-Selektion (Datei/Textstelle) | `UserContext` | ❌ fehlt | **bewusst NICHT** — Jon kuratiert die Aufgabe im Prompt |
 
 ## Design

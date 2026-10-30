@@ -59,7 +59,7 @@ Clean Break (ADR-0079), alte `Peon-*-history.jsonl` lassen sich bei Bedarf umben
 ## Offen
 
 - **`compact`** ist heute ein Config-Slot, kein Agent — bekommt er eine Datei?
-- **id `jon` statt `po`:** Config-Keys `llm.agent.po.*`, `AGENTS-PO.md`-Auflösung, History-Ordner —
+- **id `jon` statt `po`:** Config-Keys `llm.agent.po.*`, `AGENTS-JON.md`-Auflösung, History-Ordner —
   Da Mek prüft vor der Planung, was am alten Namen hängt.
 - **Namenskollision heute:** ein Custom Agent mit dem Namen eines Built-ins überschreibt diesen in
   `AgentService.reloadAgentConfig` bzw. erscheint doppelt — kein Guard. Mit diesem Feature wird daraus
