@@ -36,6 +36,9 @@ Backlog = every ❌/🚧 item. Vollständige Einträge (mit Status-Grund) stehen
   Kollisionen mit dem Bestand; Vorfrage Q-B4: veröffentlichen wir `docs/` überhaupt?
 * [Verbesserungen aus opencode](verbesserungen.md) — 📝 Studie (2026-08-23): Top-5-Übernahme-
   Kandidaten; Teil-Outcome → [Secure Credentials](../org.sterl.llmpeon/docs/secure-credentials.md).
+* [Jon & Team in den Claude-Code-Harness portieren](port-jon-to-claude-harness.md) — 📝 Methodik
+  (2026-10-29): Prompt→Claude-Artefakt-Mapping, Tool-Mapping, Scaffold-Nacht-Zyklus, Beta-Prompt-
+  Entscheidung. Zweitgleis zur Jon-Skill.
 * [Issue #142 — ASM-Konflikt](../issues/issue-142-asm-conflict.md) — ✅ gefixt (2026-10-06):
   p2-Repo liefert nur Feature+Plugin; Nutzer-Recovery über Homepage-Troubleshooting.
 * [Open Points](open-points.md) — zurückgestellte/offene Punkte (❓ offen · ⏳ selbst entschieden ·

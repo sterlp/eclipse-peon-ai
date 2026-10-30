@@ -1,5 +1,3 @@
-# AGENTS-PO.md — Ergänzungen für Peon-PO (Jon)
-
 > projekt-lokal, experimentell — **nur Ergänzungen** zum System-Prompt (`po.md`), keine
 > Wiederholung dessen.
 

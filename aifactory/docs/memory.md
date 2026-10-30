@@ -1,8 +1,10 @@
 # Session-Stand — AI Factory (OAF)
 
-Paul: **ein Thema pro Nachricht**, kurz. Nur Jon schreibt `docs/`. Branch `web-factory`.
+Paul: **ein Thema pro Nachricht**, kurz. Nur Jon schreibt `docs/`. Branch: Core-Repo ist auf `main`
+(2.15.1), `web-factory` existiert nicht mehr.
 **Paul committet selbst — kein Commit/Push durch Agenten in dieser Session.** Entscheidungen stehen in
 den Feature-Docs (siehe [Index](index.md)), nicht hier.
+**Core-Änderungen NUR mit Pauls Approval, per Proposal mit WARUM** (2026-10-29).
 
 ## Jetzt — Docs-Review gegen [Pauls Vision](../pauls-product-vision.md)
 

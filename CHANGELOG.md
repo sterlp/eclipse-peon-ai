@@ -5,7 +5,18 @@ All notable changes to Peon AI are documented here. Format loosely follows
 
 Releases before `2.12.4` are documented via [GitHub Releases](https://github.com/sterlp/eclipse-peon-ai/releases).
 
-## [Unreleased]
+## v2.5.2
+
+### New Features
+
+- **Jon files docs by topic, not by code.** Topic folders (`docs/<topic>/` with their own index.md) are opt-in — Jon proposes one when a domain owner reaches about three feature docs and asks first; each feature/architecture doc names its technical home (module, package) in its header. (`org.sterl.llmpeon.core` prompts `doc-method.md`, `po.md`)
+- **Doc moves keep the links.** When Jon moves or renames a doc, all references — docs, code comments, tests — are updated in the same cycle. (`org.sterl.llmpeon.core` prompt `po.md`)
+
+### Bug Fixes
+
+- **A failed AI call now names the endpoint it tried.** Errors that said nothing — a blank message, or the JDK wrapper that only repeats its cause's class name — are reported as `AI call to <url> failed: <Exception> — <cause>`, so a dead model URL is tellable from an MCP one; cancelling a call and errors that already explain themselves stay untouched (R-AEM-3, `org.sterl.llmpeon.core`, [org.sterl.llmpeon.core/docs/agent-error-memory.md](org.sterl.llmpeon.core/docs/agent-error-memory.md), PR #168)
+
+## v2.5.1
 
 ### Added
 
