@@ -37,8 +37,8 @@ and why the split.
 | `plan-write-loop.txt` | `PoDelegateTool.planWithPlanAgent` | one-shot standing order per plan dispatch | no | plan-writing discipline (small green increments, plan continuously, ask — never guess) — never on `talkPlan` |
 | `compressor.txt` | `AiCompressorAgent` (static) | every compaction run | no | compaction method |
 | `search-agent.md` | `SearchAgentTool` | per `searchAgent` call (stateless one-shot) | no | Da Sniffa: read-only research agent |
-| `scaffold-agent.txt` | `AiScaffoldAgent` (static) | always — Peon-Scaffold system prompt | yes | scaffold identity (config artefacts: agents/skills/commands) |
-| `scaffold-tutorial.txt` | plugin (`PeonAiService` / `AIChatView`) | first activation of Peon-Scaffold | — | scaffold onboarding message |
+| `scaffold-agent.txt` | `AiScaffoldAgent` (static) | always — Scaffold system prompt | yes | scaffold identity (config artefacts: agents/skills/commands) |
+| `scaffold-tutorial.txt` | plugin (`PeonAiService` / `AIChatView`) | first activation of Scaffold | — | scaffold onboarding message |
 
 ## Why the split
 

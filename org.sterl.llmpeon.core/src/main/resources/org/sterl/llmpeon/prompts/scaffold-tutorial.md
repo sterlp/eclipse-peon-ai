@@ -1,4 +1,4 @@
-## Welcome to Peon-Scaffold!
+## Welcome to Scaffold!
 
 I help you create, edit, and manage your Peon configuration artifacts — agents, skills, and commands.
 

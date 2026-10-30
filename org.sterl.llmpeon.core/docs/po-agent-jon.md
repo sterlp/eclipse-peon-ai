@@ -18,7 +18,7 @@ This story is the design; rules are marked **✅** where built, **❌** where st
 **100 % additive.** Jon only *adds* — a new agent, the `poagent` delegate tools, the slave-side
 completion signals (`planComplete` / `planImplemented`) and the write-allowlist decorator. It changes
 **nothing** in the standalone Plan / Dev /
-Peon-Scaffold agents or in today's button handoff. Jon lives in the **`core`** module and is therefore
+Scaffold agents or in today's button handoff. Jon lives in the **`core`** module and is therefore
 **fully testable in core** with the headless disk tools; the Eclipse plugin only **injects the
 Eclipse-workspace tools** (behind the same write wrapper). Jon **never gets a shell** — in any layer.
 
@@ -38,7 +38,7 @@ green** (`org.sterl.llmpeon.core`/`.test`):
   cosmetic only. The **active** default stays Dev (decision R1): the combo does **not** blindly
   select index 0 — `ActionsBarWidget.updateModeUI(getActiveAgent())` selects the *active* agent's row
   on every config apply, so it pre-selects the **Dev row** while Jon sits at the top of the list. Jon,
-  like Peon-Scaffold, is registered in the **plugin** via `PeonAiService.addPersistentAgent` (he needs
+  like Scaffold, is registered in the **plugin** via `PeonAiService.addPersistentAgent` (he needs
   a plugin-assembled, docs-only `ToolService`), not in the core `withDefaultAgent` block that seeds
   `activeAgent = devAgent`.
 - **Own model slot (✅ 3a, 2026-09-03).** Jon liest/schreibt sein Modell über den **eigenen
@@ -107,7 +107,7 @@ to the prompt file instead of a BDD. Full 12-file inventory + loader mechanics:
 | `doc-method.md` ❌ | `AiPoAgent` + Paco (static) | always — right after Jon's/Paco's own prompt (`default` + `po`/`paco` + `doc-method`, both say "Doc-Methode unten"); `${docs}` resolved like `po.md` | the shared docs-first method (SOLL/IST/WEIL, GIVEN/WHEN/THEN, symbols/status markers, conflict check, one-question interviews) — one source so Jon and Paco never drift ([aifactory R-PC-7](../../aifactory/docs/paco.md)) |
 | `po.md` | `AiPoAgent` (static) | always — Jon's system prompt | Jon's `## Charakter` + build role (IDs/`nextIds`, ADRs, architecture docs, status flips, team) |
 | `po-delegation.md` | `AiPoAgent` (static) | always — appended after the path-white-list line | the delegation playbook (plan → sign-off → build → one review → retro, cycle/branch discipline) — split out so the identity stays clean and the playbook evolves on its own |
-| `po-tutorial.md` | plugin `PeonAiService` | first activation in a session (R4) | onboarding message, like Peon-Scaffold |
+| `po-tutorial.md` | plugin `PeonAiService` | first activation in a session (R4) | onboarding message, like Scaffold |
 | `plan-write-loop.md` | `PoDelegateTool.planWithPlanAgent` | one-shot standing order per plan dispatch | plan-writing discipline — only when Plan actually writes the plan, not on `talkPlan` |
 | `dev-build-loop.md` | `PoDelegateTool.buildWithDev` | per build dispatch with a (sticky) planPath | build discipline (vertical slices, green gate, git commits, compactSession) — only when Dev builds from a released plan, not on `askDev` |
 
@@ -262,7 +262,7 @@ steuert `po-delegation.txt` (Content im Repo, siehe Prompts); die Tool-Mechanik 
 ### I2.5: Shared memory — Jon writes, slaves only read ✅
 Memory is **shared by every agent** in the workspace (`WorkspaceMemoryTool`, one Eclipse-preference
 store). Jon knows this, so his memory becomes his **lever on the whole workspace**: a guideline he records is
-read by Plan and Dev *and* by the user's Plan/Dev/Peon-Scaffold.
+read by Plan and Dev *and* by the user's Plan/Dev/Scaffold.
 
 - **Jon has memory *write*** (`memoryAdd` / `memoryReplace` / `memoryRemove`) in his `ToolService` —
   he curates the shared memory. (Disk tools stay out — Jon does not need them.)
@@ -311,14 +311,14 @@ AND a later prompt-only buildWithDev call still carries that plan path (sticky, 
 ## Business Rules
 
 ### R1: Registration & Naming ✅
-Built-in agent alongside Dev, Plan and Peon-Scaffold. **The default entry agent stays
+Built-in agent alongside Dev, Plan and Scaffold. **The default entry agent stays
 Dev** — Jon is opt-in.
 
 - Dropdown / selection name: `Jon`
 - Identity in the system prompt **and** in the docs: `Jon`
 - Lives in the **`core`** module: package `org.sterl.llmpeon.po`, class `AiPoAgent extends
   AbstractAgent` — fully unit-testable in core (headless disk tools, no Eclipse runtime)
-- Registered via `addPersistentAgent()` — survives `clearAgents()` on reload (same as Peon-Scaffold)
+- Registered via `addPersistentAgent()` — survives `clearAgents()` on reload (same as Scaffold)
 - Auto-loads **`AGENTS-JON.md`** (if present) via the **existing generic** agent-specific-AGENTS.md
   mechanism ([agent-specific-agentsmd.md](agent-specific-agentsmd.md)) — Jon needs **no new feature**,
   he just slots in with key **`Jon`** (candidates `AGENTS-Jon.md` / `agents-jon.md` / `AGENTS-JON.md`),
@@ -332,12 +332,12 @@ Dev** — Jon is opt-in.
 ```
 GIVEN AgentService is constructed with the default agents
 WHEN getAgents() is called
-THEN Jon is in the list alongside Dev, Plan and Peon-Scaffold
+THEN Jon is in the list alongside Dev, Plan and Scaffold
 AND the default active agent is still Dev
 ```
 
 ### R2: ToolService — reuse existing file tools behind a write-allowlist ✅
-Jon has his own `ToolService(false)` (no default-tool leakage, like Peon-Scaffold) holding:
+Jon has his own `ToolService(false)` (no default-tool leakage, like Scaffold) holding:
 (Tool-Names heute: `talkPlan` / `planWithPlanAgent`, `askDev` / `buildWithDev`, `searchAgent` — I2.1.
 Historische Namen `jonCreateDevPlan`/`jonAskQuestion`/`jonAskDev` → heute
 `planWithPlanAgent`/`talkPlan`/`askDev`.)
@@ -438,7 +438,7 @@ brach bei < 2 Messages. Slaven-Compacts (`compactDev`/`compactPlan`) hatten dens
 
 ### R4: Onboarding tutorial ❌
 On the first activation in a session (`memory.size == 0`) Jon shows a short tutorial message (like
-Peon-Scaffold). Later activations in the same session only refresh standing orders.
+Scaffold). Later activations in the same session only refresh standing orders.
 
 **BDD:**
 ```
@@ -950,7 +950,7 @@ AND ein disk-Write außerhalb von */docs/* + *.md wird weiterhin vom Write-Valid
 
 - **Reviewer** — a dedicated agent Jon dispatches to review a plan or the changed code against the
   docs when he is unhappy with Plan/Dev output. In the MVP Jon does this review himself (R6/R7).
-- **Self-improvement via Skills (`jonAskScaffold`)** — a `jon*` tool driving a Peon-Scaffold team member so
+- **Self-improvement via Skills (`jonAskScaffold`)** — a `jon*` tool driving a Scaffold team member so
   Jon can have Skills created/edited and thereby **improve himself over time**. Left out of the MVP
   (it needs its own team member in the lifecycle/header/error rules). This becomes its **own story / feature
   `.md`** — explicitly out of scope here, only flagged as the direction.

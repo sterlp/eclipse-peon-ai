@@ -12,7 +12,7 @@ Eclipse Peon AI ships with several built-in agents, each designed for a specific
 | **Jon** | Autonomous orchestrator | [Jon & Team](./peon-po) — designs features in docs, then orchestrates Plan and Dev to implement them. |
 | **Dev** | Implementer | Reads plans and modifies code. The default agent for ad-hoc development tasks. |
 | **Plan** | Planner | Read-only exploration and plan creation. Writes structured plans to `peon-plan/overview.md`. |
-| **Peon-Scaffold** | Agent & skill creator | Create and manage custom agents, skills, and commands with natural language — [details](./scaffold-agent). |
+| **Scaffold** | Agent & skill creator | Create and manage custom agents, skills, and commands with natural language — [details](./scaffold-agent). |
 
 ## Handoff between agents
 

@@ -7,9 +7,9 @@ Provide a built-in agent that lets users create, edit, and manage Peon configura
 ## Business Rules
 
 ### R1: Agent Registration ✅
-The scaffold agent is a built-in agent appearing alongside Peon-Dev and Peon-Plan in the dropdown.
+The scaffold agent is a built-in agent appearing alongside Dev and Plan in the dropdown.
 
-- Name: `Peon-Scaffold`
+- Name: `Scaffold`
 - Package: `org.sterl.llmpeon.scaffold`
 - Class: `AiScaffoldAgent extends AbstractAgent`
 - Registered as a persistent agent via `addPersistentAgent()` — stored in AgentService's separate `persistentAgents` map, survives `clearAgents()` on reload
@@ -18,11 +18,11 @@ The scaffold agent is a built-in agent appearing alongside Peon-Dev and Peon-Pla
 ```
 GIVEN AgentService is constructed with withDefaultAgent=true
 WHEN getAgents() is called
-THEN Peon-Scaffold is in the list alongside Peon-Dev and Peon-Plan
+THEN Scaffold is in the list alongside Dev and Plan
 
 GIVEN the scaffold agent is registered as a persistent agent
 WHEN reloadAgents() is called
-THEN Peon-Scaffold is still in the agents map
+THEN Scaffold is still in the agents map
 ```
 
 ### R2: Tool Access ✅
@@ -36,12 +36,12 @@ No Eclipse workspace tools, no ShellTool, no CompactSessionTool, no SearchAgentT
 
 **BDD:**
 ```
-GIVEN the user switches to Peon-Scaffold
+GIVEN the user switches to Scaffold
 THEN the agent's ToolService has config-scoped disk tools + SkillTool + WebFetchTool + ReloadConfigTool
 AND no Eclipse workspace tools, shell, compact, or searchAgent tools are available
 
 GIVEN disk tools are disabled in the global config
-WHEN the user switches to Peon-Scaffold
+WHEN the user switches to Scaffold
 THEN the agent still has access to config-scoped disk tools
 ```
 
@@ -50,7 +50,7 @@ On each activation, inject standing orders with config dir path and `.peon` root
 
 **BDD:**
 ```
-GIVEN the user switches to Peon-Scaffold
+GIVEN the user switches to Scaffold
 THEN standing orders are injected with config dir path and directory listing of .peon root
 ```
 
@@ -86,7 +86,7 @@ AND calls reloadConfig() to make it immediately available
 GIVEN a skill was just created via the scaffold agent
 WHEN the agent calls reloadConfig()
 THEN SkillService.refresh() picks up the new SKILL.md
-AND Peon-Scaffold is still in the agents map
+AND Scaffold is still in the agents map
 ```
 
 ::: tip Observer migration point
@@ -116,7 +116,7 @@ AND the services refresh from the new directory
 ```
 
 ### R7: Scaffold Agent Config ✅
-The scaffold agent uses `devAgentConfig()` — same model, temperature, think as Peon-Dev.
+The scaffold agent uses `devAgentConfig()` — same model, temperature, think as Dev.
 
 ### R8: Tool Allowlist knowledge (`tools:` + `!`-Negation) ✅ (2026-10-14)
 Scaffold generates/edits AGENT.md frontmatter — it must know the `tools:` allowlist semantics
@@ -127,7 +127,7 @@ frontmatter fields — without this rule the negation could never come into exis
 
 **BDD:**
 ```
-GIVEN the user asks Peon-Scaffold to create an agent with all tools except the debug tools
+GIVEN the user asks Scaffold to create an agent with all tools except the debug tools
 WHEN the agent writes the AGENT.md frontmatter
 THEN tools contains "*", "!debugJava*" (allowlist first, negations after)
 AND reloadConfig() makes the agent available with the resolved filter

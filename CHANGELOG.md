@@ -18,6 +18,10 @@ Releases before `2.12.4` are documented via [GitHub Releases](https://github.com
   `^Peon-PO$` no longer matches — Jon falls back to alphabetical order until the file is updated.
   Same clean break for the agent-specific standing orders: Jon now loads `AGENTS-JON.md` — an
   existing `AGENTS-PO.md` is no longer read, rename it.
+- **Scaffold is now `Scaffold`** — the config-artifact agent (agents, skills, commands) drops its
+  `Peon-` prefix like the other roles: dropdown, chat header and the sender stamp on its chat lines
+  all use that name. Clean break, no alias — an `agent-order.txt` pattern on
+  `^Peon-Scaffold$` or `Peon-.*` no longer matches.
 
 ### Added
 

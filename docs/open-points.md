@@ -27,9 +27,12 @@ Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.
   `AbstractAgent.call` — Eingabe zwischen letztem `pollNext()` und `working.set(false)` liegt bis zum
   nächsten Send in der Queue, und mit A1 (`done` je Turn) folgt für sie kein `done` → Web wartet
   sichtbar. (2) V1-Verdacht: `AiPoAgent.setStaticContext` überschreibt evtl. die
-  `"Your name is X."`-Zeile aus `BuildPoAgentComponent` (Aufrufreihenfolge klären). (3) Scope:
-  `AiScaffoldAgent.NAME = "Peon-Scaffold"` trägt weiter das alte Muster — in V2 mit den Config-Ids
-  mitziehen oder jetzt?
+  `"Your name is X."`-Zeile aus `BuildPoAgentComponent` (Aufrufreihenfolge klären).
+- 🔒 **Scaffold heißt `Scaffold` (Jon 2026-10-30).** Der Name zieht **jetzt** mit, nicht in V2 —
+  ADR-0079 verlangt die Rolle ohne Präfix, und die Homepage-Anleitung sagt bereits „Select
+  **Scaffold**". Clean Break: kein Alias, keine Migration (der Agent wird ohne State-Verzeichnis
+  gebaut, es existiert kein `Peon-Scaffold-history.jsonl`). Folge: eigene `agent-order.txt`-Muster
+  auf `^Peon-Scaffold$` bzw. `Peon-.*` matchen nicht mehr.
 - ⏳ **Fehler-Ergebnis einer Delegation erscheint wörtlich als Mitglieder-Zeile** (aifactory
   open-points) — so gebaut („wie es ist“), andersfall = neuer Core-Mechanismus. unverändert offen.
 

@@ -5,7 +5,7 @@ description: Define your own agents with a system prompt and a tool allowlist
 
 # Custom Agents (since v2.0.0)
 
-Next to the four built-in agents (**Jon**, **Dev**, **Plan**, **Peon-Scaffold**) you can define
+Next to the four built-in agents (**Jon**, **Dev**, **Plan**, **Scaffold**) you can define
 your own agents. Each agent has its own system prompt and its own set of allowed tools, and it
 shows up in the same agent dropdown right next to the built-ins.
 

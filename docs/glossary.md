@@ -23,6 +23,7 @@ Tool-Call und manchmal eine falsche Entscheidung.
 | **Search** | Such-Agent (`searchAgent`), read-only; der Loop ist zustandslos (einmalig), Kontinuität nur über den `last-search-rolling`-Block | Research-Agent, Scout, Da Sniffa |
 | **last-search-rolling** | Rollender Hot-Kontext-Block des Such-Agenten: Frage+finale Antwort der letzten Suchen derselben Chat-View, append-only, 10k-Cap Rohschnitt; Static Message, nie Memory | Such-Historie, Search-Memory |
 | **Review** | Review-Agent (`reviewPlanAgent`), read-only im Code, Verdict ACCEPTED/CONCERNS/REJECTED | Reviewer, QA-Agent, Peon-Review, Da Dok |
+| **Scaffold** | Built-in-Agent, der Agents/Skills/Commands anlegt und pflegt | Peon-Scaffold, Config-Agent, Housekeeper |
 | **Compact** | Sub-Agent-Loop, der die History verdichtet (`compactSession`); sein Name erscheint als Absender-Stempel im Chat | Compressor, Summarizer, Da Scribe |
 | **Custom Agent** | Nutzerdefinierter Agent aus `AGENT.md` mit Frontmatter | User-Agent, eigener Agent |
 
