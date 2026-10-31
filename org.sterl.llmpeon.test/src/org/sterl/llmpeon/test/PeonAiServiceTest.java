@@ -2526,6 +2526,41 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         }
     }
 
+    /**
+     * R2 (org.sterl.llmpeon/docs/active-agent-persistence.md): the remembered agent is active again in
+     * the next service — that service is the restart, minus the Eclipse restart. Jon is the chosen
+     * agent on purpose: as a persistent agent he is only registered under his name after the config
+     * refresh, so this also pins WHERE in the constructor the restore has to run.
+     */
+    @Test
+    public void rememberedAgentIsRestoredInANewService() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN: nothing remembered (beforeEach cleared the key) -> the default agent stays active
+        assertEquals("a workspace without a remembered agent starts on the default",
+                AiDevAgent.NAME, aiService.getActiveAgent().getName());
+
+        // AND: the user picks Jon, which is what the dropdown does
+        aiService.setActiveAgent(AiPoAgent.NAME);
+        assertEquals(AiPoAgent.NAME, aiService.getActiveAgent().getName());
+        assertEquals("the choice lands on the wire key of this workspace (R5)",
+                AiPoAgent.NAME, InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID)
+                        .get(REMEMBERED_AGENT_KEY, null));
+
+        // WHEN: a second service is built for the same workspace — deliberately WITHOUT clearing
+        // the remembered agent, that is the whole point
+        var ccm = new ConfiguredChatModel(LlmConfig.builder()
+                .model("test").url("http://localhost:0")
+                .configDir(Path.of(System.getProperty("java.io.tmpdir"), ".peon-test")).build());
+        ccm.setChatModel(streamMock.buildOkMock());
+        var restarted = new PeonAiService(() -> {}, null, null, null, ccm);
+        restarted.setProject(project);
+
+        // THEN: Jon is active again, not the Dev default
+        assertEquals("the remembered agent survives the service build",
+                AiPoAgent.NAME, restarted.getActiveAgent().getName());
+    }
+
     /** Lowercase skill names currently visible in the effective view (config + project slots). */
     private static List<String> skillNames(PeonAiService svc) {
         return svc.getSkillService().getAllLoadedSkills().stream()
