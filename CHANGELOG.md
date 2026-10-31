@@ -9,6 +9,12 @@ Releases before `2.12.4` are documented via [GitHub Releases](https://github.com
 
 ### Changed
 
+- **Queued messages while the AI works are delivered mid-turn.** Messages sent while an agent is
+  working — and messages prefixed with `!` in particular — ride along with the next tool result as
+  a visible `queued_user_message` block (including the time each message was queued), instead of
+  being injected into the running context. The answer you type for a question (`askUser`) carries
+  all queued messages along with it. If nothing consumes them in the current turn, they are asked
+  as follow-up turns as before.
 - **Built-in agents are named Jon, Plan, Dev, Review** (sub-loops `Search`/`Compact`) — display
   name = agent id everywhere (header, roster, history files, prompts); the Ork names are gone.
   Config keys (`llm.agent.*`, model slots) are unchanged ([ADR-0079](docs/adr/0079-display-names-without-ork-names.md))
@@ -35,6 +41,13 @@ Releases before `2.12.4` are documented via [GitHub Releases](https://github.com
 ### New Features
 
 - **Your agent choice survives a restart.** The agent you picked in the chat dropdown is remembered for this Eclipse workspace and restored on start — after a restart or a workspace switch you continue with that agent instead of **Dev**. Only a real change of agent is remembered (a handoff counts, re-picking the active one does not), and an agent that has since been removed or renamed leaves the default in place, quietly. (`org.sterl.llmpeon`, [org.sterl.llmpeon/docs/active-agent-persistence.md](org.sterl.llmpeon/docs/active-agent-persistence.md))
+
+### Fixed
+
+- **The live status bar no longer vanishes on chat events.** Sending a message while the AI works
+  (e.g. a `!`-message) or answering a question used to hide the "waiting for AI…" bar until the
+  next response chunk arrived. Appended messages no longer hide it — the bar closes only when
+  streaming ends or the turn finishes.
 
 - **Jon files docs by topic, not by code.** Topic folders (`docs/<topic>/` with their own index.md) are opt-in — Jon proposes one when a domain owner reaches about three feature docs and asks first; each feature/architecture doc names its technical home (module, package) in its header. (`org.sterl.llmpeon.core` prompts `doc-method.md`, `po.md`)
 - **Doc moves keep the links.** When Jon moves or renames a doc, all references — docs, code comments, tests — are updated in the same cycle. (`org.sterl.llmpeon.core` prompt `po.md`)

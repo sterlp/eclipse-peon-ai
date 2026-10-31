@@ -224,6 +224,23 @@ public abstract class AbstractAgent implements AiAgent {
         }
     }
 
+    /**
+     * Rule 11: drain + disclosure are <b>one</b> step under the queue's monitor — a consumption that
+     * is not visible is exactly the silent injection the rule forbids, and a drain outside that
+     * monitor would race the turn-slot hand-over (Rule 10).
+     */
+    @Override
+    public List<String> takeUrgentMessages(AiMonitor monitor) {
+        var mon = AiMonitor.nullSafety(monitor);
+        synchronized (messageQueue) {
+            var entries = messageQueue.drainUrgent();
+            for (var entry : entries) {
+                mon.onTool(QueuedUserMessages.readingLine(messageQueue, entry));
+            }
+            return entries.stream().map(entry -> QueuedUserMessages.bodyLine(messageQueue, entry)).toList();
+        }
+    }
+
     /** Test seam: swap the queue (fixed {@code Clock} for Rule 9 Queued-At tests). Package-private.
      *  The instance is also the monitor of the turn-slot hand-over — swap it before a turn, never
      *  during one, or claim and release stop being ordered against the enqueues. */

@@ -5,8 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.sterl.llmpeon.agent.model.TaggedResult;
 
 /**
  * Rule 9 Queued-At Disclosure: the payload marker and the disclosure line of one entry carry the
@@ -49,5 +51,40 @@ class QueuedUserMessagesTest {
                 .isEqualTo("[Queued Message] (14:32): msg2" + System.lineSeparator() + "msg3");
         assertThat(QueuedUserMessages.readingLine(queue, entry))
                 .isEqualTo("Reading queued User message: msg2" + System.lineSeparator() + "msg3 (queued 14:32)");
+    }
+
+    /** Rule 11 body line: the block head already names the sender, so no [Queued Message] prefix. */
+    @Test
+    void bodyLineCarriesTheTimeAndTheTextWithoutTheMarkerPrefix() {
+        // GIVEN
+        var queue = new UserMessageQueue(10_000, Clock.fixed(Instant.ofEpochMilli(AT_1432), ZoneOffset.UTC));
+        queue.addUrgent("bitte abbrechen");
+
+        // WHEN
+        var line = QueuedUserMessages.bodyLine(queue, queue.drainUrgent().getFirst());
+
+        // THEN
+        assertThat(line).isEqualTo("(queued 14:32): bitte abbrechen");
+        assertThat(line).doesNotContain(UserMessageQueue.QUEUED_MARKER_PREFIX);
+    }
+
+    @Test
+    void blockWrapsAllBodyLinesInOneHeadAndFoot() {
+        // GIVEN the lines of two urgent entries
+        var block = QueuedUserMessages.block(List.of("(queued 14:32): u1", "(queued 14:32): u2"));
+
+        // THEN - one block, both lines inside, start and end line carry the same head (R-TR-1)
+        assertThat(block.toString()).isEqualTo(
+                TaggedResult.PREFIX + "queued_user_message" + TaggedResult.LN
+                        + "(queued 14:32): u1" + TaggedResult.LN
+                        + "(queued 14:32): u2" + TaggedResult.LN
+                        + TaggedResult.SUFFIX + "queued_user_message");
+    }
+
+    /** An empty lane must leave a tool result untouched — never an empty block. */
+    @Test
+    void noLinesMeansNoBlock() {
+        assertThat(QueuedUserMessages.block(List.of())).isNull();
+        assertThat(QueuedUserMessages.block(null)).isNull();
     }
 }

@@ -136,6 +136,16 @@ public interface AiAgent {
     default void queueUrgentMessage(String msg) {
     }
 
+    /**
+     * Take ALL urgent queue entries for the running turn (queued-user-messages rule 11): drained
+     * under the queue's monitor, disclosed per message on {@code monitor}, and returned as
+     * already-rendered block lines — the tool layer never learns about lanes, labels or the queue
+     * itself. Empty when the lane is empty; entries consumed here never return as a follow-up turn.
+     */
+    default List<String> takeUrgentMessages(AiMonitor monitor) {
+        return List.of();
+    }
+
     /** @return the number of queued messages waiting to be processed. Default 0 for agents without queues. */
     default int getQueuedMessageCount() {
         return 0;

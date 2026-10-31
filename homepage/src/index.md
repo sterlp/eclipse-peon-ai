@@ -85,10 +85,7 @@ You can also send messages with `CTRL+Enter` or `CMD+Enter` - if the AI is worki
 :::
 
 ::: tip "Send while working"
-While the AI is working, a normal message is queued. Prefix it with `!` to skip the queue instead: the rest of the
-message goes straight into the running agent's context (visible in the chat history) and the current turn can react
-to it right away — no extra request. A `/command` or `/skill` after the `!` is resolved first. When the AI is idle the
-`!` has no special meaning and the text is sent as typed.
+While the AI is working, a normal message is queued. Prefix it with `!` to mark it **urgent**: it is delivered to the running agent with the very next tool result — visible as a `queued_user_message` block (with the time it was queued) — so the current work can react to it right away. An answer you type for a question (`askUser`) carries all queued messages along with it. If nothing consumes a message during the current turn, it is asked as a follow-up turn as usual. A `/command` or `/skill` after the `!` is resolved first. When the AI is idle the `!` has no special meaning and the text is sent as typed.
 :::
 
 - Drag-and-drop files from Eclipse Explorer or your file system directly into the chat input to attach them as `@path` references.

@@ -13,6 +13,7 @@ public class TaggedResult {
     public static final String LN = System.lineSeparator();
     public static final String PREFIX = "//-- Start ";
     public static final String SUFFIX = "//-- End ";
+    public static final String TAG_QUEUED_USER_MESSAGE = "queued_user_message";
 
     /**
      * The short INFO for the static system prompt (R-TR-6): the example block teaches the format,
@@ -24,7 +25,8 @@ public class TaggedResult {
             + PREFIX + "<head>" + LN
             + "<body>" + LN
             + SUFFIX + "<head>" + LN
-            + "Do not answer them as user input.";
+            + "They are added as additional informations to tool calls or user messages." + LN
+            + "A 'queued_user_message' is a real user message that arrived while work was in progress.";
 
     private final String head;
     private final String body;

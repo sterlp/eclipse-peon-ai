@@ -11,9 +11,11 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import org.jspecify.annotations.NonNull;
+import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.compact.HandleToolLoopCompactComponent;
 import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.mcp.McpService;
+import org.sterl.llmpeon.queuedmessages.QueuedUserMessages;
 import org.sterl.llmpeon.shared.OwnerMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
@@ -241,8 +243,28 @@ public class ToolService {
                         "Tool failed - check why and inform user " + StringUtil.getStackTrace(e)));
             }
         }
+        attachUrgentMessages(toolResults, req);
 
         return toolResults;
+    }
+
+    /**
+     * Rule 11: the urgent entries a round picked up ride on <b>one</b> result — the first of the
+     * round — so several tool calls of one answer still deliver the block exactly once. The block
+     * goes behind the tool's own output, which keeps the result a non-pure block (R-TR-2): the
+     * compact keeps it. An agent-less loop (a search sub-agent) has no queue of its own — its parent
+     * must still see the entries, so nothing is drained there.
+     */
+    private void attachUrgentMessages(List<ToolExecutionResultMessage> toolResults, ToolLoopRequest req) {
+        var agent = req.getAgent();
+        if (agent == null || toolResults.isEmpty()) return;
+
+        var block = QueuedUserMessages.block(agent.takeUrgentMessages(req.getMonitor()));
+        if (block == null) return;
+
+        var first = toolResults.getFirst();
+        toolResults.set(0, ToolExecutionResultMessage.from(first.id(), first.toolName(),
+                first.text() + TaggedResult.LN + TaggedResult.LN + block));
     }
     
     /** Merges all SystemMessages into one at the front (compatibility with local LLMs). */
