@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -759,27 +761,145 @@ class AbstractAgentTest {
     }
 
     /**
-     * Rule 8 override: injectUserMessage writes directly into the memory (the running turn
-     * picks it up on its next model call) — the queue is never touched.
+     * Rule 8.2: while a turn works, the „!"-override goes to the urgent lane of the queue — the
+     * memory is untouched (no injection) and no second turn starts.
      */
     @Test
-    void test_injectUserMessage_appendsUserMessage_notQueued() {
-        // GIVEN — a fresh agent, no call in flight
-        var config = LlmConfig.builder().model("mock").build();
-        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
-                .aiMessage(AiMessage.aiMessage("OK")).build());
-        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+    void urgentMessageGoesToTheQueueNotToTheMemory() throws InterruptedException {
+        // GIVEN — a turn parked inside its model call
+        try (var parked = parkedTurn(monitor -> {}, new UserMessageQueue(10_000, fixedClock1432()))) {
+            assertThat(parked.awaitParked()).as("the turn really is working — else this proves nothing").isTrue();
 
-        // WHEN — direct injection, as the !-override performs while the agent works
-        agent.injectUserMessage("bitte abbrechen");
+            // WHEN — the urgent message arrives mid-turn, the way AIChatView routes it
+            parked.agent().queueUrgentMessage("bitte abbrechen");
 
-        // THEN — the memory ends with the exact user message …
-        var memory = agent.getMemory().getCopy();
-        assertThat(memory).hasSize(1);
-        assertThat(memory.get(0)).isInstanceOf(UserMessage.class);
-        assertThat(extractUserTexts(memory)).containsExactly("bitte abbrechen");
-        // AND — … and nothing was routed through the queue
-        assertThat(agent.getQueuedMessageCount()).isZero();
+            // THEN — it waits in the queue …
+            assertThat(parked.agent().getQueuedMessageCount()).isEqualTo(1);
+            // AND — nothing was injected: the running turn cannot see it in the memory …
+            var userTexts = extractUserTexts(parked.agent().getMemory().getCopy());
+            assertThat(userTexts).containsExactly("start");
+            assertThat(userTexts).noneMatch(t -> t.contains("bitte abbrechen"));
+            // AND — and no second turn started: the parked call is still the only one
+            assertThat(parked.agent().isWorking()).isTrue();
+            assertThat(streamMock.getCallCount()).isEqualTo(1);
+        }
+    }
+
+    /**
+     * Rule 8.3: a turn that ends without an urgent entry ever being consumed hands it to the
+     * follow-up turn — with the Rule 9 marker and disclosure line, so the delivery is visible.
+     */
+    @Test
+    void urgentEntryWithoutToolUseBecomesTheNextTurn() throws InterruptedException {
+        // GIVEN — a turn parked inside its model call, no tools involved
+        List<String> toolLines = new ArrayList<>();
+        var monitor = new AiMonitor() {
+            // below an agent entry TOOL lines arrive as SimpleMessages — OwnerMonitor builds them and
+            // never calls onTool on its delegate (ADR-0078); both channels feed one list
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolLines.add(m.message()); }
+            @Override public void onTool(String message) { toolLines.add(message); }
+        };
+        try (var parked = parkedTurn(monitor, new UserMessageQueue(10_000, fixedClock1432()))) {
+            assertThat(parked.awaitParked()).as("the turn really is working").isTrue();
+
+            // WHEN
+            parked.agent().queueUrgentMessage("bitte abbrechen");
+            parked.release();
+            parked.running().join(10_000);
+
+            // THEN — the urgent entry became the next turn's payload, marked like any queued entry …
+            assertThat(extractUserTexts(parked.agent().getMemory().getCopy()))
+                    .element(1).asString().contains("[Queued Message] (14:32):", "bitte abbrechen");
+            // AND — its consumption was disclosed with the queue time (Rule 9) …
+            assertThat(toolLines).contains("Reading queued User message: bitte abbrechen (queued 14:32)");
+            // AND — … and it was consumed exactly once: no second marker at the turn's end.
+            assertThat(parked.agent().getQueuedMessageCount()).isZero();
+            assertThat(streamMock.getCallCount()).isEqualTo(2);
+        }
+    }
+
+    /**
+     * Rule 8.3: the urgent lane only gets there earlier, it never jumps the order — follow-up turns
+     * consume both lanes strictly by insertion time.
+     */
+    @Test
+    void followUpsKeepInsertionOrderAcrossLanes() throws InterruptedException {
+        // GIVEN — a parked turn and a clock stepping a minute per read: every entry gets its own
+        // deterministic time (14:32 / 14:33 / 14:34) without sleeping
+        try (var parked = parkedTurn(monitor -> {}, new UserMessageQueue(10_000, new MinuteSteppingClock()))) {
+            assertThat(parked.awaitParked()).as("the turn really is working").isTrue();
+
+            // WHEN — normal, urgent, normal
+            parked.agent().queueMessage("n1");
+            parked.agent().queueUrgentMessage("u1");
+            parked.agent().queueMessage("n2");
+            parked.release();
+            parked.running().join(10_000);
+
+            // THEN — one follow-up turn per entry, in the order they arrived across both lanes
+            assertThat(extractUserTexts(parked.agent().getMemory().getCopy()))
+                    .containsExactly("start",
+                            "[Queued Message] (14:32): n1",
+                            "[Queued Message] (14:33): u1",
+                            "[Queued Message] (14:34): n2");
+        }
+    }
+
+    /** A turn started on its own thread and parked inside the model call — the state a „!" arrives in. */
+    private record ParkedTurn(AiDevAgent agent, Thread running, CountDownLatch callStarted,
+            CountDownLatch canProceed) implements AutoCloseable {
+
+        boolean awaitParked() throws InterruptedException {
+            return callStarted.await(5, TimeUnit.SECONDS);
+        }
+
+        /** Lets the parked model call answer — later iterations run unblocked. */
+        void release() {
+            canProceed.countDown();
+        }
+
+        /** Never leaves a parked turn behind, whatever the assertions in between did. */
+        @Override public void close() throws InterruptedException {
+            release();
+            running.join(10_000);
+        }
+    }
+
+    /**
+     * Starts an agent on its own thread with the given queue and parks its first model call until
+     * {@link ParkedTurn#release()} — so a message can be handed over at a well-defined point while
+     * the turn is provably working.
+     */
+    private ParkedTurn parkedTurn(AiMonitor monitor, UserMessageQueue queue) {
+        var callStarted = new CountDownLatch(1);
+        var canProceed = new CountDownLatch(1);
+        var mockModel = streamMock.buildMock(r -> {
+            callStarted.countDown();
+            try {
+                canProceed.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("OK")).build();
+        });
+        var agent = new AiDevAgent(
+                new ConfiguredChatModel(LlmConfig.builder().model("mock").build(), mockModel),
+                new ToolService());
+        agent.setMessageQueue(queue);
+        var running = new Thread(() -> agent.call("start", monitor));
+        running.start();
+        return new ParkedTurn(agent, running, callStarted, canProceed);
+    }
+
+    /** Test clock stepping one minute per read, so queued entries get distinct, fixed HH:mm times. */
+    private static final class MinuteSteppingClock extends Clock {
+        private final AtomicLong millis =
+                new AtomicLong(Instant.parse("2026-09-23T14:32:00Z").toEpochMilli());
+
+        @Override public ZoneId getZone() { return ZoneOffset.UTC; }
+        @Override public Clock withZone(ZoneId zone) { return this; }
+        @Override public Instant instant() { return Instant.ofEpochMilli(millis.get()); }
+        @Override public long millis() { return millis.getAndAdd(60_000); }
     }
 
 

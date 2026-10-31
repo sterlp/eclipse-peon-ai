@@ -8,14 +8,13 @@ import org.sterl.llmpeon.skill.SkillService;
 
 /**
  * Decides whether a user message is a {@code !}-override (queued-user-messages rule 8):
- * while the agent is working, a message starting with {@code !} bypasses the queue —
- * the {@code !} is stripped and the remainder becomes ONE text injected directly into
- * the agent's memory, visible to the running turn on its next model call.
+ * while the agent is working, a message starting with {@code !} bypasses the normal lane —
+ * the {@code !} is stripped and the remainder becomes ONE urgent queue entry.
  *
  * <p><b>Present semantics:</b> {@code isPresent()} means the input is <em>consumed as an
  * override</em> — the view must clear the input and skip the normal send path. The
- * {@link OverrideCommand#text()} is what gets injected: non-blank for a real override,
- * blank for a lone {@code !} (consumed, nothing injected — a silent no-op).
+ * {@link OverrideCommand#text()} is what gets queued: non-blank for a real override,
+ * blank for a lone {@code !} (consumed, nothing queued — a silent no-op).
  * {@code isEmpty()} means this is not an override (no leading {@code !}, agent idle,
  * null input) — the normal send path handles the message.
  *
@@ -27,7 +26,7 @@ import org.sterl.llmpeon.skill.SkillService;
  */
 public class OverrideMessageResolver {
 
-    /** The resolved override: the text to inject into the agent memory (blank = consumed, nothing injected). */
+    /** The resolved override: the text to queue as an urgent entry (blank = consumed, nothing queued). */
     public record OverrideCommand(String text) {}
 
     /**

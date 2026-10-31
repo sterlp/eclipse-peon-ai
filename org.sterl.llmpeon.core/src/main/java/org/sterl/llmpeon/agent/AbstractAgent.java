@@ -24,6 +24,7 @@ import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.queuedmessages.QueuedUserMessages;
 import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.CallStats;
@@ -212,12 +213,15 @@ public abstract class AbstractAgent implements AiAgent {
     }
 
     /**
-     * Rule 8 override: direct memory write — the same path {@link #handleAbortAndDrain} uses,
-     * so the running turn sees the message on its next model call. The queue is never touched.
+     * Rule 8: the urgent lane of the agent's own queue — under the queue's monitor, which is the
+     * monitor of the turn-slot hand-over (Rule 10), so a „!" sent while the turn releases is taken
+     * by that turn instead of stranding. Never a memory write.
      */
     @Override
-    public void injectUserMessage(String text) {
-        memory.add(UserMessage.from(text));
+    public void queueUrgentMessage(String msg) {
+        synchronized (messageQueue) {
+            messageQueue.addUrgent(msg);
+        }
     }
 
     /** Test seam: swap the queue (fixed {@code Clock} for Rule 9 Queued-At tests). Package-private.
@@ -286,8 +290,7 @@ public abstract class AbstractAgent implements AiAgent {
                     slotReleased = queued == null;
                 }
                 if (queued != null) {
-                    monitor.onTool("Reading queued User message: " + queued.text()
-                            + " (queued " + messageQueue.queuedLabel(queued.queuedAt()) + ")");
+                    monitor.onTool(QueuedUserMessages.readingLine(messageQueue, queued));
                     next = queuedMarker(queued);
                 } else {
                     next = null;
@@ -368,11 +371,11 @@ public abstract class AbstractAgent implements AiAgent {
     }
 
     /**
-     * Rule 9 LLM marker: {@code [Queued Message] (HH:mm): <text>} — the message text stays
-     * unchanged after the prefix; the time is rendered in the queue's clock zone.
+     * Rule 9 LLM marker — rendered by {@link QueuedUserMessages}, the single home of the format,
+     * so the payload marker and the disclosure line of an entry can never disagree.
      */
     private String queuedMarker(UserMessageQueue.QueuedMessage entry) {
-        return UserMessageQueue.QUEUED_MARKER_PREFIX + "(" + messageQueue.queuedLabel(entry.queuedAt()) + "): " + entry.text();
+        return QueuedUserMessages.marker(messageQueue, entry);
     }
 
     /** Execute a single LLM+tool turn for the given message. */

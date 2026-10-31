@@ -128,11 +128,12 @@ public interface AiAgent {
     }
 
     /**
-     * Inject a user message directly into the agent's memory while it is working
-     * (queued-user-messages rule 8 override): the running turn sees it on its next model
-     * call. Bypasses the queue entirely — no queued entry, no follow-up turn. Default no-op.
+     * Queue a {@code !}-override message while the agent is working (queued-user-messages rule 8):
+     * an urgent entry in the agent's queue — own lane, never batched with normal entries, no memory
+     * write and no new turn. Delivery is rule 11 (tool result) or, if nothing consumes it, the
+     * follow-up turn. Default no-op for agents without a queue.
      */
-    default void injectUserMessage(String text) {
+    default void queueUrgentMessage(String msg) {
     }
 
     /** @return the number of queued messages waiting to be processed. Default 0 for agents without queues. */

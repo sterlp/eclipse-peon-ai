@@ -581,15 +581,15 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     private SendDecision resolveOutgoingMessage(String text, AiAgent active) {
-        // Rule 8 override: while the agent works, a leading ! bypasses the queue — the text
-        // goes straight into the agent's memory; a lone ! (blank) is a silent no-op.
+        // Rule 8: while the agent works, a leading ! goes to the urgent lane of the agent's queue —
+        // no memory write, no "Noted" echo; a lone ! (blank) is a silent no-op.
         var override = new OverrideMessageResolver().resolve(text, active.isWorking(),
                 aiService.getCommandService(), aiService.getSkillService());
         if (override.isPresent()) {
-            var injected = override.get().text();
-            if (StringUtil.hasValue(injected)) {
-                active.injectUserMessage(injected);
-                chatHistory.appendMessage(new SimpleMessage(Type.USER, injected));
+            var urgentText = override.get().text();
+            if (StringUtil.hasValue(urgentText)) {
+                active.queueUrgentMessage(urgentText);
+                chatHistory.appendMessage(new SimpleMessage(Type.USER, urgentText));
             }
             chatInput.clearText();
             chatInput.dismissSlashMenu();
