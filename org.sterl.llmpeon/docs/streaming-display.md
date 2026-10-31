@@ -77,12 +77,15 @@ The live status bar (including preview) is hidden when streaming ends.
 - **GIVEN** the overlay is visible during streaming **WHEN** a streaming chunk with type END arrives **THEN** `hideLiveStatus()` is called and the overlay disappears
 - **Tag:** unit (verify `ChatMarkdownWidget.onStreamingChunk` calls `hideLiveStatus` on END)
 
-### R9 — Status bar hides on final message append ✅
+### R9 — Angehängte Messages verstecken den Live-Status nicht ❌ specified (2026-10-31)
 
-The live status bar is hidden when a final message is appended to the chat.
+Die Live-Statusleiste wird **nicht** durch angehängte Messages geschlossen — `appendMessage` ruft
+kein `hideLiveStatus()`. Sie schließt ausschließlich an den natürlichen Endpunkten: END-Chunk (R8)
+und Turn-/Lock-Ende (`lockWhileWorking(false)`). Wer den Status bewusst setzt oder versteckt
+(QUESTION-Widget), macht es an genau einer Stelle.
 
-- **GIVEN** the overlay is visible during streaming **WHEN** `appendMessage` is called for a non-TOOL message **THEN** `hideLiveStatus()` is called before the message is appended
-- **Tag:** unit (verify JS `appendMessage` calls `hideLiveStatus()` at the start)
+- **GIVEN** die Statusleiste ist sichtbar **WHEN** eine beliebige Message appended wird **THEN** bleibt sie sichtbar — erst R8 oder das Lock-Ende versteckt sie
+- **Tag:** unit (verify JS `appendMessage` no longer calls `hideLiveStatus()`)
 
 ### R10 — Page scrolls to bottom when live preview first appears ✅
 

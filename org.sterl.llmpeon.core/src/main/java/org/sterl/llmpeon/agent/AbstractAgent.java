@@ -225,15 +225,31 @@ public abstract class AbstractAgent implements AiAgent {
     }
 
     /**
-     * Rule 11: drain + disclosure are <b>one</b> step under the queue's monitor — a consumption that
-     * is not visible is exactly the silent injection the rule forbids, and a drain outside that
-     * monitor would race the turn-slot hand-over (Rule 10).
+     * Rule 11: the urgent lane of this agent's queue, for the round's tool result.
      */
     @Override
     public List<String> takeUrgentMessages(AiMonitor monitor) {
+        return take(monitor, messageQueue::drainUrgent);
+    }
+
+    /**
+     * Rule 12: BOTH lanes, for the {@code askUser} answer. Ordered by insertion time across lanes.
+     */
+    @Override
+    public List<String> takeAllMessages(AiMonitor monitor) {
+        return take(monitor, messageQueue::drainAllEntries);
+    }
+
+    /**
+     * Drain + disclosure are <b>one</b> step under the queue's monitor — a consumption that is not
+     * visible is exactly the silent injection the rules forbid, and a drain outside that monitor
+     * would race the turn-slot hand-over (Rule 10). One implementation for both lanes, so the two
+     * consumption channels cannot drift in ordering, disclosure or finality.
+     */
+    private List<String> take(AiMonitor monitor, Supplier<List<UserMessageQueue.QueuedMessage>> lane) {
         var mon = AiMonitor.nullSafety(monitor);
         synchronized (messageQueue) {
-            var entries = messageQueue.drainUrgent();
+            var entries = lane.get();
             for (var entry : entries) {
                 mon.onTool(QueuedUserMessages.readingLine(messageQueue, entry));
             }

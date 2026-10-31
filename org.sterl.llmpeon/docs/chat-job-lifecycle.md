@@ -31,7 +31,7 @@ weg (10 Backups) — Incident nicht mehr rekonstruierbar; Diagnose ist Code-Evid
 
 ### R-ST1 — In-Flight-Counter statt Ticket (Design-Review Plan, 2026-09-10)
 
-`submitAiJob`/`doCompressContext` inkrementieren synchron im UI-Thread einen
+`submitAiJob`/`doCompactAgent` inkrementieren synchron im UI-Thread einen
 `AtomicInteger inFlight` (paarig zum `lock(true)`, vor dem Schedule). Das Job-`finally`
 entscheidet **innerhalb des `runInUiThread`-Runnables** (UI-serialisiert mit dem Submit):
 
@@ -53,7 +53,7 @@ EclipseUtil.runInUiThread(parent, () -> {
   Schedule-Fenster → Job 2 wird gecasht (`working.compareAndSet` lehnt ab, queued sofort) →
   sein finally hätte das *aktuelle* Ticket und würde unlocken, während Job 1 lebt. „Latest
   ticket" ≠ „letzter Finisher"; der Counter paart Submit und Finally exakt.
-- **doCompressContext:** auch der vorgeschaltete asyncExec (Memory-Replay + hideLiveStatus)
+- **doCompactAgent:** auch der vorgeschaltete asyncExec (Memory-Replay + hideLiveStatus)
   gehört unter denselben Guard, sonst replays ein stale Compress in den Chat des lebenden Runs.
 - **Keine Core-Klasse** (`TurnToken`/RunGate wäre Overkill — testet AtomicInteger, nicht unsere
   Logik; SWT-Wiring ist ohnehin untestbar, Präzedenz R-UI1/R-MCP3). Regression-Guard-Rolle:

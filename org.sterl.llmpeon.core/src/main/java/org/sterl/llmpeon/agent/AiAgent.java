@@ -146,6 +146,18 @@ public interface AiAgent {
         return List.of();
     }
 
+    /**
+     * Take ALL queue entries of both lanes for the running turn (queued-user-messages rule 12 — the
+     * {@code askUser} answer carries them): ordered by insertion time across lanes, drained under
+     * the queue's monitor and disclosed per message on {@code monitor}. Like
+     * {@link #takeUrgentMessages(AiMonitor)} the consumption is final — no follow-up turn starts
+     * from them. Default empty for agents without a queue.
+     */
+    default List<String> takeAllMessages(AiMonitor monitor) {
+        return List.of();
+    }
+
+
     /** @return the number of queued messages waiting to be processed. Default 0 for agents without queues. */
     default int getQueuedMessageCount() {
         return 0;

@@ -117,12 +117,13 @@ THEN enthält die System-Message `TaggedResult.INFO` genau einmal (gecacht mit d
      **nicht** pro Turn und **nicht** als Turn-Context-Item).
      Async-Tool-Results / Async-Agent-Results beschreibt `INFO` nur so weit, wie es sie heute gibt;
      die eigentliche Async-Tool-Fähigkeit (Shell!) ist eine eigene Story.
-     **Präzisiert 2026-10-19 (❌ specified):** `INFO` nennt ausschließlich, was es heute gibt —
-     Context-Blöcke (System-Info, Projekt-/Codegraph-Info, Memory-Snapshot, Datei-Kontext).
-     **Tool-Results gehen unverändert an das Modell** (kein Tag-Block) und Async-Ergebnisse
-     existieren nicht; beide Sätze kommen erst mit der jeweiligen Fähigkeit in `INFO` (sonst
-     verspricht das static Prompt ein Format, das nie ankommt). `TaggedResultTest` pinnt den Text
-     (5 Zeilen, `PREFIX`/`SUFFIX`) statt ihn nur nach stderr zu drucken.
+     **Präzisiert 2026-10-31 (Paul, `queued_user_message`):** `INFO` nennt heute zusätzlich den
+     `queued_user_message`-Block — echte User-Messages, die während der Arbeit ankamen und als
+     Huckepack am Tool-Result bzw. an der askUser-Antwort ankommen
+     ([queued-user-messages.md](queued-user-messages.md) R11/R12). Der Satz „Tool-Results gehen
+     unverändert an das Modell“ gilt weiterhin für die **normale** Tool-Ausgabe — nur der
+     queued-Huckepack ist getaggt. `TaggedResultTest` pinnt den Text (`PREFIX`/`SUFFIX`) statt ihn
+     nur nach stderr zu drucken.
 
 ### R-TR-7 — Der Compact klassifiziert über die Tags ✅ (2026-10-18, I3)
 
@@ -164,7 +165,8 @@ Harness blocks (system infos, async results, tool results) look like this:
 //-- Start <head>
 <body>
 //-- End <head>
-Do not answer them as user input.
+They are propably added as additional informations to tool calls or user messages.
+A 'queued_user_message' is a real user message that arrived while work was in progress.
 ```
 
 Der letzte Satz ist der Kern (Adressat), der Rest erklärt sich aus dem Beispiel.

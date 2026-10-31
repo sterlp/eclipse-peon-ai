@@ -845,6 +845,46 @@ class AbstractAgentTest {
         }
     }
 
+    /**
+     * Rule 12: the {@code askUser} answer takes BOTH lanes with it — every entry once, in the order
+     * they arrived across the lanes, each one disclosed, none left for a follow-up turn.
+     */
+    @Test
+    void takeAllMessagesDrainsBothLanesInInsertionOrder() {
+        // GIVEN — normal, urgent, normal on a clock stepping a minute per read (14:32/14:33/14:34),
+        // so each entry gets its own entry instead of a batch-join
+        List<String> toolLines = new ArrayList<>();
+        var monitor = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolLines.add(m.message()); }
+        };
+        var agent = new AiDevAgent(
+                new ConfiguredChatModel(LlmConfig.builder().model("mock").build(),
+                        streamMock.buildMock(r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("OK")).build())),
+                new ToolService());
+        agent.setMessageQueue(new UserMessageQueue(10_000, new MinuteSteppingClock()));
+        agent.queueMessage("n1");
+        agent.queueUrgentMessage("u1");
+        agent.queueMessage("n2");
+
+        // WHEN — what askUser asks for
+        var lines = agent.takeAllMessages(monitor);
+
+        // THEN — one line per entry over both lanes, ordered by arrival (D5: the urgent lane never
+        // jumps the normal one) …
+        assertThat(lines).containsExactly(
+                "(queued 14:32): n1",
+                "(queued 14:33): u1",
+                "(queued 14:34): n2");
+        // AND — every delivery disclosed with its queue time (Rule 9) …
+        assertThat(toolLines).containsExactly(
+                "Reading queued User message: n1 (queued 14:32)",
+                "Reading queued User message: u1 (queued 14:33)",
+                "Reading queued User message: n2 (queued 14:34)");
+        // AND — consumed finally, so no follow-up turn can be spawned from these entries.
+        assertThat(agent.getQueuedMessageCount()).isZero();
+    }
+
+
     /** A turn started on its own thread and parked inside the model call — the state a „!" arrives in. */
     private record ParkedTurn(AiDevAgent agent, Thread running, CountDownLatch callStarted,
             CountDownLatch canProceed) implements AutoCloseable {
