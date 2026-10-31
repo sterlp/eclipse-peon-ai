@@ -18,6 +18,8 @@ import org.sterl.llmpeon.poagent.AiPoAgent;
 
 class AgentOrderTest extends AbstractMemoryFileTest {
 
+    private static final String FALLBACK_WARNING = "No agent matches any pattern in " + AgentOrder.AGENT_ORDER_FILE;
+
     private static AiAgent agent(String name) {
         AiAgent a = mock(AiAgent.class);
         when(a.getName()).thenReturn(name);
@@ -162,10 +164,13 @@ class AgentOrderTest extends AbstractMemoryFileTest {
         List<AiAgent> agents = List.of(agent("Zeta-Agent"), agent(AiPoAgent.NAME), agent("Alpha-Agent"));
 
         // WHEN
-        List<AiAgent> sorted = subject.sort(agents);
-
-        // THEN
-        assertThat(sorted).extracting(AiAgent::getName).containsExactly(AiPoAgent.NAME, "Alpha-Agent", "Zeta-Agent");
+        List<AiAgent> sorted;
+        try (var capture = captureAgentOrderLogs()) {
+            sorted = subject.sort(agents);
+            // THEN — default order applies, and the fallback is reported rather than silently applied
+            assertThat(sorted).extracting(AiAgent::getName).containsExactly(AiPoAgent.NAME, "Alpha-Agent", "Zeta-Agent");
+            assertThat(capture.warns()).filteredOn(w -> w.contains(FALLBACK_WARNING)).hasSize(1);
+        }
     }
 
     /**
@@ -179,10 +184,13 @@ class AgentOrderTest extends AbstractMemoryFileTest {
         List<AiAgent> agents = List.of(agent(AiPoAgent.NAME), agent("Alpha-Agent"));
 
         // WHEN
-        List<AiAgent> sorted = subject.sort(agents);
-
-        // THEN — no "^Jon$" group in effect, so alphabetical
-        assertThat(sorted).extracting(AiAgent::getName).containsExactly("Alpha-Agent", AiPoAgent.NAME);
+        List<AiAgent> sorted;
+        try (var capture = captureAgentOrderLogs()) {
+            sorted = subject.sort(agents);
+            // THEN — no "^Jon$" group in effect, so alphabetical; the fallback must not over-trigger
+            assertThat(sorted).extracting(AiAgent::getName).containsExactly("Alpha-Agent", AiPoAgent.NAME);
+            assertThat(capture.warns()).noneMatch(w -> w.contains(FALLBACK_WARNING));
+        }
     }
 
     @Test
