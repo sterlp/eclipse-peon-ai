@@ -111,7 +111,7 @@ THEN it is still added — no dedup across context vs. payload boundaries
 
 **Tests:** `AbstractAgentTest.testQueuedMessagesChainedFifo()` demonstrates queue chaining through doCall (standing orders handled separately via ToolLoopRequest).
 
-### 8. „!“-Messages: Urgent-Lane in der Queue ❌ specified (2026-10-31) — ersetzt die Memory-Injektion (✅ 2026-10-18, wird entfernt)
+### 8. „!“-Messages: Urgent-Lane in der Queue ✅ done (2026-10-31 specified & gebaut, Branch `web-factory-goon`) — ersetzt die Memory-Injektion (✅ 2026-10-18, entfernt)
 
 - **Zweck:** Escape-Hatch, wenn der Agent bereits arbeitet. Eine Nachricht, die mit `!` beginnt,
   wird dem laufenden Turn **sofort** zugestellt — nicht mehr per Memory-Injektion, sondern als
@@ -218,7 +218,7 @@ THEN der laufende Turn beantwortet sie noch (Hand-over), der späte Caller start
   Code-Invariante + dieser Regel, nicht als eigener Mutations-Test. Wer den Queue-Monitor ersetzt
   (privater Lock, ConcurrentQueue), muss die Invariante neu ableiten und den Race-Test neu fahren.
 
-### 11. Tool-Result-Huckepack für urgent-Einträge ❌ specified (2026-10-31)
+### 11. Tool-Result-Huckepack für urgent-Einträge ✅ done (2026-10-31 gebaut)
 
 Beim **nächsten Tool-Call** der laufenden Iteration werden **alle** urgent-Einträge gezogen und als
 **ein** `TaggedResult`-Block (head `queued_user_message`, [tagged-results.md](tagged-results.md))
@@ -251,7 +251,7 @@ WHEN ein Tool-Result entsteht
 THEN unverändert — kein Block, keine onTool-Zeile
 ```
 
-### 12. askUser-Huckepack: alle Queue-Einträge mit der Antwort ❌ specified (2026-10-31)
+### 12. askUser-Huckepack: alle Queue-Einträge mit der Antwort ✅ done (2026-10-31 gebaut)
 
 Nutzt das LLM das `askUser`-Tool (Plugin-only, `AskUserTool` — die Fabrik hat bewusst keines),
 reisen **alle** Queue-Einträge — urgent und normal — im **selben** Tool-Result mit: als
@@ -264,7 +264,9 @@ zusätzlicher Follow-up-Turn.
 - **Ein TextContent:** Block + Antwort werden textuell komponiert — `contents(List)` ist
   `@Experimental` und `text()` wirft bei mehr als einem Element (der Compact/Render-Pfad in
   `ChatMessageUtil.extractMessages` ruft genau `text()`).
-- **Disclosure (Regel 9):** onTool-Zeile + Marker je Message.
+- **Disclosure (Regel 9):** onTool-Zeile je Message — der Block selbst ist die Zustellungs-Anzeige;
+  ein `[Queued Message]`-Marker (Regel 9, Follow-up-Pfad) kommt im Huckepack **nicht** vor, sonst
+  stünde die Uhrzeit doppelt.
 - **Fenster:** während einer offenen Frage ist das Eingabefeld ausgeblendet — neue Queue-Einträge
   können währenddessen nicht entstehen; die Regel betrifft nur Einträge, die **vor** dem askUser
   gequeued wurden.

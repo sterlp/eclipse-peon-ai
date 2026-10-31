@@ -56,10 +56,10 @@ Input-Höhe hinaus, verdeckten sie einen Teil der Frage.
 |---------|----------|
 | **Package — tool** | `org.sterl.llmpeon.parts.tools` — `AskUserTool` |
 | **Package — widgets** | `org.sterl.llmpeon.parts.widget` — `UserQuestionResponseWidget`, `TextInputWidget` |
-| **Package — orchestration** | `org.sterl.llmpeon.parts.question` — `QuestionOrchestrator` (zentrale Widget-Swap-Steuerung) |
+| **Package — orchestration** | `AIChatView` — `showQuestion()`/`hideQuestion()` (ein geplanter `QuestionOrchestrator` wurde nicht gebaut; die View besitzt den Widget-Swap) |
 | **Thread sync** | `CountDownLatch(1)` blocks the LangChain4j background thread; the UI `onAnswer` callback releases it |
-| **Widget swap** | `QuestionOrchestrator` kapselt `showQuestion()`/`hideQuestion()` — ersetzt ~30 Zeilen verteilte exclude/visible/layout-Logik in `AIChatView` |
-| **Cancel path** | `lockWhileWorking(false)` → `QuestionOrchestrator.cancelSilently()` → fires `"[canceled]"` → releases latch |
+| **Widget swap** | `AIChatView.showQuestion()/hideQuestion()` kapseln die exclude/visible/layout-Logik |
+| **Cancel path** | `lockWhileWorking(false)` → `UserQuestionResponseWidget.cancel()` (via `AIChatView`) → fires `"[canceled]"` → releases latch |
 | **Shell-Approval** | `ShellApprovalService` (`org.sterl.llmpeon.parts.shell`) — stateless, leses Preferences, konfiguriert `ShellTool` ConfirmationProvider; keine SWT-Dependency. Ersetzt ~35 Zeilen aus `AIChatView`. |
 | **Icon buttons** | `UserQuestionResponseWidget` nutzt flache Icon-Buttons (Answer/Cancel) — konsistent zum Haupt-Input-Widget |
 | **Tool registration** | `AIChatView.createPartControl` via `aiService.getToolService().addTool(new AskUserTool(...))` |
