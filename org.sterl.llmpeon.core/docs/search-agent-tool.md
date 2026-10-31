@@ -122,11 +122,32 @@ Suchmodell nicht unerklärt bleibt (Sub-Loops sehen kein TaggedResult-INFO).
 
 Der Block lebt an der `SearchAgentTool`-Instanz — eine pro Chat-View — und wird von allen Agents
 der View geteilt (Paul 2026-10-24: Einfachheit gewinnt; aktuell gibt es zudem nur einen
-Such-Agent). Kein Keying pro Parent-Agent.
+Such-Agent). Kein Keying pro Parent-Agent. **Zielzustand: R-LSR-7** — der Block wandert in den
+Search-Agenten.
 
 #### UC-LSR-6 — agentsShareOneBlockPerView ✅
 - GIVEN Agent A derselben View suchte erfolgreich WHEN Agent B derselben View danach sucht THEN B
   sieht A's Paar im `last-search-rolling`-Block.
+
+### R-LSR-7 — Der Rolling-Block gehört dem Search-Agenten 🚧 in design (Paul 2026-10-31)
+
+Der Hot-Block wechselt den Besitzer: von der `SearchAgentTool`-Instanz (R-LSR-6, aktueller Stand)
+in das **Memory des Search-Agenten** — der Search-Agent wird ein vollwertiger interner Agent.
+**WEIL:** solange der Block am Tool hängt, ist der Search-Agent „kalt", sobald ihn ein anderer
+Agent nutzt — das Wissen über frühere Suchen gehört dem Agenten, nicht der View. Der Search-Agent
+erscheint später als Mitglied der **Agenten-Liste des `AsyncAgentTool`** (Agenten-Liste statt
+Einzel-Tool-Calls je Agent, [async-agents.md](async-agents.md)); der `searchAgent`-Tool-Call wird
+zum Delegat auf diesen Agenten.
+
+Vor dem Bau zu klären (Design offen):
+- **Lebenszyklus/Scope des Search-Agenten** — eine Instanz pro View (Block-Sharing über Agenten
+  hinweg bleibt, UC-LSR-6) oder pro Parent? Bestimmt, ob UC-LSR-6 hält oder neu geschnitten wird.
+- **R3 („stateless") präzisieren** — das Memory trägt künftig den Rolling-Block; keine Turn-Historie,
+  kein Carry-over von Unterhaltungen. „Kein persistenter Speicher" galt für die Historie, nicht für
+  den Hot-Block.
+- **R-CC-15-Folge:** die `CompactSessionTool`-Exklusion im Search-Filter begründet sich über „Sub-Loop
+  hat keinen besitzenden Agenten" (`SearchAgentTool:46-47`) — mit eigenem Agenten ist die Begründung
+  hinfällig; Verhalten (Exklusion bleibt? Ausweich-Branch?) neu entscheiden.
 
 ## Components
 

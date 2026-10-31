@@ -43,6 +43,21 @@ den Namen aus seiner Definition — ohne Sonderbehandlung.
 (Inc 2) — ihre Zeilen tragen `Search` bzw. `Compact`, während die Zeilen des aufrufenden Agenten
 dessen Namen behalten.
 
+## Identität vs. Anzeigename (🚧 in design — Paul 2026-10-31)
+
+Die **Identität** eines Agenten ist eine stabile ID, unabhängig vom Namen:
+
+* **Custom-Agents:** der Ordnername des Agenten-Verzeichnisses (existiert bereits — der Ordner ist
+  die physische Heimat der Definition).
+* **Built-ins:** die `NAME`-Konstante (`AiPoAgent.NAME` etc.).
+
+Der **Anzeigename** ([ADR-0079](../../docs/adr/0079-display-names-without-ork-names.md)) darf sich
+jederzeit ändern — ein Rename ist **kein** Identitätswechsel. Konsumenten arbeiten heute allerdings
+mit dem Namen (Autor-Tabelle im Chat, History-Dateien, Restore, Merge-Key `data-agent`): bis die
+stabile ID die Verbindung trägt, ist ein Rename ein Core-seitiger Folgezug. Umsetzung als Story
+„Rename-Sicherheit über stabile `id()`" (Entscheidung aus dem Proposal-Review übernommen, kein Code
+bis dahin).
+
 ## BDD
 
 ```

@@ -29,6 +29,25 @@
 - Pauls eigener Commit `7d087322 cleanup` (AGENTS-Renames, docs/memory.md, AIChatView) wurde mit dem
   Push mitgenommen — **AGENTS*.md-Säuberung ist damit committed** (Punkt aus dem Reparatur-Zyklus).
 
+## Proposal „Agent als Monitor-Quelle" — abgeschlossen (2026-10-31)
+
+- Da-Dok-Review (ohne ADRs) + Jons IST-Verifikation: **REJECTED** — Identität ist der Name
+  (`AgentNames.java:51`), ~15 agentlose Emit-Stellen, R5↔R6-Widerspruch, Blast Radius 3× gemessen
+  (36 Dateien/73 Monitor-Stellen/74 onChatResponse-Overrides/171 Overrides). Review-Dok:
+  `peon-plan/cleaner-agent-pass-through-review.md` (inkl. Nachspann mit Pauls Entscheidung).
+- **Pauls Entscheidungen („nur docs erstmal", kein Code):** ① Rolling-Block wechselt ins
+  Search-Agent-Memory → **R-LSR-7 🚧** in `core/docs/search-agent-tool.md` (Search-Agent wird
+  vollwertiger interner Agent, später Mitglied der AsyncAgentTool-Agentenliste — Entscheidung in
+  `core/docs/async-agents.md`); ② stabile ID = Ordnername (Custom) / NAME-Konstante (Built-ins) →
+  Sektion „Identität vs. Anzeigename" 🚧 in `org.sterl.llmpeon/docs/agenten-namen-im-chat.md`.
+  Beide Stories im Backlog (❌/🚧).
+- Jons Async-Antwort an Paul (Chat): Identität reist **pro Aufruf** (Stempel durch den Agent selbst,
+  `AbstractAgent.call`/`ToolService.executeLoop`) — async-freundlich. Das „Durcheinander" liegt auf
+  Monitor-Instanz-Ebene (geteilter `isCanceled`, single live-response-Slot, START/END-Pairing) und
+  ist Teil der Async-Story, nicht des Identitäts-Mechanismus.
+- Lint core+plugin: keine neuen Findings (UC-CT-3/5 UNBELEGT = bekannter manueller Smoke,
+  UC-WP-* nur weil aifactory-Docs außerhalb der docRoots).
+
 ## Offen für Paul (je eine Frage / Bestätigung)
 
 1. **Merge von `web-factory-goon`** (Squash-Default) — der Branch trägt jetzt Reparatur-Zyklus +
@@ -44,6 +63,11 @@
    Chat; optionaler Polish: `agent` statt `agentName`-String durchreichen.
 
 ## Backlog (nicht gestartet)
+
+- **Aus Proposal-Review übernommen (Paul 2026-10-31, nur Docs bisher):** ① Search-Agent als echter
+  interner Agent (R-LSR-7 🚧 — Rolling-Block ins Agent-Memory, Klärungen im Doc: Lebenszyklus/Scope,
+  R3-„stateless", R-CC-15-Folge) · ② Rename-Sicherheit über stabile `id()` (🚧 in
+  agenten-namen-im-chat.md).
 
 - **P3:** SSE-Client-Kopien (5×) in Fabrik-Tests extrahieren — eigenes Gate.
 - **P1-Variante:** Cancel-/Fehler-Pfad-Release ohne atomaren Queue-Blick — nächster Bug-Zyklus,
