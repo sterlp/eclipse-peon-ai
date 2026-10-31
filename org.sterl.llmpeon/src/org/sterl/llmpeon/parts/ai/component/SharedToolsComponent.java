@@ -87,7 +87,7 @@ public class SharedToolsComponent {
     }
 
     /**
-     * Registers an additional agent-facing registry (ADR-0067, e.g. the Peon-PO's own tool
+     * Registers an additional agent-facing registry (ADR-0067, e.g. Jon's own tool
      * service) that follows the disk-tool gate like the shared service.
      */
     public void registerDiskGatedRegistry(ToolService registry) {

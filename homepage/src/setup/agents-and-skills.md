@@ -28,12 +28,12 @@ your `AGENTS.md`. Both files are loaded when that agent is active.
 
 | Agent | File | Example |
 |-------|------|---------|
-| Peon-Dev | `AGENTS-DEV.md` | coding conventions, test patterns |
-| Peon-Plan | `AGENTS-PLAN.md` | BDD format, planning style |
+| Dev | `AGENTS-DEV.md` | coding conventions, test patterns |
+| Plan | `AGENTS-PLAN.md` | BDD format, planning style |
 | Custom agent "Docs-Assistant" | `AGENTS-Docs-Assistant.md` | documentation style guide |
 
 The agent name key is derived from the agent's display name:
-- **Built-in agents:** the part after "Peon-", uppercased. "Peon-Dev" → "DEV".
+- **Built-in agents:** a fixed key per agent — Dev → `DEV`, Plan → `PLAN`, Jon → `PO`, Review → `REVIEW`.
 - **Custom agents:** the display name as-is.
 
 The file name is case-insensitive with fallbacks: `AGENTS-DEV.md` is tried first, then

@@ -22,6 +22,7 @@ import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.streaming.ApiRetry;
+import org.sterl.llmpeon.tool.LoopOwner;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
@@ -60,7 +61,11 @@ class SearchAgentToolRollingContextTest {
         final List<String> toolLines = new ArrayList<>();
         final List<String> problems = new ArrayList<>();
         boolean canceled;
-        @Override public void onChatResponse(SimpleMessage m) {}
+        @Override public void onChatResponse(SimpleMessage m) {
+            // a stamped loop builds TOOL/PROBLEM lines as chat messages — OwnerMonitor (ADR-0078)
+            if (m.role() == SimpleMessage.Type.TOOL) toolLines.add(m.message());
+            else if (m.role() == SimpleMessage.Type.PROBLEM) problems.add(m.message());
+        }
         @Override public void onTool(String message) { toolLines.add(message); }
         @Override public void onProblem(String message) { problems.add(message); }
         @Override public boolean isCanceled() { return canceled; }
@@ -101,7 +106,7 @@ class SearchAgentToolRollingContextTest {
                     .monitor(monitor)
                     // the real backoff would wait 10s per retry — the error case must stay fast
                     .retry(new ApiRetry(100))
-                    .agent(parent)
+                    .owner(LoopOwner.of(parent, LlmConfig::devAgentConfig))
                     .build());
         }
 
@@ -265,7 +270,7 @@ class SearchAgentToolRollingContextTest {
         fixture.under("Peon-Dev");
         fixture.search("qB", "aB");
 
-        // THEN — Da Sniffa answers B with A's pair, although B's agent never searched for it
+        // THEN — Search answers B with A's pair, although B's agent never searched for it
         assertThat(fixture.sentSystemText.get("qB")).contains("Frage: qA", "Antwort: aA");
 
         // AND — the parent memories are untouched by the sub-loop

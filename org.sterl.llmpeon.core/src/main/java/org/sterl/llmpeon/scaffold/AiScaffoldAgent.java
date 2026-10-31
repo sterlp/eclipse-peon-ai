@@ -29,7 +29,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  */
 public class AiScaffoldAgent extends org.sterl.llmpeon.agent.AbstractAgent {
 
-    public static final String NAME = "Peon-Scaffold";
+    public static final String NAME = "Scaffold";
 
     private static final String BASE_PROMPT = PromptLoader
             .loadWithDefault("scaffold-agent.md");

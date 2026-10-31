@@ -18,7 +18,9 @@ Jon and team are in the house. Single threaded for now - for best local performa
 
 [Produkt PO Jon](https://peon-ai-4e.sterl.org/setup/peon-po)
 
-Use blume to publish your docs `blume.config.ts:
+Use blume to publish your docs. `memory.md` stays git-versioned but is kept out of the published site
+via `content.exclude`, and the doc-method's `idPrefix` is registered as a custom frontmatter key.
+Example `blume.config.ts`:
 
 ```ts
 import { defineConfig } from "blume";
@@ -37,6 +39,9 @@ export default defineConfig({
   },
 });
 ```
+
+Title, navigation tabs, and Mermaid/component setup are project-specific — add them in your own
+`blume.config.ts` (and `components.ts`); the two lines above are the only doc-method conventions.
 
 ## Features
 

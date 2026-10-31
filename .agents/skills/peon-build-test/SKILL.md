@@ -59,6 +59,19 @@ description: llmpeon repo build & test procedure — core→plugin jar trap (rea
    (`-pl … -am -Dtest=<Klasse>`), muss für Core `-Dsurefire.failIfNoSpecifiedTests=false` mitgeben —
    sonst bricht Core mit „No tests matching pattern".
 
+## aifactory gate (separate reactor, hit 2026-10-31)
+
+- `aifactory/` is its OWN Maven reactor — `cd aifactory && mvn -o -pl factory-backend test` resolves
+  `llmpeon-core` from `~/.m2`, NOT from the workspace target dirs. After ANY core API change the gate
+  needs **`mvn -o install -pl org.sterl.llmpeon.core` first** (repo root), otherwise it breaks with
+  phantom signature errors on brand-new core symbols.
+- **`clean` is mandatory there (measured 2026-10-31):** without it the factory gate runs GREEN on
+  STALE classes — `factory-backend/target/classes` keeps the old `ProjectRuntime.class` (old mtime)
+  while core's signature changed; the compile step skips "up to date" sources. `mvn -o clean -pl
+  factory-backend test` (or `-pl factory-backend clean test`) is the honest form.
+- Symptom pattern: aifactory gate fails or "passes" with signature/reference errors that the core
+  gate just disproved — suspect the `~/.m2` snapshot first, not the code.
+
 ## Plugin tests (OSGi, JUnit 4)
 
 - `org.sterl.llmpeon.test` runs via the Eclipse test runner. A NEW test class needs the user's manual
@@ -77,7 +90,9 @@ description: llmpeon repo build & test procedure — core→plugin jar trap (rea
   -am` does **not** pull the host plugin into the reactor (the fragment requires it as an OSGi bundle,
   not a Maven dependency) → stale local-p2 host → phantom `NoSuchMethodError` on green code
   (2026-09-17 R-SEL-4, `UserContext.setTextSelection`). Correct: `-pl
-  org.sterl.llmpeon,org.sterl.llmpeon.test -am verify`.
+  releng/llmpeon-target,org.sterl.llmpeon,org.sterl.llmpeon.test -am verify` (the target module must
+  stay in `-pl` for the TEST gate too — offline, the target-platform artifact is not in `~/.m2`, hit
+  2026-10-30: `-pl` without it dies with `ProvisionException … releases/2026-09` before any compile).
 - **SWT tests are skipped headless (hit 2026-10-23):** Tycho-surefire runs without a workbench
   display, so every `AbstractSwtUiTest` subclass is `Assume`-skipped (visible as ~50 skips). A widget
   test is therefore only *compiled* by `mvn … verify` — run it once with `eclipseRunJavaTests` against
@@ -100,6 +115,10 @@ description: llmpeon repo build & test procedure — core→plugin jar trap (rea
 
 ## Stale artifacts
 
+- **Rename einer Core-`static final`-Konstante erfordert `clean` im Plugin-Bau (hit 2026-10-30):**
+  `static final String` wird **inline** kompiliert — ein Tycho-Lauf ohne `clean` hält das alte Literal
+  in `target/classes`/`bin/` gegen den frischen Core im Bundle (`javap`: `ldc "Peon-Scaffold"` nach dem
+  Rename) und meldet Phantom-Fehlschläge in Tests, die das Literal erwarten.
 - **Headless Tycho ships stale `bin/` (hit 2026-10-19):** Tycho packages from the PDE output folder
   `bin/`, which `mvn clean` never touches; a disk-tool source write without a following
   `eclipseRefreshProject` leaves class-mtime > source-mtime, so JDT skips the recompile and the

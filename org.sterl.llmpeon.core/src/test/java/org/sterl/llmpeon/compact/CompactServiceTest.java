@@ -284,6 +284,31 @@ class CompactServiceTest {
         assertThat(chunks).extracting(OnPartialAiResponse::startedAt).containsOnly(turnStart);
     }
 
+    // ADR-0078 (D5)
+    @Test
+    void compressorChunksCarryTheCompactLoopName() {
+        // GIVEN — a streaming compressor and the caller monitor of a compacting agent
+        var streamMock = new StreamMock();
+        var cm = streamMock.buildStreamingMock(
+                r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("WHAT: summary")).build(), "WHAT: ", "summary");
+        var engine = new CompactService(new ConfiguredChatModel(
+                LlmConfig.builder().model("test").autoCompactAfter(100_000).build(), cm), new CapturingLog());
+        var chunks = new ArrayList<OnPartialAiResponse>();
+        var caller = new AiMonitor() {
+            @Override public void onStreamingChunk(OnPartialAiResponse chunk) { chunks.add(chunk); }
+            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage message) {}
+        };
+
+        // WHEN
+        engine.compact("Dev", List.of(UserMessage.from("Foo"), AiMessage.from("Bar")), "", null, caller, T0);
+
+        // THEN — every chunk names the compressor loop, not the agent that asked for the compact;
+        // a consumer must be able to drop them without reading a single word of the summary
+        assertThat(chunks).isNotEmpty()
+                .allSatisfy(chunk -> assertThat(chunk.origin()).isEqualTo("Compact"));
+    }
+
+
     // ---------- request payload (both directions) ----------
 
     @Test

@@ -72,7 +72,11 @@ class ToolServiceDirectCompactTest {
                 .build(), List.of());
         var toolLines = new ArrayList<String>();
         var monitor = new AiMonitor() {
-            @Override public void onChatResponse(SimpleMessage m) {}
+            // the in-loop compact runs on the real agent, which wraps this monitor: its lines arrive
+            // as TOOL chat messages (ADR-0078)
+            @Override public void onChatResponse(SimpleMessage m) {
+                if (m.role() == SimpleMessage.Type.TOOL) toolLines.add(m.message());
+            }
             @Override public void onTool(String message) { toolLines.add(message); }
         };
 
@@ -81,7 +85,7 @@ class ToolServiceDirectCompactTest {
                 .memory(memory)
                 .chatModel(configuredModel)
                 .monitor(monitor)
-                .agent(agent)
+                .owner(LoopOwner.of(agent, LlmConfig::devAgentConfig))
                 .build());
 
         // THEN — exactly one compressor call: the direct compact fired, no hint was asked
@@ -101,7 +105,7 @@ class ToolServiceDirectCompactTest {
         var endLines = toolLines.stream().filter(l -> l.contains(CompactFeedback.END_MARKER)).toList();
         assertThat(endLines).hasSize(1);
         assertThat(endLines.getFirst()).matches(
-                "🗜 Peon-Dev compacted: \\d+ → 1 messages, ~\\d+ → ~\\d+ tokens \\(\\d+(?:m \\d+)?s, \\d{2}:\\d{2}\\) \\(\\d+ chars\\)");
+                "🗜 Dev compacted: \\d+ → 1 messages, ~\\d+ → ~\\d+ tokens \\(\\d+(?:m \\d+)?s, \\d{2}:\\d{2}\\) \\(\\d+ chars\\)");
         assertThat(toolLines).noneMatch(l -> l.contains("Direct compact for"));
     }
 
@@ -152,7 +156,7 @@ class ToolServiceDirectCompactTest {
                 .memory(memory)
                 .chatModel(configuredModel)
                 .monitor(monitor)
-                .agent(agent)
+                .owner(LoopOwner.of(agent, LlmConfig::devAgentConfig))
                 .build();
 
         // WHEN — round 1 ends over budget and the direct compact does not help

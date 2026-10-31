@@ -1,8 +1,6 @@
 # AGENTS.md — LLM Peon
 
-Peon AI is an Eclipse RCP plugin that runs AI agents (Peon-PO / Peon-Plan / Peon-Dev + custom
-agents) inside Eclipse: chat UI, streaming, tool loop, sub-agent orchestration.
-If you run in eclipse - your are building/improving yourself. Do a good job or you suffer!
+You run in eclipse - your are building/improving yourself. Do a good job or you suffer!
 
 **Working method:** docs-first PO cycle — the method itself lives in the **Jon skill**
 (`https://github.com/sterlp/ai-skill-codex/tree/main/skills/jon`).
@@ -60,10 +58,7 @@ Module guides (read when working in one):
   only the code stays WIP. Likewise the skill-impact ledger (`.agents/skills/wiki/skill-impact.md`)
   rides with its cycle. (Hit 2026-10-16, symbol-rollout close.)
 - **Re-read after every line-based edit.** `eclipseReplaceLines`/`diskReplaceLines` have repeatedly
-  behaved as *insert* instead of *replace* — the old line stays, the new content lands below it,
-  with no error. Same trap for `diskEditFile`/`eclipseEditFile` deletions: an oldString that
-  matches only part of a line deletes just that part and leaves the rest as an orphan fragment,
-  with no error — deletions need the full line or a unique end anchor. Read the changed range
-  back before trusting it (plus a duplicate check, `grep -c`); for larger rewrites prefer
-  writing the whole file.
+  behaved as *insert* instead of *replace*, and a partial `editFile` deletion leaves an orphan
+  fragment — no error either way. Read the changed range back (plus a `grep -c` duplicate check);
+  for larger rewrites prefer writing the whole file.
 - Shell is for read-only diagnosis (`xxd`, `file`, `wc`), never for file I/O.

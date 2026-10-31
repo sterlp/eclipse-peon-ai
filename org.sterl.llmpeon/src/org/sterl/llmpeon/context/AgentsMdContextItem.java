@@ -36,7 +36,6 @@ public final class AgentsMdContextItem extends EclipseFileContextItem {
 
     private static String[] resolveAgentNames(String key) {
         var names = new ArrayList<String>();
-        key = resolveAgentKey(key);
         names.add("AGENTS-" + key + ".md");
         names.add("agents-" + key.toLowerCase() + ".md");
 
@@ -51,12 +50,5 @@ public final class AgentsMdContextItem extends EclipseFileContextItem {
         if (!hyphenatedLower.equals(key.toLowerCase())) names.add("agents-" + hyphenatedLower + ".md");
 
         return names.toArray(String[]::new);
-    }
-    
-    private static String resolveAgentKey(String agentName) {
-        if (agentName.startsWith("Peon-")) {
-            return agentName.substring(5).toUpperCase();
-        }
-        return agentName;
     }
 }

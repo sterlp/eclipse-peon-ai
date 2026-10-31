@@ -15,7 +15,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import org.sterl.llmpeon.agent.AiAgent;
-import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.model.CompactResult.Stats;
 import org.sterl.llmpeon.shared.AiMonitor;
@@ -40,7 +39,7 @@ public class AgentsTool extends AbstractTool {
     @RequiredArgsConstructor
     static class Task {
         final long id;
-        final NamedAgent agent;
+        final AiAgent agent;
         final String prompt;
         final CallStats start = CallStats.start();
         final CompletableFuture<Task> future = new CompletableFuture<>();
@@ -50,7 +49,7 @@ public class AgentsTool extends AbstractTool {
         volatile Throwable e;
         
         String agentName() {
-            return this.agent.uiName();
+            return this.agent.getName();
         }
 
         boolean isComplete() {
@@ -64,18 +63,18 @@ public class AgentsTool extends AbstractTool {
         String status() {
             if (isFailed()) {
                 return "task=" + id
-                + " agent=" + agent.uiName()
+                + " agent=" + agent.getName()
                 + " status=FAILED" 
                 + errorText();
 
             } else if (status == Status.COMPLETED) {
                 return "task=" + id
-                        + " agent=" + agent.uiName()
+                        + " agent=" + agent.getName()
                         + " status=COMPLETED" 
                         + "result:" + System.lineSeparator() 
                         + result;
             }
-            return "task=" + id + " agent=" + agent.uiName() + " status=" + status; 
+            return "task=" + id + " agent=" + agent.getName() + " status=" + status; 
         }
         
         String errorText() {
@@ -101,17 +100,17 @@ public class AgentsTool extends AbstractTool {
     private volatile int maxConcurrent = 0;
     private final AtomicInteger asyncRunning = new AtomicInteger(0);
     private final ConcurrentHashMap<Long, Task> tasks = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, NamedAgent> agents = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, AiAgent> agents = new ConcurrentHashMap<>();
 
-    public AgentsTool(List<NamedAgent> agentList) {
+    public AgentsTool(List<AiAgent> agentList) {
         agentList.forEach(this::register);
     }
 
-    public void register(NamedAgent agent) {
-        var previous = agents.putIfAbsent(agent.uiName(), agent);
+    public void register(AiAgent agent) {
+        var previous = agents.putIfAbsent(agent.getName(), agent);
         if (previous != null) {
             throw new IllegalStateException(
-                    "Agent already registered: " + agent.uiName()
+                    "Agent already registered: " + agent.getName()
             );
         }
     }
@@ -123,7 +122,7 @@ public class AgentsTool extends AbstractTool {
         Task result;
         var runsAsync = this.maxConcurrent > this.asyncRunning.get();
         if (runsAsync) {
-            monitor.onTool(agent.uiName() + " start async: " + System.lineSeparator() + prompt);
+            monitor.onTool(agent.getName() + " start async: " + System.lineSeparator() + prompt);
             var slaveMonitor = runsAsync ? new AsyncMonitor(this.monitor) : monitor; 
             long taskId = ID_GENERATOR.incrementAndGet();
             result = new Task(taskId, agent, prompt);
@@ -133,7 +132,7 @@ public class AgentsTool extends AbstractTool {
                     virtualExecutor)
                 .whenComplete((r, e) -> complete(result, r, e));
         } else {
-            monitor.onTool(agent.uiName() + " start: " + System.lineSeparator() + prompt);
+            monitor.onTool(agent.getName() + " start: " + System.lineSeparator() + prompt);
             result = new Task(-1, agent, prompt);
             try {
                 var agentResult = dispatch(agent, prompt, new ArrayList<ContextItem>(), monitor);
@@ -146,10 +145,10 @@ public class AgentsTool extends AbstractTool {
         return result;
     }
     
-    private static String dispatch(NamedAgent target, String prompt,
+    private static String dispatch(AiAgent target, String prompt,
             List<ContextItem> orders, AiMonitor monitor) {
         
-        AiAgent slave = target.agent();
+        AiAgent slave = target;
         slave.setTurnContextSupplier(() -> orders);
 
         final var response = slave.call(prompt, monitor);
@@ -160,11 +159,11 @@ public class AgentsTool extends AbstractTool {
 
         final var result = StringUtil.hasValue(answer)
                 ? answer
-                : target.uiName() + " returned no result";
+                : target.getName() + " returned no result";
         return result;
     }
 
-    private NamedAgent getAgent(String agentName) {
+    private AiAgent getAgent(String agentName) {
         var agent = agents.get(agentName);
         if (agent == null) {
             String known = agents.keySet().stream()
@@ -180,19 +179,19 @@ public class AgentsTool extends AbstractTool {
 
     private void complete(Task task, String result, Throwable throwable) {
         var target = task.agent;
-        final var statsLine = contextUsed(target.agent()) + " " + task.start.suffix();
+        final var statsLine = contextUsed(target) + " " + task.start.suffix();
         
         task.status = Status.COMPLETED;
-        task.result = result + System.lineSeparator() + target.uiName() + statsLine;
+        task.result = result + System.lineSeparator() + target.getName() + statsLine;
         task.e = throwable;
 
         if (throwable != null) {
             task.e = throwable.getCause() != null
                     ? throwable.getCause()
                     : throwable;
-            monitor.onProblem(target.uiName() + " failed. " + task.e.getMessage() + " " + statsLine + " " + StringUtil.charsSuffix(result));
+            monitor.onProblem(target.getName() + " failed. " + task.e.getMessage() + " " + statsLine + " " + StringUtil.charsSuffix(result));
         } else {
-            monitor.onTool(target.uiName() + " done. " + statsLine + " " + StringUtil.charsSuffix(result));
+            monitor.onTool(target.getName() + " done. " + statsLine + " " + StringUtil.charsSuffix(result));
         }
 
         task.future.complete(task);
@@ -299,18 +298,18 @@ public class AgentsTool extends AbstractTool {
     @Tool("Wipe Agent back to blank — the next task is UNRELATED and the old state would only create drift.")
     public void subAgentClear(@P("Exact name of the subagent") String agentName) {
         var agent = getAgent(agentName);
-        agent.agent().getMemory().clear();
+        agent.getMemory().clear();
         reportAction(agent, "reset", monitor);
     }
     
     @Tool("Compact Agent — the SAME task continues but the history got long. Keeps the gist, frees context.")
     public void subAgentCompact(@P("Exact name of the subagent") String agentName) {
         // R-CT-8: no own line — the sub-agent's compact already sent the one end line via onTool
-        getAgent(agentName).agent().compact(monitor); // todo this should be async too ...
+        getAgent(agentName).compact(monitor); // todo this should be async too ...
     }
 
-    private void reportAction(NamedAgent target, String action, AiMonitor monitor) {
-        monitor.onTool(target.uiName() + " " + action + ".");
+    private void reportAction(AiAgent target, String action, AiMonitor monitor) {
+        monitor.onTool(target.getName() + " " + action + ".");
     }
 
     private static String contextUsed(AiAgent agent) {

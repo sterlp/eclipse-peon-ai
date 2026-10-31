@@ -8,6 +8,7 @@ import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.tool.LoopOwner;
 import org.sterl.llmpeon.tool.ToolPolicy;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
@@ -21,6 +22,20 @@ import lombok.Getter;
 import lombok.Setter;
 
 public class SearchAgentTool extends AbstractTool {
+
+    /**
+     * Wire name of the tool — the key the factory's author table resolves a history line by
+     * ({@code ToolExecutionResultMessage.toolName()}). <b>Not</b> the loop label: that is
+     * {@link #LOOP_NAME}.
+     */
+    public static final String NAME = "searchAgent";
+
+    /**
+     * The sub-loop's own name — stamped as {@code origin} on its lines (ADR-0078) and the label of its
+     * start line. Deliberately separate from {@link #NAME}: one is the tool contract on the wire, the
+     * other who the lines are attributed to.
+     */
+    public static final String LOOP_NAME = "Search";
 
     private final SystemMessage system = SystemMessage.systemMessage(PromptLoader.load("search-agent.md"));
 
@@ -52,7 +67,7 @@ public class SearchAgentTool extends AbstractTool {
         return toolService.activeNames(filter, ToolPolicy.nameFilter(rawCsv));
     }
 
-    @Tool(name = "searchAgent", value = "Sub-agent for complex multi-step search/research - to save tokens.")
+    @Tool(name = NAME, value = "Sub-agent for complex multi-step search/research - to save tokens.")
     public String searchAgent(@P(name = "prompt") String prompt) {
         ArgsUtil.requireNonBlank(prompt, "prompt");
         // the field is re-set per tool call — read it once, so a parallel call's cancel state can never
@@ -79,12 +94,12 @@ public class SearchAgentTool extends AbstractTool {
                 .toolFilter(filter.and(exec -> allow.test(exec.getSpec().name())))
                 .toolNameFilter(allow)
                 .memory(messages)
-                .agentConfig(cfg.searchAgentConfig())
-                // R-CC-15: never inherit the parent agent — a sub-loop compactSession would
-                // clear/re-seed the PARENT memory (toBuilder inherits every field, see ToolLoopRequest)
-                .agent(null);
+                // R-CC-15: an owner of its own — no parent agent to delegate back to (a sub-loop
+                // compactSession would clear/re-seed the PARENT memory, toBuilder inherits every field,
+                // see ToolLoopRequest) — and its own name on every line it emits (ADR-0078).
+                .owner(LoopOwner.named(LOOP_NAME, base -> base.searchAgentConfig()));
 
-            onTool("Da Sniffa "
+            onTool(LOOP_NAME + " "
                     + (modelName == null ? "" : "(" + modelName + ")")
                     + " start:" + System.lineSeparator() + System.lineSeparator() + prompt);
             long startNanos = System.nanoTime();
@@ -99,7 +114,8 @@ public class SearchAgentTool extends AbstractTool {
                 rolling.append(prompt, answer);
             }
             String result = StringUtil.hasValue(answer) ? answer : "Search completed but returned no result";
-            onTool("Da Sniffa done. (" + StringUtil.humanElapsed(elapsedMillis) + ")" + " " + StringUtil.charsSuffix(result));
+            onTool(LOOP_NAME + " done. (" + StringUtil.humanElapsed(elapsedMillis) + ")" + " "
+                    + StringUtil.charsSuffix(result));
             return result;
 
         } catch (Exception e) {

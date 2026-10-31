@@ -1,10 +1,10 @@
-# Peon-PO (Jon)
+# Jon
 
 ## Goal
 
-A docs-owning **business-owner agent** — identity **"Jon"**, shown as **`Peon-PO`** in the agent
+A docs-owning **business-owner agent** — identity **"Jon"**, shown as **`Jon`** in the agent
 dropdown. Jon designs features together with the user directly in `docs/`, then drives their
-implementation by orchestrating his **own** Peon-Plan and Peon-Dev instances through `poagent` tools
+implementation by orchestrating his **own** Plan and Dev instances through `poagent` tools
 (`talkPlan`/`planWithPlanAgent`/`askDev`/`buildWithDev` — früher `jon*` tools genannt).
 He owns the WHAT (the docs); the plan and the code are delegated work he never touches himself.
 
@@ -15,10 +15,10 @@ lifting. A question he cannot answer from the docs he **escalates to the user** 
 
 This story is the design; rules are marked **✅** where built, **❌** where still backlog.
 
-**100 % additive.** Peon-PO only *adds* — a new agent, the `poagent` delegate tools, the slave-side
+**100 % additive.** Jon only *adds* — a new agent, the `poagent` delegate tools, the slave-side
 completion signals (`planComplete` / `planImplemented`) and the write-allowlist decorator. It changes
-**nothing** in the standalone Peon-Plan / Peon-Dev /
-Peon-Scaffold agents or in today's button handoff. Jon lives in the **`core`** module and is therefore
+**nothing** in the standalone Plan / Dev /
+Scaffold agents or in today's button handoff. Jon lives in the **`core`** module and is therefore
 **fully testable in core** with the headless disk tools; the Eclipse plugin only **injects the
 Eclipse-workspace tools** (behind the same write wrapper). Jon **never gets a shell** — in any layer.
 
@@ -33,12 +33,12 @@ agent ships it green (R5).
 The `jon*` orchestration below (R1–R14) is still the design; these concrete pieces are **built and
 green** (`org.sterl.llmpeon.core`/`.test`):
 
-- **First in the dropdown, but not the active default.** `AgentService.getAgents()` returns Peon-PO
+- **First in the dropdown, but not the active default.** `AgentService.getAgents()` returns Jon
   first, then the rest by name (test `PeonAiServiceTest.test_po_is_first_agent`) — a cheap comparator,
-  cosmetic only. The **active** default stays Peon-Dev (decision R1): the combo does **not** blindly
+  cosmetic only. The **active** default stays Dev (decision R1): the combo does **not** blindly
   select index 0 — `ActionsBarWidget.updateModeUI(getActiveAgent())` selects the *active* agent's row
   on every config apply, so it pre-selects the **Dev row** while Jon sits at the top of the list. Jon,
-  like Peon-Scaffold, is registered in the **plugin** via `PeonAiService.addPersistentAgent` (he needs
+  like Scaffold, is registered in the **plugin** via `PeonAiService.addPersistentAgent` (he needs
   a plugin-assembled, docs-only `ToolService`), not in the core `withDefaultAgent` block that seeds
   `activeAgent = devAgent`.
 - **Own model slot (✅ 3a, 2026-09-03).** Jon liest/schreibt sein Modell über den **eigenen
@@ -89,7 +89,7 @@ WHEN Jon die memory.md ändert
 THEN wird sie NICHT erneut injiziert (Dedup nach Pfad, nicht nach Content)
 
 GIVEN memory.md wird automatisch geladen
-WHEN der Plan-Agent (Da Thinka) startet
+WHEN der Plan-Agent startet
 THEN bekommt er memory.md NICHT automatisch injiziert
 ```
 
@@ -107,9 +107,9 @@ to the prompt file instead of a BDD. Full 12-file inventory + loader mechanics:
 | `doc-method.md` ❌ | `AiPoAgent` + Paco (static) | always — right after Jon's/Paco's own prompt (`default` + `po`/`paco` + `doc-method`, both say "Doc-Methode unten"); `${docs}` resolved like `po.md` | the shared docs-first method (SOLL/IST/WEIL, GIVEN/WHEN/THEN, symbols/status markers, conflict check, one-question interviews) — one source so Jon and Paco never drift ([aifactory R-PC-7](../../aifactory/docs/paco.md)) |
 | `po.md` | `AiPoAgent` (static) | always — Jon's system prompt | Jon's `## Charakter` + build role (IDs/`nextIds`, ADRs, architecture docs, status flips, team) |
 | `po-delegation.md` | `AiPoAgent` (static) | always — appended after the path-white-list line | the delegation playbook (plan → sign-off → build → one review → retro, cycle/branch discipline) — split out so the identity stays clean and the playbook evolves on its own |
-| `po-tutorial.md` | plugin `PeonAiService` | first activation in a session (R4) | onboarding message, like Peon-Scaffold |
-| `plan-write-loop.md` | `PoDelegateTool.planWithPlanAgent` | one-shot standing order per plan dispatch | plan-writing discipline — only when Da Thinka actually writes the plan, not on `talkPlan` |
-| `dev-build-loop.md` | `PoDelegateTool.buildWithDev` | per build dispatch with a (sticky) planPath | build discipline (vertical slices, green gate, git commits, compactSession) — only when Da Mek builds from a released plan, not on `askDev` |
+| `po-tutorial.md` | plugin `PeonAiService` | first activation in a session (R4) | onboarding message, like Scaffold |
+| `plan-write-loop.md` | `PoDelegateTool.planWithPlanAgent` | one-shot standing order per plan dispatch | plan-writing discipline — only when Plan actually writes the plan, not on `talkPlan` |
+| `dev-build-loop.md` | `PoDelegateTool.buildWithDev` | per build dispatch with a (sticky) planPath | build discipline (vertical slices, green gate, git commits, compactSession) — only when Dev builds from a released plan, not on `askDev` |
 
 **Split rationale:** identity (static, small) · playbook (operational, changes more often) · loop
 disciplines (one-shot injections bound to the work verbs — talk/ask turns stay lean, and the
@@ -123,16 +123,16 @@ plugin only).
 
 R1–R14 above are the **full vision** (completion signals, non-blocking queue, header status, error
 plumbing). This increment ships the **smallest useful slice**: Jon can actually delegate the *unloved*
-plan/dev work to **his own** Plan and Da Mek (Peon-Dev) and get their answers back — **chat/prompt-based, no
+plan/dev work to **his own** Plan and Dev and get their answers back — **chat/prompt-based, no
 completion signals, happy-path only**. It deliberately **defers** R8 (signals), R10 (compaction),
 R11 (queue/non-block), R12 (header) and R14 (error handling) to a later Increment 3.
 
 The `poagent` tool **substrate is already in place**: Jon has his docs-only `ToolService` and his writes
 are gated (`WriteValidator.DOCS`, built). What this increment adds are the two **delegate tools** plus
-Da Thinka and Da Mek behind them.
+Plan and Dev behind them.
 
 ### I2.1: Four delegate tools + `searchAgent` ✅
-Da Thinka and Da Mek were named by **intent** rather than by role: a *talk* verb and a *do* verb per slave,
+Plan and Dev were named by **intent** rather than by role: a *talk* verb and a *do* verb per slave,
 because "ask a question" and "produce the artefact" want different standing orders. `PoDelegateTool`
 (früher `JonDelegateTool`, Package `org.sterl.llmpeon.poagent`)
 exposes four (renamed from the original `jonAskPlan`/`jonAskDev` cut); each drives **one** of Jon's
@@ -140,33 +140,33 @@ slaves for **one turn** via `slave.call(prompt, monitor)` (modeled on `SearchAge
 **persistent** slave so its RAM memory is reused across calls). The slave's reply is the **tool
 result** — verbatim back to Jon.
 
-- `talkPlan(prompt)` → ask Da Thinka (Peon-Plan) a question / discuss an approach; **no plan is
+- `talkPlan(prompt)` → ask Plan a question / discuss an approach; **no plan is
   written**.
-- `planWithPlanAgent(prompt)` → have Da Thinka (Peon-Plan) **write/refine** the plan into
+- `planWithPlanAgent(prompt)` → have Plan **write/refine** the plan into
   `peon-plan/overview.md`. Injects the `plan-write-loop.txt` one-shot standing order (own the plan file,
   slice into small green increments, plan continuously, ask one question when unclear — never guess).
-- `askDev(prompt)` → ask Da Mek (Peon-Dev) a question about the code / its progress; **nothing is
+- `askDev(prompt)` → ask Dev a question about the code / its progress; **nothing is
   built**.
-- `buildWithDev(prompt, planPath?)` → have Da Mek (Peon-Dev) **implement** the released plan. `planPath`
-  is **optional**: when given, the path is set as a Da Mek **standing order** so it **survives the
+- `buildWithDev(prompt, planPath?)` → have Dev **implement** the released plan. `planPath`
+  is **optional**: when given, the path is set as a Dev **standing order** so it **survives the
   slave's own compaction** (see I2.6), and the `dev-build-loop.txt` standing order is injected.
 
-Jon additionally gets `searchAgent` (the existing stateless `SearchAgentTool`, "Da Sniffa") — a
+Jon additionally gets `searchAgent` (the existing stateless `SearchAgentTool`, "Search") — a
 throw-away research sub-agent for multi-step lookups, so discovery does not burn his own context.
 
 **No completion signals on the delegate tools.** There is no `planComplete` / `planImplemented` on
 `PoDelegateTool`. Control returns to Jon on every team member turn anyway (natural stop), and Jon decides
-*"done vs. still working"* **from the reply text** himself (I2.3); Da Mek (Peon-Dev) owns
+*"done vs. still working"* **from the reply text** himself (I2.3); Dev owns
 `planImplemented` and archives only after Jon's post-build review passes.
 
-The slave's **done** progress line carries how long the slave worked, e.g. `Da Thinka done. (3s)` (the
-planner; Da Mek (Peon-Dev) shows as `Da Mek`) — the shared sub-agent timing rule (see
+The slave's **done** progress line carries how long the slave worked, e.g. `Plan done. (3s)` (the
+planner; Dev shows as `Dev`) — the shared sub-agent timing rule (see
 [sub-agent-timing.md](sub-agent-timing.md)), which also covers `searchAgent` and `compactSession`.
 These display names are UI-only; the tool names and model-facing text stay functional.
 
 **BDD:**
 ```
-GIVEN the user switches to Peon-PO
+GIVEN the user switches to Jon
 THEN Jon's ToolService has talkPlan, planWithPlanAgent, askDev, buildWithDev and searchAgent
 
 GIVEN Jon calls talkPlan / askDev with a prompt
@@ -185,7 +185,7 @@ JSONL, no JSON of any kind). Same tool set as the standalone agents (`sharedTool
 reconsidered.)*
 
 Lifecycle: **one** Plan and **one** Dev slave per Jon session, created **eagerly** on Jon activation and kept alive **in RAM** so their context carries across calls. On app
-restart Da Thinka and Da Mek reset — which is fine, because the **durable handoff is the plan file**
+restart Plan and Dev reset — which is fine, because the **durable handoff is the plan file**
 (`peon-plan/overview.md`), plus Jon's own persisted state; the slave's memory only holds transient
 reasoning. This supersedes R9's earlier “distinct history files” idea: **no history file at all** for
 slaves, so the shared-`NAME` clobber concern disappears by construction.
@@ -226,11 +226,11 @@ This is also where Jon is told to **delegate the unloved plan/dev work** rather 
 ### I2.4: Plan → review → path handoff to Dev ✅
 Happy-path flow, chat-driven end to end:
 
-1. Jon asks Da Thinka (Peon-Plan) for a plan via `planWithPlanAgent`; Da Thinka (Peon-Plan) writes it to
+1. Jon asks Plan for a plan via `planWithPlanAgent`; Plan writes it to
    `peon-plan/overview.md` through its own `PlanTool` (unchanged).
 2. Jon **reads and reviews** the plan (via his read tools) and, if unhappy, sends change requests back
    via `planWithPlanAgent` (or clarifies via `talkPlan`).
-3. Once satisfied — his **sign-off** — Jon hands the **plan path** (`peon-plan/overview.md`) to Da Mek (Peon-Dev)
+3. Once satisfied — his **sign-off** — Jon hands the **plan path** (`peon-plan/overview.md`) to Dev
    via `buildWithDev` — the durable artefact is the file, so the path is all Dev needs.
 
 Flow order is **plan → sign-off → build → review → retro** (see the appended delegation playbook, I2.3).
@@ -238,7 +238,7 @@ Three refinements over the earlier sketch:
 - **Jon is not force-compacted** ([ADR-0021](../../docs/adr/0021-po-slave-lifecycle-jit-compaction.md)): there is no
   "compact after sign-off" step for him. He keeps the turn where the soft 95 % hint lands, updates
   `memory.md`, then self-compacts on his own terms. The per-task `compactSession` discipline still rides
-  with the plan to Da Mek (Peon-Dev) (`dev-build-loop.txt`).
+  with the plan to Dev (`dev-build-loop.txt`).
 - **Review is exactly one mandatory pass, then at Jon's discretion** — no "review loop of death". One
   control pass on a built plan is compulsory; whether Jon re-reviews after a delta plan is his call, never
   a forced loop.
@@ -247,7 +247,7 @@ Three refinements over the earlier sketch:
   slave could do better next time. The routing is by *purpose*:
   - **`memory*` tools = "we must forever do it differently"** — the durable behaviour lever. Its content is
     injected into every agent, so it is effectively extra prompt for them; recurring mistakes and what the
-    Da Thinka and Da Mek permanently need land here. It is the only thing that changes their behaviour next time (Da Thinka and Da Mek
+    Plan and Dev permanently need land here. It is the only thing that changes their behaviour next time (Plan and Dev
     are RAM-only and otherwise forget everything).
   - **ADR = Jon's notes / his memory** — what was forgotten or overlooked, what was decided (or built)
     differently than planned. The decision + the *why*, so it is not re-opened; never duplicate a rule/BDD
@@ -262,11 +262,11 @@ steuert `po-delegation.txt` (Content im Repo, siehe Prompts); die Tool-Mechanik 
 ### I2.5: Shared memory — Jon writes, slaves only read ✅
 Memory is **shared by every agent** in the workspace (`WorkspaceMemoryTool`, one Eclipse-preference
 store). Jon knows this, so his memory becomes his **lever on the whole workspace**: a guideline he records is
-read by Da Thinka and Da Mek *and* by the user's Peon-Plan/Peon-Dev/Peon-Scaffold.
+read by Plan and Dev *and* by the user's Plan/Dev/Scaffold.
 
 - **Jon has memory *write*** (`memoryAdd` / `memoryReplace` / `memoryRemove`) in his `ToolService` —
   he curates the shared memory. (Disk tools stay out — Jon does not need them.)
-- **Da Thinka and Da Mek are read-only.** They never get the memory-write tool: it is **filtered out** of their
+- **Plan and Dev are read-only.** They never get the memory-write tool: it is **filtered out** of their
   effective tool set (`getToolFilter` drops `WorkspaceMemoryTool`). Instead the current memory **content
   is injected** into each slave's **standing orders** before every dispatch — they *read* it, they
   cannot *change* it. Only Jon curates shared memory.
@@ -276,7 +276,7 @@ order; writing is exclusive to Jon by construction (tool filter), not by prompt 
 
 **BDD:**
 ```
-GIVEN the user switches to Peon-PO
+GIVEN the user switches to Jon
 THEN Jon's ToolService has the memory-write tool (memoryAdd) plus read-only plan tools, but no planSave
 
 GIVEN Jon dispatches to his Plan or Dev slave
@@ -291,11 +291,11 @@ onto `PlanTool`:
 - `hasPlan()` → returns the **path** (`peon-plan/overview.md`) if a saved plan exists, else states none
   exists — so Jon can check for existing work before delegating.
 - `planRead()` → returns the current plan's content.
-- He does **not** get `planSave` / `planUpdate` / `planImplemented` — those stay with Da Thinka and Da Mek.
+- He does **not** get `planSave` / `planUpdate` / `planImplemented` — those stay with Plan and Dev.
 
 The path from `hasPlan` is exactly what Jon feeds to `buildWithDev(prompt, planPath)` (I2.1): it is set as
-a Da Mek standing order and is **sticky**, so it is re-injected on every later dispatch and survives
-Da Mek's compaction — the plan path is never lost mid-build.
+a Dev standing order and is **sticky**, so it is re-injected on every later dispatch and survives
+Dev's compaction — the plan path is never lost mid-build.
 
 **BDD:**
 ```
@@ -311,43 +311,45 @@ AND a later prompt-only buildWithDev call still carries that plan path (sticky, 
 ## Business Rules
 
 ### R1: Registration & Naming ✅
-Built-in agent alongside Peon-Dev, Peon-Plan and Peon-Scaffold. **The default entry agent stays
-Peon-Dev** — Peon-PO is opt-in.
+Built-in agent alongside Dev, Plan and Scaffold. **The default entry agent stays
+Dev** — Jon is opt-in.
 
-- Dropdown / selection name: `Peon-PO`
+- Dropdown / selection name: `Jon`
 - Identity in the system prompt **and** in the docs: `Jon`
 - Lives in the **`core`** module: package `org.sterl.llmpeon.po`, class `AiPoAgent extends
   AbstractAgent` — fully unit-testable in core (headless disk tools, no Eclipse runtime)
-- Registered via `addPersistentAgent()` — survives `clearAgents()` on reload (same as Peon-Scaffold)
-- Auto-loads **`AGENTS-PO.md`** (if present) via the **existing generic** agent-specific-AGENTS.md
+- Registered via `addPersistentAgent()` — survives `clearAgents()` on reload (same as Scaffold)
+- Auto-loads **`AGENTS-JON.md`** (if present) via the **existing generic** agent-specific-AGENTS.md
   mechanism ([agent-specific-agentsmd.md](agent-specific-agentsmd.md)) — Jon needs **no new feature**,
-  he just slots in with key **`Peon-PO → PO`**, exactly like `Peon-Dev → DEV` / `Peon-Plan → PLAN`.
+  he just slots in with key **`Jon`** (candidates `AGENTS-Jon.md` / `agents-jon.md` / `AGENTS-JON.md`),
+  like `Dev → DEV` / `Plan → PLAN`.
+  Clean break: an old `AGENTS-PO.md` is **no longer** loaded for Jon — rename it (release note 2026-10-30).
   As that mechanism lives in the Eclipse `AgentsMdService`, the load happens in the **plugin** layer
   (headless core simply has no `AGENTS-*.md`, same as every other agent — so core tests are unaffected).
-  These are **Jon's own** standing orders — he does **not** pass them down to Da Thinka and Da Mek (R7).
+  These are **Jon's own** standing orders — he does **not** pass them down to Plan and Dev (R7).
 
 **BDD:**
 ```
 GIVEN AgentService is constructed with the default agents
 WHEN getAgents() is called
-THEN Peon-PO is in the list alongside Peon-Dev, Peon-Plan and Peon-Scaffold
-AND the default active agent is still Peon-Dev
+THEN Jon is in the list alongside Dev, Plan and Scaffold
+AND the default active agent is still Dev
 ```
 
 ### R2: ToolService — reuse existing file tools behind a write-allowlist ✅
-Jon has his own `ToolService(false)` (no default-tool leakage, like Peon-Scaffold) holding:
+Jon has his own `ToolService(false)` (no default-tool leakage, like Scaffold) holding:
 (Tool-Names heute: `talkPlan` / `planWithPlanAgent`, `askDev` / `buildWithDev`, `searchAgent` — I2.1.
 Historische Namen `jonCreateDevPlan`/`jonAskQuestion`/`jonAskDev` → heute
 `planWithPlanAgent`/`talkPlan`/`askDev`.)
 
-- `jonCreateDevPlan`, `jonAskQuestion` — both drive the **same** persistent Da Thinka (Peon-Plan) (R9),
+- `jonCreateDevPlan`, `jonAskQuestion` — both drive the **same** persistent Plan (R9),
   distinct tool names for distinct intent: `jonCreateDevPlan` runs the full planning workflow (the plan
-  Dev will implement, ends when Da Thinka (Peon-Plan) calls `planComplete()`); `jonAskQuestion` sends a
+  Dev will implement, ends when Plan calls `planComplete()`); `jonAskQuestion` sends a
   **direct question** (`Question: <text>. Just directly respond.`) and returns the answer with **no**
   completion signal.
-- `jonAskDev` — drive Da Mek (Peon-Dev) for one turn; the reply is the tool result.
+- `jonAskDev` — drive Dev for one turn; the reply is the tool result.
 - `SearchAgentTool` — one-shot, **stateless** discovery (unchanged). Complements `jonAskQuestion`,
-  which reuses Da Thinka's **warm** project context instead of starting cold.
+  which reuses Plan's **warm** project context instead of starting cold.
 - **Injected** file tools — Jon gets **no bespoke docs tools**: the **disk** read/write tools in core
   (and tests), the **Eclipse-workspace** read/write tools in the plugin. Each **write** tool is wrapped
   in the **write-path-allowlist decorator** (R3); reads pass through.
@@ -357,7 +359,7 @@ the allowlist, not by a custom tool.
 
 **BDD:**
 ```
-GIVEN the user switches to Peon-PO
+GIVEN the user switches to Jon
 THEN the ToolService has jonCreateDevPlan, jonAskQuestion, jonAskDev, SearchAgentTool and the standard write tools wrapped in the write-allowlist decorator
 AND no plan*, shell or compact tools are available
 ```
@@ -409,8 +411,8 @@ conversation 2 messages 124 tokens") — der Guard war strukturell tot. `< 3` ma
 direkt nach einem Compact zum Noop** (1 Message < 3).
 
 **SOLL:** `memory.size() < 3` → **Skip** (`false` zurückgeben) — kein LLM-Call, **kein** Clear
-(Memory bleibt unverändert). Gilt für **alle** Agenten inkl. Jon und seine Sklaven (Da Thinka,
-Da Mek, Da Dok), **zentral in `AbstractAgent`** — damit alle 4 Eintrittspfade gedeckt sind
+(Memory bleibt unverändert). Gilt für **alle** Agenten inkl. Jon und seine Sklaven (Plan,
+Dev, Review), **zentral in `AbstractAgent`** — damit alle 4 Eintrittspfade gedeckt sind
 (Action-Bar-Hammer, Sklaven-Header-Button, `compactSession`, `compactPlan/Review/Dev`).
 Der bestehende UI-Guard in `AIChatView.doCompressContext` (`size < 3`) bleibt als billiger
 Short-Circuit bestehen.
@@ -427,7 +429,7 @@ Short-Circuit bestehen.
 
 - **GIVEN** Jon hat 0, 1 oder 2 Nachrichten im Memory **WHEN** `compact()` aufgerufen **THEN** kein LLM-Call, Memory bleibt unverändert (`false`)
 - **GIVEN** ein Agent wurde gerade komprimiert (Memory = exakt 2 Messages) **WHEN** `compact()` erneut aufgerufen **THEN** Noop — kein LLM-Call, `false`
-- **GIVEN** Da Mek hat 2 Messages im Memory **WHEN** `compactDev()` aufgerufen **THEN** Skip und Tool-Result ist `"Nothing to compact (2 messages)"`, nicht `"Da Mek compacted."`
+- **GIVEN** Dev hat 2 Messages im Memory **WHEN** `compactDev()` aufgerufen **THEN** Skip und Tool-Result ist `"Nothing to compact (2 messages)"`, nicht `"Dev compacted."`
 - **GIVEN** Jon hat ≥ 3 Nachrichten **WHEN** `compact()` aufgerufen **THEN** normaler Compact-Flow
 - **Tag:** unit (verify no LLM call when < 3 messages; verify memory NOT cleared; verify PoDelegateTool surfaces the skip verbatim)
 
@@ -436,14 +438,14 @@ brach bei < 2 Messages. Slaven-Compacts (`compactDev`/`compactPlan`) hatten dens
 
 ### R4: Onboarding tutorial ❌
 On the first activation in a session (`memory.size == 0`) Jon shows a short tutorial message (like
-Peon-Scaffold). Later activations in the same session only refresh standing orders.
+Scaffold). Later activations in the same session only refresh standing orders.
 
 **BDD:**
 ```
-GIVEN Peon-PO is activated for the first time in a session (memory.size == 0)
+GIVEN Jon is activated for the first time in a session (memory.size == 0)
 THEN a short tutorial message appears in the chat history
 
-GIVEN Peon-PO already has chat history
+GIVEN Jon already has chat history
 WHEN the user switches away and back
 THEN no tutorial is shown again
 ```
@@ -460,14 +462,14 @@ implemented slice is confirmed green, Jon flips its rules **❌ → ✅**.
 
 ### R6: Delegate to Plan — `planWithPlanAgent` (build) & `talkPlan` (Q&A) ✅
 (Tool-Names I2.1: `jonCreateDevPlan` → `planWithPlanAgent`, `jonAskQuestion` → `talkPlan`.)
-Both tools drive the **same** persistent Da Thinka (Peon-Plan) (R9), lazily created on first use and run for
+Both tools drive the **same** persistent Plan (R9), lazily created on first use and run for
 **one turn** via `slave.call(prompt, monitor)` (modeled on `SearchAgentTool`, but against the
-persistent Da Thinka — so its memory, auto-compact and standing orders are reused). They differ only in
+persistent Plan — so its memory, auto-compact and standing orders are reused). They differ only in
 intent and framing:
 
 - **`jonCreateDevPlan`** — the full planning workflow. The Plan agent interviews **Jon** in place of
   the user: each Plan question comes back as the tool result, Jon answers with the next
-  `jonCreateDevPlan` call (a question Jon can't decide → escalate, R13). When the plan is ready Da Thinka (Peon-Plan)
+  `jonCreateDevPlan` call (a question Jon can't decide → escalate, R13). When the plan is ready Plan
   calls **`planComplete()`** (R8) — Jon's done-marker, carrying the plan link — and Jon **reviews**
   it, then either releases it or sends change requests back via `jonCreateDevPlan`.
 - **`jonAskQuestion`** — a direct question to the Plan agent, wrapped as
@@ -495,17 +497,17 @@ After releasing the plan Jon calls `buildWithDev`.
 
 **Jon owns his own standing-order logic.** With Jon in **core**, the Eclipse-only `onHandoff` /
 `_handoffLine` path (it uses `JdtUtil.pathOf(IFile)`) is unavailable — so Jon does **not** reuse it.
-Instead, on every dispatch Jon feeds Da Thinka and Da Mek context as **standing orders** through the
+Instead, on every dispatch Jon feeds Plan and Dev context as **standing orders** through the
 `PoDelegateTool` additional-context supplier (`setAdditionalContext`), while his actual prompt rides
 in as a normal **chat
-message**. The key standing order is the **plan link**, once a plan exists. **Da Thinka and Da Mek** are handled
+message**. The key standing order is the **plan link**, once a plan exists. **Plan and Dev** are handled
 the same way: `plan link` (standing order) **+** Jon's question (chat message).
 
-Crucially, Jon does **not** forward his *own* standing orders (his `AGENTS-PO.md`, R1) to Da Thinka and Da Mek —
+Crucially, Jon does **not** forward his *own* standing orders (his `AGENTS-JON.md`, R1) to Plan and Dev —
 those are Jon's identity. Jon sets **separate** standing orders **for** each slave. (A richer
 cross-agent shared context Jon curates via a tool is a **future** extension, not the MVP.)
 
-Da Mek additionally gets the instruction to call **`planImplemented()`** when finished (R8). On
+Dev additionally gets the instruction to call **`planImplemented()`** when finished (R8). On
 `planImplemented()` Jon has his done-marker (plan flipped to *done*) and reviews the result, then either
 accepts it (flip ❌ → ✅, R5) or returns change requests via `jonAskDev`.
 
@@ -518,7 +520,7 @@ small changes Jon reviews inline; the dedicated Reviewer agent stays a future ex
 ```
 GIVEN Jon calls jonAskDev with a released plan
 THEN Jon sets a standing order (via the PoDelegateTool additional-context supplier) carrying the plan link plus the instruction to call planImplemented() when done, and his prompt arrives as a chat message
-AND Jon's own AGENTS-PO.md standing orders are NOT forwarded to the Dev slave
+AND Jon's own AGENTS-JON.md standing orders are NOT forwarded to the Dev slave
 
 GIVEN the Dev agent calls planImplemented()
 THEN the plan is flipped to done, Jon gets the done-marker and reviews the result
@@ -533,9 +535,9 @@ clarifying question / give an interim answer, or is the whole job done?*
 
 Two **atomic completion signals**, authored **fresh in core**. The Eclipse `PlanTool` (IFile-bound) is
 **not** moved or touched; it stays as standalone legacy.
-- **`planComplete()`** — **Da Thinka**: the plan is ready; a **pure** signal (no file I/O) that
+- **`planComplete()`** — **Plan**: the plan is ready; a **pure** signal (no file I/O) that
   sets the done-latch carrying the **link to the plan**. The plan file stays — Dev needs it.
-- **`planImplemented()`** — **Da Mek**: implementation is done. **Atomic:** in one step it
+- **`planImplemented()`** — **Dev**: implementation is done. **Atomic:** in one step it
   archives/renames the plan to a *done* name **and** sets the done-latch (link → the archived plan). The
   archive runs through an injected **`PlanArchiver` port** (core interface): a **disk** impl in
   core/tests, an **IFile** impl in the Eclipse plugin. Making the rename **deterministic code** — not a
@@ -556,12 +558,12 @@ question / interim status (→ answer or escalate, R13).
 
 | Agent | `planComplete` | `planImplemented` |
 | --- | --- | --- |
-| Da Thinka | ✅ | — |
-| Da Mek | — | ✅ |
+| Plan | ✅ | — |
+| Dev | — | ✅ |
 | Jon | — | — |
-| standalone Peon-Plan / Peon-Dev | — | — |
+| standalone Plan / Dev | — | — |
 
-Da Mek never sees `planComplete`, Da Thinka never sees `planImplemented`, and **Jon has no
+Dev never sees `planComplete`, Plan never sees `planImplemented`, and **Jon has no
 plan tools at all**. The signals live **only** on Jon's dedicated slave instances — they never leak into
 the user-selectable standalone Plan/Dev. Filters stay **static per agent instance** (a per-turn tool-set
 change would kill the KV-cache); `ToolService.addTool` also **throws on a duplicate name**.
@@ -587,26 +589,26 @@ THEN the latch reads Optional.empty() and the stale "done" is not re-consumed
 ```
 
 ### R9: Slave lifecycle — persistent singletons ✅
-Per Jon session there is **exactly one** Peon-Plan and **one** Peon-Dev instance. Each is created
+Per Jon session there is **exactly one** Plan and **one** Dev instance. Each is created
 **lazily on first delegation** and **kept alive**, holding its context across calls.
 Peon-Search stays a stateless **one-shot** agent.
 
-These are **dedicated, Jon-owned instances** — **not** the user-selectable Peon-Plan/Peon-Dev from
+These are **dedicated, Jon-owned instances** — **not** the user-selectable Plan/Dev from
 `AgentService`, and are **RAM-only — no history files** ([ADR-0024](../../docs/adr/0024-po-slaves-ram-only.md)). Sharing the *instance* would make the `ask*`/`buildWithDev` tools mutate
 the very memory/history the user sees, and the per-agent `working` guard would silently **queue** the
-nested `call()` (returning `null`) — so Da Thinka and Da Mek must be distinct instances.
+nested `call()` (returning `null`) — so Plan and Dev must be distinct instances.
 
-**Tool wiring per layer (Da Thinka and Da Mek are not empty shells).** A dedicated instance still needs a
+**Tool wiring per layer (Plan and Dev are not empty shells).** A dedicated instance still needs a
 fully-wired `ToolService`. In **core** it is built with the headless disk tools; in the **Eclipse
-plugin** Da Thinka and Da Mek must receive the **Eclipse-workspace tools**, which are assembled only in the
+plugin** Plan and Dev must receive the **Eclipse-workspace tools**, which are assembled only in the
 plugin (`PeonAiService`, `sharedToolService = new ToolService()` + `EclipseWorkspaceWriteFileTool` …).
 
-**Shell-Tool-Regel:** Jon (Peon-PO) und Da Thinka (Peon-Plan) bekommen **keine Shell-Tools**.
-Da Mek (Peon-Dev) **bekommt Shell-Tools** — er ist der Builder, vergleichbar mit standalone Peon-Dev.
+**Shell-Tool-Regel:** Jon und Plan bekommen **keine Shell-Tools**.
+Dev **bekommt Shell-Tools** — er ist der Builder, vergleichbar mit standalone Dev.
 Die Shell-Bestätigungs-Konfiguration (`PREF_SHELL_CONFIRMATION_ENABLED`) hat drei Modi: `always`,
-`never`, `not-autonomous`. **Da Mek gilt als autonom** (er arbeitet im Hintergrund für Jon, kein
-direktes User-Interface) → `not-autonomous` unterdrückt die Bestätigung für Da Mek. Standalone
-Peon-Dev ist *nicht* autonom → bei `not-autonomous` wird der User gefragt.
+`never`, `not-autonomous`. **Dev gilt als autonom** (er arbeitet im Hintergrund für Jon, kein
+direktes User-Interface) → `not-autonomous` unterdrückt die Bestätigung für Dev. Standalone
+Dev ist *nicht* autonom → bei `not-autonomous` wird der User gefragt.
 
 Two ways, both keeping core clean: **share the same plugin-built `ToolService`** the standalone
 Plan/Dev already use (distinct *agent instance*, shared *tool set*), or **participate in the same
@@ -615,7 +617,7 @@ slave factory** — core supplies disk-tool slaves for tests, the plugin supplie
 so Jon-in-core stays testable without an Eclipse runtime.
 
 **Sklaven-Tool-Filterung (`getToolFilter`):** Strippt `WorkspaceMemoryTool` (nur Jon curates Memory)
-und `AskUserTool` (Jon ist das UI, nicht die Sklaven). **ShellTool bleibt erhalten** — Da Mek braucht
+und `AskUserTool` (Jon ist das UI, nicht die Sklaven). **ShellTool bleibt erhalten** — Dev braucht
 es als Builder. Die Shell-Bestätigung wird über den `autonomous`-Flag gesteuert, nicht über den
 Tool-Filter.
 
@@ -623,19 +625,19 @@ Tool-Filter.
 ```
 GIVEN no plan slave exists yet
 WHEN Jon makes his first jonCreateDevPlan or jonAskQuestion call
-THEN a single Peon-Plan instance is created and reused for every later Plan-side call in the session
+THEN a single Plan instance is created and reused for every later Plan-side call in the session
 
 GIVEN Jon uses SearchAgentTool
 THEN it runs one-shot and holds no context between calls
 
-GIVEN Jon's Plan slave (Da Thinka) is created
-THEN Da Thinka's effective tool set does NOT include ShellTool
+GIVEN Jon's Plan slave (Plan) is created
+THEN Plan's effective tool set does NOT include ShellTool
 
-GIVEN Jon's Dev slave (Da Mek) is created
-THEN Da Mek's effective tool set includes ShellTool
-AND Da Mek gilt als autonom für die Shell-Bestätigung (`not-autonomous`-Modus unterdrückt die Frage)
+GIVEN Jon's Dev slave (Dev) is created
+THEN Dev's effective tool set includes ShellTool
+AND Dev gilt als autonom für die Shell-Bestätigung (`not-autonomous`-Modus unterdrückt die Frage)
 
-AND the standalone Peon-Dev (user-selected) still has ShellTool and is NOT autonomous
+AND the standalone Dev (user-selected) still has ShellTool and is NOT autonomous
 
 Status: 🚧 `PeonAiServiceTest.test_po_slaves_shell_tool_policy` (neuer Test needed)
 ```
@@ -645,7 +647,7 @@ A slave is compacted **only just before Jon sends it the next message**, and onl
 exceeds a threshold — a single constant, **default 60 %** (to be fine-tuned later). Implemented by
 calling `slave.compressContext(monitor)` before dispatch. Jon's message is delivered as a **standing
 order** (like a `/` command) so it **survives the compaction** and is placed **before** the compact
-result (`ToolLoopRequest.clearMemory()` re-injects standing orders after clearing) — Da Thinka and Da Mek never
+result (`ToolLoopRequest.clearMemory()` re-injects standing orders after clearing) — Plan and Dev never
 eat their own context away.
 
 The threshold needs its **own explicit constant/basis**: `AbstractAgent.tokenContextUsedInPercent()`
@@ -703,21 +705,21 @@ THEN the running sub-agent is aborted via the shared monitor, no tool result is 
 ```
 
 ### R12: Header status ❌
-While Peon-PO is active, the header shows — next to the usual sent/received token counts —
-`peon-dev(context-size)` and `peon-plan(context-size)`, each with a status ball (active / waiting /
+While Jon is active, the header shows — next to the usual sent/received token counts —
+`dev(context-size)` and `plan(context-size)`, each with a status ball (active / waiting /
 idle). Exact ball colours are deferred.
 
 **BDD:**
 ```
-GIVEN Peon-PO is active with a live plan and dev slave
-THEN the header shows peon-plan(context-size) and peon-dev(context-size) with their status balls
+GIVEN Jon is active with a live plan and dev slave
+THEN the header shows plan(context-size) and dev(context-size) with their status balls
 ```
 
 ### R13: Escalation to the user (anti-deadlock) ❌
-Jon answers Da Thinka and Da Mek's questions himself as long as he can decide from the docs. A question he
+Jon answers Plan and Dev's questions himself as long as he can decide from the docs. A question he
 **cannot** answer (a genuine user decision) he does **not** guess — he **ends his own turn** with the
 question to the user. Jon is then no longer *working*, so the user's answer is submitted directly (or,
-if it was typed while Jon was still finishing, it was queued and chains next — R11). Because Da Thinka and Da Mek
+if it was typed while Jon was still finishing, it was queued and chains next — R11). Because Plan and Dev
 are persistent singletons (R9), Jon **resumes** the paused slave with the answer via the next
 `jonCreateDevPlan` / `jonAskDev` call.
 
@@ -755,7 +757,7 @@ tools **catch every exception themselves** and:
   error and its state may have changed**.
 
 One string, two sinks — `onProblem` (UI, immediate) and the tool result (Jon's context): **user and Jon
-see exactly the same**; the full stacktrace stays in the log only. e.g. *"Da Thinka ran into
+see exactly the same**; the full stacktrace stays in the log only. e.g. *"Plan ran into
 an error — its state may have changed. Caught: `<msg>`. Root cause: `<root msg>` / `<first ~5 stack
 lines>`. Inform the user; do not retry."*
 
@@ -779,7 +781,7 @@ together with Jon-level retry (see Future Extensions).
 path** ([ADR-0018](../../docs/adr/0018-abort-path-parity.md)) surfaces it to the **real UI** — which is correct,
 since here the failure is Jon's, not a slave's.
 
-**Known nuance (future):** Da Thinka and Da Mek are persistent (R9), so a slave turn that fails *after* its prompt was
+**Known nuance (future):** Plan and Dev are persistent (R9), so a slave turn that fails *after* its prompt was
 added leaves that prompt reply-less in the **slave's** memory; on the user-driven retry Jon re-dispatches
 and the slave continues from there — fine for MVP. Clean rollback and **Jon-level recoverable-error
 handling** (rate-limit backoff, or a *summarised* retry so Jon can adapt) are deferred.
@@ -804,7 +806,7 @@ Ein Build-Zyklus (ein Plan/Feature) läuft auf einem **dedizierten Git-Branch** 
 im Workspace verfügbar und wir tatsächlich auf einem Branch (sonst: **kein** Auto-Commit,
 Jon fragt den User). **Zu Zyklus-Start** prüft Jon den aktuellen Branch und ist bei
 main/master **zuerst** auf einem Feature-Branch (anlegen/wechseln, sonst User fragen), bevor
-er Da Mek los schickt. Der **Dev-Agent** committet nach **jeder erfolgreichen (grünen) Iteration**,
+er Dev los schickt. Der **Dev-Agent** committet nach **jeder erfolgreichen (grünen) Iteration**,
 Scope = die Dateien dieser Iteration — jeder Schritt bleibt revertierbar (`git revert`), die
 Base-Branch bleibt während des Zyklus unangetastet.
 
@@ -844,18 +846,18 @@ Entscheidungen) zeigen das Question-Widget; die User-Antwort ist **matcht** zu g
 (queue-safe — Input-Bereich ist während des Wartens ersetzt), keine beliebige queued Message.
 Cancel via Stop → Cancel-Error (cancel-safe, kein Deadlock).
 
-**Unverändert:** Slaven (Da Thinka/Da Mek) + Search-Agent behalten den bestehenden `AskUserTool`-
+**Unverändert:** Slaven (Plan/Dev) + Search-Agent behalten den bestehenden `AskUserTool`-
 Filter (R9: „Jon ist das UI, nicht die Sklaven").
 
 **R13-Klärung:** R13s „never blocks inside the tool-call loop" bezieht sich auf die **Slave-Fragen-
 Eskalation** (Turn enden, später resümieren). Direkte User-Entscheidungen dürfen via `askUser`
 blocken (diese Regel) — cancel-safe via Stop.
 
-- **GIVEN** der User schaltet auf Peon-PO **WHEN** Jons ToolService gebaut wird **THEN** sie enthält `askUser` zusätzlich zu den bestehenden kuratierten Tools
+- **GIVEN** der User schaltet auf Jon **WHEN** Jons ToolService gebaut wird **THEN** sie enthält `askUser` zusätzlich zu den bestehenden kuratierten Tools
 - **GIVEN** Jon hat eine echte User-Entscheidung (Business-Choice, unklarer Use-Case, Zielkonflikt) **WHEN** er `askUser` aufruft **THEN** das Question-Widget erscheint und die eingereichte User-Antwort ist das Tool-Result
 - **GIVEN** Jon ruft `askUser` mit Predefined Answers auf **WHEN** der User eine auswählt (per Free Text verfeinerbar) **THEN** der ausgewählte Text wird zurückgegeben
 - **GIVEN** der User drückt Stop während eine Frage wartet **WHEN** der Latch released wird **THEN** das Tool liefert einen Cancel-Error und Jons Loop läuft weiter (kein Deadlock)
-- **GIVEN** Da Thinka/Da Mek werden erstellt **WHEN** ihr effektiver Tool-Set berechnet wird **THEN** `askUser` wird weiterhin gefiltert (R9 unverändert)
+- **GIVEN** Plan/Dev werden erstellt **WHEN** ihr effektiver Tool-Set berechnet wird **THEN** `askUser` wird weiterhin gefiltert (R9 unverändert)
 - **Tag:** unit (verify poToolService contains AskUserTool; verify slaves still filter it)
 
 ### R18: Compact = nur der Agent selbst — kein Cascade ✅ done (2026-09-14, Zyklus story/po-compact-2026-09-13; Decision 2026-09-13, User)
@@ -879,7 +881,7 @@ UI („Hänger"-Gefühl, Dauer ∝ Kontextgröße) — vom User als ungewollter 
 ```
 GIVEN Jon wird komprimiert (Action-Bar-Button oder compactSession-Tool)
 WHEN compact() läuft
-THEN wird NUR Jons Memory komprimiert — Da Thinka/Da Mek/Da Dok bleiben unverändert
+THEN wird NUR Jons Memory komprimiert — Plan/Dev/Review bleiben unverändert
 AND es gibt keinen weiteren LLM-Call (kein Slave-Traffic, kein „Hänger")
 
 GIVEN ein Slave hat über 70 % des Budgets im Kontext
@@ -913,7 +915,7 @@ anfangen"-Aktion des Users, Compact ist Kontextpflege.
 vom Connection-Service gehaltenen `McpService`*), `SharedToolsComponent.updateActiveDiskTools`
 (:82-98) touched ebenfalls nur den `sharedToolService`. Folge: Jon sieht **niemanden** seiner
 MCP-Server und **keine** disk-Tools — obwohl R2 ihm die disk read/write tools zuspricht und Pauls
-SOLL lautet: **alle** Agenten bekommen MCP-Tools. (Indirekt sieht Jon MCP/disk nur über Da Sniffa.)
+SOLL lautet: **alle** Agenten bekommen MCP-Tools. (Indirekt sieht Jon MCP/disk nur über Search.)
 
 **SOLL:** Beide dynamischen Familien adressieren **alle** agent-facing ToolService-Registries —
 shared **und** po:
@@ -948,12 +950,12 @@ AND ein disk-Write außerhalb von */docs/* + *.md wird weiterhin vom Write-Valid
 
 - **Reviewer** — a dedicated agent Jon dispatches to review a plan or the changed code against the
   docs when he is unhappy with Plan/Dev output. In the MVP Jon does this review himself (R6/R7).
-- **Self-improvement via Skills (`jonAskScaffold`)** — a `jon*` tool driving a Peon-Scaffold team member so
+- **Self-improvement via Skills (`jonAskScaffold`)** — a `jon*` tool driving a Scaffold team member so
   Jon can have Skills created/edited and thereby **improve himself over time**. Left out of the MVP
   (it needs its own team member in the lifecycle/header/error rules). This becomes its **own story / feature
   `.md`** — explicitly out of scope here, only flagged as the direction.
 - **Cross-agent shared memory** — a tool with which Jon curates **extra** context shared across his
-  Da Thinka and Da Mek, beyond the per-dispatch plan link of R7. The MVP passes only the plan link as a standing
+  Plan and Dev, beyond the per-dispatch plan link of R7. The MVP passes only the plan link as a standing
   order; this would let Jon set/clear richer cross-agent context deliberately.
 - **Recoverable-error handling / retries** — beyond the MVP's report-and-stop (R14): Jon-level
   rate-limit backoff+retry, rolling back a failed team member turn's reply-less prompt, or letting Jon act on

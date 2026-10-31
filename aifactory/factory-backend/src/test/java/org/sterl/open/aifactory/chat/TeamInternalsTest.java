@@ -1,6 +1,7 @@
 package org.sterl.open.aifactory.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import java.io.IOException;
 import java.net.URI;
@@ -29,8 +30,10 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -47,6 +50,8 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
+import org.sterl.llmpeon.poagent.AiPoAgent;
+import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
 import org.sterl.open.aifactory.project.FakeGitConfig;
 import org.sterl.open.aifactory.shared.FactoryHome;
@@ -62,12 +67,11 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * included — before the outer agent's own {@code done}, so waiting for that one event is a
  * deterministic anchor, and the member finishes strictly before Jon anyway.</p>
  *
- * <p>The member's <em>final</em> answer is the one member text the wire does carry, and it carries it as a
- * {@code delegated} event — that is what UC-WP-40 GIVEN 1 and R-WP-4 demand („sichtbar sind nur die
- * Delegations-Zeile und die finale Antwort"). The assertions below therefore run <b>per channel</b>: what
- * must stay away from {@code partial} and {@code tool} is named, {@code delegated} is asserted
- * positively, and the set of names the whole turn used is pinned to the four known ones — so a leak
- * cannot hide under a name nobody looked at.</p>
+ * <p>The member's <em>final</em> answer is a member text like its thinking and its tool line: it is not on
+ * the wire either (ADR-0078 Decision 6). It becomes a line of the <b>history</b> — which is why the set of
+ * names the whole turn used is pinned to the three known ones below: a member line leaking under a name
+ * nobody looked at is red here, and the same turn's history is asserted positively, so a member line that
+ * quietly disappeared is red too.</p>
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(FakeGitConfig.class)
@@ -78,10 +82,14 @@ class TeamInternalsTest {
     private static final String MEMBER_PROMPT = "MITGLIEDS-AUFGABE: nenne genau eine Frucht";
     /** Only the member's own shell line can carry this; no line of Jon's ever mentions it. */
     private static final String MEMBER_COMMAND_MARKER = "mitglieds-kommando";
-    /** What the member hands back — a member text, so it may appear on the wire only as {@code delegated}. */
+    /** What the member hands back — a member text: no channel of the wire shows it, the history names it. */
     private static final String MEMBER_ANSWER = "MITGLIEDS-ANTWORT: Birne";
     /** Jon's own follow-up answer — it has to arrive live, chunk by chunk. */
     private static final String JON_ANSWER = "JONS-FOLGE-ANTWORT: die Birne";
+    /** The second member of one turn, of a <b>different</b> name — a filter knowing one member is red here. */
+    private static final String PLAN_PROMPT = "PLAN-MITGLIEDS-AUFGABE: nenne genau einen Wein";
+    private static final String PLAN_COMMAND_MARKER = "plan-mitglieds-kommando";
+    private static final String PLAN_ANSWER = "PLAN-MITGLIEDS-ANTWORT: Riesling";
 
     /** HTTP/1.1 on purpose — the SSE edge is what the browser talks (see {@code ChatTurnTest}). */
     private static final HttpClient STREAMS = HttpClient.newBuilder()
@@ -126,67 +134,76 @@ class TeamInternalsTest {
         registry.add("aifactory.home", home::toString);
     }
 
+    /**
+     * Two members of two different names in one {@code AiMessage} (UC-WP-40, UC-WP-39) — the case a
+     * bookkeeping would break on. The monitor is told neither which delegation is running nor which
+     * tool-call belongs to which member; every line of both members carries its own stamp, and that stamp
+     * alone has to drop it. Jon's own four trace lines are stamped too, so a filter that dropped
+     * <em>everything</em> stamped would be red on them.
+     */
     @Test
     @Timeout(60)
     // UC-WP-40
-    void onlyFinalAnswersFromTheTeam() throws Exception {
-        writeFactoryConfig("inc3f2-internals");
-        CreatedProject project = createProject("team-internals");
+    void memberLinesAreDroppedByTheirStamp() throws Exception {
+        writeFactoryConfig("inc4-two-members");
+        CreatedProject project = createProject("two-members");
 
         try (LiveStream stream = new LiveStream(project.id())) {
-            scriptDelegation(true);
+            scriptTwoMembersOfDifferentName();
 
-            assertThat(send(project.id(), "frag Da Mek nach einer Frucht").getStatusCode())
-                    .as("the composer's send stays a send — filtering changes nothing about the turn")
+            assertThat(send(project.id(), "frag Plan und Dev nach je einer Speise").getStatusCode())
                     .isEqualTo(HttpStatus.ACCEPTED);
             stream.awaitEvent("done", 1);
 
             List<String> toolResults = toolResultTexts();
             assertThat(toolResults)
-                    .as("the member really worked: its own tool ran and its answer reached Jon — what the "
-                            + "wire does not show is something that happened, not something that never did")
+                    .as("both members really worked — each ran its own command and handed an answer back")
+                    .anySatisfy(result -> assertThat(result).contains(PLAN_COMMAND_MARKER))
+                    .anySatisfy(result -> assertThat(result).contains(PLAN_ANSWER))
                     .anySatisfy(result -> assertThat(result).contains(MEMBER_COMMAND_MARKER))
                     .anySatisfy(result -> assertThat(result).contains(MEMBER_ANSWER));
 
+            assertThat(stream.wireText())
+                    .as("neither member's command, thinking or answer is on the wire — each was dropped by"
+                            + " its own stamp, and this class knows no delegation and no tool-call id")
+                    .doesNotContain(PLAN_COMMAND_MARKER)
+                    .doesNotContain(PLAN_ANSWER)
+                    .doesNotContain(MEMBER_COMMAND_MARKER)
+                    .doesNotContain(MEMBER_ANSWER);
+
             List<String> toolLines = stream.payloads("tool");
-            assertThat(String.join("|", stream.payloads("partial")))
-                    .as("no partial carries the member's thinking, its tool run or its answer (R-WP-4)")
-                    .doesNotContain(MEMBER_ANSWER)
-                    .doesNotContain(MEMBER_COMMAND_MARKER);
-            assertThat(String.join("|", toolLines))
-                    .as("no tool line of Jon's quotes the member's tool run or answer either (R-WP-4)")
-                    .doesNotContain(MEMBER_ANSWER)
-                    .doesNotContain(MEMBER_COMMAND_MARKER);
-            assertThat(stream.payloads("delegated"))
-                    .as("the member's final answer arrives live as the one event allowed to carry it (UC-WP-40 "
-                            + "GIVEN 1) — partial, tool, delegated and done are each asserted by name, so the "
-                            + "wire has no unnamed channel left")
-                    .singleElement()
-                    .satisfies(payload -> {
-                        assertThat((String) JsonPath.read(payload, "$.origin")).isEqualTo("Da Mek");
-                        assertThat((String) JsonPath.read(payload, "$.text")).isEqualTo(MEMBER_ANSWER);
-                    });
-            assertThat(stream.partialsBetween("Da Mek start:", "Da Mek done."))
-                    .as("while the member works, the wire is silent — its conversation with itself")
+            assertThat(toolLines)
+                    .as("Jon's own trace of both delegations stays, in the order he ran them")
+                    .hasSize(4);
+            assertThat(toolLines.get(0)).contains("Plan start:").contains(PLAN_PROMPT);
+            assertThat(toolLines.get(1)).contains("Plan done.");
+            assertThat(toolLines.get(2)).contains("Dev start:").contains(MEMBER_PROMPT);
+            assertThat(toolLines.get(3)).contains("Dev done.");
+            assertThat(stream.partialsBetween("Plan start:", "Plan done."))
+                    .as("the first member thought to itself")
+                    .isZero();
+            assertThat(stream.partialsBetween("Dev start:", "Dev done."))
+                    .as("and so did the second — a second member changes nothing about the filter")
                     .isZero();
             assertThat(stream.answerText())
-                    .as("Jon's own answer still grows live, thinking included (UC-WP-7)")
+                    .as("Jon's answer over two members stays one answer, live (UC-WP-7)")
                     .isEqualTo(JON_ANSWER);
-
-            assertThat(toolLines)
-                    .as("the member's tool line is gone; Jon keeps his own two delegation lines")
-                    .hasSize(2);
-            assertThat(toolLines.get(0)).contains("Da Mek start:").contains(MEMBER_PROMPT);
-            assertThat(toolLines.get(1)).contains("Da Mek done.");
             assertThat(stream.eventNames())
-                    .as("the wire speaks exactly the four known names — a member line leaking under a "
-                            + "fifth name is red here, not merely unnamed")
-                    .containsOnly("partial", "tool", "delegated", "done");
-            assertThat(stream.countOf("done"))
-                    .as("one answered input is one done")
-                    .isEqualTo(1);
+                    .as("still exactly the three known names — no member line under a fourth")
+                    .containsOnly("partial", "tool", "done");
+            assertThat(stream.countOf("done")).as("two members, one turn, one done").isEqualTo(1);
             assertThat(stream.countOf("error")).isZero();
         }
+
+        assertThat(messages(project.id()))
+                .as("the history names each member its own — read off the tool that produced the result,"
+                        + " with no book over which delegation was which (UC-WP-39)")
+                .extracting(ChatMessageDto::role, ChatMessageDto::origin)
+                .containsExactly(
+                        tuple("user", null),
+                        tuple("jon", "Plan"),
+                        tuple("jon", "Dev"),
+                        tuple("jon", AiPoAgent.NAME));
     }
 
     @Test
@@ -196,8 +213,8 @@ class TeamInternalsTest {
         CreatedProject project = createProject("member-done");
 
         try (LiveStream stream = new LiveStream(project.id())) {
-            scriptDelegation(false);
-            send(project.id(), "frag Da Mek nach einer Frucht");
+            scriptDelegation();
+            send(project.id(), "frag Dev nach einer Frucht");
             stream.awaitEvent("done", 1);
 
             assertThat(toolResultTexts())
@@ -217,19 +234,36 @@ class TeamInternalsTest {
     // ------------------------------------------------------------------
 
     /**
-     * Jon calls {@code askDev}, the member answers — optionally after a tool call of its own, which is
-     * what produces a member tool line to be filtered — then Jon answers the user. All of it goes to the
-     * same double: the factory's file carries no {@code llm.agent.*} key, so every agent runs on the
-     * base model.
+     * Jon calls {@code askDev}, the member answers, then Jon answers the user. All of it goes to the same
+     * double: the factory's file carries no {@code llm.agent.*} key, so every agent runs on the base model.
      */
-    private void scriptDelegation(boolean memberUsesATool) {
+    private void scriptDelegation() {
         model.queueResponse(toolCall("call_dev", "askDev", "{\"prompt\":\"" + MEMBER_PROMPT + "\"}"));
-        if (memberUsesATool) {
-            model.queueResponse(toolCall("call_shell", "shellRunCommand",
-                    "{\"command\":\"echo " + MEMBER_COMMAND_MARKER + "\",\"timeout\":20}"));
-        }
         model.queueResponse(MEMBER_ANSWER);
         model.queueResponse(JON_ANSWER);
+    }
+
+    /**
+     * One {@code AiMessage} carrying two delegations — Plan first, then Dev, each with a shell run of its
+     * own — and Jon's answer last. Every agent runs on the same double, so the queue order is the order
+     * the core executes the two tool requests.
+     */
+    private void scriptTwoMembersOfDifferentName() {
+        model.queueResponse(new AiMessage(null, List.of(
+                request("call_plan", "talkPlan", PLAN_PROMPT),
+                request("call_dev", "askDev", MEMBER_PROMPT))));
+        model.queueResponse(toolCall("call_plan_shell", "shellRunCommand",
+                "{\"command\":\"echo " + PLAN_COMMAND_MARKER + "\",\"timeout\":20}"));
+        model.queueResponse(PLAN_ANSWER);
+        model.queueResponse(toolCall("call_dev_shell", "shellRunCommand",
+                "{\"command\":\"echo " + MEMBER_COMMAND_MARKER + "\",\"timeout\":20}"));
+        model.queueResponse(MEMBER_ANSWER);
+        model.queueResponse(JON_ANSWER);
+    }
+
+    private static ToolExecutionRequest request(String id, String toolName, String prompt) {
+        return ToolExecutionRequest.builder().id(id).name(toolName)
+                .arguments("{\"prompt\":\"" + prompt + "\"}").build();
     }
 
     private static AiMessage toolCall(String id, String toolName, String arguments) {
@@ -254,6 +288,13 @@ class TeamInternalsTest {
     private ResponseEntity<String> send(String projectId, String text) {
         return http.postForEntity("http://127.0.0.1:" + port + "/api/projects/" + projectId + "/messages",
                 jsonEntity(new SendMessageRequest(text)), String.class);
+    }
+
+    /** The history as the browser reads it after {@code done} — the channel the member's line uses. */
+    private List<ChatMessageDto> messages(String projectId) {
+        return http.exchange("http://127.0.0.1:" + port + "/api/projects/" + projectId + "/messages",
+                HttpMethod.GET, null, new ParameterizedTypeReference<List<ChatMessageDto>>() {
+                }).getBody();
     }
 
     private HttpEntity<Object> jsonEntity(Object body) {
@@ -371,6 +412,11 @@ class TeamInternalsTest {
                 }
             }
             return result;
+        }
+
+        /** Every data line of every event, concatenated — the haystack nothing of the member may be in. */
+        String wireText() {
+            return String.join("|", payloads);
         }
 
         /** The {@code answer} chunks in order — what the user reads. */

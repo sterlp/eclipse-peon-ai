@@ -2,6 +2,78 @@
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.md).
+## 2026-10-31 — Issues vom Reparatur-Zyklus (Paul: „erst aufnehmen, Fix auf Ansage")
+
+- 🔒 **Issue 2 — Default-Sortierung im Dropdown defekt** (gebaut auf `web-factory-goon`): der
+  Fallback griff nur, wenn die Datei gar keine Patterns lieferte (`patterns.isEmpty()`); matcht
+  **kein** Agent irgendein Pattern, gilt jetzt die Default-Ordnung (Jon zuerst, Rest alphabetisch)
+  samt `log.warn` — Regel **R5** in `org.sterl.llmpeon.core/docs/agent-ordering.md`. Pauls eigene
+  `agent-order.txt` wird nicht migriert (Clean Break — er zieht sie selbst auf die neuen Namen).
+- 🔒 **Issue 1 — `NamedAgent` gelöscht** (gebaut auf `web-factory-goon`): der Record trug keine
+  Information mehr — `uiName ≡ getName()` an jeder Produktionsstelle, divergiert nur in
+  Stale-Test-Fixtures. Clean Break ohne Alias und ohne Migration über core → plugin → aifactory:
+  Team-Mitglieder (`AiPoAgent.getTeam()`), `PoDelegateTool`, `AgentsTool`, Header-Widget und
+  Roster-Tests arbeiten direkt auf `AiAgent` + `getName()`. ADR-0025 und `docs/adr/index.md`
+  bleiben bewusst historisch auf `NamedAgent` (Protokoll, keine aktuelle Schnittstelle).
+  Paul 2026-10-31: „richtig".
+
+## 2026-10-30 — Namensalignment-Nachzieh-Zyklus (Jon, Nachtzyklus)
+
+- ⏳ **Jons Agent-File lädt jetzt `AGENTS-JON.md` (Clean Break — Jon 2026-10-30, Nachtzyklus).**
+  Der Resolver bietet die Kandidaten aus dem **Display-Namen unverändert** an
+  (`AGENTS-Jon.md`/`agents-jon.md`/`AGENTS-JON.md`) — der `Peon-`-Strip ist ersatzlos weg. Eine
+  bestehende `AGENTS-PO.md` verliert still ihre Wirkung. Entscheidung nach Repo-Regel „Clean break over
+  migration" + ADR-0079: **kein Alias**, Docs/Release-Note/CHANGELOG auf `AGENTS-JON.md` gezogen,
+  Jon-Fall als Test gepinnt (Delta-Inkrement). **Paul bitte bestätigen** — falls du das Alias-
+  Verhalten `Jon → AGENTS-PO.md` willst, sagen (dann Resolver-Änderung + Docs zurück).
+- ⏳ **`AGENTS-PO.md` → `AGENTS-JON.md` liegt uncommittet im Working Tree** (`git mv`, 2026-10-30) —
+  Agenten committen `AGENTS*.md` nie: Paul bitte bestätigen und **selbst** committen. Kein
+  Zwischenzustand mit beiden Dateien.
+- ⏳ **Rest-Ork-/Peon-Namen in älteren SOLL-Docs (Altbestand, Rest-Inventar 2026-10-30):** nach dem
+  Inc-6-Durchzug bleiben ~35 Doc-Dateien mit alten Namen — core/docs u.a. `prompts.md`,
+  `plan-dev-agent-design.md`, `skill-evolution-loop.md`, `async-agent-tools-proposal.md`,
+  `builtin-agent-prompt-tracked.md`, `write-path-validator.md`, `web-tools.md`, `temp-file-tool.md`,
+  `sklaven-kontext-plan.md`, `shell-tool.md`, `search-agent-tool-architektur.md`,
+  `queued-user-messages.md`, `provider.md`, `per-agent-think.md`, `tool-output-disclosure.md`,
+  `tool-result-size.md`, `tagged-results.md`, `review-agent.md`, `codegraph.md`, `mcp.md`,
+  `agent-tool-config.md`, `agent-error-memory.md`, `bounded-caches.md`, `output-trim-service.md`,
+  `context-message-concept.md`; plugin-Docs `default-inheritance.md`, `icons.md`, `plan-tool.md`,
+  `advanced-configuration.md:291`, `project-problems-tool.md`, `workspace-nesting.md`; dazu
+  `agenten-status-im-header-mvp-plan.md` und `docs/adr/**` (Protokolle, bleiben alt). Glossar-Regel:
+  Angleich bei Berührung; ein Massen-Rename braucht Paul (Glossar-Regel 6).
+- ⏳ **P3: SSE-Client-Kopien in den Fabrik-Tests extrahieren (nächster Zyklus).** Fünf Kopien des
+  Live-Test-Client (Delegation-, TeamInternals-, WritePinning-, ChatTurn-Test je eine, plus
+  `eventNames()`-Duplikat in `DelegatedAnswerTest.LiveStream`) — Infrastruktur, keine doppelte Szene;
+  eigener rein mechanischer Refactor über ~500 Test-Zeilen mit eigenem Gate.
+- ❓ **Edit-Tool-Falle — Tool-Defekt oder Bedienungsart?** `AGENTS.md` beschreibt
+  `eclipseReplaceLines`/`diskReplaceLines` als wiederholt *insert statt replace* und Teil-Match-
+  Deletionen in `editFile` als stille Fragment-Reste (Fälle 2026-09-12, 2026-10-22, 2026-10-30).
+  Offen für Paul: ist das ein Tool-Bug, den wir upstream melden/beheben (dann AGENTS-Passage später
+  kürzen), oder bedienungsseitig (dann bleibt die Always-on-Regel stehen)?
+- ❓ **Manuelle Nachweise Agenten-Namen/Origin (Paul):** Browser-Proof Fabrik auf 8099 + Plugin-Harness
+  `test-chat.html` („Delegation (Jon · Dev · Jon)“, „AI without origin“) — braucht Pauls Modell-Konfig
+  und Augen.
+- 🔒 **Queue-Drain-Race (Jon 2026-10-30, bestätigt + gefixt):** Claim+Enqueue atomar
+  (`claimTurnSlotOrQueue`), Release nur noch mit letztem Queue-Blick
+  (`nextQueuedEntryOrReleaseSlot`); roter Test
+  `AbstractAgentQueueReleaseRaceTest#inputArrivingWhileTheTurnReleasesItsSlotIsAnsweredByThatTurn`.
+  Bewusst offen: Plugin-Seite `queueMessage` (`AIChatView:618-620`) prüft `isWorking()` außerhalb des
+  Fensters — Contract-Verhalten, kein Core-Fix.
+- ⏳ **P1-Variante Cancel-/Fehler-Pfad (nächster Bug-Zyklus, test-first):** das Release nach
+  `handleAbortAndDrain` (`finally: working.set(false)`) sieht die Queue nicht atomar — ein Input im
+  Fenster strandet bis zum nächsten Send. Geringere Severity (der User bricht gerade ab), deshalb nicht
+  in diesem Zyklus.
+- ⏳ **P1 Claim-Seite als Monitor-Paar-Invariante akzeptiert (Jon):** per Rendezvous nicht
+  deterministisch erzeugbar; die Release-Seite ist durch den roten Test bewiesen, die Invariante steht in
+  `org.sterl.llmpeon.core/docs/queued-user-messages.md` Rule 10 — Paul zur Rückversicherung.
+- 🔒 **Scaffold heißt `Scaffold` (Jon 2026-10-30).** Der Name zieht **jetzt** mit, nicht in V2 —
+  ADR-0079 verlangt die Rolle ohne Präfix, und die Homepage-Anleitung sagt bereits „Select
+  **Scaffold**". Clean Break: kein Alias, keine Migration (der Agent wird ohne State-Verzeichnis
+  gebaut, es existiert kein `Peon-Scaffold-history.jsonl`). Folge: eigene `agent-order.txt`-Muster
+  auf `^Peon-Scaffold$` bzw. `Peon-.*` matchen nicht mehr.
+- ⏳ **Fehler-Ergebnis einer Delegation erscheint wörtlich als Mitglieder-Zeile** (aifactory
+  open-points) — so gebaut („wie es ist“), andersfall = neuer Core-Mechanismus. unverändert offen.
+
 
 ## 2026-10-29 — R-AEM-3 Trigger-Entscheidung (Jon autonom aus Pauls Zweckvorgabe)
 

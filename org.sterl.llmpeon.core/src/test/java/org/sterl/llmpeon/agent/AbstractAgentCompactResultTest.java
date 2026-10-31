@@ -31,6 +31,7 @@ import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
+import org.sterl.llmpeon.tool.model.SimpleMessage.Type;
 import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -134,7 +135,7 @@ class AbstractAgentCompactResultTest {
         agent.addMessage(UserMessage.from("m3"));
         var problems = new ArrayList<String>();
         var monitor = new AiMonitor() {
-            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.PROBLEM) problems.add(m.message()); }
             @Override public void onProblem(String message) { problems.add(message); }
             @Override public boolean isCanceled() { return canceled.get(); }
         };
@@ -307,7 +308,9 @@ class AbstractAgentCompactResultTest {
         var toolLines = new ArrayList<String>();
         var chatRequests = new ArrayList<Integer>();
         var monitor = new AiMonitor() {
-            @Override public void onChatResponse(SimpleMessage m) {}
+            // a monitor below an agent entry receives TOOL lines as SimpleMessages — OwnerMonitor builds
+            // them and never calls onTool on its delegate (ADR-0078); both channels feed one list
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolLines.add(m.message()); }
             @Override public void onChatMessage(int iteration, ChatRequest.Builder request) { chatRequests.add(iteration); }
             @Override public void onTool(String message) { toolLines.add(message); }
         };
@@ -399,7 +402,7 @@ class AbstractAgentCompactResultTest {
         agent.addMessage(UserMessage.from("m3"));
         var toolLines = new ArrayList<String>();
         var monitor = new AiMonitor() {
-            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolLines.add(m.message()); }
             @Override public void onTool(String message) { toolLines.add(message); }
         };
 
@@ -429,7 +432,10 @@ class AbstractAgentCompactResultTest {
         var toolLines = new ArrayList<String>();
         var problems = new ArrayList<String>();
         var monitor = new AiMonitor() {
-            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) {
+                if (m.role() == Type.TOOL) toolLines.add(m.message());
+                else if (m.role() == Type.PROBLEM) problems.add(m.message());
+            }
             @Override public void onTool(String message) { toolLines.add(message); }
             @Override public void onProblem(String message) { problems.add(message); }
         };
@@ -470,7 +476,10 @@ class AbstractAgentCompactResultTest {
         var events = new ArrayList<String>();
         var problems = new ArrayList<String>();
         var monitor = new AiMonitor() {
-            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) {
+                if (m.role() == Type.TOOL) toolLines.add(m.message());
+                else if (m.role() == Type.PROBLEM) problems.add(m.message());
+            }
             @Override public void onTool(String message) { toolLines.add(message); }
             @Override public void onCompactCompleted(String agentName, CompactResult result) { events.add(agentName); }
             @Override public void onProblem(String message) { problems.add(message); }
@@ -537,7 +546,9 @@ class AbstractAgentCompactResultTest {
         addThreeMessages(agent);
         var order = new ArrayList<String>();
         var monitor = new AiMonitor() {
-            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) {
+                if (m.role() == Type.TOOL) order.add(m.message().contains(CompactFeedback.END_MARKER) ? "end" : "start");
+            }
             @Override public void onTool(String message) {
                 order.add(message.contains(CompactFeedback.END_MARKER) ? "end" : "start");
             }
@@ -714,7 +725,7 @@ class AbstractAgentCompactResultTest {
 
     private AiMonitor capturingMonitor(AtomicReference<String> problem, AtomicBoolean canceled) {
         return new AiMonitor() {
-            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.PROBLEM) problem.set(m.message()); }
             @Override public void onProblem(String message) { problem.set(message); }
             @Override public boolean isCanceled() { return canceled.get(); }
         };

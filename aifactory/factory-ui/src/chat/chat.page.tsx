@@ -35,7 +35,6 @@ const RECONNECT_MS = 500
 export function ChatPage({ project, files }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [outgoing, setOutgoing] = useState<string[]>([])
-  const [teamAnswers, setTeamAnswers] = useState<ChatMessage[]>([])
   const [live, setLive] = useState('')
   const [toolLines, setToolLines] = useState<string[]>([])
   const [draft, setDraft] = useState('')
@@ -46,7 +45,6 @@ export function ChatPage({ project, files }: Props) {
   /** The finished text arrives here, never as an event — so live lines give way to it (§3.3.3). */
   const applyHistory = useCallback((loaded: ChatMessage[]) => {
     setMessages(loaded)
-    setTeamAnswers([])
     setLive('')
     setToolLines([])
     setOutgoing(previous => withoutSent(previous, loaded))
@@ -68,16 +66,12 @@ export function ChatPage({ project, files }: Props) {
             setLive(previous => previous + event.text)
           }
           break
-        case 'delegated':
-          // the final answer of a team member is a line of its own, named and buffered until the
-          // history carries it — the reload after `done` then replaces the buffer (Q8)
-          setTeamAnswers(previous => [...previous, { role: 'jon', origin: event.origin, text: event.text }])
-          break
         case 'tool':
           setToolLines(previous => [...previous, event.text])
           break
         case 'done':
-          // one reload per answered input; the live line is dropped by the history that lands
+          // one reload per turn — the turn that drained a queued input closes that input too, and the
+          // history that lands carries every finished line, the team's own answer among them
           void refresh()
           break
         case 'error':
@@ -159,7 +153,7 @@ export function ChatPage({ project, files }: Props) {
       <section className="view" aria-label="Chat">
         <h1>Chat</h1>
         <p className="hint">Projekt: {project.name}</p>
-        <ChatLog messages={messages} outgoing={outgoing} teamAnswers={teamAnswers} live={live} toolLines={toolLines} />
+        <ChatLog messages={messages} outgoing={outgoing} live={live} toolLines={toolLines} />
         {error !== null && (
           <p className="chat-error" data-testid="chat-error" role="alert">
             {error}

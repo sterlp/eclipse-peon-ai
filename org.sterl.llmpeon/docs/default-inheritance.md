@@ -4,7 +4,7 @@ idPrefix: DEF
 
 # Default-Inheritance — der Dev-Slot als Default
 
-> **Status:** ✅ done (R-DEF-1…3/6/8, 2026-09-28, `story/issue-149-think`) · **🚧 Rework in design (R-DEF-9…11, 2026-09-29, Paul)** · Da Dok CONCERNS→Nacharbeiten · **Verwandt:** [advanced-configuration.md](advanced-configuration.md)
+> **Status:** ✅ done (R-DEF-1…3/6/8, 2026-09-28, `story/issue-149-think`) · **🚧 Rework in design (R-DEF-9…11, 2026-09-29, Paul)** · Review CONCERNS→Nacharbeiten · **Verwandt:** [advanced-configuration.md](advanced-configuration.md)
 > (per-Agent-Slots, [ADR-0036](../../docs/adr/0036-po-own-model-slot.md)) · [per-agent-think.md](../../org.sterl.llmpeon.core/docs/per-agent-think.md)
 > ([ADR-0061](../../docs/adr/0061-think-default-base-think-fallback.md) — Think-Fallback als Vorbild) ·
 > [model-config-widget.md](model-config-widget.md) (Basic-Seite)

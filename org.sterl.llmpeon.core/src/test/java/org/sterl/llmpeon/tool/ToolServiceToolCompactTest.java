@@ -88,7 +88,7 @@ class ToolServiceToolCompactTest {
         toolService.executeLoop(ToolLoopRequest.builder()
                 .memory(memory)
                 .chatModel(configuredModel)
-                .agent(agent)
+                .owner(LoopOwner.of(agent, LlmConfig::devAgentConfig))
                 .build());
 
         // THEN — two main-model requests, and exactly one compressor call: the tool compact. The

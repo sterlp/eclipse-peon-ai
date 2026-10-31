@@ -33,8 +33,8 @@ class AiPoAgentTest {
     }
 
     @Test
-    void name_isPeonPO() {
-        assertEquals("Peon-PO", newAgent().getName());
+    void nameIsJon() {
+        assertEquals("Jon", newAgent().getName());
     }
 
     @Test
@@ -54,10 +54,15 @@ class AiPoAgentTest {
     @Test
     void systemPrompt_carriesTheDelegationPlaybook() {
         var p = newAgent().getSystemPrompt();
-        // Structural checks — proves po-delegation.txt was loaded, without duplicating tool names
-        assertThat(p).contains("Bauen delegieren"); // section header from po-delegation.txt
+        // Structural checks — proves po-delegation.md was loaded, without duplicating tool names
+        assertThat(p).contains("Bauen delegieren"); // section header from po-delegation.md
         assertThat(p).contains("Rollen-Grenze"); // section header
-        assertThat(p).contains("Da Thinka").contains("Da Mek"); // team members
+        // the three team roles, pinned by their playbook sentence (Rollen-Grenze, tool list) — never by
+        // a bare display name, which a rename could satisfy vacuously
+        assertThat(p).as("Plan · Dev · Review named in the playbook")
+                .contains("Plan (Plan-Agent) hat schreibend nur das Plantool")
+                .contains("Dev (Dev-Agent) hat grundsätzlich Schreibtools")
+                .contains("Review (dein Review-Agent)");
         assertThat(p).contains("Plan vor Build"); // core rule
         assertThat(p).doesNotContain("${"); // no unresolved placeholders
     }
@@ -70,51 +75,48 @@ class AiPoAgentTest {
         assertThat(p).contains("docs/index.md").contains("peon-plan/overview.md");
     }
 
-    /** Without wired slaves (e.g. headless) Jon's team is just himself as Da Boss. */
+    /** Without wired slaves (e.g. headless) Jon's team is just himself. */
     @Test
-    void getTeam_withoutSlaves_isJustDaBoss() {
+    void getTeam_withoutSlaves_isJustJon() {
         var po = newAgent();
         var team = po.getTeam();
-        assertThat(team).extracting(NamedAgent::uiName).containsExactly("Da Boss");
-        assertSame(po, team.get(0).agent());
+        assertThat(team).extracting(AiAgent::getName).containsExactly("Jon");
+        assertSame(po, team.get(0));
     }
 
-    /** ADR-0025: Da Boss (Jon) first, then the ork slaves in lifecycle order plan→build→review — shared instances, 0k idle. */
+    /** ADR-0025 + ADR-0079: Jon first, then his team in lifecycle order Plan→Dev→Review — shared instances, 0k idle. */
     @Test
-    void getTeam_daBossFirst_thenOrksInLifecycleOrder_onSharedInstances_idle() {
+    void getTeam_isJonThenPlanDevReview_onSharedInstances_idle() {
         var config = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
         var plan = new AiPlanAgent(config, new ToolService());
         var dev = new AiDevAgent(config, new ToolService());
         var review = new AiReviewAgent(config, new ToolService());
-        var po = new AiPoAgent(config, new ToolService(), null,
-                List.of(new NamedAgent("Da Thinka", plan), new NamedAgent("Da Mek", dev),
-                        new NamedAgent("Da Dok", review)));
+        var po = new AiPoAgent(config, new ToolService(), null, List.of(plan, dev, review));
 
         var team = po.getTeam();
 
-        assertThat(team).extracting(NamedAgent::uiName)
-                .containsExactly("Da Boss", "Da Thinka", "Da Mek", "Da Dok");
-        assertSame(po, team.get(0).agent());
-        assertSame(plan, team.get(1).agent());
-        assertSame(dev, team.get(2).agent());
-        assertSame(review, team.get(3).agent());
-        assertThat(team).allSatisfy(n -> assertThat(n.agent().getMemory().getTotalTokenUsed()).isZero());
+        assertThat(team).extracting(AiAgent::getName)
+                .containsExactly("Jon", "Plan", "Dev", "Review");
+        assertSame(po, team.get(0));
+        assertSame(plan, team.get(1));
+        assertSame(dev, team.get(2));
+        assertSame(review, team.get(3));
+        assertThat(team).allSatisfy(n -> assertThat(n.getMemory().getTotalTokenUsed()).isZero());
     }
     @Test
-    void getTeam_daBossFirst_thenTwoOrks_onSharedInstances_idle() {
+    void getTeam_isJonThenPlanDev_onSharedInstances_idle() {
         var config = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
         var plan = new AiPlanAgent(config, new ToolService());
         var dev = new AiDevAgent(config, new ToolService());
-        var po = new AiPoAgent(config, new ToolService(), null,
-                List.of(new NamedAgent("Da Thinka", plan), new NamedAgent("Da Mek", dev)));
+        var po = new AiPoAgent(config, new ToolService(), null, List.of(plan, dev));
 
         var team = po.getTeam();
 
-        assertThat(team).extracting(NamedAgent::uiName).containsExactly("Da Boss", "Da Thinka", "Da Mek");
-        assertSame(po, team.get(0).agent());
-        assertSame(plan, team.get(1).agent());
-        assertSame(dev, team.get(2).agent());
-        assertThat(team).allSatisfy(n -> assertThat(n.agent().getMemory().getTotalTokenUsed()).isZero());
+        assertThat(team).extracting(AiAgent::getName).containsExactly("Jon", "Plan", "Dev");
+        assertSame(po, team.get(0));
+        assertSame(plan, team.get(1));
+        assertSame(dev, team.get(2));
+        assertThat(team).allSatisfy(n -> assertThat(n.getMemory().getTotalTokenUsed()).isZero());
     }
 
     @Test
@@ -149,9 +151,7 @@ class AiPoAgentTest {
         var plan = new AiPlanAgent(config, new ToolService());
         var review = new AiReviewAgent(config, new ToolService());
         var dev = new AiDevAgent(config, new ToolService());
-        var delegate = new PoDelegateTool(new NamedAgent("Da Thinka", plan),
-                new NamedAgent("Da Dok", review),
-                new NamedAgent("Da Mek", dev), t -> List.of(), () -> 80000);
+        var delegate = new PoDelegateTool(plan, review, dev, t -> List.of(), () -> 80000);
         var toolService = new ToolService(false);
         toolService.addTool(delegate);
         return new PoSetup(new AiPoAgent(config, toolService), plan, review, dev);

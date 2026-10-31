@@ -15,12 +15,12 @@ Stelle, bis der Bug gebaut ist.
 ## SOLL-Kern (Paul, 2026-09-24)
 
 Ein `onProblem` (Fehler/Cancel im Turn) muss den Header-State ebenfalls re-rendern — sonst
-bleiben 🟢/Zähler/Working-Hint auf dem Stand vor dem Fehler stehen („Da Thinka hat sich
+bleiben 🟢/Zähler/Working-Hint auf dem Stand vor dem Fehler stehen („Plan hat sich
 festgefressen — 75k oben in der Anzeige").
 
 ## Evidenz
 
-### Fall 1 — Da-Dok-Review-Call (2026-09-24, ~13:02)
+### Fall 1 — Review-Call (2026-09-24, ~13:02)
 
 - `reviewPlanAgent` starb an 400 `exceed_context_size_error`: Request **172 205** > n_ctx
   **170 240**; Header zeigte **81k** (ohne `~… (estimate)`-Marker).
@@ -31,7 +31,7 @@ festgefressen — 75k oben in der Anzeige").
 - Divergenz 81k ↔ 172k: zunächst als Counter-Bug triagiert (open-to-discuss 2026-09-24);
   **Neubewertung s. Fall 2.**
 
-### Fall 2 — Da-Thinka-planWithPlanAgent (2026-09-24, ~15:0x)
+### Fall 2 — Plan-planWithPlanAgent (2026-09-24, ~15:0x)
 
 - Header: **75k**; Request: **232 440 > 170 240**, **8** ApiRetry-Versuche (Backoff bis 80s),
   dann „canceled while waiting to retry".

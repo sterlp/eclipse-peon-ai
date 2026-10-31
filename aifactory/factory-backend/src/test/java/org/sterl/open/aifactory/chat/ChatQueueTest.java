@@ -76,6 +76,19 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * midway still has a {@code sleep 3} turn running on the shared executor. With one shared double that
  * orphaned turn would drain the next test's scripted answers; with a per-test double it points at its own
  * already-stopped server and dies harmlessly. Every test also waits for its own turn to end.</p>
+ *
+ * <p><b>Benannte Abweichung (Plan A1 / Q2, entschieden 2026-10-30): ein {@code done} je Turn.</b></p>
+ *
+ * <p>GIVEN Jon arbeitet an einer Eingabe und eine zweite Eingabe kommt in seine Queue
+ * WHEN der laufende Turn diese Queue abarbeitet und {@code call()} zurückkehrt
+ * THEN endet genau <em>ein</em> Turn — mit genau <em>einem</em> {@code done}, das beide Eingaben
+ * beantwortet hat; die gewartete Eingabe sendet keins eigenes.</p>
+ *
+ * <p>Grund ist das Architektur-Doc: „{@code done}, wenn {@code call()} zurückkehrt". {@code call()}
+ * drainet die Queue, die während seines Laufens voll wurde, und liefert für eine Eingabe, die nur
+ * gewartet hat, {@code null} — wer je Eingabe ein {@code done} zählt, zählt einen Turn, den es nicht
+ * gibt. Die Fabrik misst den Turn deshalb um den einen {@code call()}-Aufruf herum
+ * ({@code ProjectRuntime#submit}), nicht im Monitor.</p>
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(FakeGitConfig.class)
@@ -167,10 +180,10 @@ class ChatQueueTest {
                     .as("wartend heißt: noch nicht beim Anbieter — kein zweiter Turn")
                     .doesNotContain("zweite Frage");
 
-            stream.awaitEvent("done", 2);
+            stream.awaitEvent("done", 1);
             assertThat(stream.countOf("done"))
-                    .as("genau ein done je beantworteter Eingabe — die Queue erzeugt kein drittes")
-                    .isEqualTo(2);
+                    .as("ein Turn, ein done — die abgearbeitete Warteschlange ist kein zweiter Turn (A1)")
+                    .isEqualTo(1);
         }
 
         assertThat(capturedText())
@@ -282,10 +295,10 @@ class ChatQueueTest {
                     .as("zum einen Eintrag verschmolzen oder getrennt — beides ist zulässiges Core-Verhalten")
                     .isBetween(1, 2);
 
-            stream.awaitEvent("done", 2);
+            stream.awaitEvent("done", 1);
             assertThat(stream.countOf("done"))
-                    .as("mindestens ein done je beantworteter Eingabe, aber nie ein dritter Turn")
-                    .isGreaterThanOrEqualTo(2);
+                    .as("ein Turn, ein done — auch wenn zwei Eingaben darin abgearbeitet wurden (A1)")
+                    .isEqualTo(1);
 
             awaitUntil(() -> !jon.isWorking(), 20_000, "alles abgearbeitet");
 

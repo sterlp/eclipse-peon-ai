@@ -111,43 +111,53 @@ THEN it is still added — no dedup across context vs. payload boundaries
 
 **Tests:** `AbstractAgentTest.testQueuedMessagesChainedFifo()` demonstrates queue chaining through doCall (standing orders handled separately via ToolLoopRequest).
 
-### 8. „!“-Messages: Queued-Message-Override direkt ins Agent-Memory ✅ done (2026-09-25 specified, gebaut 2026-10-18)
+### 8. „!“-Messages: Urgent-Lane in der Queue ✅ done (2026-10-31 specified & gebaut, Branch `web-factory-goon`) — ersetzt die Memory-Injektion (✅ 2026-10-18, entfernt)
 
 - **Zweck:** Escape-Hatch, wenn der Agent bereits arbeitet. Eine Nachricht, die mit `!` beginnt,
-  umgeht die Queue vollständig und wird direkt in das `ThreadSafeMemory` des aktiven Agenten
-  eingefügt.
+  wird dem laufenden Turn **sofort** zugestellt — nicht mehr per Memory-Injektion, sondern als
+  **urgent-Eintrag in der Queue**, der mit dem nächsten Tool-Result an das Modell geht (Regel 11).
+  Damit berührt der Pfad mid-turn **keine Memory**: die stillen Verlustfenster
+  „Release-Hand-over“ (Turn endet zwischen letztem `pollNext()` und Release) und
+  „Compact copy→clear→reseed“ sind strukturell geschlossen — die Queue überlebt den Compact
+  (Regel 5) und der Hand-over ist atomar (Regel 10).
 - **Verhalten:**
-  1. Gilt **nur, während der Agent arbeitet** — die Voraussetzung ist `active.isWorking()`. Ist der
-     Agent idle, ist `!` ein normales Zeichen: die Eingabe startet einen regulären Turn mit dem Text
-     **wie getippt** (das `!` bleibt stehen, nichts wird aufgelöst) — Entscheidung Paul 2026-10-18.
-  2. Während der Agent arbeitet, wird das führende `!` entfernt.
-  3. Beginnt der verbleibende Text mit `/` (Slash-Command oder Skill): Lookup über
-     `SlashCommandResolver` — Command-Body ersetzt `/command-name`, der restliche User-Text wird
-     angehängt; ohne Treffer bleibt der Rohtext erhalten.
-  4. Die resultierende Nachricht landet **direkt im Agent-Memory** (`AiAgent.injectUserMessage`,
-     `AbstractAgent` = `memory.add(UserMessage.from(text))`) und erscheint sofort in der
-     Chat-History (USER-Zeile).
-  5. **Kein neuer Turn, kein Follow-up:** Die Nachricht liegt im Memory; die AI sieht sie im
-     nächsten Modell-Aufruf / nächsten Loop-Schritt des laufenden Turns und kann direkt reagieren.
-  6. Kein `Noted...`-Echo, kein Quota-Verbrauch, kein `(queued …)`-Marker.
-  7. **`!` allein** (kein Text dahinter) im laufenden Turn wird **konsumiert und verworfen** — kein
-     Queue-Eintrag, keine History-Zeile, kein Follow-up.
-  8. **Homepage-Update:** ✅ `homepage/src/index.md` („Send while working").
+  1. Gilt **nur, während der Agent arbeitet** — Voraussetzung ist `active.isWorking()`. Ist der
+     Agent idle, ist `!` ein normales Zeichen: die Eingabe startet einen regulären Turn mit dem
+     Text **wie getippt** (unverändert, Entscheidung Paul 2026-10-18).
+  2. Während der Agent arbeitet, wird das führende `!` entfernt und der Rest als **urgent-Eintrag**
+     in die Queue gestellt — eigene Lane, **kein** Batching/Join mit normalen Einträgen (Regel 1
+     gilt nur für die normale Lane), **kein** `Noted`-Echo (bleibt still, Paul 2026-10-31).
+  3. Konsum: beim nächsten Tool-Call als Huckepack am Tool-Result (Regel 11). Endet der Turn,
+     ohne dass ein Konsum geschah, gehen urgent-Einträge wie normale als Follow-up-Turn weiter —
+     **FIFO über beide Lanes** nach Einfügungszeit (Paul 2026-10-31: urgent belegt nur den
+     Tool-Attach-Kanal, nicht die Reihenfolge).
+  4. `askUser` nimmt **alle** Queue-Einträge mit (urgent + normal) — Regel 12.
+  5. Kein Quota-Verbrauch, kein neuer Turn, kein `[Queued Message]`-Doppelmarker am Turn-Ende.
+  6. **`!` allein** (kein Text dahinter) im laufenden Turn wird konsumiert und verworfen — kein
+     Queue-Eintrag, keine History-Zeile, kein Follow-up (unverändert).
+  7. **Clean Break:** `AiAgent.injectUserMessage` und die Memory-Sonderfälle auf diesem Pfad
+     entfallen — die View legt alles in die Queue.
+  8. **Homepage-Update** im selben Inkrement („Send while working“ — sichtbares Verhalten ändert
+     sich: Zustellung über den `queued_user_message`-Block statt direkter Context-Injektion).
 
 ```
 GIVEN der Agent arbeitet aktuell
 WHEN der User gibt eine Nachricht ein, die mit "!" beginnt (z.B. "!bitte abbrechen")
 THEN wird das "!" entfernt
-AND die Nachricht landet direkt im ThreadSafeMemory des aktiven Agenten
-AND die Nachricht taucht sofort in der Chat-History auf
-AND es wird KEIN Queue-Eintrag erzeugt und kein neuer Turn gestartet
+AND die Nachricht wird als urgent-Eintrag in die Queue gestellt (keine Memory-Injektion)
+AND die Nachricht taucht sofort in der Chat-History auf (USER-Zeile)
+AND es erscheint KEIN "Noted"-Echo
+AND es wird kein neuer Turn gestartet
 
-GIVEN der Agent arbeitet aktuell
-WHEN der User gibt "!/my-command rest text" ein
-AND "/my-command" existiert als Command mit Body "instruction content"
-THEN wird "/my-command" durch "instruction content" ersetzt
-AND "instruction content rest text" landet direkt im ThreadSafeMemory
-AND es wird kein separater Turn gestartet
+GIVEN der Agent arbeitet und ruft als Nächstes ein Tool auf
+WHEN das Tool-Result entsteht
+THEN sind ALLE urgent-Einträge im `queued_user_message`-Block dieses Results (Regel 11)
+AND die urgent-Lane ist leer
+
+GIVEN der Agent arbeitet und der Turn endet, ohne dass ein Konsum geschah
+WHEN urgent-Einträge noch in der Queue sind
+THEN werden sie als Follow-up-Turn konsumiert, in Einfügungsreihenfolge zusammen mit
+     normalen Einträgen (FIFO über beide Lanes)
 
 GIVEN der Agent arbeitet NICHT
 WHEN der User gibt "!text" ein
@@ -158,10 +168,9 @@ WHEN der User gibt nur "!" ein
 THEN wird die Eingabe konsumiert (Input geleert, kein Queue-Eintrag, keine History-Zeile)
 ```
 
-**Tests:** `OverrideMessageResolverTest` (10 Fälle: idle/unbekanntes Command/Skill/Blank, Body+Rest,
-Rohtext-Fallback, `!` allein) + `AbstractAgentTest.injectUserMessage_appendsToMemory`. Die
-View-Verdrahtung (`AIChatView.resolveOutgoingMessage`) ist compile-grün, aber **nicht** automatisiert
-getestet — Smoke M1–M6 offen (Paul).
+**Tests:** `OverrideMessageResolverTest` (Resolve-Logik unverändert: idle/unbekanntes
+Command/Skill/Blank, Body+Rest, Rohtext-Fallback, `!` allein). Die Queue-/Attach-Mechanik wird
+in Regel 11 getestet; der alte Memory-Injektionstest entfällt mit `injectUserMessage`.
 
 ### 9. Queued-At Disclosure — Uhrzeit in onTool + Marker ✅ done (2026-09-23 specified, gebaut)
 
@@ -191,27 +200,131 @@ WHEN konsumiert THEN die Zeit des ersten Eintrags steht im Präfix
 14:32-Clock und `[Queued Message] (14:32):`-Assert). Die onTool-Zeile („Reading queued User message:
 … (queued 14:32)") ist am IST vorhanden (`AbstractAgent:262-263`), aber nicht separat assertiert.
 
+### 10. Turn-Slot Handover — Claim/Release atomar zur Queue ✅ done (2026-10-30)
+- **Rule:** Der Turn-Slot (`working`) wird nur unter dem Monitor der `UserMessageQueue` genommen oder
+  freigegeben. **Claim und Enqueue sind EIN kritischer Abschnitt** (`claimTurnSlotOrQueue`): ein Call
+  findet entweder einen freien Slot und läuft selbst, oder er joint nachweisbar einem Turn, der die
+  Queue noch garantiert ansieht — der Release ist atomar mit dem letzten Queue-Blick
+  (`nextQueuedEntryOrReleaseSlot`). Ein Input kann dadurch nie zwischen letztem `pollNext()` und
+  Release stranden (kein `done`, sichtbares Warten — P1-Fix 2026-10-30).
+```
+GIVEN ein Turn hält den Slot
+WHEN eine Eingabe im Release-Fenster eintrifft (nach dem letzten pollNext, vor dem Release)
+THEN der laufende Turn beantwortet sie noch (Hand-over), der späte Caller startet keinen eigenen Turn
+→ AbstractAgentQueueReleaseRaceTest#inputArrivingWhileTheTurnReleasesItsSlotIsAnsweredByThatTurn
+```
+- **Grenze (bewusst):** die Claim-Seite (CAS-fail → Enqueue atomar gegen Release) ist dieselbe
+  Monitor-Paar-Invariante, aber per Rendezvous nicht deterministisch erzeugbar — sie lebt als
+  Code-Invariante + dieser Regel, nicht als eigener Mutations-Test. Wer den Queue-Monitor ersetzt
+  (privater Lock, ConcurrentQueue), muss die Invariante neu ableiten und den Race-Test neu fahren.
+
+### 11. Tool-Result-Huckepack für urgent-Einträge ✅ done (2026-10-31 gebaut)
+
+Beim **nächsten Tool-Call** der laufenden Iteration werden **alle** urgent-Einträge gezogen und als
+**ein** `TaggedResult`-Block (head `queued_user_message`, [tagged-results.md](tagged-results.md))
+an das Tool-Result angehängt — huckepack, damit der laufende Turn sie im nächsten Modell-Call sieht,
+ohne die Memory zu berühren.
+
+- **Ein Anhang pro Iteration:** laufen mehrere Tools parallel, erhält **genau ein** Ergebnis den
+  Block (das erste) — nicht jedes.
+- **Atomar unter dem Queue-Monitor:** der Drain der urgent-Lane passiert im selben kritischen
+  Abschnitt wie Claim/Release (Regel 10) — nie außerhalb, sonst konkurriert er mit dem Hand-over.
+- **Kein Doppelt:** ein konsumierter urgent-Eintrag erscheint am Turn-Ende **nicht** erneut als
+  `[Queued Message]`-Marker — der Konsum ist abschließend.
+- **Disclosure (Regel 9):** je Message die onTool-Zeile `Reading queued User message: <text>
+  (queued HH:mm)` — die Zustellung ist sichtbar, keine stille Injektion.
+- **Kein Batching:** urgent-Einträge werden nicht verschmolzen; alle pending Einträge stehen
+  gemeinsam in dem einen Block.
+- **Compact:** der angehängte Block ist kein reiner Block (R-TR-2) und bleibt im Compact-Input
+  erhalten — die Zustellung ist dauerhaft Teil der Konversation.
+
+```
+GIVEN die urgent-Lane hält 2 Einträge AND die Iteration ruft Tools auf
+WHEN das Tool-Result entsteht
+THEN enthält GENAU EIN Result den `queued_user_message`-Block mit beiden Texten,
+     je Message `(queued HH:mm)` (Regel 9)
+AND die urgent-Lane ist leer
+AND der Block trägt Start- und End-Zeile mit dem Head (R-TR-1)
+
+GIVEN die urgent-Lane ist leer
+WHEN ein Tool-Result entsteht
+THEN unverändert — kein Block, keine onTool-Zeile
+```
+
+### 12. askUser-Huckepack: alle Queue-Einträge mit der Antwort ✅ done (2026-10-31 gebaut)
+
+Nutzt das LLM das `askUser`-Tool (Plugin-only, `AskUserTool` — die Fabrik hat bewusst keines),
+reisen **alle** Queue-Einträge — urgent und normal — im **selben** Tool-Result mit: als
+`queued_user_message`-TaggedResult-Block prepended, **die Antwort des Users als letzte (unterste)
+Nachricht** dahinter. Sie werden dabei endgültig konsumiert — aus diesen Einträgen startet kein
+zusätzlicher Follow-up-Turn.
+
+- **Drain atomar unter dem Queue-Monitor** — eine Agent-Methode, nicht der direkte `drainQueue()`
+  des Tools (sonst Race mit dem Hand-over, Regel 10).
+- **Ein TextContent:** Block + Antwort werden textuell komponiert — `contents(List)` ist
+  `@Experimental` und `text()` wirft bei mehr als einem Element (der Compact/Render-Pfad in
+  `ChatMessageUtil.extractMessages` ruft genau `text()`).
+- **Disclosure (Regel 9):** onTool-Zeile je Message — der Block selbst ist die Zustellungs-Anzeige;
+  ein `[Queued Message]`-Marker (Regel 9, Follow-up-Pfad) kommt im Huckepack **nicht** vor, sonst
+  stünde die Uhrzeit doppelt.
+- **Fenster:** während einer offenen Frage ist das Eingabefeld ausgeblendet — neue Queue-Einträge
+  können währenddessen nicht entstehen; die Regel betrifft nur Einträge, die **vor** dem askUser
+  gequeued wurden.
+- **Cancel:** die Frage wird abgebrochen → bisheriges Verhalten (Regel 4: Drain in die Memory,
+  TOOL-Zeile „N queued message(s) preserved …") — kein Huckepack, kein Verlust.
+- **Leere Queue:** unverändertes Verhalten — nur die Antwort als Tool-Result.
+
+```
+GIVEN die Queue hält 2 normale und 1 urgent Eintrag AND das LLM ruft askUser auf
+WHEN der User die Frage beantwortet
+THEN das Tool-Result enthält den `queued_user_message`-Block mit allen 3 Einträgen
+     (je `(queued HH:mm)`, Regel 9)
+AND die letzte (unterste) Nachricht ist die Antwort auf die Frage
+AND die Queue ist komplett leer
+AND es startet kein zusätzlicher Follow-up-Turn aus diesen Einträgen
+
+GIVEN die Queue ist leer
+WHEN askUser
+THEN unverändert — nur die Antwort als Tool-Result
+
+GIVEN eine offene Frage
+WHEN der User sie cancelt
+THEN Regel 4 (Drain in die Memory) — kein Huckepack, kein Verlust
+```
+
 ## Data Flow
 ```
 AIChatView.resolveOutgoingMessage() → OverrideMessageResolver.resolve(text, working, commands, skills)
-  → present ("!" while working): injectUserMessage + USER history line, no queue, no new turn
+  → present ("!" while working): urgent queue entry + USER history line, no echo, no new turn (R8)
   → empty: active.queueMessage(trailing) [batching in core]
-  → if isNewEntry: show "Noted..." echo (conditional on boolean return)
+  → if isNewEntry: "Noted..." echo (conditional on boolean return)
 AbstractAgent.call(initial, monitor):
-  CAS working true → loop { doCall(msg) → pollNext() } while next && success && !canceled
+  claimTurnSlotOrQueue — unter dem Queue-Monitor: CAS working true (Turn übernommen)
+    oder enqueue → return null (der laufende Turn antwortet)
+  loop { doCall(msg) → pollNext() } while next && success && !canceled
     catch Exception → handleAbortAndDrain(memory.add + TOOL msg) → rethrow
-  finally: working false
+ToolService (Tool-Result-Assembly):
+  Drain der urgent-Lane unter dem Queue-Monitor → EIN `queued_user_message`-Block pro Iteration
+  an genau ein Tool-Result → der nächste Modell-Call sieht ihn (R11)
+AskUserTool:
+  Drain ALLER Lanes (Agent-Methode, Queue-Monitor) → Block + Antwort als EIN TextContent (R12)
+  Release atomar mit letztem Queue-Blick (nextQueuedEntryOrReleaseSlot);
+    finally: Release, falls nicht schon per Hand-over übergeben
 AIChatView.handleDoneChatResponse():
   on ex/cancel: active.drainQueue() → memory.add + TOOL msg (for propagated failures)
   lockWhileWorking(false) — single unlock, no chaining logic in UI
+ChatMarkdownWidget/chat.html: appendMessage versteckt den Live-Status NICHT mehr —
+  Hide nur an den natürlichen Endpunkten (END-Chunk, Lock-Ende) (streaming-display R9)
 ```
 
 ## Components
-- **`UserMessageQueue`** (`llmpeon-core`): thread-safe queue handling batching, FIFO polling, bulk draining. Configurable window for fast tests.
+- **`UserMessageQueue`** (`llmpeon-core`): thread-safe queue handling batching, FIFO polling, bulk draining — plus die **urgent-Lane** für `!`-Einträge (kein Batching, eigener Konsumkanal). Configurable window for fast tests.
 - **`OverrideMessageResolver`** (`llmpeon-core`, `queuedmessages`): pure function `resolve(text, agentWorking, commands, skills) → Optional<OverrideCommand>` — alleinige Stelle für die `!`-Entscheidung (Regel 8); die View führt nur aus.
 - **`AbstractAgent.messageQueue`**: core-owned instance; survives compaction (outside `AiAgent.getMemory()`).
 - **`AbstractAgent.call()`**: internal do-while loop chains queued messages atomically within a single invocation.
-- **`AIChatView`**: simplified — only locks/unlocks UI, reads `active.isWorking()`, delegates queue operations to agent.
+- **`ToolService`**: hängt den urgent-Block pro Iteration an genau ein Tool-Result (Regel 11).
+- **`AskUserTool`** (Plugin, `parts.tools`): blockiert auf die UI-Antwort und hängt alle Queue-Einträge als Block an das Antwort-Result (Regel 12).
+- **`AIChatView`**: simplified — only locks/unlocks UI, reads `active.isWorking()`, delegates queue operations to agent. Keine Memory-Injektion mehr.
 
 
 ## LLM Instruction for Agents
@@ -219,4 +332,5 @@ Agents run inside a message harness that buffers inputs asynchronously. Due to F
 
 - **Inputs are async (FIFO, order uncertain).** For guaranteed answers: use the `askUser` tool.
 - **Otherwise:** If a message is prefixed with `[Queued Message]`, it is **not** a reply to your last question. Acknowledge it briefly, re-ask your question if necessary, or treat the question as unanswered.
+- **`queued_user_message` block:** a harness block with that head — attached to a tool result or to an askUser answer — carries **real user messages** that arrived while work was in progress. React to them in your current work; they are not part of the tool's output. The user's answer to `askUser` is the **last** message below such a block.
 - *Context & Prompt adjustments:* See [Peon-PO (Jon)](po-agent-jon.md) and `prompts/po.md` for the agent-facing instructions solving this alignment problem.

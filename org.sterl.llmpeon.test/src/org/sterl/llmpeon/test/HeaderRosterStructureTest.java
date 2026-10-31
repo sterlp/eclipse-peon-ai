@@ -19,7 +19,6 @@ import org.eclipse.ui.PlatformUI;
 import org.junit.Test;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.model.CompactResult;
-import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.parts.widget.AiAgentStatusWidget;
 import org.sterl.llmpeon.shared.AiMonitor;
@@ -146,13 +145,13 @@ public class HeaderRosterStructureTest extends AbstractSwtUiTest {
         throw new AssertionError("no label among roster children");
     }
 
-    private static List<NamedAgent> stubTeam() {
-        return List.of(new NamedAgent("Probe Boss", stubAgent()), new NamedAgent("Probe Slave", stubAgent()));
+    private static List<AiAgent> stubTeam() {
+        return List.of(stubAgent("Probe Boss"), stubAgent("Probe Slave"));
     }
 
-    private static AiAgent stubAgent() {
+    private static AiAgent stubAgent(String name) {
         return new AiAgent() {
-            @Override public String getName() { return "probe"; }
+            @Override public String getName() { return name; }
             @Override public String getSystemPrompt() { return ""; }
             @Override public dev.langchain4j.model.chat.response.ChatResponse call(String message, AiMonitor monitor) { return null; }
             @Override public CompactResult compact(AiMonitor monitor) { return CompactResult.skippedSmall(); }

@@ -6,7 +6,6 @@ import java.util.function.Function;
 import java.util.function.IntSupplier;
 
 import org.sterl.llmpeon.agent.AiAgent;
-import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.model.CompactResult;
@@ -22,7 +21,7 @@ import dev.langchain4j.agent.tool.Tool;
 
 /**
  * Jon's delegate tools. Each drives one of his own, RAM-only slaves — a
- * Peon-Plan ("Da Thinka"), a Peon-Review ("Da Dok") and a Peon-Dev ("Da Mek")
+ * Plan, a Review and a Dev member
  * instance — for a single turn and returns the slave's reply verbatim as the
  * tool result. Verbs per slave: a direct question ({@code talkPlan} /
  * {@code askDev}), the real work ({@code planWithPlanAgent} writes the plan,
@@ -33,7 +32,7 @@ import dev.langchain4j.agent.tool.Tool;
  * The three slaves are shared, eager singletons: the layer that wires the tool
  * creates them (core supplies disk-tool slaves, the Eclipse plugin supplies
  * workspace-tool slaves with the memory-write tool filtered out) and hands them
- * in as {@link NamedAgent}s — the very same instances Jon exposes via
+ * in as {@link AiAgent}s — the very same instances Jon exposes via
  * {@code AiPoAgent.getTeam()} (ADR-0025). Their in-RAM context carries across
  * calls. Slaves use a RAM-only memory (no history file); the durable handover
  * is the plan file (see ADR-0024).
@@ -84,7 +83,7 @@ public class PoDelegateTool extends AbstractTool {
     private static final double SLAVE_COMPACT_FACTOR = 0.7;
 
     /** Base turn orders, resolved per slave (e.g. the agent-specific AGENTS-<agent>.md). */
-    private final Function<NamedAgent, List<ContextItem>> ordersFor;
+    private final Function<AiAgent, List<ContextItem>> ordersFor;
 
     /**
      * Live supplier for the shared staging budget ({@code autoCompactAfter}) — read per
@@ -92,9 +91,9 @@ public class PoDelegateTool extends AbstractTool {
      */
     private final IntSupplier autoCompactAfter;
 
-    private final NamedAgent plan; // "Da Thinka" — the Peon-Plan slave
-    private final NamedAgent review; // "Da Dok" — the Peon-Review slave
-    private final NamedAgent dev; // "Da Mek" — the Peon-Dev slave
+    private final AiAgent plan; // the Plan slave
+    private final AiAgent review; // the Review slave
+    private final AiAgent dev; // the Dev slave
 
     /**
      * Sticky plan path shared by the Dev and Review slaves — survives across
@@ -102,8 +101,8 @@ public class PoDelegateTool extends AbstractTool {
      */
     private String planPath;
 
-    public PoDelegateTool(NamedAgent plan, NamedAgent review, NamedAgent dev,
-            Function<NamedAgent, List<ContextItem>> ordersFor, IntSupplier autoCompactAfter) {
+    public PoDelegateTool(AiAgent plan, AiAgent review, AiAgent dev,
+            Function<AiAgent, List<ContextItem>> ordersFor, IntSupplier autoCompactAfter) {
         this.plan = plan;
         this.dev = dev;
         this.review = review;
@@ -111,24 +110,24 @@ public class PoDelegateTool extends AbstractTool {
         this.autoCompactAfter = autoCompactAfter;
     }
 
-    @Tool(name = PoDelegateTool.TALK_PLAN, value = "Ask your Peon-Plan team member (Da Thinka) a direct question or discuss an approach — no plan is written. Use planWithPlanAgent when you want the plan itself. Returns the team member's reply.")
+    @Tool(name = PoDelegateTool.TALK_PLAN, value = "Ask your Plan team member a direct question or discuss an approach — no plan is written. Use planWithPlanAgent when you want the plan itself. Returns the team member's reply.")
     public String talkPlan(@P(name = "prompt") String prompt) {
         return dispatch(plan, prompt, ordersFor.apply(plan));
     }
     
-    @Tool("Wipe Da Thinka back to blank — the next task is UNRELATED and the old state would only create drift. Use compactPlan instead when the same task continues.")
+    @Tool("Wipe Plan back to blank — the next task is UNRELATED and the old state would only create drift. Use compactPlan instead when the same task continues.")
     public void clearPlan() {
-        plan.agent().getMemory().clear();
+        plan.getMemory().clear();
         reportAction(plan, "reset");
     }
     
-    @Tool("Compact Da Thinka — the SAME task continues but the history got long. Keeps the gist, frees context. Use resetPlan instead when the next task is unrelated.")
+    @Tool("Compact Plan — the SAME task continues but the history got long. Keeps the gist, frees context. Use resetPlan instead when the next task is unrelated.")
     public String compactPlan() {
         return compact(plan);
     }
 
     @Tool(name = PoDelegateTool.PLAN_WITH_PLAN_AGENT, 
-            value = "Have your Peon-Plan team member (Da Thinka) write/refine the plan into "
+            value = "Have your Plan team member write/refine the plan into "
             + PeonPaths.PLAN_FILE
             + " with the plan tools (can only write a plan file), it plans continuously and asks you if something is unclear. Returns the team member's reply.")
     public String planWithPlanAgent(@P(name = "prompt") String prompt) {
@@ -138,7 +137,7 @@ public class PoDelegateTool extends AbstractTool {
     }
     
     @Tool(name = PoDelegateTool.REVIEW_PLAN_AGENT,
-            value = "Review team member (Da Dok) reviews a plan's implementation. "
+            value = "Review team member reviews a plan's implementation. "
                   + "Pass planPath (" + PeonPaths.PLAN_FILE + ") to set the plan — stays sticky across calls. "
                   + "Omit to reuse the last plan. Use for review questions, feedback, or approval.")
     public String reviewPlanAgent(@P(name = "prompt") String prompt,
@@ -152,24 +151,24 @@ public class PoDelegateTool extends AbstractTool {
         return dispatch(review, prompt, orders);
     }
 
-    @Tool("Wipe Da Dok back to blank — the next task is UNRELATED and the old state would only create drift. Use compactReview instead when the same task continues.")
+    @Tool("Wipe Review back to blank — the next task is UNRELATED and the old state would only create drift. Use compactReview instead when the same task continues.")
     public void clearReview() {
-        review.agent().getMemory().clear();
+        review.getMemory().clear();
         reportAction(review, "reset");
     }
 
-    @Tool("Compact Da Dok — the SAME task continues but the history got long. Keeps the gist, frees context. Use clearReview instead when the next task is unrelated.")
+    @Tool("Compact Review — the SAME task continues but the history got long. Keeps the gist, frees context. Use clearReview instead when the next task is unrelated.")
     public String compactReview() {
         return compact(review);
     }
 
-    @Tool(name = PoDelegateTool.ASK_DEV, value = "Ask your Peon-Dev team member (Da Mek) a direct question about the code or its progress — no build is triggered. Use buildWithDev to make it implement the plan. Returns the team member's reply.")
+    @Tool(name = PoDelegateTool.ASK_DEV, value = "Ask your Dev team member a direct question about the code or its progress — no build is triggered. Use buildWithDev to make it implement the plan. Returns the team member's reply.")
     public String askDev(@P(name = "prompt") String prompt) {
         return dispatch(dev, prompt, ordersFor.apply(dev));
     }
 
     @Tool(name = PoDelegateTool.BUILD_WITH_DEV, 
-            value = "Have your Peon-Dev team member (Da Mek) implement the released plan, increment by increment. Pass planPath (" 
+            value = "Have your Dev team member implement the released plan, increment by increment. Pass planPath (" 
                     + PeonPaths.PLAN_FILE
                     + ") — it stays sticky as a standing order so it survives the team member's compaction. Returns the team member's reply.")
     public String buildWithDev(@P(name = "prompt") String prompt,
@@ -177,7 +176,7 @@ public class PoDelegateTool extends AbstractTool {
         if (StringUtil.hasValue(planPath)) this.planPath = planPath.trim(); // sticky across calls
 
         var orders = new LinkedList<>(ordersFor.apply(dev));
-        // Hand Da Mek the path AND the build discipline (task-by-task, green
+        // Hand Dev the path AND the build discipline (task-by-task, green
         // gate, compactSession) as its way of working — never the whole plan; the file is the durable handover.
         if (StringUtil.hasValue(this.planPath)) {
             // the plan itself is injected by the agentOrders
@@ -189,23 +188,22 @@ public class PoDelegateTool extends AbstractTool {
         return dispatch(dev, prompt, orders);
     }
     
-    @Tool("Wipe Da Mek back to blank — the next task is UNRELATED and the old state would only create drift. Use compactDev instead when the same task continues.")
+    @Tool("Wipe Dev back to blank — the next task is UNRELATED and the old state would only create drift. Use compactDev instead when the same task continues.")
     public void clearDev() {
-        dev.agent().getMemory().clear();
+        dev.getMemory().clear();
         reportAction(dev, "reset");
     }
     
-    @Tool("Compact Da Mek — the SAME task continues but the history got long. Keeps the gist, frees context. Use resetDev instead when the next task is unrelated.")
+    @Tool("Compact Dev — the SAME task continues but the history got long. Keeps the gist, frees context. Use resetDev instead when the next task is unrelated.")
     public String compactDev() {
         return compact(dev);
     }
     
-    private String compact(NamedAgent agent) {
-        AiAgent slave = agent.agent();
+    private String compact(AiAgent slave) {
         return switch (slave.compact(monitor).status()) {
             case COMPACTED -> {
                 // R-CT-8: no own line — the slave's compact already sent the one end line via onTool
-                var toolResult = agent.uiName() + " compacted. " + contextUsed(slave);
+                var toolResult = slave.getName() + " compacted. " + contextUsed(slave);
                 yield toolResult;
             }
             // honest skip (R16 guard) — memory untouched, so N is exact
@@ -215,58 +213,57 @@ public class PoDelegateTool extends AbstractTool {
     }
 
     /**
-     * The Plan slave (Da Thinka), an eager shared instance also exposed via the
+     * The Plan slave, an eager shared instance also exposed via the
      * PO team.
      */
     public AiAgent getPlanSlave() {
-        return plan.agent();
+        return plan;
     }
 
     /**
-     * The Review slave (Da Dok), an eager shared instance also exposed via the
+     * The Review slave, an eager shared instance also exposed via the
      * PO team.
      */
     public AiAgent getReviewSlave() {
-        return review.agent();
+        return review;
     }
 
     /**
-     * The Dev slave (Da Mek), an eager shared instance also exposed via the PO
+     * The Dev slave, an eager shared instance also exposed via the PO
      * team.
      */
     public AiAgent getDevSlave() {
-        return dev.agent();
+        return dev;
     }
 
-    private String dispatch(NamedAgent target, String prompt,
+    private String dispatch(AiAgent target, String prompt,
             List<ContextItem> orders) {
         ArgsUtil.requireNonBlank(prompt, "prompt");
-        AiAgent slave = target.agent();
-        slave.setTurnContextSupplier(() -> orders);
-        compactSlaveBeforeDelegation(slave);
+        target.setTurnContextSupplier(() -> orders);
+        compactSlaveBeforeDelegation(target);
 
         // TODO custom style for the UI as agent message ...
-        onTool(target.uiName() + " start: " + System.lineSeparator() + prompt);
+        onTool(target.getName() + " start: " + System.lineSeparator() + prompt);
         var stats = CallStats.start();
         // The slave streams through Jon's monitor (this.monitor) — that is what
         // refreshes its 🟢 in the
         // header status widget while it works (ADR-0025). Keep the monitor
         // passed through.
         try {
-            final var response = slave.call(prompt, this.monitor);
-            final var statsLine = target.uiName() + " done. " + contextUsed(slave) + " " + stats.suffix();
+            final var response = target.call(prompt, this.monitor);
+            final var statsLine = target.getName() + " done. " + contextUsed(target) + " " + stats.suffix();
             final var answer = response != null
                     ? response.aiMessage().text()
                     : null;
 
             final var result = StringUtil.hasValue(answer)
                     ? answer + System.lineSeparator() + statsLine
-                    : target.uiName() + " returned no result " + statsLine;
+                    : target.getName() + " returned no result " + statsLine;
             onTool(statsLine + " " + StringUtil.charsSuffix(result));
             return result;
         } catch (IllegalStateException e) {
-            onProblem(target.uiName() + " " + e.getMessage());
-            return "Failed: " + target.uiName() + " " + e.getMessage();
+            onProblem(target.getName() + " " + e.getMessage());
+            return "Failed: " + target.getName() + " " + e.getMessage();
         }
     }
 
@@ -279,8 +276,8 @@ public class PoDelegateTool extends AbstractTool {
         if (result.status() != CompactResult.Status.COMPACTED) return;
     }
 
-    private void reportAction(NamedAgent target, String action) {
-        onTool(target.uiName() + " " + action + ".");
+    private void reportAction(AiAgent target, String action) {
+        onTool(target.getName() + " " + action + ".");
     }
 
     private String contextUsed(AiAgent agent) {

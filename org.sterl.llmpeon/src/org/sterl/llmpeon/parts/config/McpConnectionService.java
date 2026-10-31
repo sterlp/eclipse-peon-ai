@@ -28,7 +28,7 @@ public class McpConnectionService {
 
     private static final ILog LOG = Platform.getLog(McpConnectionService.class);
 
-    /** ADR-0067: every agent-facing registry MCP connects to (shared + Peon-PO's own). */
+    /** ADR-0067: every agent-facing registry MCP connects to (shared + Jon's own). */
     private final List<ToolService> toolServices;
     private final Consumer<Boolean> onStateChange;
 

@@ -20,8 +20,8 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
 /**
- * Tools available exclusively in AGENT mode.
- * Registered in ToolService only when the user switches to Peon-Agent mode.
+ * Plan tools for the workspace `peon-plan/overview.md`. Registered in the shared
+ * ToolService; which agent may call them is decided by the per-agent tool filter.
  * Uses Eclipse IFile APIs so workspace history and refresh notifications are triggered.
  */
 public class PlanTool extends AbstractEclipseTool {

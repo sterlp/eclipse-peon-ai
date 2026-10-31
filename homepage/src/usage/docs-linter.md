@@ -28,8 +28,8 @@ The functionality is split into two read-only facades over one shared core:
 
 | Facade | Available to | Tools |
 |---|---|---|
-| `DocsLinterTool` | `Peon-Dev` / `Da Mek`, `Peon-Plan` / `Da Thinka`, `Peon-Review` / `Da Dok`, and `Peon-PO (Jon)` | `lintDocs`, `lintDocsAndTests` |
-| `DocsIdTool` | `Peon-PO (Jon)` only | `nextIds` |
+| `DocsLinterTool` | `Dev`, `Plan`, `Review`, and `Jon` | `lintDocs`, `lintDocsAndTests` |
+| `DocsIdTool` | `Jon` only | `nextIds` |
 
 Both facades share the same project root and the same discovery rules. They do not write files.
 

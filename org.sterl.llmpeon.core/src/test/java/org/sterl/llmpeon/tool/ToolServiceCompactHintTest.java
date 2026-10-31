@@ -51,7 +51,7 @@ class ToolServiceCompactHintTest {
                 .memory(memory)
                 .chatModel(new ConfiguredChatModel(hintConfig(), cm))
                 .monitor(monitor)
-                .agent(hintAgent())
+                .owner(LoopOwner.of(hintAgent(), LlmConfig::devAgentConfig))
                 .build();
 
         // WHEN — two tool rounds each crossing the hint threshold
@@ -101,7 +101,7 @@ class ToolServiceCompactHintTest {
                 .memory(memory)
                 .chatModel(new ConfiguredChatModel(config, cm))
                 .monitor(monitor)
-                .agent(agent)
+                .owner(LoopOwner.of(agent, LlmConfig::devAgentConfig))
                 .build();
 
         // WHEN — round 1 compacts successfully, round 2 crosses the threshold in the NEW memory
@@ -146,7 +146,7 @@ class ToolServiceCompactHintTest {
                 .memory(memory)
                 .chatModel(new ConfiguredChatModel(hintConfig(), cm))
                 .monitor(monitor)
-                .agent(hintAgent())
+                .owner(LoopOwner.of(hintAgent(), LlmConfig::devAgentConfig))
                 .build();
 
         // WHEN — a tool round crossing the hint threshold
@@ -189,7 +189,7 @@ class ToolServiceCompactHintTest {
                 .chatModel(new ConfiguredChatModel(
                         LlmConfig.builder().model("mock").autoCompactAfter(210000).build(), cm))
                 .monitor(monitor)
-                .agent(hintAgent())
+                .owner(LoopOwner.of(hintAgent(), LlmConfig::devAgentConfig))
                 .build();
 
         // WHEN — round 2 crosses the threshold on an estimated (no-usage) counter
@@ -218,7 +218,7 @@ class ToolServiceCompactHintTest {
                 .memory(memory)
                 .chatModel(new ConfiguredChatModel(hintConfig(), cm))
                 .monitor(monitor)
-                .agent(hintAgent())
+                .owner(LoopOwner.of(hintAgent(), LlmConfig::devAgentConfig))
                 .build();
 
         // WHEN
@@ -291,7 +291,7 @@ class ToolServiceCompactHintTest {
                 .memory(memory)
                 .chatModel(new ConfiguredChatModel(hintConfig(), cm))
                 .monitor(hintCapturingMonitor(hints))
-                .agent(hintAgent())
+                .owner(LoopOwner.of(hintAgent(), LlmConfig::devAgentConfig))
                 .build();
         new ToolService().executeLoop(req);
         return new HintRun(memory, hints);
@@ -339,7 +339,11 @@ class ToolServiceCompactHintTest {
 
     private static AiMonitor hintCapturingMonitor(List<String> hints) {
         return new AiMonitor() {
-            @Override public void onChatResponse(SimpleMessage m) {}
+            // a monitor below an agent entry receives the loop's tool lines as TOOL chat messages
+            // — an OwnerMonitor builds them there (ADR-0078)
+            @Override public void onChatResponse(SimpleMessage m) {
+                if (m.role() == SimpleMessage.Type.TOOL) onTool(m.message());
+            }
             @Override public void onTool(String message) {
                 if (message.contains("🗜 Compact hint")) hints.add(message);
             }

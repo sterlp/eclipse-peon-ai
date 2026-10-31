@@ -7,6 +7,61 @@ Releases before `2.12.4` are documented via [GitHub Releases](https://github.com
 
 ## [Unreleased]
 
+### Changed
+
+- **Queued messages while the AI works are delivered mid-turn.** Messages sent while an agent is
+  working — and messages prefixed with `!` in particular — ride along with the next tool result as
+  a visible `queued_user_message` block (including the time each message was queued), instead of
+  being injected into the running context. The answer you type for a question (`askUser`) carries
+  all queued messages along with it. If nothing consumes them in the current turn, they are asked
+  as follow-up turns as before.
+- **Built-in agents are named Jon, Plan, Dev, Review** (sub-loops `Search`/`Compact`) — display
+  name = agent id everywhere (header, roster, history files, prompts); the Ork names are gone.
+  Config keys (`llm.agent.*`, model slots) are unchanged ([ADR-0079](docs/adr/0079-display-names-without-ork-names.md))
+- **Agent histories start fresh** — history files follow the display name (`Dev-history.jsonl`
+  instead of `Peon-Dev-history.jsonl`); old `Peon-*-history.jsonl` files are not read, rename them
+  manually to keep a conversation. `agent-order.txt` default is now `^Jon$`; an existing file with
+  `^Peon-PO$` no longer matches — such a file falls back to the default order (**Jon** first, rest
+  alphabetical), so the dropdown stays usable until the file is updated.
+  Same clean break for the agent-specific standing orders: Jon now loads `AGENTS-JON.md` — an
+  existing `AGENTS-PO.md` is no longer read, rename it.
+- **Scaffold is now `Scaffold`** — the config-artifact agent (agents, skills, commands) drops its
+  `Peon-` prefix like the other roles: dropdown, chat header and the sender stamp on its chat lines
+  all use that name. Clean break, no alias — an `agent-order.txt` pattern on
+  `^Peon-Scaffold$` or `Peon-.*` no longer matches.
+
+### Added
+
+- **Every AI chat line names its speaker.** The core stamps each line with the speaking agent's
+  id (`origin`, ADR-0078): the Eclipse plugin header shows who is talking instead of a generic
+  "Peon" (lines without an agent carry no header; groups merge only when role and sender match),
+  and the web factory attributes final team answers by the stamped sender instead of the tool name.
+
+
+### New Features
+
+- **Your agent choice survives a restart.** The agent you picked in the chat dropdown is remembered for this Eclipse workspace and restored on start — after a restart or a workspace switch you continue with that agent instead of **Dev**. Only a real change of agent is remembered (a handoff counts, re-picking the active one does not), and an agent that has since been removed or renamed leaves the default in place, quietly. (`org.sterl.llmpeon`, [org.sterl.llmpeon/docs/active-agent-persistence.md](org.sterl.llmpeon/docs/active-agent-persistence.md))
+
+### Fixed
+
+- **The live status bar no longer vanishes on chat events.** Sending a message while the AI works
+  (e.g. a `!`-message) or answering a question used to hide the "waiting for AI…" bar until the
+  next response chunk arrived. Appended messages no longer hide it — the bar closes only when
+  streaming ends or the turn finishes.
+
+- **Jon files docs by topic, not by code.** Topic folders (`docs/<topic>/` with their own index.md) are opt-in — Jon proposes one when a domain owner reaches about three feature docs and asks first; each feature/architecture doc names its technical home (module, package) in its header. (`org.sterl.llmpeon.core` prompts `doc-method.md`, `po.md`)
+- **Doc moves keep the links.** When Jon moves or renames a doc, all references — docs, code comments, tests — are updated in the same cycle. (`org.sterl.llmpeon.core` prompt `po.md`)
+
+### Bug Fixes
+
+- **An `agent-order.txt` that matches no agent no longer scrambles the dropdown.** Valid patterns that
+  fit nobody — a renamed agent, a copied config — sent every agent to the alphabetical tail, so Jon lost
+  first place; now such a file falls back to the default order (`^Jon$`, Jon first) with a warning in the
+  log. A partial match behaves as before, and `.*` still gives a deliberately alphabetical list. (R5, `org.sterl.llmpeon.core`, [org.sterl.llmpeon.core/docs/agent-ordering.md](org.sterl.llmpeon.core/docs/agent-ordering.md))
+- **A failed AI call now names the endpoint it tried.** Errors that said nothing — a blank message, or the JDK wrapper that only repeats its cause's class name — are reported as `AI call to <url> failed: <Exception> — <cause>`, so a dead model URL is tellable from an MCP one; cancelling a call and errors that already explain themselves stay untouched (R-AEM-3, `org.sterl.llmpeon.core`, [org.sterl.llmpeon.core/docs/agent-error-memory.md](org.sterl.llmpeon.core/docs/agent-error-memory.md), PR #168)
+
+## v2.5.1
+
 ### Added
 
 - **Docs linter flags oversized docs.** Docs above 1000 lines are reported as a `ZU_LANG` hint

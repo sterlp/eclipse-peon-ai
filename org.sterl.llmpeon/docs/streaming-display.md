@@ -77,12 +77,16 @@ The live status bar (including preview) is hidden when streaming ends.
 - **GIVEN** the overlay is visible during streaming **WHEN** a streaming chunk with type END arrives **THEN** `hideLiveStatus()` is called and the overlay disappears
 - **Tag:** unit (verify `ChatMarkdownWidget.onStreamingChunk` calls `hideLiveStatus` on END)
 
-### R9 — Status bar hides on final message append ✅
+### R9 — Angehängte Messages verstecken den Live-Status nicht ✅ done (2026-10-31 gebaut)
 
-The live status bar is hidden when a final message is appended to the chat.
+Die Live-Statusleiste wird **nicht** durch angehängte Messages geschlossen — `appendMessage` ruft
+kein `hideLiveStatus()`. Sie schließt ausschließlich an den natürlichen Endpunkten: END-Chunk (R8),
+Turn-/Lock-Ende (`lockWhileWorking(false)`) und das Diff-Overlay (`appendDiff` behält sein
+bewusstes Hide — das Diff ersetzt die Anzeige). Wer den Status bewusst setzt oder versteckt
+(QUESTION-Widget), macht es an genau einer Stelle.
 
-- **GIVEN** the overlay is visible during streaming **WHEN** `appendMessage` is called for a non-TOOL message **THEN** `hideLiveStatus()` is called before the message is appended
-- **Tag:** unit (verify JS `appendMessage` calls `hideLiveStatus()` at the start)
+- **GIVEN** die Statusleiste ist sichtbar **WHEN** eine beliebige Message appended wird **THEN** bleibt sie sichtbar — erst R8 oder das Lock-Ende versteckt sie
+- **Tag:** unit (verify JS `appendMessage` no longer calls `hideLiveStatus()`)
 
 ### R10 — Page scrolls to bottom when live preview first appears ✅
 
@@ -239,8 +243,8 @@ hätte einen Wert für zwei Agenten).
 - **GIVEN** ein Turn startet um 14:32:05 **WHEN** Statusleiste rendert nach 3m 15s **THEN** zeigt `Started 14:32 · working since 3m 15s`
 - **GIVEN** ein Turn startet um 9:07 **WHEN** Statusleiste rendert **THEN** zeigt `Started 09:07` (leading zero)
 - **GIVEN** Jon arbeitet seit 10:00 **WHEN** er im Turn kompaktiert (Pre-Turn, In-Loop, `compactSession`) **THEN** zeigen auch die Compressor-Chunks und alle folgenden Chunks `Started 10:00`
-- **GIVEN** Jon (seit 10:00) delegiert um 10:05 an Da Mek **WHEN** Da Mek streamt **THEN** tragen seine Chunks `Started 10:05`; Jons nächster Chunk trägt wieder `Started 10:00`
-- **GIVEN** Da Mek ist idle **WHEN** Jon ihn kompaktieren lässt **THEN** ist das ein eigener Turn von Da Mek mit neuer Startzeit
+- **GIVEN** Jon (seit 10:00) delegiert um 10:05 an Dev **WHEN** Dev streamt **THEN** tragen seine Chunks `Started 10:05`; Jons nächster Chunk trägt wieder `Started 10:00`
+- **GIVEN** Dev ist idle **WHEN** Jon ihn kompaktieren lässt **THEN** ist das ein eigener Turn von Dev mit neuer Startzeit
 - **GIVEN** ein Turn wurde abgebrochen **WHEN** der nächste Turn desselben Agenten startet **THEN** gilt dessen neue Startzeit, nie die des abgebrochenen
 - **Tag:** unit (Format) + core (Startzeit kommt vom Agenten, nicht von der Bridge; Compact im Turn erbt sie)
 

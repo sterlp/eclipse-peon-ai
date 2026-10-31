@@ -5,7 +5,7 @@ UI-seitiger Lifecycle eines Agent-Turns: Job-Submit → Lock → `monitorRef` �
 
 **Status: ✅ gebaut (2026-09-10)** — R-ST1 (In-Flight-Counter statt
 Ticket), R-ST2 (Graceful Stop, kein Code-Change — Design-Decision bewusst), R-ST3
-(Turn-INFO-Logging) inkl. Counter-Invarianten; Design-Review Da Thinka + Da-Dok-Review
+(Turn-INFO-Logging) inkl. Counter-Invarianten; Design-Review Plan + Review
 (verifiziert gegen Code). Verifikation manuell (SWT-Präzedenz R-UI1/R-MCP3/R-ML1a) —
 User-Smoke-Steps 1–7 im Plan §7.
 
@@ -29,9 +29,9 @@ weg (10 Backups) — Incident nicht mehr rekonstruierbar; Diagnose ist Code-Evid
 
 ## SOLL
 
-### R-ST1 — In-Flight-Counter statt Ticket (Design-Review Da Thinka, 2026-09-10)
+### R-ST1 — In-Flight-Counter statt Ticket (Design-Review Plan, 2026-09-10)
 
-`submitAiJob`/`doCompressContext` inkrementieren synchron im UI-Thread einen
+`submitAiJob`/`doCompactAgent` inkrementieren synchron im UI-Thread einen
 `AtomicInteger inFlight` (paarig zum `lock(true)`, vor dem Schedule). Das Job-`finally`
 entscheidet **innerhalb des `runInUiThread`-Runnables** (UI-serialisiert mit dem Submit):
 
@@ -53,7 +53,7 @@ EclipseUtil.runInUiThread(parent, () -> {
   Schedule-Fenster → Job 2 wird gecasht (`working.compareAndSet` lehnt ab, queued sofort) →
   sein finally hätte das *aktuelle* Ticket und würde unlocken, während Job 1 lebt. „Latest
   ticket" ≠ „letzter Finisher"; der Counter paart Submit und Finally exakt.
-- **doCompressContext:** auch der vorgeschaltete asyncExec (Memory-Replay + hideLiveStatus)
+- **doCompactAgent:** auch der vorgeschaltete asyncExec (Memory-Replay + hideLiveStatus)
   gehört unter denselben Guard, sonst replays ein stale Compress in den Chat des lebenden Runs.
 - **Keine Core-Klasse** (`TurnToken`/RunGate wäre Overkill — testet AtomicInteger, nicht unsere
   Logik; SWT-Wiring ist ohnehin untestbar, Präzedenz R-UI1/R-MCP3). Regression-Guard-Rolle:
@@ -82,7 +82,7 @@ WHEN das finally läuft
 THEN aufräumen (fail-open) UND ERROR-Log „unbalanced in-flight counter" — Programmierfehler sichtbar
 ```
 
-**Mutations-Nachweis (Da-Dok-Review, 2026-09-10):** Die eine beweiswürdige Stelle ist der
+**Mutations-Nachweis (Review, 2026-09-10):** Die eine beweiswürdige Stelle ist der
 Commit-Guard (`if (remaining <= 0)` + Skip-Else, `AIChatView.java:601-618`). Nachweis ohne
 SWT-Harness: Guard mutieren (immer committen) → zwei überlappende Turns (Send + sofort
 Compact bzw. Doppel-Send, Smoke 3) dekrementieren deterministisch auf **-1** → erwartete
@@ -142,7 +142,7 @@ THEN INFO-Skip-Zeile mit Agent + in-flight-Wert, kein Reset/Unlock
 
 ## Backlog / out of scope
 
-- **Senden während Compress (Da-Thinka-Fund, 2026-09-10):** `doCompressContext` setzt
+- **Senden während Compress (Plan-Fund, 2026-09-10):** `doCompressContext` setzt
   `working` nie → `resolveOutgoingMessage` queued nicht → Send während Compress = Submit →
   **paralleler Run gegen dieselbe Memory**, während `compact()` `memory.clear()` macht.
   **❌ specified (2026-09-22):** Lösung in [compact-lock.md](../../org.sterl.llmpeon.core/docs/compact-lock.md) — Compact belegt das

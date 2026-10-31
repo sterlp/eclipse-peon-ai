@@ -3,48 +3,52 @@ package org.sterl.open.aifactory.chat;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.sterl.llmpeon.poagent.AiPoAgent;
+
 /**
- * Who is speaking, in the factory's own words. The core stamps its <b>agent id</b> on every live line
- * ({@code Peon-PO}, {@code Peon-Dev}, …) because a display name is not core knowledge; this table holds
- * the pairs the factory itself built, so the product can name them and can tell whose conversation the
- * live stream is showing.
+ * Two questions about an author, answered in one place and nowhere else.
  *
- * <p>An origin that is not in here was never built by this factory — it gets no name and is not Jon
- * (R-WP-4: no invented author). Immutable, so a runtime can hand it to its monitor and forget it.</p>
+ * <p><b>Whose conversation is this?</b> {@link #isJon(String)} compares the id the core stamped on a
+ * live line with {@link AiPoAgent#NAME}. Comparing against the constant and not a literal is what keeps
+ * the rename of ADR-0079 a core-side change: the answer follows the id, nothing here has to move with
+ * it.</p>
+ *
+ * <p><b>Who wrote this tool result?</b> A history line carries no author of its own — its author is the
+ * <b>tool</b> that produced it, so the table is keyed by tool name ({@code @Tool(name = …)}, the core's
+ * contract) and names the member in the factory's own words. A tool nobody in this table owns is not a
+ * member speaking, and gets no line.</p>
+ *
+ * <p>{@code null} is nobody: neither question invents an author (R-WP-4). Immutable; the runtime keeps one
+ * instance for its author table.</p>
  */
 final class AgentNames {
 
-    private final String jonCoreId;
-    private final Map<String, String> displayNames;
+    private final Map<String, String> authorsByTool;
 
-    private AgentNames(String jonCoreId, Map<String, String> displayNames) {
-        this.jonCoreId = jonCoreId;
-        this.displayNames = Map.copyOf(displayNames);
+    private AgentNames(Map<String, String> authorsByTool) {
+        this.authorsByTool = Map.copyOf(authorsByTool);
     }
 
-    /**
-     * @param coreId       the id the core stamps for the agent the conversation belongs to
-     * @param displayName  what the browser is told to call him
-     */
-    static AgentNames ofJon(String coreId, String displayName) {
-        return new AgentNames(coreId, Map.of(coreId, displayName));
+    /** The empty table — a runtime adds the authors of the team it actually built. */
+    static AgentNames empty() {
+        return new AgentNames(Map.of());
     }
 
-    /** @return the table plus this agent — the receiver is never mutated, building it stays one chain */
-    AgentNames add(String coreId, String displayName) {
-        Map<String, String> withMember = new HashMap<>(displayNames);
-        withMember.put(coreId, displayName);
-        return new AgentNames(jonCoreId, withMember);
+    /** @return the table plus this author — the receiver is never mutated, building it stays one chain */
+    AgentNames withTool(String toolName, String author) {
+        Map<String, String> withAuthor = new HashMap<>(authorsByTool);
+        withAuthor.put(toolName, author);
+        return new AgentNames(withAuthor);
     }
 
-    /** The name of a stamped origin, or {@code null} when this factory never built that agent. */
-    String display(String origin) {
-        // an immutable Map NPEs on a null key — an unclaimed line is one of the unnamed ones
-        return origin == null ? null : displayNames.get(origin);
+    /** The member that speaks through this tool, or {@code null} when the tool is not a member. */
+    String authorOf(String toolName) {
+        // an immutable Map NPEs on a null key — a result without a tool name is nobody's
+        return toolName == null ? null : authorsByTool.get(toolName);
     }
 
     /** The agent the one conversation of a project belongs to — the only author the live stream shows. */
-    boolean isJon(String origin) {
-        return jonCoreId.equals(origin);
+    static boolean isJon(String origin) {
+        return AiPoAgent.NAME.equals(origin);
     }
 }

@@ -26,7 +26,7 @@ public final class CompactFeedback {
     private CompactFeedback() {}
 
     /**
-     * {@code 🗜 Compressing Da Mek: 3 messages 124 tokens (estimate) using compact-model} — the token
+     * {@code 🗜 Compressing Dev: 3 messages 124 tokens (estimate) using compact-model} — the token
      * figure is always an estimate (a compact runs before any provider value for this request), and
      * the model part is dropped when the COMPACT slot has no own model (empty means unset).
      */

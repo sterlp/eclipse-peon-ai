@@ -142,7 +142,7 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
         eclipseWriteFile("/test_project/AGENTS-DEV.md", "Dev agent content");
 
         // WHEN standing orders are built
-        assertTrue(aiService.setActiveAgent("Peon-Dev"));
+        assertTrue(aiService.setActiveAgent("Dev"));
         aiService.call("Hallo Paul", null);
 
         // THEN both AGENTS.md and AGENTS-DEV.md content is included
@@ -159,7 +159,7 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
         eclipseDeleteResource("/test_project/AGENTS-DEV.md");
 
         // WHEN standing orders are built
-        assertTrue(aiService.setActiveAgent("Peon-Dev"));
+        assertTrue(aiService.setActiveAgent("Dev"));
         aiService.call("Hallo Paul", null);
 
         // THEN only AGENTS.md content is included
@@ -173,7 +173,7 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
     public void test_agentSpecificMd_only_no_base() {
         // GIVEN a project with only AGENTS-PLAN.md (no AGENTS.md)
         eclipseWriteFile("/test_project/AGENTS-PLAN.md", "Plan agent content");
-        // AND Peon-Plan is the active agent
+        // AND Plan is the active agent
         eclipseDeleteResource("/test_project/AGENTS.md");
 
         // WHEN standing orders are built
@@ -193,10 +193,10 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
         eclipseWriteFile("/test_project/AGENTS-PLAN.md", "Plan agent content");
         eclipseWriteFile("/test_project/AGENTS-DEV.md", "Dev agent content");
         
-        // AND Peon-Dev is the active agent
-        assertTrue(aiService.setActiveAgent("Peon-Dev"));
+        // AND Dev is the active agent
+        assertTrue(aiService.setActiveAgent("Dev"));
 
-        // WHEN standing orders are built with Peon-Dev
+        // WHEN standing orders are built with Dev
         aiService.call("Hallo Paul", null);
 
         // THEN AGENTS-DEV.md content is included
@@ -204,8 +204,8 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
         assertHasUserMessageWith(messages, "AGENTS-DEV.md");
         assertHasUserMessageWith(messages, "Dev agent content");
 
-        // WHEN the agent is switched to Peon-Plan
-        assertTrue(aiService.setActiveAgent("Peon-Plan"));
+        // WHEN the agent is switched to Plan
+        assertTrue(aiService.setActiveAgent("Plan"));
         aiService.call("Hallo Paul", null);
 
         // THEN AGENTS-PLAN.md content is included instead
@@ -221,8 +221,8 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
         eclipseWriteFile("/test_project/AGENTS.md", "Test Specifics");
         eclipseWriteFile("/test_project/agents-dev.md", "Lowercase dev content");
 
-        // AND Peon-Dev is the active agent
-        assertTrue(aiService.setActiveAgent("Peon-Dev"));
+        // AND Dev is the active agent
+        assertTrue(aiService.setActiveAgent("Dev"));
 
         // WHEN standing orders are built
         aiService.call("Hallo Paul", null);

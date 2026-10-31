@@ -27,7 +27,7 @@ klären:
 1. **Dead-Counter:** `asyncRunning` wird **nirgends** inkrementiert/dekrementiert — `runsAsync` ist
    faktisch immer `maxConcurrent > 0`. Entweder Zähler richtig führen (try/finally um dispatch),
    oder bewusst weglassen und `maxConcurrent > 0` als Schalter dokumentieren.
-2. **Gleicher Agent + Nebenläufigkeit:** zwei Tasks auf denselben `NamedAgent` teilen sein Memory/
+2. **Gleicher Agent + Nebenläufigkeit:** zwei Tasks auf denselben `AiAgent` teilen sein Memory/
    History — interleaved Corruption ist vorprogrammiert. Empfehlung: **Lock pro Agent** (ein laufender
    Task je Agent, Rest queue) statt freie Nebenläufigkeit — das passt auch zum Verhalten der heutigen
    Slaven (RAM-only, seriell).
@@ -90,3 +90,13 @@ bewusst — memory 36).
 
 - Q1–Q3 oben; 4.1-Formatfrage (XML-artig vs. `//--`); MVP-Scope (Poll-only vs. Huckepack im ersten Slice).
 - Code bleibt untracked (Paul: „nur die neuen files nicht") bis das SOLL festgezurrt ist.
+
+## Entscheidungen (Paul, 2026-10-31)
+
+- **`AgentsTool`/AsyncAgentTool verwaltet eine Liste interner Agenten** statt Einzel-Tool-Calls pro
+  Agent — der aufrufende Agent wählt aus der Liste, statt für jeden Agenten ein eigenes Tool zu
+  haben.
+- **Der Search-Agent wird vollwertiges Mitglied dieser Liste** (echtes `AiAgent`): Grund — der
+  Rolling-Block ([R-LSR-6](search-agent-tool.md), eine Tool-Instanz je View) wandert ins
+  **Agent-Memory**, sonst ist der Search-Agent „cold", wenn ihn ein anderer Agent nutzt. Design:
+  [search-agent-tool.md](search-agent-tool.md) **R-LSR-7 🚧 in design (2026-10-31)**.

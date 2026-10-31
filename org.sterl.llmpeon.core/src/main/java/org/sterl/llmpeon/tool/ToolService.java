@@ -11,9 +11,12 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import org.jspecify.annotations.NonNull;
+import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.compact.HandleToolLoopCompactComponent;
 import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.mcp.McpService;
+import org.sterl.llmpeon.queuedmessages.QueuedUserMessages;
+import org.sterl.llmpeon.shared.OwnerMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 import org.sterl.llmpeon.tool.model.ToSimpleMessage;
@@ -149,6 +152,12 @@ public class ToolService {
      */
     @NonNull
     public ChatResponse executeLoop(@NonNull ToolLoopRequest req) {
+        // ADR-0078: THE loop stamp — every line of this loop (model answer, tool line, validator
+        // denial) carries the owner's name, whoever emits it. No owner means no stamp, never an
+        // invented one; a member loop already stamped by its agent keeps that name (fill-if-null).
+        var ownerName = req.owner().name();
+        if (ownerName != null) req.monitor(new OwnerMonitor(ownerName, req.getMonitor()));
+
         ChatResponse response = null;
 
         int iterations = 0;
@@ -234,8 +243,37 @@ public class ToolService {
                         "Tool failed - check why and inform user " + StringUtil.getStackTrace(e)));
             }
         }
+        attachUrgentMessages(toolResults, req);
 
         return toolResults;
+    }
+
+    /**
+     * Rule 11: the urgent entries a round picked up ride on <b>one</b> result, so several tool calls
+     * of one answer still deliver the block exactly once. The target is the first result not already
+     * carrying a block — a result that does one ends with the user's answer (R12) and must keep it as
+     * the last line. The block goes behind the tool's own output, which keeps the result a non-pure
+     * block (R-TR-2): the compact keeps it. An agent-less loop (a search sub-agent) has no queue of
+     * its own — its parent must still see the entries, so nothing is drained there.
+     */
+    private void attachUrgentMessages(List<ToolExecutionResultMessage> toolResults, ToolLoopRequest req) {
+        var agent = req.getAgent();
+        if (agent == null || toolResults.isEmpty()) return;
+
+        // the target is picked BEFORE the drain — a drain is final and discloses, so entries without
+        // a consumer would be lost silently; they stay queued for the follow-up turn instead (R8.3)
+        var target = -1;
+        for (int i = 0; i < toolResults.size(); i++) {
+            if (!QueuedUserMessages.carriesBlock(toolResults.get(i).text())) { target = i; break; }
+        }
+        if (target < 0) return;
+
+        var block = QueuedUserMessages.block(agent.takeUrgentMessages(req.getMonitor()));
+        if (block == null) return;
+
+        var at = toolResults.get(target);
+        toolResults.set(target, ToolExecutionResultMessage.from(at.id(), at.toolName(),
+                at.text() + TaggedResult.LN + TaggedResult.LN + block));
     }
     
     /** Merges all SystemMessages into one at the front (compatibility with local LLMs). */

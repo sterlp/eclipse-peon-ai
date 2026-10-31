@@ -1,33 +1,31 @@
 # Session-Stand — AI Factory (OAF)
 
-Paul: **ein Thema pro Nachricht**, kurz. Nur Jon schreibt `docs/`. Branch `web-factory`.
-**Paul committet selbst — kein Commit/Push durch Agenten in dieser Session.** Entscheidungen stehen in
-den Feature-Docs (siehe [Index](index.md)), nicht hier.
+Paul: **ein Thema pro Nachricht**, kurz. Nur Jon schreibt `docs/`. Branch: Core-Repo auf `main`
+(2.15.1), `web-factory` existiert nicht mehr. **Paul committet selbst.**
+**Core-Änderungen NUR mit Pauls Approval, per Proposal mit WARUM** (2026-10-29).
 
-## Jetzt — Docs-Review gegen [Pauls Vision](../pauls-product-vision.md)
+## Jetzt — Origin im Core: GEBAUT, Review-Befunde im Nachzug (2026-10-30)
 
-* ✅ V1–V6, V11 entschieden und geschrieben. ✅ `web-prototype.md` gesplittet (2026-10-28) in
-  ui · project · chat · files · config · user — alle `idPrefix: WP`, IDs unverändert, Lint 74/74, 0 Befunde.
-* Offen, je eine Frage an Paul: V7 TMP-Prompt-Zeile → V8 Entfernen löscht `state/<id>`? → V9 Produktname
-  OAF vs AI Factory → V10 Inc-4-Review → V6-Folge (MVP: ein Paco-Gespräch für alle?) → V5-Rest
-  (MCP, Codegraph, Skills geteilt). Details: [open-points.md](open-points.md).
-* **Vor Planung Config:** `aifactory-architektur.md` Config-Abschnitt nachziehen (Config-Repo,
-  geleert = gelöscht, Agenten-Checkbox).
-* Paul = Da Mek (2026-10-28): wir arbeiten zu zweit, Paul committet/pusht selbst.
-* Danach: Gesamtstand an Paul; er merged/released erst den Plugin-Fix.
+* **Gebaut & gepusht** (`web-factory-goon`, Inc 0–4): Core stempelt `origin` fill-if-null am
+  Turn-Besitzer (`OwnerMonitor`, Emitter `call`/`compact`/`buildStaticMessages`), Loop-Zuordnung
+  über `LoopOwner` (`LoopOwner.NONE = named(null, dev)`) — **keine** Tool-Call-Id-Buchführung
+  (ADR-0078 Decision 6). Fabrik-Filter: Mitglieder-Zeilen fallen per gestempeltem `origin`
+  (`isJon(origin)` + Null-Fallback), `delegated`-SSE-Event entfällt. Namen: Jon/Plan/Dev/Review,
+  Sub-Loops `Search`/`Compact` ([ADR-0079](../../docs/adr/0079-display-names-without-ork-names.md)).
+* **UC-WP-39/40 ✅** — `TeamInternalsTest`/`DelegatedAnswerTest`/`ProjectRuntimeTest` belegen es,
+  [chat.md](chat.md) ist nachgezogen.
+* **AF-ADR-002** teilweise abgelöst; aifactory-architektur.md nachgezogen.
+* **Offen (Paul):** Browser-Proof Fabrik auf 8099 + Plugin-Harness (`test-chat.html`) — manuelle
+  Nachweise; Details in [../../docs/memory.md](../../docs/memory.md).
 
 ## Code-Stand
 
 | Inc | Inhalt | Stand |
 |-----|--------|-------|
-| 1 · 2a–d · 3a–e · 3-H | Registry/Clone, Auslieferung, Config-Datei + Seite, Chat (Queue, SSE, Verlauf) | ✅ reviewt |
-| 3f | Herkunft + Team-Antwort | Core-Teil zurückgebaut ([AF-ADR-002](adr/002-origin-in-core-display-in-factory.md)), UC-WP-39/40 ❌ |
-| 4a-2…4b-2 | Schreib-Pinning, Datei-Bereich | gebaut, nicht reviewt, Marker ❌ |
+| 1 · 2a–d · 3a–e · 3-H · 4a-2…4b-2 | Registry/Clone, Auslieferung, Config, Chat, Schreib-Pinning, Datei-Bereich | gebaut; Inc 4 Review fehlt (geparkt) |
+| 3f | Herkunft + Team-Antwort | gebaut (Origin-Reihe Inc 0–4, UC-WP-39/40 ✅) |
 | 5 · 6 | Kacheln (UC-WP-11/12/13) · Nutzername (UC-WP-25) | nicht gebaut |
 
-* **Fabrik-Code kompiliert nicht** (bewusst). Wiederaufnahme: `done`/`error` aus `jon.call()` in
-  `ProjectRuntime`; 3f-Teile (`delegated`, `AgentNames`, Filter) auf Delegations-Tool-Result umbauen.
-* Plan `aifactory/peon-plan/overview.md` = Inc 4 (Review fehlt) — vor neuem Plan archivieren.
 * `ProcessCommandRunner.java:29-34` `BatchMode=yes` als Env-Var wirkungslos → Fix mit R-CR-7.
 * Bug: Custom Agent mit Built-in-Namen überschreibt still (`AgentService.java:180-202`) → Agent-Datei-Feature.
 
@@ -38,4 +36,5 @@ den Feature-Docs (siehe [Index](index.md)), nicht hier.
 * `MockLlmServer`: kein `getRequestCount()`, fängt keine `system`-Nachrichten; `@P(name=…)` für Tool-Namen.
 * Guards `OneChatPerProjectTest`/`SharedProjectChatTest` (DTO-Feldliste + Verbotliste) nicht anfassen.
 * Port 8080 = IDE → Nachweise auf 8099; `~/.peon` vor/nach vergleichen.
-* Lint immer mit `docRoots`/`testRoots` eingeschränkt.
+* Lint immer mit `docRoots`/`testRoots` eingeschränkt; **Plan-Gate**: `lintDocsAndTests` je Inkrement,
+  umgeschriebene Tests behalten ihre `// UC-…`-Anker (sonst UNBELEGT beim ✅-Flip).

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -46,6 +47,12 @@ public class MockLlmServer {
     private final ConcurrentLinkedQueue<Object> responseQueue = new ConcurrentLinkedQueue<>();
     private final List<ChatMessage> capturedMessages = new ArrayList<>();
     private final AtomicReference<String> lastRequestBody = new AtomicReference<>();
+    /**
+     * Every request body in arrival order — {@link #lastRequestBody} keeps only the newest, so a turn
+     * that delegates cannot be inspected per speaker through it (the last body is always the outermost
+     * agent's closing call).
+     */
+    private final List<String> requestBodies = new CopyOnWriteArrayList<>();
     private List<String> modelIds = List.of("gpt-4o", "mock-model");
     private boolean modelsEndpointError = false;
     private boolean forceNonStreaming = false;
@@ -121,6 +128,7 @@ public class MockLlmServer {
         responseQueue.clear();
         capturedMessages.clear();
         lastRequestBody.set(null);
+        requestBodies.clear();
         modelIds = List.of("gpt-4o", "mock-model");
         modelsEndpointError = false;
         forceNonStreaming = false;
@@ -165,6 +173,14 @@ public class MockLlmServer {
 
     public String getLastRequestBody() {
         return lastRequestBody.get();
+    }
+
+    /**
+     * Every request body of the current script in arrival order — what a delegated turn looks like
+     * per speaker, where {@link #getLastRequestBody()} can only ever show the outermost agent.
+     */
+    public List<String> getRequestBodies() {
+        return List.copyOf(requestBodies);
     }
 
     public List<ChatMessage> getCapturedMessages() {
@@ -252,7 +268,7 @@ public class MockLlmServer {
     		}
     		
     		String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-    		lastRequestBody.set(requestBody);
+    		captureRequestBody(requestBody);
     		captureMessages(requestBody);
     		
     		Object queued = responseQueue.poll();
@@ -299,7 +315,7 @@ public class MockLlmServer {
                 return;
             }
             String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-            lastRequestBody.set(requestBody);
+            captureRequestBody(requestBody);
             sendAnthropicSse(exchange, pollContent());
         } finally {
             exchange.close();
@@ -318,7 +334,7 @@ public class MockLlmServer {
                 return;
             }
             String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-            lastRequestBody.set(requestBody);
+            captureRequestBody(requestBody);
             sendOllamaNdjson(exchange, pollContent());
         } finally {
             exchange.close();
@@ -469,6 +485,15 @@ public class MockLlmServer {
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    /**
+     * The one capture point of every provider endpoint: the newest body plus the arrival-ordered
+     * history. A new endpoint that forgets this leaves {@link #getRequestBodies()} silently short.
+     */
+    private void captureRequestBody(String requestBody) {
+        lastRequestBody.set(requestBody);
+        requestBodies.add(requestBody);
+    }
 
     private void captureMessages(String requestBody) {
         try {

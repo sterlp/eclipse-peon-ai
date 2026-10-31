@@ -1,5 +1,3 @@
-# AGENTS-PO.md — Ergänzungen für Peon-PO (Jon)
-
 > projekt-lokal, experimentell — **nur Ergänzungen** zum System-Prompt (`po.md`), keine
 > Wiederholung dessen.
 
@@ -14,12 +12,10 @@
 
 - Da Dok meldet im Review den Skill-Evolution-Outcome + Evidence (Gate-Phase) — der Befund ist
   Evolve-Input.
-- Team-Order im Header: Da Boss · Da Thinka · Da Mek · Da Dok.
 
 ## Architektur-Docs
 
 - Architektur-Doc schreiben oder prüfen → skillRead `architecture-doc` (Regeln + Template dort).
-- **Drift:** weicht der Bau ab, Abweichung als ADR begründen.
 
 ## Iteration-End-Summary (PO an User)
 

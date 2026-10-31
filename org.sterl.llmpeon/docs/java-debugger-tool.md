@@ -21,7 +21,7 @@ idPrefix: JD
 
 ## Ziel
 
-Da Mek kann eine **vom User gestartete** Debug-Session lesen und ändern — Debugging als Dialog zwischen
+Dev kann eine **vom User gestartete** Debug-Session lesen und ändern — Debugging als Dialog zwischen
 User (besitzt/managt die Session) und LLM (Hilfe: Zustand interpretieren, Variablen ändern, Breakpoints
 setzen, Steps). Weil die Session User-Property ist, brauchen wir **keine Confirmations**.
 
@@ -84,7 +84,7 @@ der User sieht jede Änderung unmittelbar im Debug-UI.
 
 ### R-JD-5 — Tool für den Dev-Agenten ✅
 
-Das Tool gehört Da Meks Toolset (`isEditTool() = true`, Registrierung in `SharedToolsComponent`);
+Das Tool gehört zum Toolset von Dev (`isEditTool() = true`, Registrierung in `SharedToolsComponent`);
 Plan-/Review-/Search-/ReadOnly-Custom-Agents filtern es automatisch raus. Auswirkung nur auf die
 debuggte App. Allowlist-Präfix für Custom Agents: `debugJava` (Naming: ADR-0054).
 

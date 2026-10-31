@@ -236,11 +236,11 @@ class AgentServiceTest extends AbstractMemoryFileTest {
         subject.get("docs").orElseThrow().getMemory().add(UserMessage.from("docs"));
 
         // THEN
-        assertThat(Files.exists(stateDir.resolve("Peon-Dev-history.jsonl"))).isTrue();
-        assertThat(Files.exists(stateDir.resolve("Peon-Plan-history.jsonl"))).isTrue();
+        assertThat(Files.exists(stateDir.resolve("Dev-history.jsonl"))).isTrue();
+        assertThat(Files.exists(stateDir.resolve("Plan-history.jsonl"))).isTrue();
         assertThat(Files.exists(stateDir.resolve("docs-history.jsonl"))).isTrue();
         assertThat(Files.list(stateDir).map(p -> p.getFileName().toString()))
-                .containsExactlyInAnyOrder("Peon-Dev-history.jsonl", "Peon-Plan-history.jsonl", "docs-history.jsonl");
+                .containsExactlyInAnyOrder("Dev-history.jsonl", "Plan-history.jsonl", "docs-history.jsonl");
     }
 
     /** ADR-0041 R2: dev/plan/custom agents carry their store under the injected stateDir. */
@@ -254,9 +254,9 @@ class AgentServiceTest extends AbstractMemoryFileTest {
 
         // WHEN / THEN — the durable agents expose their history file under the injected stateDir
         assertThat(subject.get(AiDevAgent.NAME).orElseThrow().getMemory().historyFile())
-                .hasValue(stateDir.resolve("Peon-Dev-history.jsonl"));
+                .hasValue(stateDir.resolve("Dev-history.jsonl"));
         assertThat(subject.get(AiPlanAgent.NAME).orElseThrow().getMemory().historyFile())
-                .hasValue(stateDir.resolve("Peon-Plan-history.jsonl"));
+                .hasValue(stateDir.resolve("Plan-history.jsonl"));
         assertThat(subject.get("docs").orElseThrow().getMemory().historyFile())
                 .hasValue(stateDir.resolve("docs-history.jsonl"));
     }
@@ -274,7 +274,7 @@ class AgentServiceTest extends AbstractMemoryFileTest {
         var orderFile = agentsDir.resolve("agent-order.txt");
         assertThat(orderFile).exists();
         var content = Files.readString(orderFile);
-        assertThat(content).contains("^Peon-PO$");
+        assertThat(content).contains("^Jon$");
     }
 
     @Test

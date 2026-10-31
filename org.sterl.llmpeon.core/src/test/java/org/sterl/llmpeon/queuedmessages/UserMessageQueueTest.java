@@ -244,6 +244,177 @@ class UserMessageQueueTest {
         // THEN returns true (new entry, window expired) → UI shows "Noted..."
         assertThat(result).isTrue();
     }
+    // ========== Rule 8: Urgent-Lane ("!") ==========
+
+    @Test
+    void urgentLaneNeverJoinsNormalEntries() {
+        // GIVEN a batch window that has not expired
+        var queue = new UserMessageQueue(200, new MutableClock());
+
+        // WHEN - normal, urgent, normal all land inside that one window
+        queue.add("n1");
+        queue.addUrgent("u1");
+        queue.add("n2");
+
+        // THEN - the normal lane joined as usual, the urgent entry stayed on its own lane
+        assertThat(queue.size()).isEqualTo(2);
+        assertThat(queue.drainUrgent()).extracting(e -> e.text()).containsExactly("u1");
+        assertThat(queue.pollNext().text()).isEqualTo("n1" + System.lineSeparator() + "n2");
+    }
+
+    @Test
+    void addUrgent_neverBatchesWithItself() {
+        // GIVEN
+        var queue = new UserMessageQueue(10_000, new MutableClock());
+
+        // WHEN - two urgent messages, no gap at all
+        queue.addUrgent("u1");
+        queue.addUrgent("u2");
+
+        // THEN - two entries, insertion order, nothing merged (R11 delivers them one per line)
+        assertThat(queue.drainUrgent()).extracting(e -> e.text()).containsExactly("u1", "u2");
+    }
+
+    @Test
+    void addUrgent_ignoresBlank() {
+        // GIVEN - a lone "!" reaches the queue as blank text (R8.6: consumed, nothing queued)
+        var queue = new UserMessageQueue(200, new MutableClock());
+
+        // WHEN
+        queue.addUrgent(null);
+        queue.addUrgent("   ");
+
+        // THEN
+        assertThat(queue.size()).isZero();
+        assertThat(queue.drainUrgent()).isEmpty();
+    }
+
+    @Test
+    void addUrgent_doesNotResetTheNormalBatchWindow() {
+        // GIVEN a normal entry whose window has almost expired
+        var clock = new MutableClock();
+        var queue = new UserMessageQueue(100, clock);
+        queue.add("n1");
+
+        // WHEN - an urgent entry arrives inside that window, and a second normal message only after
+        // the window expired (80 + 60 > 100 since the urgent entry)
+        clock.advance(80);
+        queue.addUrgent("u1");
+        clock.advance(60);
+        queue.add("n2");
+
+        // THEN - the urgent message neither joined nor extended the burst window: the late normal
+        // message still starts its own entry (D6)
+        assertThat(queue.size()).isEqualTo(3);
+        assertThat(queue.pollNext().text()).isEqualTo("n1");
+        assertThat(queue.pollNext().text()).isEqualTo("u1");
+        assertThat(queue.pollNext().text()).isEqualTo("n2");
+    }
+
+    @Test
+    void pollNextTakesTheEarlierEntryAcrossBothLanes() {
+        // GIVEN an urgent entry that is OLDER than the normal one
+        var clock = new MutableClock();
+        var queue = new UserMessageQueue(10_000, clock);
+        queue.addUrgent("u-early");
+        clock.advance(10);
+        queue.add("n-late");
+
+        // WHEN/THEN - FIFO over both lanes: urgent only gets there earlier, it never jumps (R8.3)
+        assertThat(queue.pollNext().text()).isEqualTo("u-early");
+        assertThat(queue.pollNext().text()).isEqualTo("n-late");
+
+        // AND - the reverse direction holds as well
+        queue.add("n-early");
+        clock.advance(10);
+        queue.addUrgent("u-late");
+        assertThat(queue.pollNext().text()).isEqualTo("n-early");
+        assertThat(queue.pollNext().text()).isEqualTo("u-late");
+    }
+
+    @Test
+    void pollNextOnATimestampTieTakesTheNormalLaneFirst() {
+        // GIVEN both lanes stamped with the same millisecond (a fixed clock has no resolution)
+        var queue = new UserMessageQueue(10_000, new MutableClock());
+        queue.addUrgent("u1");
+        queue.add("n1");
+
+        // WHEN/THEN - stable order, normal lane first (D5)
+        assertThat(queue.pollNext().text()).isEqualTo("n1");
+        assertThat(queue.pollNext().text()).isEqualTo("u1");
+    }
+
+    @Test
+    void drainAllEntriesKeepsBothLanesSeparateInInsertionOrder() {
+        // GIVEN one normal entry, one urgent, one normal - three distinct times, each past the window
+        var clock = new MutableClock();
+        var queue = new UserMessageQueue(5, clock);
+        queue.add("n1");
+        clock.advance(10);
+        queue.addUrgent("u1");
+        clock.advance(10);
+        queue.add("n2");
+
+        // WHEN
+        var entries = queue.drainAllEntries();
+
+        // THEN - ONE entry per queued message (no merging), ordered across lanes, queue empty
+        assertThat(entries).extracting(e -> e.text()).containsExactly("n1", "u1", "n2");
+        assertThat(entries).extracting(e -> e.queuedAt()).containsExactly(
+                BASE_EPOCH_MS, BASE_EPOCH_MS + 10, BASE_EPOCH_MS + 20);
+        assertThat(queue.size()).isZero();
+    }
+
+    @Test
+    void drainUrgentLeavesTheNormalLaneAndItsEntryAlone() {
+        // GIVEN
+        var queue = new UserMessageQueue(10_000, new MutableClock());
+        queue.add("n1");
+        queue.addUrgent("u1");
+
+        // WHEN
+        assertThat(queue.drainUrgent()).extracting(e -> e.text()).containsExactly("u1");
+
+        // THEN - the normal entry is still there to be answered as a follow-up
+        assertThat(queue.size()).isEqualTo(1);
+        assertThat(queue.pollNext().text()).isEqualTo("n1");
+    }
+
+    @Test
+    void drainAllMergesBothLanesInInsertionOrder() {
+        // GIVEN the abort/hand-over path: an urgent entry older than the following normal one
+        var clock = new MutableClock();
+        var queue = new UserMessageQueue(10_000, clock);
+        queue.addUrgent("u1");
+        clock.advance(10);
+        queue.add("n1");
+
+        // WHEN
+        var drained = queue.drainAll();
+
+        // THEN - one payload text, urgent first, stamped with the EARLIEST time (Rule 9)
+        assertThat(drained.text()).isEqualTo("u1" + System.lineSeparator() + "n1");
+        assertThat(drained.queuedAt()).isEqualTo(BASE_EPOCH_MS);
+        assertThat(queue.size()).isZero();
+    }
+
+    @Test
+    void sizeAndClearCoverBothLanes() {
+        // GIVEN
+        var queue = new UserMessageQueue(10_000, new MutableClock());
+        queue.add("n1");
+        queue.addUrgent("u1");
+
+        // WHEN
+        queue.clear();
+
+        // THEN - no lane survives a Clear, otherwise a stale urgent entry could still fire
+        assertThat(queue.size()).isZero();
+        assertThat(queue.pollNext()).isNull();
+        assertThat(queue.drainUrgent()).isEmpty();
+    }
+
+
 
     // ========== Rule 9: Queued-At Disclosure ==========
 

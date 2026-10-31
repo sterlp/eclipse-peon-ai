@@ -8,10 +8,10 @@ import org.sterl.llmpeon.shared.StringUtil;
 
 /**
  * Pure (SWT-free) render model for the plugin's agent-status widget. Maps an orchestrator's visible team
- * (a {@link NamedAgent} list — see {@code AiPoAgent.getTeam()}) to display rows {@code uiName (Xk)}.
+ * (a {@link AiAgent} list — see {@code AiPoAgent.getTeam()}) to display rows {@code getName() (Xk)}.
  * <p>
- * The first entry is the orchestrator itself (Da Boss); the rest are his slaves (Da Thinka, Da Mek, Da Dok).
- * The 🟢 sits on the working leaf: a slave glows while it works, and — the <b>leaf rule</b> — Da Boss
+ * The first entry is the orchestrator itself (Jon); the rest are his team (Plan, Dev, Review).
+ * The 🟢 sits on the working leaf: a slave glows while it works, and — the <b>leaf rule</b> — Jon
  * glows only when he works AND no slave is working. So Jon lights up while he composes himself, but
  * during delegation the busy slave carries the glow and his row stays calm. A member that is
  * compacting shows 🟡 instead of 🟢 (R-CT-4) — busy for the leaf rule, but visibly compacting.
@@ -27,7 +27,7 @@ public final class AiAgentStatusModel {
 
     /** One rendered row: the label {@code uiName (Xk)}, its {@link State} (🟢 working, 🟡 compacting),
      *  and whether it is a slave row ({@code i > 0}) — only slaves carry a per-agent compact button
-     *  (Da Boss stays compacted via the action bar). */
+     *  (Jon stays compacted via the action bar). */
     public record Entry(String text, State state, boolean slave) {
         public boolean working() { return state == State.WORKING; }
         public boolean compacting() { return state == State.COMPACTING; }
@@ -39,25 +39,24 @@ public final class AiAgentStatusModel {
 
     private AiAgentStatusModel() {}
 
-    /** Live entry point for the widget: reads {@code uiName} + live {@code isWorking()}/
+    /** Live entry point for the widget: reads {@code getName()} + live {@code isWorking()}/
      *  {@code isCompacting()}/context off each team member, then applies the pure {@link #build(List)} logic. */
-    public static List<Entry> rows(List<NamedAgent> team) {
+    public static List<Entry> rows(List<AiAgent> team) {
         if (team == null || team.isEmpty()) return List.of();
         var snapshot = new ArrayList<Row>(team.size());
-        for (var member : team) {
-            var agent = member.agent();
-            snapshot.add(new Row(member.uiName(), agent.getMemory().getTotalTokenUsed(),
+        for (var agent : team) {
+            snapshot.add(new Row(agent.getName(), agent.getMemory().getTotalTokenUsed(),
                     agent.isWorking(), agent.isCompacting(), agent.getMemory().isTokenEstimate()));
         }
         return build(snapshot);
     }
 
-    /** Pure core: first row is Da Boss (glows only if he works AND no slave below is busy), the rest
+    /** Pure core: first row is Jon (glows only if he works AND no slave below is busy), the rest
      *  carry their own dot — 🟢 on work, 🟡 on a compact (R-CT-4). Package-private on purpose — the
      *  headless-testable seam. */
     static List<Entry> build(List<Row> rows) {
         if (rows == null || rows.isEmpty()) return List.of();
-        // leaf rule: a busy slave keeps Da Boss dark — compacting counts as busy, not as working
+        // leaf rule: a busy slave keeps Jon dark — compacting counts as busy, not as working
         boolean anySlaveBusy = rows.stream().skip(1).anyMatch(r -> r.working() || r.compacting());
         var entries = new ArrayList<Entry>(rows.size());
         for (int i = 0; i < rows.size(); i++) {

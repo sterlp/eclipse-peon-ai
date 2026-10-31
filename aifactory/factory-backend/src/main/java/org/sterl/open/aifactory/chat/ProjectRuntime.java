@@ -1,24 +1,24 @@
 package org.sterl.open.aifactory.chat;
 
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.AiReviewAgent;
-import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
-import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.poagent.AiPoAgent;
-import org.sterl.llmpeon.tool.ToolResultAttributes;
+import org.sterl.llmpeon.poagent.tools.PoDelegateTool;
 import org.sterl.llmpeon.tool.WriteValidator;
+import org.sterl.llmpeon.tool.tools.SearchAgentTool;
 import org.sterl.open.aifactory.config.TurnNotConfiguredException;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -27,6 +27,7 @@ import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
  * One project's chat: its Jon, his team, his tools, and the serialization of his turns. A plain class on
@@ -41,8 +42,8 @@ final class ProjectRuntime {
 
     private static final Logger LOG = LoggerFactory.getLogger(ProjectRuntime.class);
 
-    /** What the browser is told to call the agent the conversation belongs to; the core calls him {@code Peon-PO}. */
-    private static final String JON_DISPLAY_NAME = "Jon";
+    /** This factory's label for a search result line — its own word, not the core's loop stamp ({@code SearchAgentTool.LOOP_NAME}). */
+    private static final String SEARCH_AGENT_DISPLAY_NAME = "Search";
 
     private final String projectId;
     private final Supplier<LlmConfig> configForTurn;
@@ -70,21 +71,21 @@ final class ProjectRuntime {
 
         JonToolSet toolSet = JonToolSet.forProject(projectRoot);
         WriteValidator writeValidator = toolSet.writeValidator();
-        NamedAgent plan = new NamedAgent("Da Thinka", new AiPlanAgent(model, toolSet.tools()));
-        NamedAgent review = new NamedAgent("Da Dok", new AiReviewAgent(model, toolSet.tools()));
-        NamedAgent dev = new NamedAgent("Da Mek", new AiDevAgent(model, toolSet.tools()) {
+        AiAgent plan = new AiPlanAgent(model, toolSet.tools());
+        AiAgent review = new AiReviewAgent(model, toolSet.tools());
+        AiAgent dev = new AiDevAgent(model, toolSet.tools()) {
             @Override
             public WriteValidator getWriteValidator() {
-                // UC-WP-8/9 name the team too, and the core default is ALLOW_ALL — Da Mek gets exactly
+                // UC-WP-8/9 name the team too, and the core default is ALLOW_ALL — Dev gets exactly
                 // Jon's two roots, from the same instance, so one rule has one source (R-WP-6)
                 return writeValidator;
             }
-        });
+        };
         // registered before the agent is built, otherwise Jon cannot delegate in his first turn; the
         // budget is a supplier so a changed config takes effect without a rebuild
         toolSet.addDelegateTool(plan, review, dev, () -> model.getConfig().getAutoCompactAfter());
 
-        // the team in the core's lifecycle order: Da Thinka, Da Mek, Da Dok (AiPoAgent.getTeam())
+        // the team in the core's lifecycle order: Plan, Dev, Review (AiPoAgent.getTeam())
         this.jon = new AiPoAgent(model, toolSet.tools(), stateDir, List.of(plan, dev, review)) {
             @Override
             public WriteValidator getWriteValidator() {
@@ -92,28 +93,54 @@ final class ProjectRuntime {
                 return writeValidator;
             }
         };
-        // the slaves' own naming is the core's job, this one line is the factory's (D6)
-        this.jon.setStaticContext(List.of(ContextItem.of("Your name is Da Boss.")));
+        // shared static context only — the identity lines are the core's job: this call is what hands
+        // every slave its own name (AiPoAgent.setStaticContext), a name of its own must never ride along
+        this.jon.setStaticContext(List.of());
 
-        // built from the pairs this factory made, so the product's names live in exactly one table (D1)
-        AgentNames table = AgentNames.ofJon(jon.getName(), JON_DISPLAY_NAME);
-        for (NamedAgent member : List.of(plan, dev, review)) {
-            table = table.add(member.agent().getName(), member.uiName());
-        }
-        this.names = table;
-        this.monitor = new SseTurnMonitor(projectId, streams, table);
+        // keyed by the core's tool names, filled with the names this factory built, so the product names
+        // a member in exactly one place (D1) and a history line needs no second record of its author
+        this.names = authorTable(plan.getName(), dev.getName(), review.getName());
+        this.monitor = new SseTurnMonitor(projectId, streams);
+    }
+
+    /**
+     * The one author table of a project's chat: the core's delegation tools, named by the team this
+     * factory built. Package-private and single — what is in here is what a history line can be
+     * attributed to, and a tool missing here is a line that silently stays unnamed.
+     */
+    static AgentNames authorTable(String planName, String devName, String reviewName) {
+        return AgentNames.empty()
+                .withTool(PoDelegateTool.TALK_PLAN, planName)
+                .withTool(PoDelegateTool.PLAN_WITH_PLAN_AGENT, planName)
+                .withTool(PoDelegateTool.ASK_DEV, devName)
+                .withTool(PoDelegateTool.BUILD_WITH_DEV, devName)
+                .withTool(PoDelegateTool.REVIEW_PLAN_AGENT, reviewName)
+                // the search sub-loop is a tool of the core, not a member of this team — R-WP-4 asks for
+                // the author of a line, not for a seat in the team
+                .withTool(SearchAgentTool.NAME, SEARCH_AGENT_DISPLAY_NAME);
     }
 
     /**
      * Fire and forget: the caller's thread is never a turn's thread, so the POST can answer while Jon is
      * still working (architecture doc "prüft nichts über den Turn hinaus"). A second input while he
      * works lands in his own queue — the core's serialization is the only one the factory needs (D2).
+     *
+     * <p>The duration starts <b>inside</b> the runnable — waiting for a worker thread is not part of the
+     * turn. One {@code done} per <b>turn</b>, queue drain included: the architecture doc ends a turn when
+     * {@code call()} returns, and {@code call()} answers what queued up while it ran. An input that came
+     * in while he worked is answered by that turn and by its {@code done}, so it sends none of its
+     * own.</p>
      */
     void submit(String text) {
         turns.submit(() -> {
+            long startedAt = System.nanoTime();
             try {
                 model.updateConfig(configForTurn.get());
-                jon.call(text, monitor);
+                ChatResponse answer = jon.call(text, monitor);
+                if (answer != null) {
+                    streams.publish(projectId,
+                            new ChatEvent.Done(Duration.ofNanos(System.nanoTime() - startedAt).toMillis()));
+                }
             } catch (TurnNotConfiguredException notConfigured) {
                 streams.publish(projectId, new ChatEvent.Failed(notConfigured.getMessage()));
             } catch (RuntimeException failure) {
@@ -149,30 +176,30 @@ final class ProjectRuntime {
                 }
             } else if (message instanceof AiMessage answer && !answer.hasToolExecutionRequests()
                     && answer.text() != null && !answer.text().isBlank()) {
-                lines.add(ChatLine.jon(answer.text(), names.display(jon.getName())));
+                lines.add(ChatLine.jon(answer.text(), jon.getName()));
             }
         }
         return List.copyOf(lines);
     }
 
     /**
-     * The final answer a member handed Jon, read from the two attributes the core attached to its own
-     * tool result: the <b>pure</b> text, not the status line the model additionally receives, and the
-     * member as this factory names him. Any other tool result stays no chat line, and so does a result
-     * naming an agent this factory never built — it could not be named honestly (D9).
+     * The final answer a member handed Jon: the result of the tool that is its delegation, told apart
+     * from an ordinary tool result by its <b>tool name</b> alone. Two delegations in one answer of Jon's
+     * are two result messages, each carrying its own tool name — which is why reading them back needs
+     * neither the tool-call id nor a place to remember an order (ADR-0078 Decision 6).
+     *
+     * <p>The text is the result <b>verbatim</b>, statistics line included: it is the same text the model
+     * reads, and shortening it would be the factory's guess about what matters. That includes a failed
+     * tool — a failure is a line with an author like any other (UC-WP-40), so nothing here filters by
+     * text. A tool this table does not know stays no line, and neither does a result that is not one
+     * text ({@code text()} would throw on it).</p>
      */
     private ChatLine finalTeamAnswerOf(ToolExecutionResultMessage result) {
-        Map<String, Object> attributes = result.attributes();
-        if (attributes == null) {
+        String author = names.authorOf(result.toolName());
+        if (author == null || !result.hasSingleText()) {
             return null;
         }
-        Object agent = attributes.get(ToolResultAttributes.DELEGATED_AGENT);
-        Object answer = attributes.get(ToolResultAttributes.DELEGATED_ANSWER);
-        if (!(agent instanceof String coreId) || !(answer instanceof String text) || text.isBlank()) {
-            return null;
-        }
-        String origin = names.display(coreId);
-        return origin == null ? null : ChatLine.jon(text, origin);
+        return ChatLine.jon(result.text(), author);
     }
 
     /** Jon himself — reachable without a rebuild for the team view and {@code clear()} of Inc 5. */

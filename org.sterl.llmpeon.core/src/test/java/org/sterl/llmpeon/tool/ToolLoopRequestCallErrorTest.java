@@ -47,7 +47,7 @@ class ToolLoopRequestCallErrorTest {
         return ToolLoopRequest.builder()
                 .memory(new ThreadSafeMemory())
                 .chatModel(chatModel)
-                .agentConfig(agentConfig)
+                .owner(LoopOwner.named(null, base -> agentConfig))
                 .bridge(new StreamingBridge() {
                     @Override
                     public ChatResponse call(StreamingChatModel model, ChatRequest request, AiMonitor monitor, Instant startedAt) {
@@ -170,7 +170,7 @@ class ToolLoopRequestCallErrorTest {
                 .chatModel(new ConfiguredChatModel(
                         LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", AGENT_URL),
                         new StreamMock().buildMock(chatRequest -> { throw jdkEnvelope; })))
-                .agentConfig(AgentConfig.builder().provider(AiProvider.OLLAMA).model("test-model").build())
+                .owner(LoopOwner.named(null, base -> AgentConfig.builder().provider(AiProvider.OLLAMA).model("test-model").build()))
                 .build();
 
         var thrown = assertThrows(RuntimeException.class, () -> request.call(REQUEST));

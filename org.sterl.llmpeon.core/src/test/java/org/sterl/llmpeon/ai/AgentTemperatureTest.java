@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.provider.LlmProviders;
+import org.sterl.llmpeon.tool.LoopOwner;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 
@@ -103,7 +104,7 @@ class AgentTemperatureTest {
         new ToolService(false).executeLoop(ToolLoopRequest.builder()
                 .memory(memory)
                 .chatModel(new ConfiguredChatModel(config))
-                .agentConfig(agent)
+                .owner(LoopOwner.named(null, base -> agent))
                 .build());
     }
 }

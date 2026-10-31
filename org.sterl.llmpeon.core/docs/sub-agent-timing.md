@@ -4,7 +4,7 @@
 
 The tools that run a **sub-agent** (a nested LLM loop) can take a while, and the chat only shows a
 short progress line. That line should say **how long the sub-agent worked**, so the user sees where the
-time went — e.g. `Da Thinka done. (3s)`.
+time went — e.g. `Plan done. (3s)`.
 
 ## Scope — the three sub-agent tools
 
@@ -12,9 +12,9 @@ Exactly the tools that dispatch a nested agent get the timing; ordinary tools do
 
 | Tool | Sub-agent | UI display name | Done line |
 | --- | --- | --- | --- |
-| `PoDelegateTool` (`talkPlan` / `planWithPlanAgent` / `askDev` / `buildWithDev`) | Jon's Da Thinka / Da Mek | **Da Thinka** / **Da Mek** | `Da Thinka done. (3s)` / `Da Mek done. (12s)` |
-| `SearchAgentTool` (`searchAgent`) | the search sub-agent | **Da Sniffa** | `Da Sniffa done. (12s)` |
-| `CompactSessionTool` (`compactSession`) | the `AiCompressorAgent` | **Da Scribe** | seit R-CT-8 (2026-10-24) entfallen: die alte `🗜 Da Scribe done for <agent>. (1m 5s) (N chars)`-Zeile ist durch die uniforme Compact-End-Zeile `🗜 <Agent> compacted: … (Ns, HH:mm) (N chars)` ersetzt ([compact-lock.md](compact-lock.md) R-CT-8) — das Tool emittiert selbst nichts mehr |
+| `PoDelegateTool` (`talkPlan` / `planWithPlanAgent` / `askDev` / `buildWithDev`) | Jon's Plan / Dev | **Plan** / **Dev** | `Plan done. (3s)` / `Dev done. (12s)` |
+| `SearchAgentTool` (`searchAgent`) | the search sub-agent | **Search** | `Search done. (12s)` |
+| `CompactSessionTool` (`compactSession`) | the `AiCompressorAgent` | **Compact** | seit R-CT-8 (2026-10-24) entfallen: die alte `🗜 Compact done for <agent>. (1m 5s) (N chars)`-Zeile ist durch die uniforme Compact-End-Zeile `🗜 <Agent> compacted: … (Ns, HH:mm) (N chars)` ersetzt ([compact-lock.md](compact-lock.md) R-CT-8) — das Tool emittiert selbst nichts mehr |
 
 Compaction is no longer invisible since R-CT-8 (2026-10-24): the uniform Compact-End-Zeile
 ([compact-lock.md](compact-lock.md)) reports start, end and duration — `CompactSessionTool`
@@ -22,10 +22,10 @@ emits nothing itself.
 
 ### Display names are UI-only
 
-The Ork-flavoured names live **only** in the `onTool` progress lines, for a nicer chat. They are **not**
-tool names and **not** part of any LLM-facing text: the `@Tool` names stay functional
+The role names are the agents' **display names** (ADR-0079) and appear in the `onTool` progress
+lines for a readable chat. They are **not** tool names: the `@Tool` names stay functional
 (`talkPlan`/`planWithPlanAgent`/`askDev`/`buildWithDev`/`searchAgent`/`compactSession`), and the fallback/error results the model
-reads keep the plain role names (`Da Thinka returned no result`, `Search agent failed …`). So the
+reads keep the plain role names (`Plan returned no result`, `Search agent failed …`). So the
 names can be re-flavoured freely without touching model behaviour — and the timing tests assert the
 `done. (Ns)` suffix, not the name.
 
@@ -48,8 +48,8 @@ THEN the elapsed wall-clock of that call is measured (monotonic clock)
 
 The elapsed time is appended to the tool's **done** progress line as ` (<elapsed>)`.
 
-- `PoDelegateTool`: `"<display name> done. (3s)"` (display name = `Da Thinka` / `Da Mek`).
-- `SearchAgentTool`: `"Da Sniffa done. (12s)"` — timing is reported only on the **success** path; a
+- `PoDelegateTool`: `"<display name> done. (3s)"` (display name = `Plan` / `Dev`).
+- `SearchAgentTool`: `"Search done. (12s)"` — timing is reported only on the **success** path; a
   failed search still reports via `onProblem` (unchanged), no timing.
 - `CompactSessionTool`: **keine eigene Done-Zeile mehr** — die uniforme Compact-End-Zeile
   (R-CT-8, [compact-lock.md](compact-lock.md)) übernimmt Dauer, Uhrzeit, Ergebnisgröße und
@@ -58,14 +58,14 @@ The elapsed time is appended to the tool's **done** progress line as ` (<elapsed
 **BDD:**
 ```
 GIVEN Jon's Plan slave finishes after ~3 seconds
-THEN the progress line reads "Da Thinka done. (3s)"
+THEN the progress line reads "Plan done. (3s)"
 
 GIVEN the search agent finishes after ~12 seconds
-THEN the progress line reads "Da Sniffa done. (12s)"
+THEN the progress line reads "Search done. (12s)"
 
 GIVEN a compaction finishes after ~65 seconds
 THEN the uniform compact end line "🗜 <agent> compacted: … (1m 5s, HH:mm) (N chars)" is emitted
-     (R-CT-8 — compaction is no longer invisible; no separate "Da Scribe done" line)
+     (R-CT-8 — compaction is no longer invisible; no separate "Compact done" line)
 
 GIVEN the search agent fails
 THEN it reports the problem as before, with no timing line

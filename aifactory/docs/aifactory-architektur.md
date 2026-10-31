@@ -100,10 +100,13 @@ sequenceDiagram
 * **Ereignis-Namen, jeder mit Besitzer:** `partial` (ein Token-Delta), `tool` (eine Werkzeug-/
   Problem-Zeile), `done`, `error`. `done`/`error` sendet `ProjectRuntime`, wenn `jon.call()`
   zurückkehrt bzw. wirft — **kein** Monitor-Event (ein Mitglieds-Ende ist kein Turn-Ende).
-* **Finale Team-Antwort (UC-WP-39/40):** die Fabrik liest sie aus dem, was der Core schon liefert —
-  live das Werkzeug-Ergebnis der Delegation, im Verlauf die `ToolExecutionResultMessage` in Jons
-  History; der Urheber kommt aus einer festen Zuordnung Werkzeugname → Mitglied in `chat`. Kein
-  Core-Eingriff ([AF-ADR-002](adr/002-origin-in-core-display-in-factory.md)).
+* **Finale Team-Antwort (UC-WP-39/40):** im Verlauf liest die Fabrik die `ToolExecutionResultMessage`
+  in Jons History; der Urheber kommt aus einer festen Zuordnung Werkzeugname → Mitglied in `chat`.
+  Live gibt es **keinen** Werkzeug-Ergebnis-Kanal — die Mitglieder-Zeile erscheint bei `done`, live
+  sichtbar ist nur Jons Werkzeug-Zeile der Delegation; das `delegated`-SSE-Event entfällt. Die
+  Live-Trennung Jon/Mitglied läuft allein über den vom Core gestempelten `origin`
+  ([ADR-0078](../../docs/adr/0078-origin-in-core-owner-monitor.md)) — keine Id-Buchführung für offene
+  Delegationen, das Web zeigt Zeilen mit Mitglieds-Origin grundsätzlich nicht.
 * **Chat-Rebuild nach Compact:** dieselbe Regel wie im Plugin —
   [R-CT-7](../../org.sterl.llmpeon.core/docs/compact-lock.md) (`onCompactCompleted` mit dem angezeigten
   Agenten als Absender → neu aus dem Verlauf aufbauen).
@@ -182,7 +185,7 @@ factory-ui/
 
 | Braucht die Factory | nutzt sie |
 |---|---|
-| Jon + Team | `AiPoAgent(ConfiguredChatModel, ToolService, historyDir, List<NamedAgent>)`, `AiPlanAgent`/`AiDevAgent`/`AiReviewAgent`, `PoDelegateTool`, `SearchAgentTool` |
+| Jon + Team | `AiPoAgent(ConfiguredChatModel, ToolService, historyDir, List<AiAgent>)`, `AiPlanAgent`/`AiDevAgent`/`AiReviewAgent`, `PoDelegateTool`, `SearchAgentTool` |
 | Tools ohne Eclipse | `ToolService(true)` + `DiskFileReadTool`/`DiskFileWriteTool`/`DiskGrepTool`/`DocsLinterTool`/`DocsIdTool`/`WebGetTool`, `ShellTool.setDefaultWorkingDir` |
 | Schreib-Pinning | `DynamicRootsWriteValidator` je Agent (Projekt-Root + TMP bzw. `stories/<nutzer>/` + `proposals/<nutzer>/`) |
 | Konfiguration | eigener `LlmConfigStore` der Factory (siehe Konflikt unten), `LlmConfigLoader.load(store)` |

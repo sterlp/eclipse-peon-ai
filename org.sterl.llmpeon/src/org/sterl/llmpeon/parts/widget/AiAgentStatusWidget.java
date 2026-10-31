@@ -14,19 +14,19 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.sterl.llmpeon.agent.AiAgentStatusModel;
 import org.sterl.llmpeon.agent.AiAgentStatusModel.Entry;
-import org.sterl.llmpeon.agent.NamedAgent;
+import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.parts.shared.EclipseUiUtil;
 import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.parts.shared.SwtUtil;
 
 /**
- * Header status of the active orchestrator's team: one row per {@link NamedAgent} it exposes (e.g.
- * {@code Da Boss (12k)} · {@code Da Thinka (0k)} · {@code Da Mek (0k)}). A green ball 🟢 marks the
- * working leaf — a busy slave glows, while Da Boss glows only when he works with nothing delegated
+ * Header status of the active orchestrator's team: one row per {@link AiAgent} it exposes (e.g.
+ * {@code Jon (12k)} · {@code Plan (0k)} · {@code Dev (0k)}). A green ball 🟢 marks the
+ * working leaf — a busy slave glows, while Jon glows only when he works with nothing delegated
  * (the leaf rule lives in {@link AiAgentStatusModel}). A member that is compacting its context shows
  * 🟡 instead (R-CT-4). Each slave row carries a flat compact
- * button (tooltip {@code Compact Da X}); clicking it compresses exactly that agent via the
- * {@code onSlaveCompactClick} callback — Da Boss has none (the action bar owns his compact).
+ * button (tooltip {@code Compact <name>}); clicking it compresses exactly that agent via the
+ * {@code onSlaveCompactClick} callback — Jon has none (the action bar owns his compact).
  * An empty team (any non-PO agent) renders nothing.
  * <p>
  * Flat structure: label and button are DIRECT children of this composite — no per-member
@@ -49,16 +49,16 @@ public class AiAgentStatusWidget extends Composite {
 
     /** One rendered team member: its label and (slaves only) compact button + icon — all direct
      *  children of this composite (flat structure, see class javadoc). */
-    private record Row(NamedAgent member, Image icon, Label label, Button button) {}
+    private record Row(AiAgent member, Image icon, Label label, Button button) {}
 
-    private final Supplier<List<NamedAgent>> team;
-    private final Consumer<NamedAgent> onSlaveCompactClick;
+    private final Supplier<List<AiAgent>> team;
+    private final Consumer<AiAgent> onSlaveCompactClick;
     private final Supplier<Boolean> turnInFlight;
     private final List<Row> rows = new ArrayList<>();
 
     public AiAgentStatusWidget(Composite parent, int style,
-            Supplier<List<NamedAgent>> team,
-            Consumer<NamedAgent> onSlaveCompactClick,
+            Supplier<List<AiAgent>> team,
+            Consumer<AiAgent> onSlaveCompactClick,
             Supplier<Boolean> turnInFlight) {
         super(parent, style);
         this.team = team;
@@ -68,7 +68,7 @@ public class AiAgentStatusWidget extends Composite {
         RowLayout layout = new RowLayout(SWT.HORIZONTAL);
         layout.pack = true;
         // this SWT generation defaults wrap=true — the roster must never grow a second line,
-        // overflow clips from the right (Da Dok drops first)
+        // overflow clips from the right (Review drops first)
         layout.wrap = false;
         layout.center = true;
         layout.spacing = 2; // small gap between a member's label and its compact button
@@ -96,7 +96,7 @@ public class AiAgentStatusWidget extends Composite {
             r.label().setText(text(i, e));
             if (r.button() != null) {
                 r.button().setEnabled(
-                        AiAgentStatusModel.compactEnabled(r.member().agent().isWorking(), turnInFlight.get()));
+                        AiAgentStatusModel.compactEnabled(r.member().isWorking(), turnInFlight.get()));
             }
         }
 
@@ -115,7 +115,7 @@ public class AiAgentStatusWidget extends Composite {
     }
 
     /** Disposes and rebuilds every row — only when the team size changes (agent switch). */
-    private void rebuild(List<NamedAgent> members, List<Entry> entries) {
+    private void rebuild(List<AiAgent> members, List<Entry> entries) {
         for (var r : rows) {
             r.label().dispose();
             if (r.button() != null) r.button().dispose();
@@ -131,11 +131,11 @@ public class AiAgentStatusWidget extends Composite {
 
             Image icon = null;
             Button button = null;
-            if (entry.slave()) { // Da Boss row: no button — the action bar owns his compact
+            if (entry.slave()) { // Jon's row: no button — the action bar owns his compact
                 icon = ImageUtil.loadImage(this,
                         EclipseUiUtil.DARK_THEME_NAME.equals(EclipseUiUtil.resolveTheme())
                                 ? ImageUtil.COMPACT_DARK : ImageUtil.COMPACT);
-                button = SwtUtil.createIconButton(this, icon, "Compact " + member.uiName());
+                button = SwtUtil.createIconButton(this, icon, "Compact " + member.getName());
                 button.setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_HEADER_BAR_WIDGET);
                 button.addListener(SWT.Selection, e -> {
                     if (!isDisposed()) onSlaveCompactClick.accept(member);

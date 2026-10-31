@@ -11,7 +11,7 @@ idPrefix: MCW
 
 **Umsetzungs-Pflichten desselben Inkrements (alle umgesetzt in Inc-3/Inc-4):** Homepage
 `setup/advanced-configuration.md` + `configuration.md` wurden auf Live-Read + Fallback-Kette
-umgeschrieben. Skill „Eclipse Preferences Development" (`eclipse-preferences`) von Da Mek
+umgeschrieben. Skill „Eclipse Preferences Development" (`eclipse-preferences`) von Dev
 angelegt; die Quick-Section „Preference pages — read widget state, not the store" ist aus
 `eclipse-dpe` entfernt (verlagert, nicht doppelt).
 

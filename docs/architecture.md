@@ -121,7 +121,7 @@ AND its internals are extracted to *Components when they grow
 - **`AgentContextComponent`** — Turn-Context-Assembly (inkl. Scaffold-Zweig), Env-only `initStaticContext` ([ADR-0032](adr/0032-workspace-memory-dynamic-turn-context.md) Rev), Handoff-Line-State + Einmal-Konsum, Plan-IFile-State.
 - Keine upward calls: Components bekommen Werte + lazy Suppliers, nie den Service. Die Konstruktor-Reihenfolge im Service ist semantisch (PlanTool vor BuildPoAgentComponent, Static-Re-Bake vor UI-Callback) — nicht umsortieren.
 
-**Weitere Cleanups — Vorschlag von Da Mek (nicht umgesetzt):** AIChatView → SendLoopComponent (M),
+**Weitere Cleanups — Vorschlag von Dev (nicht umgesetzt):** AIChatView → SendLoopComponent (M),
 ToolService-Teilung im Core (M–L), updateConfig-Refresh parallelisieren (S–M).
 
 ## Constraints

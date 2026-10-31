@@ -42,9 +42,13 @@ andere Agenten aufrufbar und wandert damit ins generische Agent-Tool-System
 | `scaffold` | Scaffold | – | heute ohne Config-Slot |
 | `paco` | Paco | – | fachlicher PO; Prompt im Core, aktiv nur im Web ([aifactory/docs/paco.md](../../aifactory/docs/paco.md)) |
 
-Die Team-Namen **Da Thinka · Da Mek · Da Dok · Da Sniffa entfallen in V2** — nur Jon behält seinen
-Namen (Persönlichkeit). Folge: Prompts (`po.md`, Delegate-Tool-Beschreibungen) und Web-Chat-Absender
-(R-WP-4) zeigen dann die Anzeigenamen.
+**Vorgezogen (Paul 2026-10-30, V1 — [ADR-0079](../../docs/adr/0079-display-names-without-ork-names.md)):**
+die Team-Namen **Da Thinka · Da Mek · Da Dok · Da Sniffa entfallen jetzt**, nicht erst in V2 — die
+Anzeigenamen sind Jon · Plan · Dev · Review, die Sub-Loop-Stempel `Search`/`Compact`. Nur Jon behält
+seinen Namen (Persönlichkeit). **Config-Ids und `llm.agent.*`-Keys bleiben bis V2 unverändert.**
+Folge: Prompts (`po.md`, Delegate-Tool-Beschreibungen) und Web-Chat-Absender (R-WP-4) zeigen die
+Anzeigenamen. **History-Dateinamen** (`<getName()>-history.jsonl`) folgen dem Namen — bewusster
+Clean Break (ADR-0079), alte `Peon-*-history.jsonl` lassen sich bei Bedarf umbenennen.
 
 ## Abgrenzung
 
@@ -55,7 +59,7 @@ Namen (Persönlichkeit). Folge: Prompts (`po.md`, Delegate-Tool-Beschreibungen) 
 ## Offen
 
 - **`compact`** ist heute ein Config-Slot, kein Agent — bekommt er eine Datei?
-- **id `jon` statt `po`:** Config-Keys `llm.agent.po.*`, `AGENTS-PO.md`-Auflösung, History-Ordner —
+- **id `jon` statt `po`:** Config-Keys `llm.agent.po.*`, `AGENTS-JON.md`-Auflösung, History-Ordner —
   Da Mek prüft vor der Planung, was am alten Namen hängt.
 - **Namenskollision heute:** ein Custom Agent mit dem Namen eines Built-ins überschreibt diesen in
   `AgentService.reloadAgentConfig` bzw. erscheint doppelt — kein Guard. Mit diesem Feature wird daraus

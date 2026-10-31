@@ -1,6 +1,7 @@
 package org.sterl.open.aifactory.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -36,6 +37,7 @@ import dev.langchain4j.data.message.AiMessage;
 
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
+import org.sterl.llmpeon.poagent.AiPoAgent;
 import org.sterl.open.aifactory.AifactoryApplication;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
@@ -50,10 +52,11 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * Platte steht (R-WP-11).
  *
  * <p>Das ist zugleich die Antwort auf den offenen Punkt in
- * <code>aifactory/docs/open-points.md:6-13</code>: der Mechanismus ist <b>kein zweiter Speicher</b>.
- * Die finale Team-Antwort hängt als Attribut an Jons Werkzeug-Ergebnis in <em>einer</em> Datei, die der
- * Core ohnehin schreibt — deshalb liest der zweite Kontext sie, ohne das Modell ein zweites Mal zu
- * fragen, und die Home-Aufzählung bleibt, wie sie war.</p>
+ * <code>aifactory/docs/open-points.md:6-13</code>: der Urheber braucht <b>keinen zweiten Speicher</b>.
+ * Die Zuordnung liesst die Fabrik aus dem Werkzeugnamen, der an Jons Werkzeug-Ergebnis in <em>einer</em>
+ * Datei steht, die der Core ohnehin schreibt — dieser Lauf ist der Beweis, dass dieser Name den
+ * JSONL-Roundtrip übersteht. Der zweite Kontext liest sie, ohne das Modell ein zweites Mal zu fragen,
+ * und die Home-Aufzählung bleibt, wie sie war.</p>
  *
  * <p>Der Urheber wird durchgehend als Feld (<code>origin</code>) geprüft, nie als Text in einer Zeile:
  * ein Name im Text wäre ein geratener Name (R-WP-4).</p>
@@ -66,7 +69,7 @@ class DelegatedAnswerRestartTest {
     private static final String MEMBER_PROMPT = "MITGLIEDS-AUFGABE: nenne genau eine Frucht";
     private static final String MEMBER_ANSWER = "MITGLIEDS-ANTWORT: Birne";
     private static final String JON_ANSWER = "JONS-FOLGE-ANTWORT: die Birne";
-    private static final String QUESTION = "frag Da Mek nach einer Frucht";
+    private static final String QUESTION = "frag Dev nach einer Frucht";
 
     private static MockLlmServer model;
     private static Running beforeRestart;
@@ -123,12 +126,13 @@ class DelegatedAnswerRestartTest {
     // UC-WP-39
     void everyLineCarriesItsAuthor() throws IOException {
         assertThat(historyBeforeRestart)
-                .as("vor dem Neustart trägt jede Zeile ihren Urheber: die Team-Antwort nennt Da Mek, "
+                .as("vor dem Neustart trägt jede Zeile ihren Urheber: die Team-Antwort nennt Dev, "
                         + "Jons eigene Antwort nennt Jon, die getippte Eingabe niemanden")
+                .extracting(ChatMessageDto::role, ChatMessageDto::origin)
                 .containsExactly(
-                        new ChatMessageDto("user", QUESTION, null),
-                        new ChatMessageDto("jon", MEMBER_ANSWER, "Da Mek"),
-                        new ChatMessageDto("jon", JON_ANSWER, "Jon"));
+                        tuple("user", null),
+                        tuple("jon", "Dev"),
+                        tuple("jon", AiPoAgent.NAME));
         assertThat(historyBeforeRestart.get(0).origin())
                 .as("die Eingabe bleibt namenlos — kein System, kein ersonnener Nutzer (R-WP-4, R-WP-17)")
                 .isNull();
@@ -159,17 +163,21 @@ class DelegatedAnswerRestartTest {
     void onlyFinalAnswersFromTheTeam() {
         List<ChatMessageDto> historyAfterRestart = messages(afterRestart);
 
-        assertThat(historyAfterRestart.stream().filter(line -> "Da Mek".equals(line.origin())).toList())
-                .as("GIVEN 3: die Antwort des Mitglieds steht immer noch im Verlauf — genau einmal, "
-                        + "reiner Text, derselbe Name")
-                .containsExactly(new ChatMessageDto("jon", MEMBER_ANSWER, "Da Mek"));
+        assertThat(historyAfterRestart.stream().filter(line -> "Dev".equals(line.origin())).toList())
+                .as("GIVEN 3: die Antwort des Mitglieds steht immer noch im Verlauf — genau einmal, ihr"
+                        + " Werkzeug-Ergebnis wörtlich, derselbe Name")
+                .singleElement()
+                .satisfies(line -> assertThat(line.text())
+                        .startsWith(MEMBER_ANSWER + System.lineSeparator())
+                        .contains("Dev done."));
         assertThat(historyAfterRestart)
-                .as("keine Zwischenzeile des Mitglieds ist darin — gespeichert wurde nur, was Jon als "
-                        + "finale Antwort zurückbekam")
+                .as("keine Zwischenzeile des Mitglieds ist darin — gespeichert wurde nur, was Jon als"
+                        + " Ergebnis seines Werkzeuges zurückbekam")
                 .hasSize(3);
         assertThat(historyAfterRestart.stream().map(ChatMessageDto::text).toList())
-                .as("und keine Zeile trägt die Status-Zeile, die zusätzlich ins Modell geht")
-                .noneMatch(text -> text.contains("done. Context:"));
+                .as("und die Zeile ist das Ergebnis, nicht eine gekürzte Fassung: die Statistik-Zeile,"
+                        + " die zusätzlich ins Modell geht, gehört zum Werkzeug-Ergebnis")
+                .anyMatch(text -> text.contains("done. Context:"));
     }
 
     // ------------------------------------------------------------------ the scripted delegation

@@ -5,8 +5,8 @@ import org.sterl.llmpeon.tool.tools.AbstractTool;
 import dev.langchain4j.agent.tool.Tool;
 
 /**
- * Read-only view onto {@link PlanTool} for Jon (Peon-PO): he reviews a plan and hands its path to his
- * Dev slave, but never writes plans himself — planning is delegated to his Peon-Plan slave. Delegates
+ * Read-only view onto {@link PlanTool} for Jon: he reviews a plan and hands its path to his
+ * Dev slave, but never writes plans himself — planning is delegated to his Plan agent. Delegates
  * to the shared {@link PlanTool} instance so it always sees the current project.
  */
 public class PlanReadTool extends AbstractTool {

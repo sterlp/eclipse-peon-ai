@@ -1,120 +1,92 @@
-# Agenten-Namen im Chat-Header (WIP)
+# Agenten-Namen im Chat-Header
 
-> **Status: WIP / Design-Parkplatz.** Noch nicht gebaut. Dieses Dokument hält das aktuelle
-> Wissen fest, wie man es umsetzen *könnte*, damit die Recherche nicht verloren geht. Vor der
-> Umsetzung: die offene Entscheidung unten klären, dann BDD schärfen.
+> **Status: umgesetzt** (Zyklus 2026-10-30, [ADR-0078](../../docs/adr/0078-origin-in-core-owner-monitor.md),
+> [ADR-0079](../../docs/adr/0079-display-names-without-ork-names.md)). Technische Heimat:
+> `org.sterl.llmpeon/resources/chat/chat.html` (+ `test-chat.html` als manueller Harness).
 
 ## Ziel
 
-Der AI-Message-Header im Chat soll **wer gerade spricht** anzeigen — statt immer „Peon". Also
-`Peon-PO`, `Peon-Plan`, `Peon-Dev`, die Namen der **Custom-Agents**, und für die
-Sub-Agent-Loops `Da Sniffa` (Search) bzw. `Da Scribe` (Compact).
+Jede AI-Nachricht im Plugin-Chat zeigt **wer gerade spricht** — statt immer „Peon": `Jon`, `Plan`,
+`Dev`, `Review` (Anzeigenamen, ADR-0079), die Namen der **Custom-Agents**, und für die
+Sub-Agent-Loops `Search` bzw. `Compact`. Bei einem **Restore** ist die Differenzierung gleichgültig —
+dann sind ohnehin nur noch die Messages des aktuellen Agenten sichtbar (`refreshChat()` lädt dessen
+Memory neu). Der Wert liegt im **Live-Delegations-Fall**: Während Jon delegiert, laufen die Slaves über
+denselben Monitor, und ohne Stempel erscheinen alle als „Peon" — ein gemischter Verlauf wäre
+ununterscheidbar.
 
-**Warum das wirklich hilft:** Wenn Jon delegiert, laufen die Slaves über **denselben Monitor**
-(`slave.call(prompt, this.monitor)`), und der Search-Request erbt denselben Monitor. Ihre
-AI-Messages fließen also live in dieselbe Chat-View und erscheinen heute alle als „Peon". Ein
-gemischter Verlauf wird dadurch ununterscheidbar.
+## Mechanismus (umgesetzt)
 
-Bei einem **Restore** ist die Differenzierung egal — dann sind ohnehin nur noch die Messages des
-aktuellen Agenten sichtbar (`refreshChat()` lädt dessen Memory neu). Der Wert liegt also im
-**Live-Delegations-Fall**.
+Der Name reist als **`origin`** (gestempelter Absender, ADR-0078) auf der `SimpleMessage` mit —
+Core stempelt ihn im `OwnerMonitor`, keine `AiMonitor`-Interface-Änderung, kein Lambda bricht.
+`ChatMarkdownWidget.java` ist **unverändert**: `SimpleMessage` wird als Record serialisiert und
+`origin` reist gratis mit bis in den Browser.
 
-## Aktueller Stand heute
+`chat.html`:
 
-Das Label ist hart in CSS verdrahtet — es gibt keinen Per-Message-Namen:
-
-```css
-/* chat.html */
-.message.AI::before { content: "Peon"; }
-```
-
-Der Name müsste also bis ins Label durchgereicht werden.
-
-## Kernbefund — kein Monitor-Umbau nötig
-
-Der naheliegende (aber falsche) Weg wäre, den Namen im Plugin über `getActiveAgent()` zu holen.
-Das ist **falsch**: Während Jon delegiert, bleibt der aktive Agent `Peon-PO` — jede Slave-Message
-bekäme fälschlich „Peon-PO".
-
-Der zweite naheliegende Gedanke — „der Agent muss bei `onChatResponse` mitgeben, wer er ist" —
-würde die `AiMonitor`-Signatur ändern (funktionales Interface, überall als Lambda genutzt, u. a.
-`(AiMonitor)(SimpleMessage m) -> …`) und wäre invasiv.
-
-**Beides ist unnötig.** Der Code hat einen bequemen Seam:
-
-* Einziger Emit-Punkt für alle AI-Messages ist `ToolService.executeLoop` **Zeile ~138**:
-  ```java
-  ToSimpleMessage.INSTANCE.convert(response.aiMessage()).forEach(req.monitor::onChatResponse);
-  ```
-  Dort ist der `req` (`ToolLoopRequest`) verfügbar.
-* `AbstractAgent.doCall` **Zeile ~225** baut den `ToolLoopRequest` an **einer zentralen Stelle**
-  für *alle* echten Agenten (`AiPoAgent`/`AiPlanAgent`/`AiDevAgent`/`CustomAgent`). Die Slaves
-  erben das automatisch, weil sie `AiPlanAgent`/`AiDevAgent` sind.
-
-Der Name reist also **auf dem Request** mit — der Monitor bekommt weiterhin nur eine
-`SimpleMessage`, jetzt mit befülltem `agent`-Feld. **Keine Interface-Änderung, kein Lambda bricht.**
-
-## Skizze der Umsetzung (~5–6 Dateien, geringes Risiko)
-
-1. **`SimpleMessage`** (core) — optionales Feld `agent`, rückwärtskompatibel per Zusatz-Konstruktor,
-   damit die vielen `new SimpleMessage(Type.X, "…")`-Call-Sites unverändert bleiben:
-   ```java
-   public record SimpleMessage(Type role, String message, String agent) {
-       public SimpleMessage(Type role, String message) { this(role, message, null); }
-   }
-   ```
-2. **`ToolLoopRequest`** (core) — Feld `agentLabel` (Lombok `@Builder`, 1 Zeile).
-3. **`ToolService.executeLoop`** (~Zeile 138) — `req.agentLabel` in die emittierte `SimpleMessage`
-   stempeln (über `ToSimpleMessage` oder beim Weiterreichen).
-4. **`AbstractAgent.doCall`** (~Zeile 225) — `.agentLabel(getName())`. **Eine** Zeile, deckt
-   PO/Plan/Dev/**Custom** inkl. Slaves ab.
-5. **`chat.html`** — `appendMessage` setzt `div.dataset.agent = message.agent`; CSS wird dynamisch:
-   ```css
-   .message.AI::before { content: attr(data-agent); }
-   ```
-   mit „Peon"-Fallback, wenn `agent` leer ist.
+* CSS: `.message.AI::before { content: attr(data-agent); }` — **ohne** „Peon"-Fallback:
+  `appendMessage` setzt `div.dataset.agent = message.origin` nur, wenn `origin` vorhanden ist;
+  eine Zeile **ohne** Agenten-Bezug trägt **keinen** Kopf statt eines erfundenen.
+* Merge-Regel (A7): zwei aufeinanderfolgende AI-Blöcke verschmelzen nur, wenn Rolle **und**
+  Absender (`data-agent`) übereinstimmen — sonst entstünde ein Sammel-Kopf über verschiedene
+  Agenten hinweg.
+* TOOL-Zeilen bleiben ohne Kopf (A8, Q5): `"Tool"`-Kopf bewusst nicht angefasst; offener Punkt
+  siehe unten.
 
 ### Custom-Agents
 
-Sind **automatisch abgedeckt**: `CustomAgent.getName()` liefert den Namen aus `promptFile.getName()`,
-und `CustomAgent` erbt `AbstractAgent.doCall`. Die zentrale `.agentLabel(getName())`-Zeile stempelt
-also auch deren Namen — ohne Sonderbehandlung.
+Sind **automatisch abgedeckt**: `CustomAgent` erbt den zentralen Stempel-Pfad des Cores und trägt
+den Namen aus seiner Definition — ohne Sonderbehandlung.
 
-### Die einzigen Sonderfälle — die zwei, die *keine* `AiAgent` sind
+### Sub-Loops
 
-Diese bauen ihren Request selbst und haben **kein** `getName()`:
+`SearchAgentTool` und der Compressor (`Compact`) stempeln ihre eigenen Loops über `LoopOwner.named(…)`
+(Inc 2) — ihre Zeilen tragen `Search` bzw. `Compact`, während die Zeilen des aufrufenden Agenten
+dessen Namen behalten.
 
-* **`SearchAgentTool`** — baut via `this.request.toBuilder()`, **erbt** sonst das Parent-Label
-  (`Peon-PO`). Muss `agentLabel` **explizit überschreiben** (z. B. „Da Sniffa").
-* **`AiCompressorAgent`** — emittiert selbst über `monitor::onChatResponse` (~Zeile 54). Label
-  **explizit** setzen (z. B. „Da Scribe").
+## Identität vs. Anzeigename (🚧 in design — Paul 2026-10-31)
 
-## Offene Entscheidung (vor der Umsetzung klären)
+Die **Identität** eines Agenten ist eine stabile ID, unabhängig vom Namen:
 
-Für die AI-Header von Search/Compact — **funktional** („Search Agent" / „Compact") oder die
-**Ork-Namen** („Da Sniffa" / „Da Scribe")? Empfehlung: **Ork-Namen**, damit Header und die
-bestehenden `TOOL`-Fortschrittszeilen (siehe [Sub-agent tool timing](../../org.sterl.llmpeon.core/docs/sub-agent-timing.md))
-konsistent dieselbe Figur zeigen. Die Ork-Namen sind bislang UI-only — hiermit erschienen sie an
-einer zweiten Stelle.
+* **Custom-Agents:** der Ordnername des Agenten-Verzeichnisses (existiert bereits — der Ordner ist
+  die physische Heimat der Definition).
+* **Built-ins:** die `NAME`-Konstante (`AiPoAgent.NAME` etc.).
 
-## Test-Idee (Regression)
+Der **Anzeigename** ([ADR-0079](../../docs/adr/0079-display-names-without-ork-names.md)) darf sich
+jederzeit ändern — ein Rename ist **kein** Identitätswechsel. Konsumenten arbeiten heute allerdings
+mit dem Namen (Autor-Tabelle im Chat, History-Dateien, Restore, Merge-Key `data-agent`): bis die
+stabile ID die Verbindung trägt, ist ein Rename ein Core-seitiger Folgezug. Umsetzung als Story
+„Rename-Sicherheit über stabile `id()`" (Entscheidung aus dem Proposal-Review übernommen, kein Code
+bis dahin).
 
-* `SimpleMessage`-JSON trägt `agent` (Jackson) — ein Test prüft, dass ein Slave-Call über den
-  gemeinsamen Monitor eine `SimpleMessage` mit `agent="Peon-Dev"` emittiert (bzw. `Peon-Plan`).
-* Namens-agnostisch bleibt nur, was auch heute schon flavourful ist; der Test asserted das
-  **Feld**, nicht die CSS-Darstellung (`attr()` selbst ist nicht sinnvoll testbar).
-
-## BDD (Entwurf)
+## BDD
 
 ```
-GIVEN Jon delegiert live an seinen Peon-Dev-Slave über denselben Monitor
+GIVEN Jon delegiert live an seinen Dev-Slave über denselben Monitor
 WHEN der Slave eine AI-Message emittiert
-THEN trägt die SimpleMessage agent="Peon-Dev"
-AND  der Chat-Header dieser Message zeigt „Peon-Dev" statt „Peon"
+THEN trägt die SimpleMessage origin="Dev"
+AND  der Chat-Header dieser Message zeigt „Dev"
+
+GIVEN eine AI-Message ohne Agenten-Bezug (origin == null)
+WHEN sie im Chat erscheint
+THEN trägt sie keinen Kopf
+
+GIVEN zwei aufeinanderfolgende AI-Messages verschiedener Agenten
+WHEN sie gerendert werden
+THEN bleiben es zwei Blöcke mit je eigenem Kopf (Merge nur bei gleichem Absender)
 
 GIVEN ein Custom-Agent „Reviewer" antwortet
-THEN trägt seine AI-Message agent="Reviewer" (aus getName())
-
-GIVEN der Search-Sub-Agent (kein AiAgent) spricht
-THEN trägt seine AI-Message das explizit gesetzte Label (Entscheidung offen: „Da Sniffa")
+THEN trägt seine AI-Message origin="Reviewer" (aus getName())
 ```
+
+## Tests / Nachweise
+
+| Test | Inhalt |
+|---|---|
+| `SimpleMessageOriginJsonTest` (org.sterl.llmpeon.test) | GIVEN `new SimpleMessage(Type.AI, "text", "Dev")` WHEN mit dem Widget-`ObjectMapper` serialisiert THEN enthält das JSON `"origin":"Dev"`; GIVEN `new SimpleMessage(Type.AI, "text")` THEN `"origin":null` — das Feld erreicht den Browser |
+| manuell (Harness `test-chat.html`) | Nachricht mit/ohne `origin`: mit Name erscheint der Kopf, ohne Name kein Kopf; zwei AI-Nachrichten verschiedener Agenten bleiben zwei Blöcke |
+
+## Offene Punkte
+
+| Status | Punkt |
+|---|---|
+| ❓ | TOOL-Zeilen ohne Kopf (A8): sollen sie künftig den ausführenden Werkzeug-Namen tragen? Entschei­dung bewusst zurückgestellt (Q5), kein Verhalten gebaut. |

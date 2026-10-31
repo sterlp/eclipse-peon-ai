@@ -32,7 +32,7 @@ import org.springframework.web.client.RestTemplate;
 import com.jayway.jsonpath.JsonPath;
 
 import org.sterl.llmpeon.ai.LlmConfigKeys;
-import org.sterl.llmpeon.agent.NamedAgent;
+import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.open.aifactory.AifactoryApplication;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
@@ -118,12 +118,12 @@ class ChatRestartTest {
         ProjectRuntime jon = runtime(afterRestart);
         assertThat(jon.jon().getTeam())
                 .as("Jon führt wieder sein Team")
-                .extracting(NamedAgent::uiName)
-                .containsExactly("Da Boss", "Da Thinka", "Da Mek", "Da Dok");
+                .extracting(AiAgent::getName)
+                .containsExactly("Jon", "Plan", "Dev", "Review");
         assertThat(jon.jon().getTeam())
-                .filteredOn(member -> !"Da Boss".equals(member.uiName()))
-                .allSatisfy(member -> assertThat(member.agent().getMemory().size())
-                        .as("%s beginnt leer (R-WP-11, ADR-0024)", member.uiName())
+                .filteredOn(member -> !"Jon".equals(member.getName()))
+                .allSatisfy(member -> assertThat(member.getMemory().size())
+                        .as("%s beginnt leer (R-WP-11, ADR-0024)", member.getName())
                         .isZero());
         assertThat(jon.jon().getMemory().size())
                 .as("und nur Jons eigenes Gespräch kam aus dem Bestand zurück")

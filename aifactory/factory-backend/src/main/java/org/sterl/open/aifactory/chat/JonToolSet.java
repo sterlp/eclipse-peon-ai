@@ -7,7 +7,7 @@ import java.util.function.IntSupplier;
 import org.sterl.llmpeon.docslinter.DocsIdTool;
 import org.sterl.llmpeon.docslinter.DocsLinterTool;
 import org.sterl.llmpeon.poagent.tools.PoDelegateTool;
-import org.sterl.llmpeon.agent.NamedAgent;
+import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.tool.DynamicRootsWriteValidator;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.WriteValidator;
@@ -37,7 +37,7 @@ public final class JonToolSet {
     }
 
     /**
-     * @param projectRoot the project's checkout — the write root of Jon and Da Mek, and the working
+     * @param projectRoot the project's checkout — the write root of Jon and Dev, and the working
      *                    directory of every path-based and shell tool
      */
     public static JonToolSet forProject(Path projectRoot) {
@@ -59,7 +59,7 @@ public final class JonToolSet {
      * The delegation tool Jon needs to reach his team. Registered before the agent is built, otherwise
      * the first turn cannot see it. No standing orders (D6): order texts are a story field of their own.
      */
-    public void addDelegateTool(NamedAgent plan, NamedAgent review, NamedAgent dev,
+    public void addDelegateTool(AiAgent plan, AiAgent review, AiAgent dev,
             IntSupplier autoCompactAfter) {
         tools.addTool(new PoDelegateTool(plan, review, dev, unused -> List.of(), autoCompactAfter));
     }
@@ -71,8 +71,8 @@ public final class JonToolSet {
     /**
      * Project checkout plus system temp — the two roots of R-WP-13. Read by the core at validate time
      * and again at prompt time, so a root is never cached and the agent's prompt cannot age behind the
-     * check. Handed to the agent through {@code getWriteValidator()} for Jon and Da Mek; Da Thinka and
-     * Da Dok keep their core validators (Q5).
+     * check. Handed to the agent through {@code getWriteValidator()} for Jon and Dev; Plan and
+     * Review keep their core validators (Q5).
      */
     public WriteValidator writeValidator() {
         return writeValidator;

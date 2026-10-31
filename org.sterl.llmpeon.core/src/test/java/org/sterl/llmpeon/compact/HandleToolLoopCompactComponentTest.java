@@ -26,6 +26,7 @@ import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.streaming.ApiRetry;
+import org.sterl.llmpeon.tool.LoopOwner;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 
@@ -496,11 +497,17 @@ class HandleToolLoopCompactComponentTest {
                         new StreamMock().buildMock(r -> ChatResponse.builder()
                                 .aiMessage(AiMessage.from("never sent")).build())))
                 .monitor(new AiMonitor() {
-                    @Override public void onChatResponse(SimpleMessage m) {}
+                    // a monitor below an agent entry receives tool lines as TOOL chat messages —
+                    // an OwnerMonitor builds them there (ADR-0078)
+                    @Override public void onChatResponse(SimpleMessage m) {
+                        if (m.role() == SimpleMessage.Type.TOOL) toolLines.add(m.message());
+                    }
                     @Override public void onTool(String message) { toolLines.add(message); }
                     @Override public boolean isCanceled() { return canceled; }
                 })
-                .agent(agent);
+                // a null agent is the no-owner case (the fallback branch under test) — LoopOwner.of
+                // would invent a name from it
+                .owner(agent == null ? LoopOwner.NONE : LoopOwner.of(agent, LlmConfig::devAgentConfig));
         if (retry != null) builder.retry(retry);
         return builder.build();
     }

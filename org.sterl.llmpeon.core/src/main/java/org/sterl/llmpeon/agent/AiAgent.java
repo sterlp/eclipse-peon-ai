@@ -70,7 +70,7 @@ public interface AiAgent {
 
     /**
      * The write-path validator this agent applies to every write tool call. Default: no restriction.
-     * Peon-PO (Jon) overrides this to scope writes to docs. Provided per request, like the tool filter.
+     * Jon overrides this to scope writes to docs. Provided per request, like the tool filter.
      */
     default WriteValidator getWriteValidator() {
         return WriteValidator.ALLOW_ALL;
@@ -128,12 +128,35 @@ public interface AiAgent {
     }
 
     /**
-     * Inject a user message directly into the agent's memory while it is working
-     * (queued-user-messages rule 8 override): the running turn sees it on its next model
-     * call. Bypasses the queue entirely — no queued entry, no follow-up turn. Default no-op.
+     * Queue a {@code !}-override message while the agent is working (queued-user-messages rule 8):
+     * an urgent entry in the agent's queue — own lane, never batched with normal entries, no memory
+     * write and no new turn. Delivery is rule 11 (tool result) or, if nothing consumes it, the
+     * follow-up turn. Default no-op for agents without a queue.
      */
-    default void injectUserMessage(String text) {
+    default void queueUrgentMessage(String msg) {
     }
+
+    /**
+     * Take ALL urgent queue entries for the running turn (queued-user-messages rule 11): drained
+     * under the queue's monitor, disclosed per message on {@code monitor}, and returned as
+     * already-rendered block lines — the tool layer never learns about lanes, labels or the queue
+     * itself. Empty when the lane is empty; entries consumed here never return as a follow-up turn.
+     */
+    default List<String> takeUrgentMessages(AiMonitor monitor) {
+        return List.of();
+    }
+
+    /**
+     * Take ALL queue entries of both lanes for the running turn (queued-user-messages rule 12 — the
+     * {@code askUser} answer carries them): ordered by insertion time across lanes, drained under
+     * the queue's monitor and disclosed per message on {@code monitor}. Like
+     * {@link #takeUrgentMessages(AiMonitor)} the consumption is final — no follow-up turn starts
+     * from them. Default empty for agents without a queue.
+     */
+    default List<String> takeAllMessages(AiMonitor monitor) {
+        return List.of();
+    }
+
 
     /** @return the number of queued messages waiting to be processed. Default 0 for agents without queues. */
     default int getQueuedMessageCount() {

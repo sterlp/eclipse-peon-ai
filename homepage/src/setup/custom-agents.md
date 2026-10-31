@@ -5,7 +5,7 @@ description: Define your own agents with a system prompt and a tool allowlist
 
 # Custom Agents (since v2.0.0)
 
-Next to the four built-in agents (**Peon-PO**, **Peon-Dev**, **Peon-Plan**, **Peon-Scaffold**) you can define
+Next to the four built-in agents (**Jon**, **Dev**, **Plan**, **Scaffold**) you can define
 your own agents. Each agent has its own system prompt and its own set of allowed tools, and it
 shows up in the same agent dropdown right next to the built-ins.
 
@@ -115,7 +115,7 @@ last AI message — prefixed with `Handover from [previous agent]`.
 
 This enables multi-agent workflows without autonomous mode — for example:
 ```
-planner/AGENT.md      →  handover: Peon-Dev
+planner/AGENT.md      →  handover: Dev
 dev-reviewer/AGENT.md →  handover: planner
 ```
 
@@ -123,7 +123,7 @@ The receiving agent starts a fresh conversation seeded with that handover messag
 up where the previous one left off with minimal context transfer.
 
 ::: tip Same mechanism as the built-ins
-The built-in **Peon-Plan** agent uses exactly this: it hands over to **Peon-Dev**.
+The built-in **Plan** agent uses exactly this: it hands over to **Dev**.
 :::
 
 ## Tool allowlist
@@ -150,7 +150,7 @@ allowlisting the read-only tool names.
 
 ## Selecting an agent
 
-Pick your agent from the dropdown below the input, just like Peon-Dev or Peon-Plan. Each agent
+Pick your agent from the dropdown below the input, just like Dev or Plan. Each agent
 keeps its own conversation. Edits to an `AGENT.md` are picked up on the next config refresh.
 
 ## Ordering the agent list in UI
@@ -166,7 +166,11 @@ alphabetically at the end. Lines starting with `#` are comments; invalid regexes
 ```
 
 This puts all `...Manager...` agents first, then `...Worker...`, then everyone else. If the file is
-absent it is auto-created with `^Peon-PO$` so **Peon-PO** appears first by default.
+absent it is auto-created with `^Jon$` so **Jon** appears first by default.
+
+If no line matches **any** of your agents — a leftover from a renamed agent, say — the default order
+applies instead of an alphabetical list: **Jon** first, the rest alphabetically, and the log names the
+file. `.*` remains the way to ask for a deliberately alphabetical dropdown.
 
 ## Finding the exact tool names
 
@@ -183,7 +187,7 @@ Common built-in prefixes:
 | `memory` | `memoryAdd`, `memoryReplace`, `memoryRemove` |
 | `plan` | `planRead`, `planSave`, `planUpdate`, `planImplemented` |
 | `disk` | Optional file/grep tools that bypass the Eclipse workspace — only registered when **Enable disk tools** is on (see [Advanced Configuration](./advanced-configuration.md)). E.g. `diskReadFile`, `diskGrepFiles`, `diskWriteFile`. The same toggle also enables `webGet` (download a URL to a disk path — status, size and path in the context, never the content). |
-| `debugJava` | Java debugger — 15 actions (e.g. `debugJavaGetState`, `debugJavaStepOver`, `debugJavaSetBreakpoint`, `debugJavaSuspend`). An **edit tool**, so only offered to non-read-only agents (in practice Peon-Dev). You start the debug session in the Debug view; breakpoint set/remove work without one (stored as markers). See [Java debugger](#java-debugger). |
+| `debugJava` | Java debugger — 15 actions (e.g. `debugJavaGetState`, `debugJavaStepOver`, `debugJavaSetBreakpoint`, `debugJavaSuspend`). An **edit tool**, so only offered to non-read-only agents (in practice Dev). You start the debug session in the Debug view; breakpoint set/remove work without one (stored as markers). See [Java debugger](#java-debugger). |
 | `web` | `webSearch` (DuckDuckGo hit list — numbered title, URL and snippet, never page content; read a hit with `webFetchAsMarkdown`), `webFetchAsMarkdown` (read a URL as paginated text: HTML becomes Markdown, everything else comes back raw — the footer names which) and `webGet` (download a URL to a disk path). `webSearch` and `webFetchAsMarkdown` are always registered; `webGet` only when **Enable disk tools** is on, like the `disk*` tools above. Tokens are **prefix** matches: `web` covers all three, a narrower token such as `webFetch` covers only `webFetchAsMarkdown` — never `webSearch`. |
 | `shell` | `shellRunCommand` (run a shell command — mvn, npm, git; only for build/test/git, not for file I/O — output is trimmed beyond `maxChars`, default 10 000 chars). |
 | `lintDocs`, `nextIds` | Docs tooling — `lintDocs` and `lintDocsAndTests` (the `lintDocs` prefix matches **both**) and `nextIds` (exact name, no shared prefix). A bare `docs` prefix matches nothing. |
@@ -214,7 +218,7 @@ Copying and renaming are separate, byte-exact operations in both file families:
 The `debugJava*` family (15 actions) drives a live JDT debug session: inspect the stack, variables
 and exceptions, evaluate expressions, set variables, step (`debugJavaStepOver` / `In` / `Out`),
 suspend, resume, and manage line and exception breakpoints. Because these are **edit tools**, they
-are offered only to non-read-only agents (in practice **Peon-Dev**), never to read-only ones.
+are offered only to non-read-only agents (in practice **Dev**), never to read-only ones.
 
 - **The session is yours to start.** The agent never launches a debug session — you do, in the
   Eclipse **Debug view**. Session-bound actions (step, evaluate, inspect, …) fail honestly when no

@@ -24,11 +24,14 @@ import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.queuedmessages.QueuedUserMessages;
 import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.CallStats;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
+import org.sterl.llmpeon.shared.OwnerMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.tool.LoopOwner;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolPolicy;
 import org.sterl.llmpeon.tool.ToolService;
@@ -210,15 +213,53 @@ public abstract class AbstractAgent implements AiAgent {
     }
 
     /**
-     * Rule 8 override: direct memory write — the same path {@link #handleAbortAndDrain} uses,
-     * so the running turn sees the message on its next model call. The queue is never touched.
+     * Rule 8: the urgent lane of the agent's own queue — under the queue's monitor, which is the
+     * monitor of the turn-slot hand-over (Rule 10), so a „!" sent while the turn releases is taken
+     * by that turn instead of stranding. Never a memory write.
      */
     @Override
-    public void injectUserMessage(String text) {
-        memory.add(UserMessage.from(text));
+    public void queueUrgentMessage(String msg) {
+        synchronized (messageQueue) {
+            messageQueue.addUrgent(msg);
+        }
     }
 
-    /** Test seam: swap the queue (fixed {@code Clock} for Rule 9 Queued-At tests). Package-private. */
+    /**
+     * Rule 11: the urgent lane of this agent's queue, for the round's tool result.
+     */
+    @Override
+    public List<String> takeUrgentMessages(AiMonitor monitor) {
+        return take(monitor, messageQueue::drainUrgent);
+    }
+
+    /**
+     * Rule 12: BOTH lanes, for the {@code askUser} answer. Ordered by insertion time across lanes.
+     */
+    @Override
+    public List<String> takeAllMessages(AiMonitor monitor) {
+        return take(monitor, messageQueue::drainAllEntries);
+    }
+
+    /**
+     * Drain + disclosure are <b>one</b> step under the queue's monitor — a consumption that is not
+     * visible is exactly the silent injection the rules forbid, and a drain outside that monitor
+     * would race the turn-slot hand-over (Rule 10). One implementation for both lanes, so the two
+     * consumption channels cannot drift in ordering, disclosure or finality.
+     */
+    private List<String> take(AiMonitor monitor, Supplier<List<UserMessageQueue.QueuedMessage>> lane) {
+        var mon = AiMonitor.nullSafety(monitor);
+        synchronized (messageQueue) {
+            var entries = lane.get();
+            for (var entry : entries) {
+                mon.onTool(QueuedUserMessages.readingLine(messageQueue, entry));
+            }
+            return entries.stream().map(entry -> QueuedUserMessages.bodyLine(messageQueue, entry)).toList();
+        }
+    }
+
+    /** Test seam: swap the queue (fixed {@code Clock} for Rule 9 Queued-At tests). Package-private.
+     *  The instance is also the monitor of the turn-slot hand-over — swap it before a turn, never
+     *  during one, or claim and release stop being ordered against the enqueues. */
     void setMessageQueue(UserMessageQueue queue) { this.messageQueue = queue; }
 
     /** Test seam: fixed clock for R20 turn-time tests. Package-private. */
@@ -235,20 +276,24 @@ public abstract class AbstractAgent implements AiAgent {
         return this.memory.containsUserMessage(message);
     }
 
+    /**
+     * Stamps every line emitted below this entry with our id — the one place a turn's own lines get
+     * their owner (ADR-0078). Nested producers wrap it again and win, see {@link OwnerMonitor}.
+     */
+    private AiMonitor stamped(AiMonitor monitor) {
+        return new OwnerMonitor(getName(), monitor);
+    }
+
     @Override
     public ChatResponse call(String initialMessage, AiMonitor monitor) {
-        monitor = AiMonitor.nullSafety(monitor);
-        // Self-enforcing guard: prevents concurrent invocations regardless of caller thread.
-        // Same acquired-guard as compact(): a queued call must not release the working flag of
-        // the turn that already holds it, else the next caller wins the CAS and runs parallel
-        // on the same memory instead of queueing.
-        boolean acquired = working.compareAndSet(false, true);
+        monitor = stamped(monitor);
+        // Self-enforcing slot claim, atomic with the enqueue under the queue's monitor — contract and
+        // boundary (claim side): Rule 10, org.sterl.llmpeon.core/docs/queued-user-messages.md
+        boolean acquired = claimTurnSlotOrQueue(initialMessage);
         if (acquired) turnStart = Instant.now(clock);
+        boolean slotReleased = false; // the loop's hand-over may already have released it
         try {
-            if (!acquired) {
-                messageQueue.add(initialMessage); // already running: queue it
-                return null;
-            }
+            if (!acquired) return null;
 
             var stillQueued = messageQueue.drainAll();
             String next;
@@ -271,9 +316,14 @@ public abstract class AbstractAgent implements AiAgent {
                     throw e;
                 }
                 var queued = messageQueue.pollNext();
+                if (queued == null && lastResponse != null && !monitor.isCanceled()) {
+                    // nothing polled and the turn is over: hand the slot over — under the queue's
+                    // monitor, so an input that arrived since the poll stays ours to answer
+                    queued = nextQueuedEntryOrReleaseSlot();
+                    slotReleased = queued == null;
+                }
                 if (queued != null) {
-                    monitor.onTool("Reading queued User message: " + queued.text()
-                            + " (queued " + messageQueue.queuedLabel(queued.queuedAt()) + ")");
+                    monitor.onTool(QueuedUserMessages.readingLine(messageQueue, queued));
                     next = queuedMarker(queued);
                 } else {
                     next = null;
@@ -287,7 +337,45 @@ public abstract class AbstractAgent implements AiAgent {
 
             return lastResponse;
         } finally {
-            if (acquired) working.set(false);
+            if (acquired && !slotReleased) working.set(false);
+        }
+    }
+
+    /**
+     * Takes the turn slot, or hands the input to whoever holds it — both under the queue's monitor,
+     * which is the monitor every enqueue takes. That single critical section is what closes the
+     * release window: a caller either finds the slot free and runs its own turn, or it joins a turn
+     * that provably has not released yet and therefore still has a look at the queue coming. Claim in
+     * one section and queue in the next, and an input could be rejected by a turn that released in
+     * between and then queued behind that release — waiting for nobody.
+     *
+     * @return true if the caller owns the slot; false if the input is queued for the running turn
+     */
+    private boolean claimTurnSlotOrQueue(String initialMessage) {
+        synchronized (messageQueue) {
+            if (working.compareAndSet(false, true)) return true;
+            messageQueue.add(initialMessage); // already running: that turn answers it
+            return false;
+        }
+    }
+
+    /**
+     * Ends a turn's claim on its queue atomically with the last look at it: under the queue's monitor
+     * it returns the entry that arrived since the caller's poll, or releases {@code working} when the
+     * queue really is empty (only the slot holder polls, so an empty poll means empty queue).
+     * <p>
+     * Releasing without that atomicity left an input that arrived between the last
+     * {@code pollNext()} and {@code working.set(false)} waiting for a turn that had already ended: no
+     * answer, and with one {@code done} per turn (aifactory {@code ProjectRuntime#submit}) no
+     * end-of-turn event either — it waited until an unrelated send picked it up.
+     *
+     * @return the entry this turn still has to answer; {@code null} means the slot was released
+     */
+    private UserMessageQueue.QueuedMessage nextQueuedEntryOrReleaseSlot() {
+        synchronized (messageQueue) {
+            var entry = messageQueue.pollNext();
+            if (entry == null) working.set(false);
+            return entry;
         }
     }
 
@@ -316,11 +404,11 @@ public abstract class AbstractAgent implements AiAgent {
     }
 
     /**
-     * Rule 9 LLM marker: {@code [Queued Message] (HH:mm): <text>} — the message text stays
-     * unchanged after the prefix; the time is rendered in the queue's clock zone.
+     * Rule 9 LLM marker — rendered by {@link QueuedUserMessages}, the single home of the format,
+     * so the payload marker and the disclosure line of an entry can never disagree.
      */
     private String queuedMarker(UserMessageQueue.QueuedMessage entry) {
-        return UserMessageQueue.QUEUED_MARKER_PREFIX + "(" + messageQueue.queuedLabel(entry.queuedAt()) + "): " + entry.text();
+        return QueuedUserMessages.marker(messageQueue, entry);
     }
 
     /** Execute a single LLM+tool turn for the given message. */
@@ -347,8 +435,7 @@ public abstract class AbstractAgent implements AiAgent {
                     .toolFilter(getToolFilter())
                     .toolNameFilter(getToolNameFilter())
                     .writeValidator(getWriteValidator())
-                    .agentConfig(getConfig())
-                    .agent(this)
+                    .owner(LoopOwner.of(this, base -> getConfig()))
                     .turnStart(turnStart)
                     .build()
                 );
@@ -381,8 +468,7 @@ public abstract class AbstractAgent implements AiAgent {
                     .toolFilter(getToolFilter())
                     .toolNameFilter(getToolNameFilter())
                     .writeValidator(getWriteValidator())
-                    .agentConfig(getConfig())
-                    .agent(this)
+                    .owner(LoopOwner.of(this, base -> getConfig()))
                     .turnStart(turnStart)
                     .build()
                 );
@@ -421,7 +507,7 @@ public abstract class AbstractAgent implements AiAgent {
 
     @Override
     public CompactResult compact(AiMonitor monitor) {
-        var mon = AiMonitor.nullSafety(monitor);
+        var mon = stamped(monitor);
         var run = runCompact(mon);
         announce(mon, run);
         return run.result();
@@ -563,8 +649,9 @@ public abstract class AbstractAgent implements AiAgent {
 
     @Override
     public List<ChatMessage> buildStaticMessages(AiMonitor monitor) {
+        // Runs outside a turn too (compact tooling) — the 📋 Loading lines still belong to us.
         var messages = new ArrayList<ChatMessage>();
-        messages.add(SystemMessage.from(buildSystemPrompt(monitor)));
+        messages.add(SystemMessage.from(buildSystemPrompt(stamped(monitor))));
         return messages;
     }
 

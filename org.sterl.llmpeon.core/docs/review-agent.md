@@ -1,40 +1,40 @@
-# Review Agent (Da Dok / Peon-Review)
+# Review Agent
 
 **Ziel:** Reviews des PO-Zyklus laufen nicht mehr durch den Plan-Agenten, sondern durch einen
-dritten RAM-Sklaven des Peon-PO: **Da Dok** (Agent-ID `Peon-Review`) — strukturell wie der Plan-
+dritten RAM-Sklaven des Jon: **Review** (Agent-ID `Review`) — strukturell wie der Plan-
 Agent (gleiche Ctor/Config/Filter-Familie), nur mit eigenem System-Prompt für saubere Reviews:
 frischer Context, keine Memory der Implementierung, Verdict-basiert (ACCEPTED / CONCERNS /
 REJECTED). Basis: ADR-0020 (PO-Orchestrierung, superseded-Status durch diesen Agenten erweitert),
 Delegation über [PoDelegateTool](../../docs/adr/0020-po-agent-orchestration.md).
 
-**Begriffe:** Da Dok · Review-Agent · Peon-Review — siehe [Glossar](../../docs/glossary.md).
+**Begriffe:** Review · Review-Agent — siehe [Glossar](../../docs/glossary.md).
 
 ## Business Rules
 
 ### Agent & Wiring
 
-- **R1 ✅** `AiReviewAgent` ist ein built-in persistent Agent (`Peon-Review`), registriert in
-  `AgentService` neben Peon-Dev/Peon-Plan/Scaffold — strukturell 1:1-Familie mit `AiPlanAgent`
+- **R1 ✅** `AiReviewAgent` ist ein built-in persistent Agent (`Review`), registriert in
+  `AgentService` neben Dev/Plan/Scaffold — strukturell 1:1-Familie mit `AiPlanAgent`
   (gleiche Ctor-Varianten inkl. RAM-only + JSONL-History, read-only Tool-Filter `!isEditTool`,
-  Config/Model-Slot = PLAN, Handover → Peon-Dev).
-  - GIVEN AgentService mit Default-Agenten WHEN getAgents() THEN Peon-Review ist persistent
+  Config/Model-Slot = PLAN, Handover → Dev).
+  - GIVEN AgentService mit Default-Agenten WHEN getAgents() THEN Review ist persistent
     enthalten (überlebt reloadAgents)
-- **R2 ✅** Der PO hält Da Dok als dritten RAM-Sklaven: `PoDelegateTool`-Ctor
+- **R2 ✅** Der PO hält Review als dritten RAM-Sklaven: `PoDelegateTool`-Ctor
   `(plan, review, dev, ordersFor)`, `getTeam()` = `List.of(thinka, mek, doc)` — Header-Reihenfolge
-  Da Boss · Da Thinka · Da Mek · Da Dok (User-Entscheid 2026-09-09, Lifecycle plan→build→review).
-  - GIVEN PeonAiService gebaut WHEN getTeam() THEN drei NamedAgents: Da Thinka, Da Mek, Da Dok
+  Jon · Plan · Dev · Review (User-Entscheid 2026-09-09, Lifecycle plan→build→review).
+  - GIVEN PeonAiService gebaut WHEN getTeam() THEN drei `AiAgent`: Plan, Dev, Review
 - **R3 ✅** Delegate-Tools: `reviewPlanAgent(prompt, planPath?)` (frischer Context, stickiger
   Plan-Pfad geteilt mit buildWithDev), `clearReview()`, `compactReview()` — Spiegel von
   clear/compactPlan/Dev; `AiPoAgent.clear()/compact()` cascadieren alle drei Sklaven.
-  - GIVEN Jon ruft clear() WHEN Cascade läuft THEN auch Da Doks Memory wird geleert
+  - GIVEN Jon ruft clear() WHEN Cascade läuft THEN auch Reviews Memory wird geleert
 
 ### Review-Verhalten (Prompt getrieben)
 
-- **R4 ✅** Der Review läuft über `reviewPlanAgent` an Da Dok — **nicht** mehr über `talkPlan` an
-  Da Thinka (`po-delegation.md` Schritt 4). Er meldet Abweichungen und **repariert nichts**.
+- **R4 ✅** Der Review läuft über `reviewPlanAgent` an Review — **nicht** mehr über `talkPlan` an
+  Plan (`po-delegation.md` Schritt 4). Er meldet Abweichungen und **repariert nichts**.
   Verdict ACCEPTED/CONCERNS/REJECTED, Chat-Summary zuletzt.
 - **R8 ✅ (2026-10-28, Paul; prompt-basiert, kein BDD) — Maßstab: leicht wartbar, leicht änderbar, keine Überraschungen.**
-  Der Prompt ist rollen-neutral (keine Team-Namen — Da Dok läuft auch allein) und arbeitet auch
+  Der Prompt ist rollen-neutral (keine Team-Namen — Review läuft auch allein) und arbeitet auch
   **ohne Plan oder ohne Docs**. Prüft: Bugs · Docs↔Code (wenn Docs da) · Plan↔Code (wenn Plan da) ·
   Docs↔Plan-Konflikt (Docs sind Maßstab) · überflüssige Kommentare statt Doc-Verweis · schlechte
   Testbarkeit · schlechte Kapselung, Wiederholung (≥3×), Modul-Zyklen · verschmierte Struktur
@@ -44,9 +44,9 @@ Delegation über [PoDelegateTool](../../docs/adr/0020-po-agent-orchestration.md)
   „Pre-existing"; Verhaltens-BUG nur mit Beleg (sonst „Verdacht"), Tests des Moduls laufen mit
   Befehl + Zahlen; BUGs nach Wirkung sortiert (Verhalten/Daten vor Struktur). Inhalt: Prompt
   `review-agent.md`.
-  - GIVEN Da Mek meldet fertig WHEN Jon reviewPlanAgent aufruft THEN Da Dok liefert Verdict +
+  - GIVEN Dev meldet fertig WHEN Jon reviewPlanAgent aufruft THEN Review liefert Verdict +
     Chat-Summary, ohne Code zu ändern
-- **R5 ✅** Da Dok ist **read-only im Code**: Write-Tools ausgenommen, nur plan*-Tools zum Schreiben
+- **R5 ✅** Review ist **read-only im Code**: Write-Tools ausgenommen, nur plan*-Tools zum Schreiben
   (Plan-Datei korrigieren bei legitimen Abweichungen), nie Application Code, nie Docs. **Ausnahme
   Shell** ([agent-tool-filter.md](agent-tool-filter.md) R-TF-1): Diagnose/git/Build/Test erlaubt —
   Code-Änderungen via Shell bleiben Regelbruch (soft rule).
@@ -56,8 +56,8 @@ Delegation über [PoDelegateTool](../../docs/adr/0020-po-agent-orchestration.md)
 
 ### Config
 
-- **R7 ✅ (2026-10-14) — Da Dok bekommt einen eigenen Config-Bereich (Model-Selection-Slot):**
-  statt geteilter PLAN-Slot (`Config/Model-Slot = PLAN`, R1) erhält Da Dok einen eigenen Slot
+- **R7 ✅ (2026-10-14) — Review bekommt einen eigenen Config-Bereich (Model-Selection-Slot):**
+  statt geteilter PLAN-Slot (`Config/Model-Slot = PLAN`, R1) erhält Review einen eigenen Slot
   `REVIEW` (Store `llm.agent.review.*`, Aufnahme in `CORE_IDS`), UI-Sektion auf der
   Advanced-Seite. Fallback = **Base** (wie PO nach [ADR-0036](../../docs/adr/0036-po-own-model-slot.md)),
   nicht mehr Plan.
@@ -78,7 +78,7 @@ Delegation über [PoDelegateTool](../../docs/adr/0020-po-agent-orchestration.md)
 
 | Regel | Test |
 |---|---|
-| R1 | `AgentServiceTest.hasDefaultAgent` (named: enthält Peon-Review) |
-| R2 | `PoDelegateToolTest` (3 NamedAgents im Ctor) · `PeonAiServiceTest.test_status_agents_are_jons_team_when_po_active` (Header: Da Boss, Da Thinka, Da Mek, Da Dok) |
+| R1 | `AgentServiceTest.hasDefaultAgent` (named: enthält Review) |
+| R2 | `PoDelegateToolTest` (drei `AiAgent` im Ctor) · `PeonAiServiceTest.test_status_agents_are_jons_team_when_po_active` (Header: Jon, Plan, Dev, Review) |
 | R3 | `PoDelegateToolTest.clearReview_wipesReviewSlaveMemoryOnly` / `compactReview_compactsReviewSlaveMemory` · `AiPoAgentTest.clear_cascadesToAllThreeSlaves` / `compact_cascadesToAllThreeSlaves` · Sticky-Path: `reviewPlanAgent_reusesStickyPlanPath` |
 | R4–R6, R8 | Prompt/Verhalten — manuelle Verifikation (kein Unit-Test, wie Prompts-Konvention) |

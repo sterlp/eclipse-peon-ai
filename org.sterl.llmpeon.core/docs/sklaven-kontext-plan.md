@@ -1,6 +1,6 @@
-# Sklaven-Kontext — was Da Thinka & Da Mek mitbekommen (Plan)
+# Sklaven-Kontext — was Plan & Dev mitbekommen (Plan)
 
-> **Status: PLAN, teils gebaut.** Jons RAM-Sklaven (Da Thinka = Peon-Plan, Da Mek = Peon-Dev,
+> **Status: PLAN, teils gebaut.** Jons RAM-Sklaven (Plan, Dev,
 > [ADR-0024](../../docs/adr/0024-po-slaves-ram-only.md)/[ADR-0025](../../docs/adr/0025-po-status-widget-named-agents.md)) bekamen bisher deutlich
 > weniger Kontext als der **aktive** Agent. Dieser Plan schließt die Lücken inkrementell, jedes
 > Inkrement baubar + grün ([phasenweise arbeiten](../../phasen-weise-arbeiten.txt)).
@@ -11,10 +11,10 @@
   (`WorkspaceMemoryTool`, `AgentsMdService`, `UserContext`, `PeonAiService`) **plus** einen
   Static-Context (`setStaticContext(dateInfo)` über `agentService.getAgents()`). Die Sklaven bekommen
   davon nur, was `JonDelegateTool.delegate()` in ihre `setUserContextInformations(...)` injiziert:
-  geteiltes Memory, das gewählte Projekt (neu, s.u.) und — nur Da Mek — den `planPath`.
+  geteiltes Memory, das gewählte Projekt (neu, s.u.) und — nur Dev — den `planPath`.
 - **SOLL:** Die Sklaven arbeiten mit demselben *relevanten* Kontext wie der aktive Agent, damit sie
   nach den Projekt-Regeln planen/coden.
-- **WEIL:** Da Mek codet und Da Thinka plant **ohne** die Ground-Rules (`AGENTS.md`) und **ohne** die
+- **WEIL:** Dev codet und Plan plant **ohne** die Ground-Rules (`AGENTS.md`) und **ohne** die
   operativen Regeln (eclipse\*-vor-disk\*, Refresh/Build nach disk-Writes, Datum/OS) — Fehlerquelle,
   die der aktive Agent nicht hat.
 
@@ -26,7 +26,7 @@
 | Gewähltes Projekt (Pfad/Info) | `UserContext` → `EclipseUtil.projectInfo` | ✅ **gebaut** | s. „Gebaut" |
 | `AGENTS.md` (Basis-Ground-Rules) | `AgentsMdService.get()` | ❌ fehlt | **Inc 1** |
 | Datum / OS / File-Access-Regeln | `setStaticContext(dateInfo)` | ❌ fehlt | **Inc 2** |
-| `AGENTS-<agent>.md` (sklaven-spezifisch) | `AgentsMdService` (auf **aktiven** Namen gekeyt → bei Jon `AGENTS-PO.md`) | ❌ fehlt | **Backlog** |
+| `AGENTS-<agent>.md` (sklaven-spezifisch) | `AgentsMdService` (auf **aktiven** Namen gekeyt → bei Jon `AGENTS-JON.md`) | ❌ fehlt | **Backlog** |
 | Editor-Selektion (Datei/Textstelle) | `UserContext` | ❌ fehlt | **bewusst NICHT** — Jon kuratiert die Aufgabe im Prompt |
 
 ## Design
@@ -56,14 +56,14 @@ wiederverwendeter Basis-Zweig aus `get()`, **kein** Anfassen der auf den aktiven
 
 **Inc 2 — Static-Context (Datum/OS/File-Regeln) an die Sklaven. ✅ GEBAUT, grün, NICHT committed.**
 `PeonAiService.setStaticContext(...)` wendet den Kontext zusätzlich auf `jonDelegateTool.getPlanSlave()`/
-`getDevSlave()` an (die Sklaven sind **nicht** in `agentService`). Damit erhält v.a. Da Mek die Regel
+`getDevSlave()` an (die Sklaven sind **nicht** in `agentService`). Damit erhält v.a. Dev die Regel
 „prefer eclipse\* over disk\*; nach disk-Writes `eclipseRefreshProject`/`eclipseBuildProject`".
 Getter-Frage geklärt = **ja**: `AiAgent.getStaticContext()` als default (leer), Override in `AbstractAgent`
 (spiegelt `getUserContextInformations()`). Regression `PeonAiServiceTest.test_static_context_reaches_jons_slaves`
 (real Eclipse, headless-skip wie die anderen Status-Tests).
 
 **Inc 3 — Backlog: `AGENTS-DEV.md` / `AGENTS-PLAN.md` per Sklave.**
-Die sklaven-spezifische AGENTS-Datei korrekt **pro Sklave** keyen (Da Mek→`DEV`, Da Thinka→`PLAN`),
+Die sklaven-spezifische AGENTS-Datei korrekt **pro Sklave** keyen (Dev→`DEV`, Plan→`PLAN`),
 statt auf den aktiven Sklaven (Jon→`PO`). Mehr als ein Einzeiler (eigener Resolver-Pfad) → separat.
 
 ## Offen
@@ -82,10 +82,7 @@ zeigt) in den System-Prompt — zentral, nicht pro Prompt-Datei.
   Semantik: der Bake (`AgentContextComponent.initStaticContext` → Jon → Slaves) ergibt pro Slave
   genau `[Env, Name + AGENT_MODE]`, keine Doppelung.
   - GIVEN ein Slave von Jon WHEN der Static-Context-Bake läuft THEN sein System-Prompt enthält
-    `Your name is Da Thinka/Da Mek/Da Dok` + AGENT_MODE, genau einmal.
-  - GIVEN ein Slave wurde standalone/headless gebaut (ohne Jon-Bake) WHEN `build()` lief THEN
-    trägt er den Namen bereits aus der Fallback-Injektion in `BuildPoAgentComponent` — ohne
-    AGENT_MODE (das kommt erst mit dem Fan-out).
+    `Your name is Plan/Dev/Review` + AGENT_MODE, genau einmal.
 - **R-N2 — Agent Mode (Antwort = Chat-Kanal):** `AGENT_MODE` (AiPoAgent.java): „You are in Agent
   Mode and report to Jon. You have someone to ask — use that. Save your state to the plan/task file
   first, then ask him directly, with more questions rather than fewer. Never assume." Slaven
@@ -96,11 +93,11 @@ zeigt) in den System-Prompt — zentral, nicht pro Prompt-Datei.
     THEN enthält die Antwort die offenen Fragen explizit und zustands­gesichert (state vorher in
     Plan-/Task-File), kein Raten.
 - **R-N3 — Prompt-Datei ist nicht die Quelle des Namens:** `dev-build-loop.md` trägt den Namen
-  nicht mehr hart im Body (alte Zeile `AGENT-MODE: You name is Da Mek` inkl. Typo entfernt) — der
+  nicht mehr hart im Body (alte Zeile `AGENT-MODE: You name is Dev` inkl. Typo entfernt) — der
   Name kommt ausschließlich per Code-Injection (R-N1).
 - **Hilfsfunktion:** `ContextItem.newList(...)` (public, Interface) ist die einzige Implementierung;
   die package-private Kopie in `AiPoAgent` ist entfernt.
 
-**Scope (🔒 Paul 2026-09-16):** Nur Jons Team — Top-Level-Peon-Agents (Peon-Dev/Plan/Review
+**Scope (🔒 Paul 2026-09-16):** Nur Jons Team — Top-Level-Agents (Dev/Plan/Review
 standalone), Custom Agents (Verzeichnisname) und Da Sniffa bleiben bewusst außen vor; Wiederaufnahme
 nur auf expliziten Wunsch.

@@ -8,10 +8,10 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.AiReviewAgent;
-import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.docslinter.DocsIdTool;
@@ -106,9 +106,9 @@ class JonToolSetTest {
     private JonToolSet toolSetWithTeam(Path root) {
         JonToolSet toolSet = JonToolSet.forProject(root);
         ConfiguredChatModel model = new ConfiguredChatModel(LlmConfig.newOpenAi("test-model", "http://127.0.0.1:1/v1"));
-        NamedAgent plan = new NamedAgent("Da Thinka", new AiPlanAgent(model, toolSet.tools()));
-        NamedAgent review = new NamedAgent("Da Dok", new AiReviewAgent(model, toolSet.tools()));
-        NamedAgent dev = new NamedAgent("Da Mek", new AiDevAgent(model, toolSet.tools()));
+        AiAgent plan = new AiPlanAgent(model, toolSet.tools());
+        AiAgent review = new AiReviewAgent(model, toolSet.tools());
+        AiAgent dev = new AiDevAgent(model, toolSet.tools());
         toolSet.addDelegateTool(plan, review, dev, () -> 80_000);
         return toolSet;
     }

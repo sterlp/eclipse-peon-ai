@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +39,7 @@ import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
+import org.sterl.llmpeon.tool.model.SimpleMessage.Type;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -80,7 +83,9 @@ class AbstractAgentTest {
         agent.setMessageQueue(new UserMessageQueue(10_000, fixedClock1432()));
         List<String> toolLines = new ArrayList<>();
         var monitor = new AiMonitor() {
-            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            // below an agent entry TOOL lines arrive as SimpleMessages — OwnerMonitor builds them and
+            // never calls onTool on its delegate (ADR-0078); both channels feed one list
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolLines.add(m.message()); }
             @Override public void onTool(String message) { toolLines.add(message); }
         };
 
@@ -196,7 +201,7 @@ class AbstractAgentTest {
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
         AtomicReference<String> toolMessage = new AtomicReference<>();
         var monitor = new AiMonitor() {
-            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolMessage.set(m.message()); }
             @Override public void onTool(String message) { toolMessage.set(message); }
         };
 
@@ -253,7 +258,7 @@ class AbstractAgentTest {
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
         AtomicReference<String> toolMessage = new AtomicReference<>();
         var monitor = new AiMonitor() {
-            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolMessage.set(m.message()); }
             @Override public void onTool(String message) { toolMessage.set(message); }
         };
 
@@ -285,10 +290,10 @@ class AbstractAgentTest {
     @Test
     void historyFile_derivesFromStateDir(@TempDir Path stateDir) {
         // GIVEN / WHEN
-        var file = AbstractAgent.historyFile(stateDir, "Peon-Dev");
+        var file = AbstractAgent.historyFile(stateDir, "Dev");
 
         // THEN — no state segment, file directly in the injected dir
-        assertThat(file).isEqualTo(stateDir.resolve("Peon-Dev-history.jsonl"));
+        assertThat(file).isEqualTo(stateDir.resolve("Dev-history.jsonl"));
     }
 
     /** safeAgentName: special characters in the agent name are sanitized for the file name. */
@@ -304,8 +309,8 @@ class AbstractAgentTest {
     @Test
     void clearDeletesOnlyThisAgentsPersistedHistory(@TempDir Path stateDir) throws Exception {
         // GIVEN — the injected stateDir contains the history files directly (ADR-0041 R2)
-        var devStore = new FileAgentHistoryStore(stateDir.resolve("Peon-Dev-history.jsonl"));
-        var planStore = new FileAgentHistoryStore(stateDir.resolve("Peon-Plan-history.jsonl"));
+        var devStore = new FileAgentHistoryStore(stateDir.resolve("Dev-history.jsonl"));
+        var planStore = new FileAgentHistoryStore(stateDir.resolve("Plan-history.jsonl"));
         var config = LlmConfig.builder().model("mock").build();
         var devAgent = new AiDevAgent(new ConfiguredChatModel(config, streamMock.buildMock(r -> ChatResponse.builder().aiMessage(AiMessage.from("ok")).build())), new ToolService(), stateDir);
         var planAgent = new AiPlanAgent(new ConfiguredChatModel(config, streamMock.buildMock(r -> ChatResponse.builder().aiMessage(AiMessage.from("ok")).build())), new ToolService(), stateDir);
@@ -624,7 +629,7 @@ class AbstractAgentTest {
         assertThat(result.status()).isEqualTo(CompactResult.Status.SKIPPED_SMALL);
         assertThat(streamMock.getCallCount()).isZero();
         assertThat(agent.isCompacting()).isFalse();
-        assertThat(AiAgentStatusModel.rows(List.of(new NamedAgent("Da Mek", agent))))
+        assertThat(AiAgentStatusModel.rows(List.of(agent)))
                 .as("a skipped compact never renders a Compact-Status")
                 .noneMatch(AiAgentStatusModel.Entry::compacting);
     }
@@ -756,27 +761,185 @@ class AbstractAgentTest {
     }
 
     /**
-     * Rule 8 override: injectUserMessage writes directly into the memory (the running turn
-     * picks it up on its next model call) — the queue is never touched.
+     * Rule 8.2: while a turn works, the „!"-override goes to the urgent lane of the queue — the
+     * memory is untouched (no injection) and no second turn starts.
      */
     @Test
-    void test_injectUserMessage_appendsUserMessage_notQueued() {
-        // GIVEN — a fresh agent, no call in flight
-        var config = LlmConfig.builder().model("mock").build();
-        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
-                .aiMessage(AiMessage.aiMessage("OK")).build());
-        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+    void urgentMessageGoesToTheQueueNotToTheMemory() throws InterruptedException {
+        // GIVEN — a turn parked inside its model call
+        try (var parked = parkedTurn(monitor -> {}, new UserMessageQueue(10_000, fixedClock1432()))) {
+            assertThat(parked.awaitParked()).as("the turn really is working — else this proves nothing").isTrue();
 
-        // WHEN — direct injection, as the !-override performs while the agent works
-        agent.injectUserMessage("bitte abbrechen");
+            // WHEN — the urgent message arrives mid-turn, the way AIChatView routes it
+            parked.agent().queueUrgentMessage("bitte abbrechen");
 
-        // THEN — the memory ends with the exact user message …
-        var memory = agent.getMemory().getCopy();
-        assertThat(memory).hasSize(1);
-        assertThat(memory.get(0)).isInstanceOf(UserMessage.class);
-        assertThat(extractUserTexts(memory)).containsExactly("bitte abbrechen");
-        // AND — … and nothing was routed through the queue
+            // THEN — it waits in the queue …
+            assertThat(parked.agent().getQueuedMessageCount()).isEqualTo(1);
+            // AND — nothing was injected: the running turn cannot see it in the memory …
+            var userTexts = extractUserTexts(parked.agent().getMemory().getCopy());
+            assertThat(userTexts).containsExactly("start");
+            assertThat(userTexts).noneMatch(t -> t.contains("bitte abbrechen"));
+            // AND — and no second turn started: the parked call is still the only one
+            assertThat(parked.agent().isWorking()).isTrue();
+            assertThat(streamMock.getCallCount()).isEqualTo(1);
+        }
+    }
+
+    /**
+     * Rule 8.3: a turn that ends without an urgent entry ever being consumed hands it to the
+     * follow-up turn — with the Rule 9 marker and disclosure line, so the delivery is visible.
+     */
+    @Test
+    void urgentEntryWithoutToolUseBecomesTheNextTurn() throws InterruptedException {
+        // GIVEN — a turn parked inside its model call, no tools involved
+        List<String> toolLines = new ArrayList<>();
+        var monitor = new AiMonitor() {
+            // below an agent entry TOOL lines arrive as SimpleMessages — OwnerMonitor builds them and
+            // never calls onTool on its delegate (ADR-0078); both channels feed one list
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolLines.add(m.message()); }
+            @Override public void onTool(String message) { toolLines.add(message); }
+        };
+        try (var parked = parkedTurn(monitor, new UserMessageQueue(10_000, fixedClock1432()))) {
+            assertThat(parked.awaitParked()).as("the turn really is working").isTrue();
+
+            // WHEN
+            parked.agent().queueUrgentMessage("bitte abbrechen");
+            parked.release();
+            parked.running().join(10_000);
+
+            // THEN — the urgent entry became the next turn's payload, marked like any queued entry …
+            assertThat(extractUserTexts(parked.agent().getMemory().getCopy()))
+                    .element(1).asString().contains("[Queued Message] (14:32):", "bitte abbrechen");
+            // AND — its consumption was disclosed with the queue time (Rule 9) …
+            assertThat(toolLines).contains("Reading queued User message: bitte abbrechen (queued 14:32)");
+            // AND — … and it was consumed exactly once: no second marker at the turn's end.
+            assertThat(parked.agent().getQueuedMessageCount()).isZero();
+            assertThat(streamMock.getCallCount()).isEqualTo(2);
+        }
+    }
+
+    /**
+     * Rule 8.3: the urgent lane only gets there earlier, it never jumps the order — follow-up turns
+     * consume both lanes strictly by insertion time.
+     */
+    @Test
+    void followUpsKeepInsertionOrderAcrossLanes() throws InterruptedException {
+        // GIVEN — a parked turn and a clock stepping a minute per read: every entry gets its own
+        // deterministic time (14:32 / 14:33 / 14:34) without sleeping
+        try (var parked = parkedTurn(monitor -> {}, new UserMessageQueue(10_000, new MinuteSteppingClock()))) {
+            assertThat(parked.awaitParked()).as("the turn really is working").isTrue();
+
+            // WHEN — normal, urgent, normal
+            parked.agent().queueMessage("n1");
+            parked.agent().queueUrgentMessage("u1");
+            parked.agent().queueMessage("n2");
+            parked.release();
+            parked.running().join(10_000);
+
+            // THEN — one follow-up turn per entry, in the order they arrived across both lanes
+            assertThat(extractUserTexts(parked.agent().getMemory().getCopy()))
+                    .containsExactly("start",
+                            "[Queued Message] (14:32): n1",
+                            "[Queued Message] (14:33): u1",
+                            "[Queued Message] (14:34): n2");
+        }
+    }
+
+    /**
+     * Rule 12: the {@code askUser} answer takes BOTH lanes with it — every entry once, in the order
+     * they arrived across the lanes, each one disclosed, none left for a follow-up turn.
+     */
+    @Test
+    void takeAllMessagesDrainsBothLanesInInsertionOrder() {
+        // GIVEN — normal, urgent, normal on a clock stepping a minute per read (14:32/14:33/14:34),
+        // so each entry gets its own entry instead of a batch-join
+        List<String> toolLines = new ArrayList<>();
+        var monitor = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolLines.add(m.message()); }
+        };
+        var agent = new AiDevAgent(
+                new ConfiguredChatModel(LlmConfig.builder().model("mock").build(),
+                        streamMock.buildMock(r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("OK")).build())),
+                new ToolService());
+        agent.setMessageQueue(new UserMessageQueue(10_000, new MinuteSteppingClock()));
+        agent.queueMessage("n1");
+        agent.queueUrgentMessage("u1");
+        agent.queueMessage("n2");
+
+        // WHEN — what askUser asks for
+        var lines = agent.takeAllMessages(monitor);
+
+        // THEN — one line per entry over both lanes, ordered by arrival (D5: the urgent lane never
+        // jumps the normal one) …
+        assertThat(lines).containsExactly(
+                "(queued 14:32): n1",
+                "(queued 14:33): u1",
+                "(queued 14:34): n2");
+        // AND — every delivery disclosed with its queue time (Rule 9) …
+        assertThat(toolLines).containsExactly(
+                "Reading queued User message: n1 (queued 14:32)",
+                "Reading queued User message: u1 (queued 14:33)",
+                "Reading queued User message: n2 (queued 14:34)");
+        // AND — consumed finally, so no follow-up turn can be spawned from these entries.
         assertThat(agent.getQueuedMessageCount()).isZero();
+    }
+
+
+    /** A turn started on its own thread and parked inside the model call — the state a „!" arrives in. */
+    private record ParkedTurn(AiDevAgent agent, Thread running, CountDownLatch callStarted,
+            CountDownLatch canProceed) implements AutoCloseable {
+
+        boolean awaitParked() throws InterruptedException {
+            return callStarted.await(5, TimeUnit.SECONDS);
+        }
+
+        /** Lets the parked model call answer — later iterations run unblocked. */
+        void release() {
+            canProceed.countDown();
+        }
+
+        /** Never leaves a parked turn behind, whatever the assertions in between did. */
+        @Override public void close() throws InterruptedException {
+            release();
+            running.join(10_000);
+        }
+    }
+
+    /**
+     * Starts an agent on its own thread with the given queue and parks its first model call until
+     * {@link ParkedTurn#release()} — so a message can be handed over at a well-defined point while
+     * the turn is provably working.
+     */
+    private ParkedTurn parkedTurn(AiMonitor monitor, UserMessageQueue queue) {
+        var callStarted = new CountDownLatch(1);
+        var canProceed = new CountDownLatch(1);
+        var mockModel = streamMock.buildMock(r -> {
+            callStarted.countDown();
+            try {
+                canProceed.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("OK")).build();
+        });
+        var agent = new AiDevAgent(
+                new ConfiguredChatModel(LlmConfig.builder().model("mock").build(), mockModel),
+                new ToolService());
+        agent.setMessageQueue(queue);
+        var running = new Thread(() -> agent.call("start", monitor));
+        running.start();
+        return new ParkedTurn(agent, running, callStarted, canProceed);
+    }
+
+    /** Test clock stepping one minute per read, so queued entries get distinct, fixed HH:mm times. */
+    private static final class MinuteSteppingClock extends Clock {
+        private final AtomicLong millis =
+                new AtomicLong(Instant.parse("2026-09-23T14:32:00Z").toEpochMilli());
+
+        @Override public ZoneId getZone() { return ZoneOffset.UTC; }
+        @Override public Clock withZone(ZoneId zone) { return this; }
+        @Override public Instant instant() { return Instant.ofEpochMilli(millis.get()); }
+        @Override public long millis() { return millis.getAndAdd(60_000); }
     }
 
 
@@ -867,7 +1030,7 @@ class AbstractAgentTest {
 
         // WHEN — one turn
         agent.call("test", new AiMonitor() {
-            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolLines.add(m.message()); }
             @Override public void onTool(String message) { toolLines.add(message); }
         });
 
@@ -910,7 +1073,7 @@ class AbstractAgentTest {
 
         // WHEN — one turn
         agent.call("test", new AiMonitor() {
-            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolLines.add(m.message()); }
             @Override public void onTool(String message) { toolLines.add(message); }
         });
 
@@ -1081,7 +1244,7 @@ class AbstractAgentTest {
 
         List<String> toolMessages = new ArrayList<>();
         AiMonitor monitor = new AiMonitor() {
-            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolMessages.add(m.message()); }
             @Override public void onTool(String message) { toolMessages.add(message); }
         };
 
@@ -1089,7 +1252,7 @@ class AbstractAgentTest {
         agent.call("test", monitor);
 
         // THEN — onTool called for labeled item only
-        assertThat(toolMessages).contains("📋 Loading docs/memory.md (Peon-Dev)");
+        assertThat(toolMessages).contains("📋 Loading docs/memory.md (Dev)");
         assertThat(toolMessages).noneMatch(m -> m.contains("unlabeled"));
     }
 
@@ -1105,7 +1268,7 @@ class AbstractAgentTest {
 
         List<String> toolMessages = new ArrayList<>();
         AiMonitor monitor = new AiMonitor() {
-            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolMessages.add(m.message()); }
             @Override public void onTool(String message) { toolMessages.add(message); }
         };
 
@@ -1173,7 +1336,7 @@ class AbstractAgentTest {
 
         List<String> toolMessages = new ArrayList<>();
         AiMonitor monitor = new AiMonitor() {
-            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolMessages.add(m.message()); }
             @Override public void onTool(String message) { toolMessages.add(message); }
         };
 
@@ -1206,7 +1369,7 @@ class AbstractAgentTest {
 
         List<String> toolMessages = new ArrayList<>();
         AiMonitor monitor = new AiMonitor() {
-            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolMessages.add(m.message()); }
             @Override public void onTool(String message) { toolMessages.add(message); }
         };
 
@@ -1362,7 +1525,7 @@ class AbstractAgentTest {
 
         List<String> toolMessages = new ArrayList<>();
         AiMonitor monitor = new AiMonitor() {
-            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            @Override public void onChatResponse(SimpleMessage m) { if (m.role() == Type.TOOL) toolMessages.add(m.message()); }
             @Override public void onTool(String message) { toolMessages.add(message); }
         };
 

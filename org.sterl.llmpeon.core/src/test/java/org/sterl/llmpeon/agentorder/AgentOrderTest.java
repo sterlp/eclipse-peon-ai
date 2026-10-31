@@ -18,6 +18,8 @@ import org.sterl.llmpeon.poagent.AiPoAgent;
 
 class AgentOrderTest extends AbstractMemoryFileTest {
 
+    private static final String FALLBACK_WARNING = "No agent matches any pattern in " + AgentOrder.AGENT_ORDER_FILE;
+
     private static AiAgent agent(String name) {
         AiAgent a = mock(AiAgent.class);
         when(a.getName()).thenReturn(name);
@@ -71,7 +73,7 @@ class AgentOrderTest extends AbstractMemoryFileTest {
         // THEN
         Path orderFile = dir.resolve(AgentOrder.AGENT_ORDER_FILE);
         assertThat(orderFile).exists();
-        assertThat(Files.readString(orderFile)).contains("^Peon-PO$");
+        assertThat(Files.readString(orderFile)).contains("^Jon$");
     }
 
     @Test
@@ -90,10 +92,10 @@ class AgentOrderTest extends AbstractMemoryFileTest {
     @Test
     void sortFallsBackToDefaultPatternsWhenNoneLoaded() {
         // GIVEN - a fresh AgentOrder, load() never called
-        List<AiAgent> agents = new AgentOrder().sort(List.of(agent("Zeta-Agent"), agent("Peon-PO"), agent("Alpha-Agent")));
+        List<AiAgent> agents = new AgentOrder().sort(List.of(agent("Zeta-Agent"), agent(AiPoAgent.NAME), agent("Alpha-Agent")));
 
         // THEN - without DEFAULT_PATTERNS this would fall through to plain alphabetical
-        assertThat(agents).extracting(AiAgent::getName).containsExactly("Peon-PO", "Alpha-Agent", "Zeta-Agent");
+        assertThat(agents).extracting(AiAgent::getName).containsExactly(AiPoAgent.NAME, "Alpha-Agent", "Zeta-Agent");
     }
 
     @Test
@@ -103,13 +105,13 @@ class AgentOrderTest extends AbstractMemoryFileTest {
                 # Only comments
                 # Nothing here
                 """);
-        List<AiAgent> agents = List.of(agent("Zeta-Agent"), agent("Peon-PO"), agent("Alpha-Agent"));
+        List<AiAgent> agents = List.of(agent("Zeta-Agent"), agent(AiPoAgent.NAME), agent("Alpha-Agent"));
 
         // WHEN
         List<AiAgent> sorted = subject.sort(agents);
 
         // THEN
-        assertThat(sorted).extracting(AiAgent::getName).containsExactly("Peon-PO", "Alpha-Agent", "Zeta-Agent");
+        assertThat(sorted).extracting(AiAgent::getName).containsExactly(AiPoAgent.NAME, "Alpha-Agent", "Zeta-Agent");
     }
 
     @Test
@@ -151,17 +153,44 @@ class AgentOrderTest extends AbstractMemoryFileTest {
         assertThat(sorted).extracting(AiAgent::getName).containsExactly("Peon-Dev", "Peon-PO");
     }
 
+    /**
+     * R5 (org.sterl.llmpeon.core/docs/agent-ordering.md): an order file whose patterns match no agent at all is not an
+     * order — the default order applies instead of sending every agent to the alphabetical tail.
+     */
     @Test
-    void sortIsAlphabeticalWhenPatternsMatchNothing() throws Exception {
-        // GIVEN
-        AgentOrder subject = loadedWith("^Does-Not-Match$\n");
-        List<AiAgent> agents = List.of(agent("Charlie"), agent("Alpha"), agent("Bravo"));
+    void sortFallsBackToDefaultOrderWhenNoAgentMatchesAnyPattern() throws Exception {
+        // GIVEN — Paul's real case: a file left over from the renames, so nothing matches any more
+        AgentOrder subject = loadedWith("^Peon-PO$\n");
+        List<AiAgent> agents = List.of(agent("Zeta-Agent"), agent(AiPoAgent.NAME), agent("Alpha-Agent"));
 
         // WHEN
-        List<AiAgent> sorted = subject.sort(agents);
+        List<AiAgent> sorted;
+        try (var capture = captureAgentOrderLogs()) {
+            sorted = subject.sort(agents);
+            // THEN — default order applies, and the fallback is reported rather than silently applied
+            assertThat(sorted).extracting(AiAgent::getName).containsExactly(AiPoAgent.NAME, "Alpha-Agent", "Zeta-Agent");
+            assertThat(capture.warns()).filteredOn(w -> w.contains(FALLBACK_WARNING)).hasSize(1);
+        }
+    }
 
-        // THEN
-        assertThat(sorted).extracting(AiAgent::getName).containsExactly("Alpha", "Bravo", "Charlie");
+    /**
+     * R5 counter-check: a catch-all matches every agent, so the file stays authoritative and the deliberate
+     * alphabetical order survives — the fallback must not over-trigger.
+     */
+    @Test
+    void sortWithCatchAllPatternKeepsAlphabeticalOrder() throws Exception {
+        // GIVEN
+        AgentOrder subject = loadedWith(".*\n");
+        List<AiAgent> agents = List.of(agent(AiPoAgent.NAME), agent("Alpha-Agent"));
+
+        // WHEN
+        List<AiAgent> sorted;
+        try (var capture = captureAgentOrderLogs()) {
+            sorted = subject.sort(agents);
+            // THEN — no "^Jon$" group in effect, so alphabetical; the fallback must not over-trigger
+            assertThat(sorted).extracting(AiAgent::getName).containsExactly("Alpha-Agent", AiPoAgent.NAME);
+            assertThat(capture.warns()).noneMatch(w -> w.contains(FALLBACK_WARNING));
+        }
     }
 
     @Test
@@ -182,7 +211,7 @@ class AgentOrderTest extends AbstractMemoryFileTest {
      * name yield exactly ONE dropdown entry — the first wins, the collision is surfaced via warn.
      */
     @Test
-    void sortDropsDuplicateNamedAgentsWithWarning() throws Exception {
+    void sortDropsDuplicateAgentsWithWarning() throws Exception {
         // GIVEN — a catch-all pattern and two distinct agent instances with the same name
         AgentOrder subject = loadedWith(".*");
         AiAgent first = agent("Dup");
@@ -200,11 +229,11 @@ class AgentOrderTest extends AbstractMemoryFileTest {
     }
 
     @Test
-    void defaultOrderContentReferencesThePoAgentByName() {
+    void defaultOrderContentPinsTheJonFirstPattern() {
         // GIVEN - AgentOrder.DEFAULT_ORDER_CONTENT exists
         // WHEN - (none, static content)
-        // THEN
-        assertThat(AgentOrder.DEFAULT_ORDER_CONTENT).contains(AiPoAgent.NAME);
+        // THEN — the pattern implies the name, so only it is pinned
+        assertThat(AgentOrder.DEFAULT_ORDER_CONTENT).contains("^Jon$");
     }
 
     /**

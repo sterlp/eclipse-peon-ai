@@ -25,9 +25,11 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.osgi.service.prefs.BackingStoreException;
 import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
@@ -86,6 +88,24 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
     private PeonAiService aiService;
     private final StreamMock streamMock = new StreamMock();
 
+    /** Wire key of the remembered agent (R5, org.sterl.llmpeon/docs/active-agent-persistence.md). */
+    private static final String REMEMBERED_AGENT_KEY = "llm.activeAgent";
+
+    /**
+     * The remembered agent is workspace state: a leftover of an earlier test would restore into the
+     * next service and make the start-agent assertions depend on the method order. Only the key is
+     * cleared — {@code removeNode()} on this node would wipe every plugin preference.
+     */
+    private static void forgetRememberedAgent() {
+        var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
+        prefs.remove(REMEMBERED_AGENT_KEY);
+        try {
+            prefs.flush();
+        } catch (BackingStoreException e) {
+            throw new IllegalStateException("Test cannot clear the remembered agent", e);
+        }
+    }
+
     @Before
     public void beforeEach() {
         var ccm = new ConfiguredChatModel(LlmConfig.builder()
@@ -94,6 +114,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                 .configDir(Path.of(System.getProperty("java.io.tmpdir"), ".peon-test"))
                 .build()
         );
+        forgetRememberedAgent();
         aiService = new PeonAiService(() -> {}, null, null, null, ccm);
         aiService.setProject(project);
         aiService.clearAll();
@@ -104,6 +125,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
     @After
     public void clearCurrentService() {
         PeonAiService.clearCurrent();
+        forgetRememberedAgent();
     }
     
     @Test
@@ -259,10 +281,10 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         var askUser = svc.getSharedToolService().getExecutors().stream()
                 .filter(e -> e.getTool() instanceof AskUserTool).findFirst().orElseThrow();
 
-        // THEN Da Thinka / Da Dok / Da Mek still filter askUser out (R9 unchanged)
-        for (var slaveName : List.of("Da Thinka", "Da Dok", "Da Mek")) {
-            var slave = po.getTeam().stream().filter(n -> n.uiName().equals(slaveName))
-                    .findFirst().orElseThrow().agent();
+        // THEN Plan / Review / Dev still filter askUser out (R9 unchanged)
+        for (var slaveName : List.of("Plan", "Review", "Dev")) {
+            var slave = po.getTeam().stream().filter(n -> n.getName().equals(slaveName))
+                    .findFirst().orElseThrow();
             assertFalse(slaveName + " must not get askUser (R9)", slave.isToolActive(askUser));
         }
     }
@@ -275,6 +297,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                 .configDir(Path.of(System.getProperty("java.io.tmpdir"), ".peon-test"))
                 .build());
         ccm.setChatModel(streamMock.buildOkMock());
+        forgetRememberedAgent();
         var svc = new PeonAiService(() -> {}, null, null, null, ccm, presenter);
         svc.setProject(project);
         return svc;
@@ -288,9 +311,11 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         aiService.setActiveAgent(aiService.getAgents().stream().filter(a -> a.getName().equals(AiPlanAgent.NAME)).findFirst().orElseThrow());
         // AND
         aiService.getActiveAgent().getMemory().clear();
-        aiService.setProject(project);
+        // AND no plan in the workspace — setProject re-establishes the reference of an active plan
+        // agent (R-PT-5), so the delete has to precede the binding for this GIVEN to hold
         aiService.getToolService().getTool(EclipseWorkspaceWriteFileTool.class).get().eclipseDeleteResource("peon-plan");
-        
+        aiService.setProject(project);
+
         // WHEN
         assertFalse(aiService.onHandoff());
         // AND
@@ -862,14 +887,14 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
 
     // --- Header status widget MVP (agenten-status-im-header-mvp-plan.md, ADR-0025) -------------
 
-    /** GIVEN Jon is active THEN getStatusAgents() is his team: Da Boss first, then Da Thinka, Da Mek, Da Dok. */
+    /** GIVEN Jon is active THEN getStatusAgents() is his team: Jon first, then Plan, Dev, Review. */
     @Test
     public void test_status_agents_are_jons_team_when_po_active() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         aiService.setActiveAgent(AiPoAgent.NAME);
 
-        var uiNames = aiService.getStatusAgents().stream().map(n -> n.uiName()).toList();
-        assertEquals(List.of("Da Boss", "Da Thinka", "Da Mek", "Da Dok"), uiNames);
+        var agentNames = aiService.getStatusAgents().stream().map(AiAgent::getName).toList();
+        assertEquals(List.of("Jon", "Plan", "Dev", "Review"), agentNames);
     }
 
     /** GIVEN any other agent is active THEN the status widget shows nothing (empty list). */
@@ -1131,9 +1156,9 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         // THEN the sub-loop's tool set stays plan-free and keeps the read tools
         var names = sniffaSubLoopToolNames(searchAgent);
         for (var name : names) {
-            assertFalse("Sniffa sub-loop must not offer " + name, name.startsWith("plan"));
+            assertFalse("Search sub-loop must not offer " + name, name.startsWith("plan"));
         }
-        assertTrue("Sniffa keeps eclipseGrepFiles", names.contains("eclipseGrepFiles"));
+        assertTrue("Search keeps eclipseGrepFiles", names.contains("eclipseGrepFiles"));
 
         // AND the search slot's allowlist narrows the sub-loop (parent-independent, not inherited)
         aiService.updateConfig(aiService.getConfig().toBuilder()
@@ -1141,11 +1166,11 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         var narrowed = sniffaSubLoopToolNames(searchAgent);
         assertFalse("sub-loop must still offer tools", narrowed.isEmpty());
         for (var name : narrowed) {
-            assertTrue("Sniffa sub-loop restricted to eclipse*: " + name, name.startsWith("eclipse"));
+            assertTrue("Search sub-loop restricted to eclipse*: " + name, name.startsWith("eclipse"));
         }
     }
 
-    /** Runs Da Sniffa's sub-loop against the mock model and returns the tool names sent to the model. */
+    /** Runs Search's sub-loop against the mock model and returns the tool names sent to the model. */
     private List<String> sniffaSubLoopToolNames(SearchAgentTool searchAgent) {
         var ccm = new ConfiguredChatModel(aiService.getConfig());
         ccm.setChatModel(streamMock.buildOkMock());
@@ -1431,6 +1456,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             var ccm = new ConfiguredChatModel(LlmConfig.builder()
                     .model("test").url("http://localhost:0")
                     .configDir(Path.of(System.getProperty("java.io.tmpdir"), ".peon-test")).build());
+            forgetRememberedAgent();
             var svc = new PeonAiService(() -> {}, null, null, null, ccm);
             svc.setProject(project);
             svc.clearAll();
@@ -1452,9 +1478,9 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
 
             // AND: the slaves get a COPY of Jon's context + exactly one name item (R-N1), leak-free
             var delegate = jon.getToolService().getTool(PoDelegateTool.class).orElseThrow();
-            assertSlaveStaticContext(delegate.getPlanSlave(), "Da Thinka", ctx, forbidden);
-            assertSlaveStaticContext(delegate.getDevSlave(), "Da Mek", ctx, forbidden);
-            assertSlaveStaticContext(delegate.getReviewSlave(), "Da Dok", ctx, forbidden);
+            assertSlaveStaticContext(delegate.getPlanSlave(), "Plan", ctx, forbidden);
+            assertSlaveStaticContext(delegate.getDevSlave(), "Dev", ctx, forbidden);
+            assertSlaveStaticContext(delegate.getReviewSlave(), "Review", ctx, forbidden);
         } finally {
             wmt.memoryReset(); // isoliert: Memory nicht in andere Tests/Runs leaken
         }
@@ -1507,6 +1533,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                     .configDir(configDir).build());
             var svcRef = new AtomicReference<PeonAiService>();
             var callbackState = new AtomicReference<String>();
+            forgetRememberedAgent();
             var svc = new PeonAiService(() -> {}, null, null, () -> {
                 // capture at the moment the original UI callback fires: is the re-bake already done?
                 var custom = svcRef.get().getAgentService().get("TestAgent");
@@ -1951,6 +1978,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             var ccm = new ConfiguredChatModel(LlmConfig.builder()
                     .model("test").url("http://localhost:0")
                     .configDir(Path.of(System.getProperty("java.io.tmpdir"), ".peon-test")).build());
+            forgetRememberedAgent();
             var svc = new PeonAiService(() -> {}, null, null, null, ccm);
             svc.setProject(project);
             svc.clearAll();
@@ -2039,6 +2067,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         var ccm = new ConfiguredChatModel(LlmConfig.builder()
                 .model("test").url("http://localhost:0")
                 .configDir(Path.of(System.getProperty("java.io.tmpdir"), ".peon-test")).build());
+        forgetRememberedAgent();
         var svc = new PeonAiService(() -> {}, null, null, null, ccm);
         svc.setProject(project);
         svc.clearAll();
@@ -2497,6 +2526,121 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         } finally {
             PeonAiService.clearCurrent();
         }
+    }
+
+    /**
+     * R2 (org.sterl.llmpeon/docs/active-agent-persistence.md): the remembered agent is active again in
+     * the next service — that service is the restart, minus the Eclipse restart. Jon is the chosen
+     * agent on purpose: as a persistent agent he is only registered under his name after the config
+     * refresh, so this also pins WHERE in the constructor the restore has to run.
+     */
+    @Test
+    public void rememberedAgentIsRestoredInANewService() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN: nothing remembered (beforeEach cleared the key) -> the default agent stays active
+        assertEquals("a workspace without a remembered agent starts on the default",
+                AiDevAgent.NAME, aiService.getActiveAgent().getName());
+
+        // AND: the user picks Jon, which is what the dropdown does
+        aiService.setActiveAgent(AiPoAgent.NAME);
+        assertEquals(AiPoAgent.NAME, aiService.getActiveAgent().getName());
+        assertEquals("the choice lands on the wire key of this workspace (R5)",
+                AiPoAgent.NAME, InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID)
+                        .get(REMEMBERED_AGENT_KEY, null));
+
+        // WHEN: a second service is built for the same workspace — deliberately WITHOUT clearing
+        // the remembered agent, that is the whole point
+        var ccm = new ConfiguredChatModel(LlmConfig.builder()
+                .model("test").url("http://localhost:0")
+                .configDir(Path.of(System.getProperty("java.io.tmpdir"), ".peon-test")).build());
+        ccm.setChatModel(streamMock.buildOkMock());
+        var restarted = new PeonAiService(() -> {}, null, null, null, ccm);
+        restarted.setProject(project);
+
+        // THEN: Jon is active again, not the Dev default
+        assertEquals("the remembered agent survives the service build",
+                AiPoAgent.NAME, restarted.getActiveAgent().getName());
+    }
+
+    /**
+     * R-PT-5 (org.sterl.llmpeon/docs/plan-tool.md): the project binding re-establishes the plan
+     * reference of an already active plan agent. The discriminator is the source of the handoff text —
+     * the plan file, never the last answer of his persisted history.
+     */
+    // UC-PT-5
+    @Test
+    public void restoredPlanAgentGetsItsPlanReferenceOnProjectBinding() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN: the user picked Plan (the key is the fixture here) and the project holds a plan
+        var planFile = "/" + PeonTestFixture.PROJECT_NAME + "/" + PlanTool.OVERVIEW_FILE;
+        eclipseWriteFile(planFile, "# plan\nR-PT-5-DISK-MARKER\n");
+        aiService.setActiveAgent(AiPlanAgent.NAME);
+        assertEquals(AiPlanAgent.NAME, InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID)
+                .get(REMEMBERED_AGENT_KEY, null));
+
+        var restarted = newServiceWithRememberedAgent();
+        // AND: the temptation of the fallback branch — Plan's last answer of an earlier session
+        restarted.getActiveAgent().getMemory().add(AiMessage.from("STALE-MEMORY"));
+        assertEquals("the restart has to start on Plan, otherwise this is not the case under test",
+                AiPlanAgent.NAME, restarted.getActiveAgent().getName());
+
+        try {
+            // WHEN
+            restarted.setProject(project);
+
+            // THEN
+            assertTrue("a restored plan agent with a plan in the project must hand off",
+                    restarted.onHandoff());
+            assertEquals(AiDevAgent.NAME, restarted.getActiveAgent().getName());
+            var messages = restarted.getActiveAgent().getMemory().getCopy();
+            assertHasUserMessageWith(messages, PlanTool.OVERVIEW_FILE);
+            assertHasUserMessageWith(messages, "R-PT-5-DISK-MARKER");
+            assertHasNoUserMessageWith(messages, "Handover from Plan:");
+        } finally {
+            eclipseDeleteResource(planFile);
+            forgetRememberedAgent();
+        }
+    }
+
+    /**
+     * UC-PT-5 BDD line 2: binding a project never reads the plan for an agent that cannot hand one
+     * off — the reference stays empty for every agent but the plan agent.
+     */
+    // UC-PT-5
+    @Test
+    public void projectBindingLeavesNonPlanAgentWithoutPlanReference() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN: Jon remembered (not Plan) while the project does hold a plan
+        var planFile = "/" + PeonTestFixture.PROJECT_NAME + "/" + PlanTool.OVERVIEW_FILE;
+        eclipseWriteFile(planFile, "# plan\nnever handed off\n");
+        aiService.setActiveAgent(AiPoAgent.NAME);
+
+        var restarted = newServiceWithRememberedAgent();
+        try {
+            assertEquals(AiPoAgent.NAME, restarted.getActiveAgent().getName());
+            restarted.setProject(project);
+            assertTrue("the plan must be there, otherwise the empty reference proves nothing",
+                    restarted.getSharedToolService().getTool(PlanTool.class).orElseThrow().hasPlan());
+
+            // THEN
+            assertNull("only an active plan agent may hold the plan reference",
+                    ((AgentContextComponent) readField(restarted, "agentContext")).planRef());
+        } finally {
+            eclipseDeleteResource(planFile);
+            forgetRememberedAgent();
+        }
+    }
+
+    /** A second service for the same workspace — the restart, built from what the wire key holds. */
+    private PeonAiService newServiceWithRememberedAgent() {
+        var ccm = new ConfiguredChatModel(LlmConfig.builder()
+                .model("test").url("http://localhost:0")
+                .configDir(Path.of(System.getProperty("java.io.tmpdir"), ".peon-test")).build());
+        ccm.setChatModel(streamMock.buildOkMock());
+        return new PeonAiService(() -> {}, null, null, null, ccm);
     }
 
     /** Lowercase skill names currently visible in the effective view (config + project slots). */

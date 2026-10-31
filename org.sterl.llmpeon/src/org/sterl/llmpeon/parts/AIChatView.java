@@ -32,7 +32,6 @@ import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiAgentStatusModel;
 import org.sterl.llmpeon.compact.CompactFeedback;
 import org.sterl.llmpeon.model.CompactResult;
-import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.command.SlashCommandResolver;
 import org.sterl.llmpeon.command.SlashCommandResolver.SlashResult;
@@ -305,12 +304,15 @@ public class AIChatView implements EclipseAiMonitor {
     // -------------------------------------------------------------------------
     // EclipseAiMonitor
     // -------------------------------------------------------------------------
-
+    // TODO monitor bug/limit we don't see here the agent itself ...
     @Override
     public void onChatMessage(int iteration, ChatRequest.Builder request) {
-        chatHistory.updateLiveResponseInUIThread("waiting for AI...", 0, null);
         // First loop callback where the agent's working flag is already true — light up the 🟢.
-        EclipseUtil.runInUiThread(parent, () -> headerBar.refreshRoster());
+        EclipseUtil.runInUiThread(parent, () -> {
+            headerBar.refreshRoster();
+            chatHistory.updateLiveResponse("waiting for AI...", 0, null);
+            monitorRef.get().setTaskName("waiting for AI...");
+        });
     }
 
     @Override
@@ -320,11 +322,13 @@ public class AIChatView implements EclipseAiMonitor {
 
             if (m.role() == Type.TOOL) {
                 chatHistory.updateLiveResponse(m.message(), 0, "");
+                monitorRef.get().setTaskName(m.message());
             }
 
             chatHistory.appendMessage(m);
-            actionsBar.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
             headerBar.refreshRoster();
+            // TODO makes only sense if it is the current agent?
+            actionsBar.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
         });
     }
 
@@ -525,27 +529,26 @@ public class AIChatView implements EclipseAiMonitor {
      *  (R-CT-7) keeps its reset for the active agent only. Only the roster refreshes (context size
      *  visibly drops); the R16 skip (< 3 messages) surfaces as "Nothing to compact" instead of a
      *  silent no-op. */
-    private void doCompressAgent(NamedAgent slave) {
-        var agent = slave.agent();
-        if (agent.isWorking() || inFlightTurns.get() > 0) return; // defensive — buttons are disabled
+    private void doCompressAgent(AiAgent slave) {
+        if (slave.isWorking() || inFlightTurns.get() > 0) return; // defensive — buttons are disabled
         inFlightTurns.incrementAndGet();
-        LOG.info("turn submit (slave compact): agent=" + slave.uiName() + " in-flight=" + inFlightTurns.get());
+        LOG.info("turn submit (slave compact): agent=" + slave.getName() + " in-flight=" + inFlightTurns.get());
         lockWhileWorking(true);
-        Job.create("Compact " + slave.uiName(), monitor -> {
+        Job.create("Compact " + slave.getName(), monitor -> {
             monitorRef.set(monitor);
             Exception ex = null;
             CompactResult result = null; // captured before the finally's monitorRef reset (async-state safety)
             try {
-                result = agent.compact(this);
+                result = slave.compact(this);
                 // no chat rebuild for a slave (R-CT-7) — the reset only fires for the active agent;
                 // the roster refresh makes the context drop visible
                 EclipseUtil.runInUiThread(parent, headerBar::refreshRoster); // context size visibly drops
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {
-                handleDoneChatResponse(agent, slave.uiName(), null, monitor, ex);
+                handleDoneChatResponse(slave, slave.getName(), null, monitor, ex);
             }
-            return PeonConstants.status(AiAgentStatusModel.compactResult(result, slave.uiName()), ex);
+            return PeonConstants.status(AiAgentStatusModel.compactResult(result, slave.getName()), ex);
         }).schedule();
     }
 
@@ -578,15 +581,15 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     private SendDecision resolveOutgoingMessage(String text, AiAgent active) {
-        // Rule 8 override: while the agent works, a leading ! bypasses the queue — the text
-        // goes straight into the agent's memory; a lone ! (blank) is a silent no-op.
+        // Rule 8: while the agent works, a leading ! goes to the urgent lane of the agent's queue —
+        // no memory write, no "Noted" echo; a lone ! (blank) is a silent no-op.
         var override = new OverrideMessageResolver().resolve(text, active.isWorking(),
                 aiService.getCommandService(), aiService.getSkillService());
         if (override.isPresent()) {
-            var injected = override.get().text();
-            if (StringUtil.hasValue(injected)) {
-                active.injectUserMessage(injected);
-                chatHistory.appendMessage(new SimpleMessage(Type.USER, injected));
+            var urgentText = override.get().text();
+            if (StringUtil.hasValue(urgentText)) {
+                active.queueUrgentMessage(urgentText);
+                chatHistory.appendMessage(new SimpleMessage(Type.USER, urgentText));
             }
             chatInput.clearText();
             chatInput.dismissSlashMenu();
@@ -634,8 +637,8 @@ public class AIChatView implements EclipseAiMonitor {
         inFlightTurns.incrementAndGet();
         LOG.info("turn submit: agent=" + agent.getName() + " in-flight=" + inFlightTurns.get());
         lockWhileWorking(true);
-        Job.create("Peon AI request", monitor -> {
-            monitor.beginTask("Arbeit, Arbeit!", 100);
+        Job.create("AI request", monitor -> {
+            monitor.beginTask(agent.getName() + " is working ...", 100);
             monitorRef.set(monitor);
             Exception ex = null;
             ChatResponse cr = null;

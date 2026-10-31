@@ -22,6 +22,20 @@ import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 class AiScaffoldAgentTest {
 
     @Test
+    void nameIsScaffold() throws Exception {
+        // GIVEN
+        var config = LlmConfig.builder()
+                .providerType(AiProvider.OLLAMA)
+                .model("qwen3")
+                .url("http://localhost:9999")
+                .configDir(Files.createTempDirectory("scaffold-test"))
+                .build();
+
+        // WHEN / THEN — pins the user-visible dropdown/chat-header name against a silent backslide
+        assertThat(new AiScaffoldAgent(config.build()).getName()).isEqualTo("Scaffold");
+    }
+
+    @Test
     void getAgentModelName_returnsNull() throws Exception {
         // GIVEN
         var tmpDir = Files.createTempDirectory("scaffold-test");

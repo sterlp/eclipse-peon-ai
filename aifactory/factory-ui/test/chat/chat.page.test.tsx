@@ -20,8 +20,8 @@ interface Chat {
 const QUESTION: ChatMessage = { role: 'user', text: 'wo liegen die Dateien?' }
 const ANSWER: ChatMessage = { role: 'jon', text: 'Im Root liegen: pom.xml und README.md' }
 /** A team member's final answer — role `jon` with an author, never a third role (UC-WP-39). */
-const TEAM_ANSWER: ChatMessage = { role: 'jon', text: 'Eine Banane.', origin: 'Da Mek' }
-const JONS_ANSWER: ChatMessage = { role: 'jon', text: 'Da Mek nennt eine Banane.', origin: 'Jon' }
+const TEAM_ANSWER: ChatMessage = { role: 'jon', text: 'Eine Banane.', origin: 'Dev' }
+const JONS_ANSWER: ChatMessage = { role: 'jon', text: 'Dev nennt eine Banane.', origin: 'Jon' }
 
 let active: Chat | undefined
 
@@ -289,7 +289,7 @@ test('everyLineCarriesItsAuthor', async () => {
   await flush()
 
   // exactly two lines have an agent relationship, and exactly those two carry a name (R-WP-4)
-  expect(authorsOnScreen()).toEqual(['Da Mek', 'Jon'])
+  expect(authorsOnScreen()).toEqual(['Dev', 'Jon'])
 
   // the own input has no agent relationship: no label, and nothing standing in for one
   const own = screen.getByTestId('chat-line-user')
@@ -307,42 +307,40 @@ test('onlyFinalAnswersFromTheTeam', async () => {
   await chat.push(event('partial', { kind: 'think', text: 'DENKTEXT-AUS-MITGLIED' }))
   expect(screen.getByTestId('chat-log').textContent).not.toContain('DENKTEXT-AUS-MITGLIED')
 
-  // GIVEN 1 — the final answer arrives live as its own event, cut through the middle of its JSON
-  await chat.push('event:delegated\ndata:{"origin":"Da M')
+  // GIVEN 1 — and a member's final answer is no live event either: while the turn runs, Jon's own trace
+  // is the only named thing on the wire, and no line of the conversation carries a member's text
+  await chat.push(event('tool', { text: 'a tool line of the running turn' }))
   expect(screen.queryByTestId('chat-line-jon')).toBeNull()
-  await chat.push('ek","text":"Eine Banane."}\n\n')
+  expect(screen.getByTestId('chat-tool-line')).toHaveTextContent('a tool line of the running turn')
 
-  const answer = screen.getByTestId('chat-line-jon')
-  expect(within(answer).getByTestId('chat-line-author')).toHaveTextContent('Da Mek')
-  expect(answer).toHaveTextContent('Eine Banane.')
-  expect(screen.getByTestId('chat-log').textContent).not.toContain('DENKTEXT-AUS-MITGLIED')
-
-  // after done the history carries the same entry: the answer stands exactly once, no duplicate
+  // with `done` the history is read once, and it carries the member's line under its own name — once
   chat.setMessages([QUESTION, TEAM_ANSWER, JONS_ANSWER])
   await chat.push(event('done', { millis: 4321 }))
 
-  expect(authorsOnScreen()).toEqual(['Da Mek', 'Jon'])
+  expect(authorsOnScreen()).toEqual(['Dev', 'Jon'])
   expect(screen.getAllByTestId('chat-line-jon')).toHaveLength(2)
   expect(screen.getAllByText('Eine Banane.')).toHaveLength(1)
   expect(screen.getByTestId('chat-log').textContent).not.toContain('DENKTEXT-AUS-MITGLIED')
 })
 
-test('droppedStreamKeepsTeamAnswerOnce', async () => {
+test('reconnectReadsTeamAnswerFromTheHistory', async () => {
   const chat = stubChat({ messages: [QUESTION] })
   render(<ChatPage project={project()} />)
   await flush()
 
-  await chat.push(event('delegated', { origin: 'Da Mek', text: 'Eine Banane.' }))
-  expect(screen.getAllByTestId('chat-line-jon')).toHaveLength(1)
+  // the turn dies mid-flight: what is lost is the live line and nothing else — the client keeps no
+  // memory of a team answer, because the history is the only truth for finished text (R-WP-11)
+  await chat.push(event('partial', { kind: 'answer', text: 'HALB ' }))
+  expect(screen.getByTestId('chat-live')).toHaveTextContent('HALB')
 
-  // the stream dies before done: (re-)connect reads the history, and the history is the truth — so
-  // the buffered answer gives way to the copy the server stores, it does not join up with it (Q8)
+  // (re-)connect reads the history: the member's line arrives with it, named, and exactly once
   chat.setMessages([QUESTION, TEAM_ANSWER, JONS_ANSWER])
   await chat.closeStream()
   await waitFor(() => expect(chat.countOf('/events', 'GET')).toBe(2), { timeout: 1500 })
 
   expect(screen.getAllByText('Eine Banane.')).toHaveLength(1)
-  expect(authorsOnScreen()).toEqual(['Da Mek', 'Jon'])
+  expect(authorsOnScreen()).toEqual(['Dev', 'Jon'])
+  expect(screen.queryByTestId('chat-live')).toBeNull()
 })
 
 /** The author labels on the screen, in reading order — the shape of R-WP-4's claim. */

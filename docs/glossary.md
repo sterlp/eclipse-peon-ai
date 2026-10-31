@@ -17,13 +17,14 @@ Tool-Call und manchmal eine falsche Entscheidung.
 
 | Begriff | Bedeutung | Nicht verwenden |
 |---|---|---|
-| **Peon-PO** / **Jon** | Der Business-Owner-Agent; besitzt `docs/` (das SOLL), orchestriert Plan + Dev | PO-Agent, Owner, Boss |
-| **Peon-Plan** / **Da Thinka** | Plan-Agent; schreibt ausschließlich `peon-plan/overview.md`, berät verbal | Planner, Architekt |
-| **Peon-Dev** / **Da Mek** | Dev-Agent; schreibt ausschließlich Code | Developer, Coder, Sklave (nur informell) |
-| **Da Sniffa** | Such-Agent (`searchAgent`), read-only; der Loop ist zustandslos (einmalig), Kontinuität nur über den `last-search-rolling`-Block | Research-Agent, Scout |
+| **Jon** | Der Business-Owner-Agent; besitzt `docs/` (das SOLL), orchestriert Plan + Dev | PO-Agent, Owner, Boss, Peon-PO, Da Boss |
+| **Plan** | Plan-Agent; schreibt ausschließlich `peon-plan/overview.md`, berät verbal | Planner, Architekt, Peon-Plan, Da Thinka |
+| **Dev** | Dev-Agent; schreibt ausschließlich Code | Developer, Coder, Sklave (nur informell), Peon-Dev, Da Mek |
+| **Search** | Such-Agent (`searchAgent`), read-only; der Loop ist zustandslos (einmalig), Kontinuität nur über den `last-search-rolling`-Block | Research-Agent, Scout, Da Sniffa |
 | **last-search-rolling** | Rollender Hot-Kontext-Block des Such-Agenten: Frage+finale Antwort der letzten Suchen derselben Chat-View, append-only, 10k-Cap Rohschnitt; Static Message, nie Memory | Such-Historie, Search-Memory |
-| **Da Dok** | Review-Agent (`reviewPlanAgent`), dritter PO-RAM-Sklave (`Peon-Review`), read-only im Code, Verdict ACCEPTED/CONCERNS/REJECTED | Reviewer, QA-Agent, Peon-Review (nur als Agent-ID) |
-| **Da Scribe** | Compact-Agent (`compactSession`) | Compressor, Summarizer |
+| **Review** | Review-Agent (`reviewPlanAgent`), read-only im Code, Verdict ACCEPTED/CONCERNS/REJECTED | Reviewer, QA-Agent, Peon-Review, Da Dok |
+| **Scaffold** | Built-in-Agent, der Agents/Skills/Commands anlegt und pflegt | Peon-Scaffold, Config-Agent, Housekeeper |
+| **Compact** | Sub-Agent-Loop, der die History verdichtet (`compactSession`); sein Name erscheint als Absender-Stempel im Chat | Compressor, Summarizer, Da Scribe |
 | **Custom Agent** | Nutzerdefinierter Agent aus `AGENT.md` mit Frontmatter | User-Agent, eigener Agent |
 
 ## Domäne — Arbeitsweise
@@ -38,7 +39,7 @@ Tool-Call und manchmal eine falsche Entscheidung.
 | **ADR** | Technische Entscheidung in `docs/adr/NNNN-<slug>.md` (Status · Context · Decision · Consequences) | Design-Doc, RFC |
 | **Inkrement** | Kleinste vertikale Einheit inkl. Tests, für sich grün, `inc-N` | Task, Step, Etappe |
 | **Zyklus** | Ein kompletter Durchlauf Plan → Abnahme → Build → Review → Retro | Sprint, Iteration |
-| **Plan** | Genau eine Datei: `peon-plan/overview.md` — die dauerhafte Übergabe an Da Mek | Planning-Doc, Konzept |
+| **Plan** | Genau eine Datei: `peon-plan/overview.md` — die dauerhafte Übergabe an Dev | Planning-Doc, Konzept |
 | **Fixture** | Das versionierte Testprojekt `test_project` | Testdaten, Sample-Projekt |
 
 **Status-Marker** (genau einer pro Regel und pro Feature):
@@ -68,7 +69,7 @@ entschieden · 🔒 geklärt.
 | **Static Context** | Der System-Prompt-Anteil: Env (Datum, OS, Datei-Regeln). **Kein** Projekt, kein Memory | System-Kontext, Preamble |
 | **Turn Context** | Pro Turn in die History gehängt: gewähltes Projekt, Workspace-Memory, Dateien | dynamischer Kontext, Laufzeit-Kontext |
 | **ContextItem** | Der Typ, der beides trägt (`render()`, dedupKey) | Kontext-Block, Snippet |
-| **Compact** | Verdichten der History durch Da Scribe | Compress, Zusammenfassen, Summarize |
+| **Compact** | Verdichten der History — siehe Agenten-Tabelle (Stempel-Name `Compact`) | Compress, Zusammenfassen, Summarize |
 | **Workspace Memory** | Der projektlokale Merkspeicher (memory*-Tools) | Guidelines, Notizen |
 
 ## Domäne — Tools

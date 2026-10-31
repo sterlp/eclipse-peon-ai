@@ -19,6 +19,7 @@ import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.tool.LoopOwner;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
@@ -75,7 +76,7 @@ class CompactSessionToolTest {
         var toolRequest = ToolLoopRequest.builder()
                 .chatModel(configuredModel)
                 .memory(memory)
-                .agent(mockAgent)
+                .owner(LoopOwner.of(mockAgent, LlmConfig::devAgentConfig))
                 .build();
 
         var subject = new CompactSessionTool();
@@ -168,7 +169,7 @@ class CompactSessionToolTest {
         subject.withToolRequest(ToolLoopRequest.builder()
                 .chatModel(new ConfiguredChatModel(config, cm))
                 .memory(memory)
-                .agent(agent)
+                .owner(LoopOwner.of(agent, LlmConfig::devAgentConfig))
                 .build());
         return subject;
     }
@@ -379,7 +380,7 @@ class CompactSessionToolTest {
         subject.withToolRequest(ToolLoopRequest.builder()
                 .chatModel(new ConfiguredChatModel(config, cm))
                 .memory(memory)
-                .agent(agent)
+                .owner(LoopOwner.of(agent, LlmConfig::devAgentConfig))
                 .monitor(monitor)
                 .build());
         return subject;

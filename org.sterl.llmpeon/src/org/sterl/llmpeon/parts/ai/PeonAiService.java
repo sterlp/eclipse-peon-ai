@@ -18,7 +18,6 @@ import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.AiReviewAgent;
-import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -31,6 +30,7 @@ import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.ai.component.AgentContextComponent;
 import org.sterl.llmpeon.parts.ai.component.BuildPoAgentComponent;
 import org.sterl.llmpeon.parts.ai.component.SharedToolsComponent;
+import org.sterl.llmpeon.parts.config.ActiveAgentPreference;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpConnectionService;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
@@ -110,6 +110,9 @@ public class PeonAiService {
     private SharedToolsComponent sharedTools;
     private WorkspaceMemoryTool workspaceMemoryTool;
     private AgentContextComponent agentContext;
+
+    /** The agent choice remembered for this workspace (org.sterl.llmpeon/docs/active-agent-persistence.md). */
+    private final ActiveAgentPreference activeAgentPreference = ActiveAgentPreference.instance();
 
     /**
      * Creates all AI services with defaults from the current Eclipse preferences.
@@ -207,7 +210,7 @@ public class PeonAiService {
         // The persistent poAgent instance survives clearAgents/reloads — stable reference.
         sharedTools.registerDiskGatedRegistry(poAgent.getToolService());
 
-        // ADR-0067: MCP connects every agent-facing registry (shared + Peon-PO's own).
+        // ADR-0067: MCP connects every agent-facing registry (shared + Jon's own).
         mcpConnectionService = new McpConnectionService(List.of(sharedToolService, poAgent.getToolService()), mcpStateChange);
 
         // ADR-0068: Codegraph built-in — same agent-facing registries, own group + probe.
@@ -229,6 +232,9 @@ public class PeonAiService {
         for (var agent : this.getAgents()) {
             agent.setTurnContextSupplier(() -> get());
         }
+        // R2 (org.sterl.llmpeon/docs/active-agent-persistence.md): last chosen agent becomes active
+        // again — after updateConfig(), so custom, scaffold and Jon are all registered by name.
+        restoreActiveAgent();
         current = this;
     }
     
@@ -295,10 +301,15 @@ public class PeonAiService {
     /**
      * Updates the active project across all project-aware services.
      * Safe to call from any thread — each downstream setter manages its own state.
+     * <p>
+     * Ends by re-establishing the plan reference for an already active plan agent
+     * (R-PT-5, org.sterl.llmpeon/docs/plan-tool.md). Because that check looks at the agent before it
+     * touches the plan, binding a project reads no plan for Dev or Jon and stays cheap on every
+     * selection change.
      * @return <code>true</code> if changed
      */
     public boolean setProject(IProject project) {
-        agentContext.clearPlan(); // stale reference — restore on next agent activation if needed
+        agentContext.clearPlan(); // stale reference — re-established below if a plan agent is active (R-PT-5)
 
         var projectPath = JdtUtil.pathOf(project);
 
@@ -323,6 +334,9 @@ public class PeonAiService {
         }
         var changed = this.userContext.setCurrentProject(project);
         if (changed) codegraph.projectChanged();
+        // R-PT-5 (org.sterl.llmpeon/docs/plan-tool.md): unconditional like the clearPlan() above —
+        // a selection inside the SAME project has to re-arm the reference too.
+        preloadPlanIfNeeded();
         return changed;
     }
 
@@ -395,6 +409,9 @@ public class PeonAiService {
         // and directly add the plan too ...
         toAgent.get().clear();
         toAgent.get().getMemory().add(UserMessage.from(planPath + System.lineSeparator() + planText));
+        // The handoff is a real agent change for the user, so it is remembered too — without
+        // preloadPlanIfNeeded(), which belongs to the explicit switch in setActiveAgent only.
+        rememberActiveAgent(toAgent.get());
         this.agentService.setActiveAgent(toAgent.get());
         
         return true;
@@ -468,13 +485,13 @@ public class PeonAiService {
     public record PreviewTool(String name, boolean mcp) {}
 
     /**
-     * The agents shown in the header status widget: when Jon (Peon-PO) is active, his
-     * {@link AiPoAgent#getTeam() team} (Da Boss + the orks Da Thinka/Da Mek/Da Dok); for every other
+     * The agents shown in the header status widget: when Jon is active, his
+     * {@link AiPoAgent#getTeam() team} (Jon + Plan, Dev, Review); for every other
      * agent an empty list — they show nothing. This is the <b>single</b> {@code instanceof AiPoAgent}
      * choke-point (ADR-0025): the widget pulls this list and stays type-agnostic, the {@code AiAgent}
      * interface stays lean.
      */
-    public List<NamedAgent> getStatusAgents() {
+    public List<AiAgent> getStatusAgents() {
         return getActiveAgent() instanceof AiPoAgent po ? po.getTeam() : List.of();
     }
 
@@ -532,7 +549,6 @@ public class PeonAiService {
                 .filter(AiPoAgent.class::isInstance)
                 .map(AiPoAgent.class::cast)
                 .map(po -> po.getTeam().stream()
-                        .map(NamedAgent::agent)
                         .filter(agent -> matchesSlot(slotId, agent))
                         .findFirst()
                         .orElse(null))
@@ -609,8 +625,34 @@ public class PeonAiService {
     }
 
     public void setActiveAgent(AiAgent agent) {
+        rememberActiveAgent(agent);
+        applyActiveAgent(agent);
+    }
+
+    private void applyActiveAgent(AiAgent agent) {
         this.agentService.setActiveAgent(agent);
         preloadPlanIfNeeded();
+    }
+
+    /**
+     * R1 (org.sterl.llmpeon/docs/active-agent-persistence.md): only a real change of name is worth
+     * persisting — selecting the agent that is active anyway never rewrites the workspace value.
+     */
+    private void rememberActiveAgent(AiAgent next) {
+        if (!next.getName().equals(getActiveAgent().getName())) {
+            activeAgentPreference.save(next.getName());
+        }
+    }
+
+    /**
+     * R2/R4 (org.sterl.llmpeon/docs/active-agent-persistence.md): the remembered agent is applied
+     * without the writer, so a restore never writes the value back. An absent, blank or unknown name
+     * (fresh workspace, agent renamed away) leaves the default agent untouched — no error, no warning.
+     */
+    private void restoreActiveAgent() {
+        activeAgentPreference.load()
+                .flatMap(agentService::get)
+                .ifPresent(this::applyActiveAgent);
     }
 
     /** Returns the tutorial text for the scaffold agent (null if already shown in this session). */
@@ -641,15 +683,17 @@ public class PeonAiService {
         return org.sterl.llmpeon.prompt.PromptLoader.load("po-tutorial.md");
     }
 
+    /**
+     * R-PT-5 (org.sterl.llmpeon/docs/plan-tool.md): the agent is asked before the plan is touched —
+     * an agent that never hands a plan off must not pay for the plan refresh, which is also what
+     * keeps the call from {@code setProject} cheap on every selection change.
+     */
     private void preloadPlanIfNeeded() {
+        if (!(getActiveAgent() instanceof AiPlanAgent)) return; // UC-PT-5: no plan I/O for Dev/Jon
+        if (agentContext.planRef() != null) return;
         if (!planTool.hasPlan()) return;
 
-        var agent = getActiveAgent();
-        if (agent instanceof AiPlanAgent) {
-            if (agentContext.planRef() == null) {
-                agentContext.setPlan(getProject().getFile(PlanTool.OVERVIEW_FILE));
-            }
-        }
+        agentContext.setPlan(getProject().getFile(PlanTool.OVERVIEW_FILE));
     }
 
     public void onPlanSaved(IFile planFile) {

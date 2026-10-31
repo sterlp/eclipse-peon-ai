@@ -80,14 +80,15 @@ class ToolServiceCompactResultTest {
                 .memory(memory)
                 .chatModel(configuredModel)
                 .monitor(monitor)
-                .agent(agent)
+                .owner(LoopOwner.of(agent, LlmConfig::devAgentConfig))
                 .build());
 
         // THEN — the compressor was actually called (FAILED_EMPTY, not the < 3 small-context guard)
         assertThat(compactCalls.get()).isEqualTo(1);
         // AND — no reset on the failed compact: the basis stays the real provider counter
-        // (260000) plus the chars/3 estimate of the appended compact round (54) — R-CC-19
-        assertThat(memory.getTotalTokenUsed()).isEqualTo(260054);
+        // (260000) plus the chars/3 estimate of the appended compact round (52) — R-CC-19. The
+        // estimate is fixture-driven (it counts the compact round's characters, agent name included).
+        assertThat(memory.getTotalTokenUsed()).isEqualTo(260052);
     }
     // R-CC-2
     @Test
@@ -146,7 +147,7 @@ class ToolServiceCompactResultTest {
                 .memory(memory)
                 .chatModel(configuredModel)
                 .monitor(monitor)
-                .agent(agent)
+                .owner(LoopOwner.of(agent, LlmConfig::devAgentConfig))
                 .build());
 
         // THEN — only the first call reached the compressor; the second was an honest SKIPPED_SMALL

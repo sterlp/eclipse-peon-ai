@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.Objects;
 
 import org.sterl.llmpeon.agent.AbstractAgent;
+import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
-import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
@@ -23,7 +23,7 @@ import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.WriteValidator;
 
 /**
- * Peon-PO ("Jon") — a docs-owning agent. Reads freely, writes only under docs/ (via
+ * Jon — a docs-owning agent. Reads freely, writes only under docs/ (via
  * {@link WriteValidator#DOCS}). Unlike {@link AiPlanAgent} he keeps the edit tools (the validator, not
  * a tool filter, scopes him). Uses his own {@link AgentConfig} for provider/model/think.
  */
@@ -36,7 +36,7 @@ public class AiPoAgent extends AbstractAgent {
             questions rather than fewer. Never assume.
             """;
 
-    public static final String NAME = "Peon-PO";
+    public static final String NAME = "Jon";
     // ${docs}/${plan} placeholders resolved from PeonPaths so the paths live in one constant, not the prompt.
     private static final String BASE_PROMPT = PeonPaths.resolve(PromptLoader.loadWithDefault("po.md"));
     private static final String DOCS_PROMPT = PeonPaths.resolve(PromptLoader.loadWithDefault("doc-method.md"));
@@ -45,8 +45,8 @@ public class AiPoAgent extends AbstractAgent {
     // sign-off → build → mandatory post-build review, then planImplemented as the closing step.
     private static final String DELEGATION_PROMPT = PeonPaths.resolve(PromptLoader.load("po-delegation.md"));
 
-    /** Jon's own ork slaves, shown in the header. Empty when Jon runs without delegation (e.g. tests). */
-    private final List<NamedAgent> slaves;
+    /** Jon's delegation partners, shown in the header; empty when he runs without delegation (tests). */
+    private final List<AiAgent> slaves;
 
     public AiPoAgent(ConfiguredChatModel configuredModel, ToolService toolService) {
         super(configuredModel, toolService);
@@ -58,20 +58,26 @@ public class AiPoAgent extends AbstractAgent {
     }
 
     public AiPoAgent(ConfiguredChatModel configuredModel, ToolService toolService, Path historyStateDir,
-            List<NamedAgent> slaves) {
+            List<AiAgent> slaves) {
         super(configuredModel, toolService,
                 historyStateDir == null ? new ThreadSafeMemory()
                         : new ThreadSafeMemory(new FileAgentHistoryStore(historyFile(historyStateDir, NAME))));
         this.slaves = List.copyOf(slaves);
     }
 
-    // jon delegates also the static content to the slaves ...
+    /**
+     * The one writer of a slave's identity line. {@code context} is <b>shared</b> content: it is copied
+     * verbatim into every slave (Replace-Semantik, fan-out rule R-N1 in
+     * org.sterl.llmpeon.core/docs/sklaven-kontext-plan.md), so it must never contain an identity — a name
+     * in here speaks out of every member at once. Each member gets exactly one identity item of its own
+     * here ({@link AiAgent#getName()} plus {@link #AGENT_MODE}); an agent's own identity stays in its prompt.
+     */
     @Override
     public void setStaticContext(List<ContextItem> context) {
         super.setStaticContext(context);
         this.slaves.forEach(s -> {
-            s.agent().setStaticContext(ContextItem.newList(context,
-                    ContextItem.of("Your name is " + s.uiName()
+            s.setStaticContext(ContextItem.newList(context,
+                    ContextItem.of("Your name is " + s.getName()
                             + System.lineSeparator() + AGENT_MODE)));
         });
     }
@@ -82,15 +88,14 @@ public class AiPoAgent extends AbstractAgent {
     }
 
     /**
-     * Jon's visible slaves for the header status widget (ADR-0025): <b>Da Boss</b> (Jon himself) first,
-     * then his ork slaves in lifecycle order <b>Da Thinka</b> (Plan), <b>Da Mek</b> (Dev) and
-     * <b>Da Dok</b> (Review).
+     * Jon's visible team for the header status widget (ADR-0025): <b>Jon</b> himself first, then his
+     * team members in lifecycle order <b>Plan</b>, <b>Dev</b> and <b>Review</b> (ADR-0079).
      * Always the same instances
      * {@code PoDelegateTool} drives, so the widget reads their live {@code isWorking()}/context.
      */
-    public List<NamedAgent> getTeam() {
-        var team = new ArrayList<NamedAgent>(this.slaves.size() + 1);
-        team.add(new NamedAgent("Da Boss", this));
+    public List<AiAgent> getTeam() {
+        var team = new ArrayList<AiAgent>(this.slaves.size() + 1);
+        team.add(this);
         team.addAll(this.slaves);
         return List.copyOf(team);
     }
