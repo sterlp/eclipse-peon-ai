@@ -168,6 +168,10 @@ alphabetically at the end. Lines starting with `#` are comments; invalid regexes
 This puts all `...Manager...` agents first, then `...Worker...`, then everyone else. If the file is
 absent it is auto-created with `^Jon$` so **Jon** appears first by default.
 
+If no line matches **any** of your agents — a leftover from a renamed agent, say — the default order
+applies instead of an alphabetical list: **Jon** first, the rest alphabetically, and the log names the
+file. `.*` remains the way to ask for a deliberately alphabetical dropdown.
+
 ## Finding the exact tool names
 
 The authoritative, always-up-to-date list (including connected MCP tools) is behind the **🔨

@@ -151,17 +151,38 @@ class AgentOrderTest extends AbstractMemoryFileTest {
         assertThat(sorted).extracting(AiAgent::getName).containsExactly("Peon-Dev", "Peon-PO");
     }
 
+    /**
+     * R5 (org.sterl.llmpeon.core/docs/agent-ordering.md): an order file whose patterns match no agent at all is not an
+     * order — the default order applies instead of sending every agent to the alphabetical tail.
+     */
     @Test
-    void sortIsAlphabeticalWhenPatternsMatchNothing() throws Exception {
-        // GIVEN
-        AgentOrder subject = loadedWith("^Does-Not-Match$\n");
-        List<AiAgent> agents = List.of(agent("Charlie"), agent("Alpha"), agent("Bravo"));
+    void sortFallsBackToDefaultOrderWhenNoAgentMatchesAnyPattern() throws Exception {
+        // GIVEN — Paul's real case: a file left over from the renames, so nothing matches any more
+        AgentOrder subject = loadedWith("^Peon-PO$\n");
+        List<AiAgent> agents = List.of(agent("Zeta-Agent"), agent(AiPoAgent.NAME), agent("Alpha-Agent"));
 
         // WHEN
         List<AiAgent> sorted = subject.sort(agents);
 
         // THEN
-        assertThat(sorted).extracting(AiAgent::getName).containsExactly("Alpha", "Bravo", "Charlie");
+        assertThat(sorted).extracting(AiAgent::getName).containsExactly(AiPoAgent.NAME, "Alpha-Agent", "Zeta-Agent");
+    }
+
+    /**
+     * R5 counter-check: a catch-all matches every agent, so the file stays authoritative and the deliberate
+     * alphabetical order survives — the fallback must not over-trigger.
+     */
+    @Test
+    void sortWithCatchAllPatternKeepsAlphabeticalOrder() throws Exception {
+        // GIVEN
+        AgentOrder subject = loadedWith(".*\n");
+        List<AiAgent> agents = List.of(agent(AiPoAgent.NAME), agent("Alpha-Agent"));
+
+        // WHEN
+        List<AiAgent> sorted = subject.sort(agents);
+
+        // THEN — no "^Jon$" group in effect, so alphabetical
+        assertThat(sorted).extracting(AiAgent::getName).containsExactly("Alpha-Agent", AiPoAgent.NAME);
     }
 
     @Test

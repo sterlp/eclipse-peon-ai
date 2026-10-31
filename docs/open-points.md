@@ -2,6 +2,19 @@
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.md).
+## 2026-10-31 — Issues vom Reparatur-Zyklus (Paul: „erst aufnehmen, Fix auf Ansage")
+
+- 🔒 **Issue 2 — Default-Sortierung im Dropdown defekt** (gebaut auf `web-factory-goon`): der
+  Fallback griff nur, wenn die Datei gar keine Patterns lieferte (`patterns.isEmpty()`); matcht
+  **kein** Agent irgendein Pattern, gilt jetzt die Default-Ordnung (Jon zuerst, Rest alphabetisch)
+  samt `log.warn` — Regel **R5** in `org.sterl.llmpeon.core/docs/agent-ordering.md`. Pauls eigene
+  `agent-order.txt` wird nicht migriert (Clean Break — er zieht sie selbst auf die neuen Namen).
+- ❓ **Issue 1 — `NamedAgent` löschbar:** seit dem Alignment ist `uiName ≡ getName()` an jeder
+  Produktionsstelle (`ProjectRuntime:74-76`, `BuildPoAgentComponent:102-104`, `AiPoAgent.getTeam:98`);
+  divergiert nur in Stale-Test-Fixtures. SOLL: Record löschen, Consumers nutzen `AiAgent` +
+  `getName()` (Clean Break über core → plugin → aifactory, VOLL-Grep-Inventar, eigener Slice).
+  Paul 2026-10-31: „richtig, aber nicht gleich loslegen" — Fix auf Ansage.
+
 ## 2026-10-30 — Namensalignment-Nachzieh-Zyklus (Jon, Nachtzyklus)
 
 - ⏳ **Jons Agent-File lädt jetzt `AGENTS-JON.md` (Clean Break — Jon 2026-10-30, Nachtzyklus).**

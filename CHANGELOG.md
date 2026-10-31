@@ -15,7 +15,8 @@ Releases before `2.12.4` are documented via [GitHub Releases](https://github.com
 - **Agent histories start fresh** — history files follow the display name (`Dev-history.jsonl`
   instead of `Peon-Dev-history.jsonl`); old `Peon-*-history.jsonl` files are not read, rename them
   manually to keep a conversation. `agent-order.txt` default is now `^Jon$`; an existing file with
-  `^Peon-PO$` no longer matches — Jon falls back to alphabetical order until the file is updated.
+  `^Peon-PO$` no longer matches — such a file falls back to the default order (**Jon** first, rest
+  alphabetical), so the dropdown stays usable until the file is updated.
   Same clean break for the agent-specific standing orders: Jon now loads `AGENTS-JON.md` — an
   existing `AGENTS-PO.md` is no longer read, rename it.
 - **Scaffold is now `Scaffold`** — the config-artifact agent (agents, skills, commands) drops its
@@ -38,6 +39,10 @@ Releases before `2.12.4` are documented via [GitHub Releases](https://github.com
 
 ### Bug Fixes
 
+- **An `agent-order.txt` that matches no agent no longer scrambles the dropdown.** Valid patterns that
+  fit nobody — a renamed agent, a copied config — sent every agent to the alphabetical tail, so Jon lost
+  first place; now such a file falls back to the default order (`^Jon$`, Jon first) with a warning in the
+  log. A partial match behaves as before, and `.*` still gives a deliberately alphabetical list. (R5, `org.sterl.llmpeon.core`, [org.sterl.llmpeon.core/docs/agent-ordering.md](org.sterl.llmpeon.core/docs/agent-ordering.md))
 - **A failed AI call now names the endpoint it tried.** Errors that said nothing — a blank message, or the JDK wrapper that only repeats its cause's class name — are reported as `AI call to <url> failed: <Exception> — <cause>`, so a dead model URL is tellable from an MCP one; cancelling a call and errors that already explain themselves stay untouched (R-AEM-3, `org.sterl.llmpeon.core`, [org.sterl.llmpeon.core/docs/agent-error-memory.md](org.sterl.llmpeon.core/docs/agent-error-memory.md), PR #168)
 
 ## v2.5.1

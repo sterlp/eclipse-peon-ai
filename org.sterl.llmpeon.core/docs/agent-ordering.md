@@ -40,7 +40,7 @@ Custom- und Built-in-Agenten.
   (Gruppe des ersten Matches) → `AgentOrderTest.sortDoesNotDuplicateAnAgentMatchedByMultiplePatterns`
 - GIVEN `.*` als erste Zeile, WHEN sortiert, THEN schluckt sie alle Agenten — spätere
   Patterns sind wirkungslos („spezifische Patterns zuerst")
-  → `AgentOrderTest.sortIsAlphabeticalWhenPatternsMatchNothing` (Gegenprobe)
+  → `AgentOrderTest.sortWithCatchAllPatternKeepsAlphabeticalOrder` (Gegenprobe zu R5)
 - GIVEN Built-in `^Dev$` vor Custom-Agent-Patterns, WHEN sortiert, THEN Built-ins
   erscheinen an patternbestimmter Position, nicht als Block
   → `AgentServiceTest.getAgentsWithOrdering`
@@ -69,9 +69,45 @@ sichtbar geloggt.
   → `AgentOrderTest.sortWarnsWhenTwoDistinctAgentsShareAName` (`hasSize(1)` + warn; ersetzt den
   alten `bug_sortSilentlyDropsAgentsWithDuplicateNames`, der `hasSize(2)` bewies)
 
+## R5 — Fallback auf die Default-Ordnung, wenn nichts matcht ✅ done (2026-10-31, Issue 2)
+
+**WEIL:** Ein Muster, das auf **keinen** Agenten passt, trifft keine Aussage über die Reihenfolge —
+es ist ein Relikt (umbenannter Agent, übernommene Datei). Alle Agenten in den alphabetischen Schwanz
+zu schicken, ist dann die teure Antwort: Jon verliert Platz 1 im Dropdown.
+
+- GIVEN eine `agent-order.txt` mit gültigen Patterns, WHEN **kein** geladener Agent ein Pattern
+  matcht, THEN gilt die Default-Ordnung (`^Jon$` → Jon zuerst, Rest alphabetisch) und der Fallback
+  wird per `log.warn` gemeldet; Teiltreffer ändern nichts (R2/R3)
+  → `AgentOrderTest.sortFallsBackToDefaultOrderWhenNoAgentMatchesAnyPattern`
+- GIVEN `.*` (oder ein beliebiges Muster, das mindestens einen Agenten trifft), WHEN sortiert,
+  THEN bleibt die Datei maßgeblich — die absichtliche Alphabet-Ordnung überlebt den Fallback
+  → `AgentOrderTest.sortWithCatchAllPatternKeepsAlphabeticalOrder`
+
 ## Known Edge (Doku, kein Fix)
 
 - Schlägt das Auto-Create fehl (read-only Config-Dir), wirft `AgentOrder.load()` und der
   ganze Agent-Reload bricht — **keine** Agenten laden. Ordering ist kosmetisch; statt zu
   töten wäre „weiter ohne Ordering" das robustere Verhalten. Kandidat für den Bug-Fix-Zyklus.
 - `peek(seen::add)` = Side-Effect im Stream (funktioniert, aber unidiomatisch) — ersetzt durch **R4** (2026-09-11).
+
+## 🔒 Issue 2 — Default-Sortierung im Dropdown defekt (Paul 2026-10-31, gebaut auf `web-factory-goon`)
+
+**SOLL** (Default, ohne `agent-order.txt` bzw. nur `^Jon$`):
+
+```
+Jon
+Dev (default)
+Plan
+Review
+Scaffold
+```
+
+**Verdict:** der Defekt lag **doch** im Core-Sort — nicht an den Default-Patterns, sondern an der
+Fallback-**Bedingung**: `sort` fiel nur zurück, wenn die Datei gar keine Patterns lieferte
+(`patterns.isEmpty()`). Eine bestehende Datei mit gültigen, aber zu nichts passenden Mustern
+(Pauls `^Peon-PO$` nach den Renames) ließ jeden Agenten als „unmatched" ans Ende laufen → Jon verlor
+Platz 1. Der Vor-Check hatte allein den Fall „nur `^Jon$`" gesehen.
+
+**Fix:** **R5** — matcht kein Agent irgendein Pattern, gilt die Default-Ordnung (Jon zuerst) samt
+`log.warn`. Pauls `agent-order.txt` wird nicht migriert (Clean Break): solange nichts passt, ordnet
+der Default; zieht er die Muster auf die aktuellen Namen, übernimmt wieder die Datei.
