@@ -33,7 +33,7 @@ public class AskUserTool extends AbstractEclipseTool {
 
     @Tool("""
           Use this when you need the user's response to be matched to this specific question.
-          Other user messages may arrive in the meantime; this tool returns the matching response, not an unrelated queued message.
+          Other user messages may arrive in the meantime; this tool returns the matching response as its LAST line — queued messages that arrived meanwhile ride along above it in a 'queued_user_message' block.
           If the user cancels (Stop button), the tool returns an error.
           """)
     public String askUser(

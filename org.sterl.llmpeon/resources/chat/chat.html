@@ -393,7 +393,8 @@
         }
 
         function appendMessage(message) {
-            hideLiveStatus();
+            // R9 (org.sterl.llmpeon/docs/streaming-display.md): an appended message is not the end of
+            // the work — the live status closes only at its natural end points (END chunk, lock end).
             if (message.role === 'TOOL') {toolMessage(message.message); return;}
             const container = document.getElementById("chat");
             const lastMessage = container.lastElementChild;
