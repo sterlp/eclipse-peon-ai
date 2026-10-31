@@ -34,6 +34,8 @@ Releases before `2.12.4` are documented via [GitHub Releases](https://github.com
 
 ### New Features
 
+- **Your agent choice survives a restart.** The agent you picked in the chat dropdown is remembered for this Eclipse workspace and restored on start — after a restart or a workspace switch you continue with that agent instead of **Dev**. Only a real change of agent is remembered (a handoff counts, re-picking the active one does not), and an agent that has since been removed or renamed leaves the default in place, quietly. (`org.sterl.llmpeon`, [org.sterl.llmpeon/docs/active-agent-persistence.md](org.sterl.llmpeon/docs/active-agent-persistence.md))
+
 - **Jon files docs by topic, not by code.** Topic folders (`docs/<topic>/` with their own index.md) are opt-in — Jon proposes one when a domain owner reaches about three feature docs and asks first; each feature/architecture doc names its technical home (module, package) in its header. (`org.sterl.llmpeon.core` prompts `doc-method.md`, `po.md`)
 - **Doc moves keep the links.** When Jon moves or renames a doc, all references — docs, code comments, tests — are updated in the same cycle. (`org.sterl.llmpeon.core` prompt `po.md`)
 

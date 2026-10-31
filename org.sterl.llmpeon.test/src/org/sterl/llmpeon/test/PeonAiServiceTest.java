@@ -25,9 +25,11 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.osgi.service.prefs.BackingStoreException;
 import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
@@ -86,6 +88,24 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
     private PeonAiService aiService;
     private final StreamMock streamMock = new StreamMock();
 
+    /** Wire key of the remembered agent (R5, org.sterl.llmpeon/docs/active-agent-persistence.md). */
+    private static final String REMEMBERED_AGENT_KEY = "llm.activeAgent";
+
+    /**
+     * The remembered agent is workspace state: a leftover of an earlier test would restore into the
+     * next service and make the start-agent assertions depend on the method order. Only the key is
+     * cleared — {@code removeNode()} on this node would wipe every plugin preference.
+     */
+    private static void forgetRememberedAgent() {
+        var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
+        prefs.remove(REMEMBERED_AGENT_KEY);
+        try {
+            prefs.flush();
+        } catch (BackingStoreException e) {
+            throw new IllegalStateException("Test cannot clear the remembered agent", e);
+        }
+    }
+
     @Before
     public void beforeEach() {
         var ccm = new ConfiguredChatModel(LlmConfig.builder()
@@ -94,6 +114,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                 .configDir(Path.of(System.getProperty("java.io.tmpdir"), ".peon-test"))
                 .build()
         );
+        forgetRememberedAgent();
         aiService = new PeonAiService(() -> {}, null, null, null, ccm);
         aiService.setProject(project);
         aiService.clearAll();
@@ -104,6 +125,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
     @After
     public void clearCurrentService() {
         PeonAiService.clearCurrent();
+        forgetRememberedAgent();
     }
     
     @Test
@@ -275,6 +297,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                 .configDir(Path.of(System.getProperty("java.io.tmpdir"), ".peon-test"))
                 .build());
         ccm.setChatModel(streamMock.buildOkMock());
+        forgetRememberedAgent();
         var svc = new PeonAiService(() -> {}, null, null, null, ccm, presenter);
         svc.setProject(project);
         return svc;
@@ -1431,6 +1454,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             var ccm = new ConfiguredChatModel(LlmConfig.builder()
                     .model("test").url("http://localhost:0")
                     .configDir(Path.of(System.getProperty("java.io.tmpdir"), ".peon-test")).build());
+            forgetRememberedAgent();
             var svc = new PeonAiService(() -> {}, null, null, null, ccm);
             svc.setProject(project);
             svc.clearAll();
@@ -1507,6 +1531,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                     .configDir(configDir).build());
             var svcRef = new AtomicReference<PeonAiService>();
             var callbackState = new AtomicReference<String>();
+            forgetRememberedAgent();
             var svc = new PeonAiService(() -> {}, null, null, () -> {
                 // capture at the moment the original UI callback fires: is the re-bake already done?
                 var custom = svcRef.get().getAgentService().get("TestAgent");
@@ -1951,6 +1976,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             var ccm = new ConfiguredChatModel(LlmConfig.builder()
                     .model("test").url("http://localhost:0")
                     .configDir(Path.of(System.getProperty("java.io.tmpdir"), ".peon-test")).build());
+            forgetRememberedAgent();
             var svc = new PeonAiService(() -> {}, null, null, null, ccm);
             svc.setProject(project);
             svc.clearAll();
@@ -2039,6 +2065,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         var ccm = new ConfiguredChatModel(LlmConfig.builder()
                 .model("test").url("http://localhost:0")
                 .configDir(Path.of(System.getProperty("java.io.tmpdir"), ".peon-test")).build());
+        forgetRememberedAgent();
         var svc = new PeonAiService(() -> {}, null, null, null, ccm);
         svc.setProject(project);
         svc.clearAll();

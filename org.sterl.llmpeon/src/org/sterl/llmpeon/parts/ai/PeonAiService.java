@@ -31,6 +31,7 @@ import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.ai.component.AgentContextComponent;
 import org.sterl.llmpeon.parts.ai.component.BuildPoAgentComponent;
 import org.sterl.llmpeon.parts.ai.component.SharedToolsComponent;
+import org.sterl.llmpeon.parts.config.ActiveAgentPreference;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpConnectionService;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
@@ -110,6 +111,9 @@ public class PeonAiService {
     private SharedToolsComponent sharedTools;
     private WorkspaceMemoryTool workspaceMemoryTool;
     private AgentContextComponent agentContext;
+
+    /** The agent choice remembered for this workspace (org.sterl.llmpeon/docs/active-agent-persistence.md). */
+    private final ActiveAgentPreference activeAgentPreference = ActiveAgentPreference.instance();
 
     /**
      * Creates all AI services with defaults from the current Eclipse preferences.
@@ -229,6 +233,9 @@ public class PeonAiService {
         for (var agent : this.getAgents()) {
             agent.setTurnContextSupplier(() -> get());
         }
+        // R2 (org.sterl.llmpeon/docs/active-agent-persistence.md): last chosen agent becomes active
+        // again — after updateConfig(), so custom, scaffold and Jon are all registered by name.
+        restoreActiveAgent();
         current = this;
     }
     
@@ -395,6 +402,9 @@ public class PeonAiService {
         // and directly add the plan too ...
         toAgent.get().clear();
         toAgent.get().getMemory().add(UserMessage.from(planPath + System.lineSeparator() + planText));
+        // The handoff is a real agent change for the user, so it is remembered too — without
+        // preloadPlanIfNeeded(), which belongs to the explicit switch in setActiveAgent only.
+        rememberActiveAgent(toAgent.get());
         this.agentService.setActiveAgent(toAgent.get());
         
         return true;
@@ -609,8 +619,34 @@ public class PeonAiService {
     }
 
     public void setActiveAgent(AiAgent agent) {
+        rememberActiveAgent(agent);
+        applyActiveAgent(agent);
+    }
+
+    private void applyActiveAgent(AiAgent agent) {
         this.agentService.setActiveAgent(agent);
         preloadPlanIfNeeded();
+    }
+
+    /**
+     * R1 (org.sterl.llmpeon/docs/active-agent-persistence.md): only a real change of name is worth
+     * persisting — selecting the agent that is active anyway never rewrites the workspace value.
+     */
+    private void rememberActiveAgent(AiAgent next) {
+        if (!next.getName().equals(getActiveAgent().getName())) {
+            activeAgentPreference.save(next.getName());
+        }
+    }
+
+    /**
+     * R2/R4 (org.sterl.llmpeon/docs/active-agent-persistence.md): the remembered agent is applied
+     * without the writer, so a restore never writes the value back. An absent, blank or unknown name
+     * (fresh workspace, agent renamed away) leaves the default agent untouched — no error, no warning.
+     */
+    private void restoreActiveAgent() {
+        activeAgentPreference.load()
+                .flatMap(agentService::get)
+                .ifPresent(this::applyActiveAgent);
     }
 
     /** Returns the tutorial text for the scaffold agent (null if already shown in this session). */
