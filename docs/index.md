@@ -34,6 +34,9 @@ Backlog = every ❌/🚧 item. Vollständige Einträge (mit Status-Grund) stehen
   zurückgebracht (siehe Doc).
 * [Docs als HTML veröffentlichen (Blume)](blume-publishing.md) — 🚧 Idee, nicht geplant; vier
   Kollisionen mit dem Bestand; Vorfrage Q-B4: veröffentlichen wir `docs/` überhaupt?
+* [Agent als Monitor-Quelle](agent-als-monitor-quelle.md) — ⏳ geparkt (2026-10-31, Paul): Proposal
+  v2 REJECTED (3 verifizierte Blocker), Split-Empfehlung; Ziel „Custom Agents als Tools / eigener
+  Jon" mit Autorschafts-Frage als Kern.
 * [Verbesserungen aus opencode](verbesserungen.md) — 📝 Studie (2026-08-23): Top-5-Übernahme-
   Kandidaten; Teil-Outcome → [Secure Credentials](../org.sterl.llmpeon/docs/secure-credentials.md).
 * [Jon & Team in den Claude-Code-Harness portieren](port-jon-to-claude-harness.md) — 📝 Methodik

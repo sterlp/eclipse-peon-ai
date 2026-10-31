@@ -29,7 +29,19 @@
 - Pauls eigener Commit `7d087322 cleanup` (AGENTS-Renames, docs/memory.md, AIChatView) wurde mit dem
   Push mitgenommen — **AGENTS*.md-Säuberung ist damit committed** (Punkt aus dem Reparatur-Zyklus).
 
-## Proposal „Agent als Monitor-Quelle" — abgeschlossen (2026-10-31)
+## Proposal „Agent als Monitor-Quelle" — ⏳ GEPARKT (2026-10-31)
+
+- v2 (Paul) von Da Dok ohne ADRs reviewt: **REJECTED** — 3 verifizierte Blocker (AsyncMonitor
+  schluckt Streams — Hauptgewinn von keinem Inkrement geliefert; R7/R8 brechen origin-Vertrag
+  Browser/History/authorTable; Inc-Reihenfolge nicht grün) + Doc-Konflikte (streaming-display R20,
+  compact-lock UC-CT-14). Richter-Zusätze: `AiAgent.isTool()` existiert als Anker; echter Blocker
+  für „Agents als Tools" ist die **Autorschaft** (authorTable per Tool-Name, generisches askAgent
+  nicht attributierbar).
+- **Alles festgehalten in `docs/agent-als-monitor-quelle.md` (⏳ geparkt, self-contained)** — inkl.
+  Split-Empfehlung (① AsyncMonitor-Forward ② „Agenten als Tools"-Story mit Autorschafts-Kern
+  ③ Quelle-vs-Stempel danach) und Q1–Q4. Paul überarbeitet das Proposal bei Wiederaufnahme selbst.
+- **Übergabe für Pauls IDE-Wechsel zur Web Factory steht in `aifactory/docs/memory.md`**
+  (uncommitted — „Paul committet selbst" laut Header dort).
 
 - Da-Dok-Review (ohne ADRs) + Jons IST-Verifikation: **REJECTED** — Identität ist der Name
   (`AgentNames.java:51`), ~15 agentlose Emit-Stellen, R5↔R6-Widerspruch, Blast Radius 3× gemessen
