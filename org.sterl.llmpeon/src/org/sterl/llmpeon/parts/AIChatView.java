@@ -32,7 +32,6 @@ import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiAgentStatusModel;
 import org.sterl.llmpeon.compact.CompactFeedback;
 import org.sterl.llmpeon.model.CompactResult;
-import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.command.SlashCommandResolver;
 import org.sterl.llmpeon.command.SlashCommandResolver.SlashResult;
@@ -530,27 +529,26 @@ public class AIChatView implements EclipseAiMonitor {
      *  (R-CT-7) keeps its reset for the active agent only. Only the roster refreshes (context size
      *  visibly drops); the R16 skip (< 3 messages) surfaces as "Nothing to compact" instead of a
      *  silent no-op. */
-    private void doCompressAgent(NamedAgent slave) {
-        var agent = slave.agent();
-        if (agent.isWorking() || inFlightTurns.get() > 0) return; // defensive — buttons are disabled
+    private void doCompressAgent(AiAgent slave) {
+        if (slave.isWorking() || inFlightTurns.get() > 0) return; // defensive — buttons are disabled
         inFlightTurns.incrementAndGet();
-        LOG.info("turn submit (slave compact): agent=" + slave.uiName() + " in-flight=" + inFlightTurns.get());
+        LOG.info("turn submit (slave compact): agent=" + slave.getName() + " in-flight=" + inFlightTurns.get());
         lockWhileWorking(true);
-        Job.create("Compact " + slave.uiName(), monitor -> {
+        Job.create("Compact " + slave.getName(), monitor -> {
             monitorRef.set(monitor);
             Exception ex = null;
             CompactResult result = null; // captured before the finally's monitorRef reset (async-state safety)
             try {
-                result = agent.compact(this);
+                result = slave.compact(this);
                 // no chat rebuild for a slave (R-CT-7) — the reset only fires for the active agent;
                 // the roster refresh makes the context drop visible
                 EclipseUtil.runInUiThread(parent, headerBar::refreshRoster); // context size visibly drops
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {
-                handleDoneChatResponse(agent, slave.uiName(), null, monitor, ex);
+                handleDoneChatResponse(slave, slave.getName(), null, monitor, ex);
             }
-            return PeonConstants.status(AiAgentStatusModel.compactResult(result, slave.uiName()), ex);
+            return PeonConstants.status(AiAgentStatusModel.compactResult(result, slave.getName()), ex);
         }).schedule();
     }
 

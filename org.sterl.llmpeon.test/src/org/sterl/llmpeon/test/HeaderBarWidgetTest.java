@@ -12,7 +12,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Label;
 import org.junit.Test;
-import org.sterl.llmpeon.agent.NamedAgent;
+import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.parts.ai.CodegraphConnectionService.Kind;
 import org.sterl.llmpeon.parts.ai.CodegraphConnectionService.State;
 import org.sterl.llmpeon.parts.ai.PeonAiService.ToolStatus;
@@ -107,7 +107,7 @@ public class HeaderBarWidgetTest extends AbstractSwtUiTest {
         return new HeaderBarWidget(shell, SWT.NONE,
                 () -> "Peon-PO",
                 () -> List.<ToolStatus>of(),
-                () -> List.<NamedAgent>of(),
+                () -> List.<AiAgent>of(),
                 agent -> {},
                 () -> false);
     }

@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.Objects;
 
 import org.sterl.llmpeon.agent.AbstractAgent;
+import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
-import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
@@ -46,7 +46,7 @@ public class AiPoAgent extends AbstractAgent {
     private static final String DELEGATION_PROMPT = PeonPaths.resolve(PromptLoader.load("po-delegation.md"));
 
     /** Jon's delegation partners, shown in the header; empty when he runs without delegation (tests). */
-    private final List<NamedAgent> slaves;
+    private final List<AiAgent> slaves;
 
     public AiPoAgent(ConfiguredChatModel configuredModel, ToolService toolService) {
         super(configuredModel, toolService);
@@ -58,7 +58,7 @@ public class AiPoAgent extends AbstractAgent {
     }
 
     public AiPoAgent(ConfiguredChatModel configuredModel, ToolService toolService, Path historyStateDir,
-            List<NamedAgent> slaves) {
+            List<AiAgent> slaves) {
         super(configuredModel, toolService,
                 historyStateDir == null ? new ThreadSafeMemory()
                         : new ThreadSafeMemory(new FileAgentHistoryStore(historyFile(historyStateDir, NAME))));
@@ -70,14 +70,14 @@ public class AiPoAgent extends AbstractAgent {
      * verbatim into every slave (Replace-Semantik, fan-out rule R-N1 in
      * org.sterl.llmpeon.core/docs/sklaven-kontext-plan.md), so it must never contain an identity — a name
      * in here speaks out of every member at once. Each member gets exactly one identity item of its own
-     * here ({@code uiName} plus {@link #AGENT_MODE}); an agent's own identity stays in its prompt.
+     * here ({@link AiAgent#getName()} plus {@link #AGENT_MODE}); an agent's own identity stays in its prompt.
      */
     @Override
     public void setStaticContext(List<ContextItem> context) {
         super.setStaticContext(context);
         this.slaves.forEach(s -> {
-            s.agent().setStaticContext(ContextItem.newList(context,
-                    ContextItem.of("Your name is " + s.uiName()
+            s.setStaticContext(ContextItem.newList(context,
+                    ContextItem.of("Your name is " + s.getName()
                             + System.lineSeparator() + AGENT_MODE)));
         });
     }
@@ -93,9 +93,9 @@ public class AiPoAgent extends AbstractAgent {
      * Always the same instances
      * {@code PoDelegateTool} drives, so the widget reads their live {@code isWorking()}/context.
      */
-    public List<NamedAgent> getTeam() {
-        var team = new ArrayList<NamedAgent>(this.slaves.size() + 1);
-        team.add(new NamedAgent(NAME, this));
+    public List<AiAgent> getTeam() {
+        var team = new ArrayList<AiAgent>(this.slaves.size() + 1);
+        team.add(this);
         team.addAll(this.slaves);
         return List.copyOf(team);
     }

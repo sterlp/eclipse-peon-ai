@@ -22,7 +22,7 @@ Delegation über [PoDelegateTool](../../docs/adr/0020-po-agent-orchestration.md)
 - **R2 ✅** Der PO hält Review als dritten RAM-Sklaven: `PoDelegateTool`-Ctor
   `(plan, review, dev, ordersFor)`, `getTeam()` = `List.of(thinka, mek, doc)` — Header-Reihenfolge
   Jon · Plan · Dev · Review (User-Entscheid 2026-09-09, Lifecycle plan→build→review).
-  - GIVEN PeonAiService gebaut WHEN getTeam() THEN drei NamedAgents: Plan, Dev, Review
+  - GIVEN PeonAiService gebaut WHEN getTeam() THEN drei `AiAgent`: Plan, Dev, Review
 - **R3 ✅** Delegate-Tools: `reviewPlanAgent(prompt, planPath?)` (frischer Context, stickiger
   Plan-Pfad geteilt mit buildWithDev), `clearReview()`, `compactReview()` — Spiegel von
   clear/compactPlan/Dev; `AiPoAgent.clear()/compact()` cascadieren alle drei Sklaven.
@@ -79,6 +79,6 @@ Delegation über [PoDelegateTool](../../docs/adr/0020-po-agent-orchestration.md)
 | Regel | Test |
 |---|---|
 | R1 | `AgentServiceTest.hasDefaultAgent` (named: enthält Review) |
-| R2 | `PoDelegateToolTest` (3 NamedAgents im Ctor) · `PeonAiServiceTest.test_status_agents_are_jons_team_when_po_active` (Header: Jon, Plan, Dev, Review) |
+| R2 | `PoDelegateToolTest` (drei `AiAgent` im Ctor) · `PeonAiServiceTest.test_status_agents_are_jons_team_when_po_active` (Header: Jon, Plan, Dev, Review) |
 | R3 | `PoDelegateToolTest.clearReview_wipesReviewSlaveMemoryOnly` / `compactReview_compactsReviewSlaveMemory` · `AiPoAgentTest.clear_cascadesToAllThreeSlaves` / `compact_cascadesToAllThreeSlaves` · Sticky-Path: `reviewPlanAgent_reusesStickyPlanPath` |
 | R4–R6, R8 | Prompt/Verhalten — manuelle Verifikation (kein Unit-Test, wie Prompts-Konvention) |

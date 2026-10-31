@@ -7,7 +7,7 @@ import java.util.function.IntSupplier;
 import org.sterl.llmpeon.docslinter.DocsIdTool;
 import org.sterl.llmpeon.docslinter.DocsLinterTool;
 import org.sterl.llmpeon.poagent.tools.PoDelegateTool;
-import org.sterl.llmpeon.agent.NamedAgent;
+import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.tool.DynamicRootsWriteValidator;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.WriteValidator;
@@ -59,7 +59,7 @@ public final class JonToolSet {
      * The delegation tool Jon needs to reach his team. Registered before the agent is built, otherwise
      * the first turn cannot see it. No standing orders (D6): order texts are a story field of their own.
      */
-    public void addDelegateTool(NamedAgent plan, NamedAgent review, NamedAgent dev,
+    public void addDelegateTool(AiAgent plan, AiAgent review, AiAgent dev,
             IntSupplier autoCompactAfter) {
         tools.addTool(new PoDelegateTool(plan, review, dev, unused -> List.of(), autoCompactAfter));
     }

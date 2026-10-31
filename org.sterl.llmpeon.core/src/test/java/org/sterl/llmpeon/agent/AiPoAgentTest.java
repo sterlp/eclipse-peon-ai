@@ -80,8 +80,8 @@ class AiPoAgentTest {
     void getTeam_withoutSlaves_isJustJon() {
         var po = newAgent();
         var team = po.getTeam();
-        assertThat(team).extracting(NamedAgent::uiName).containsExactly("Jon");
-        assertSame(po, team.get(0).agent());
+        assertThat(team).extracting(AiAgent::getName).containsExactly("Jon");
+        assertSame(po, team.get(0));
     }
 
     /** ADR-0025 + ADR-0079: Jon first, then his team in lifecycle order Plan→Dev→Review — shared instances, 0k idle. */
@@ -91,35 +91,32 @@ class AiPoAgentTest {
         var plan = new AiPlanAgent(config, new ToolService());
         var dev = new AiDevAgent(config, new ToolService());
         var review = new AiReviewAgent(config, new ToolService());
-        var po = new AiPoAgent(config, new ToolService(), null,
-                List.of(new NamedAgent("Plan", plan), new NamedAgent("Dev", dev),
-                        new NamedAgent("Review", review)));
+        var po = new AiPoAgent(config, new ToolService(), null, List.of(plan, dev, review));
 
         var team = po.getTeam();
 
-        assertThat(team).extracting(NamedAgent::uiName)
+        assertThat(team).extracting(AiAgent::getName)
                 .containsExactly("Jon", "Plan", "Dev", "Review");
-        assertSame(po, team.get(0).agent());
-        assertSame(plan, team.get(1).agent());
-        assertSame(dev, team.get(2).agent());
-        assertSame(review, team.get(3).agent());
-        assertThat(team).allSatisfy(n -> assertThat(n.agent().getMemory().getTotalTokenUsed()).isZero());
+        assertSame(po, team.get(0));
+        assertSame(plan, team.get(1));
+        assertSame(dev, team.get(2));
+        assertSame(review, team.get(3));
+        assertThat(team).allSatisfy(n -> assertThat(n.getMemory().getTotalTokenUsed()).isZero());
     }
     @Test
     void getTeam_isJonThenPlanDev_onSharedInstances_idle() {
         var config = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
         var plan = new AiPlanAgent(config, new ToolService());
         var dev = new AiDevAgent(config, new ToolService());
-        var po = new AiPoAgent(config, new ToolService(), null,
-                List.of(new NamedAgent("Plan", plan), new NamedAgent("Dev", dev)));
+        var po = new AiPoAgent(config, new ToolService(), null, List.of(plan, dev));
 
         var team = po.getTeam();
 
-        assertThat(team).extracting(NamedAgent::uiName).containsExactly("Jon", "Plan", "Dev");
-        assertSame(po, team.get(0).agent());
-        assertSame(plan, team.get(1).agent());
-        assertSame(dev, team.get(2).agent());
-        assertThat(team).allSatisfy(n -> assertThat(n.agent().getMemory().getTotalTokenUsed()).isZero());
+        assertThat(team).extracting(AiAgent::getName).containsExactly("Jon", "Plan", "Dev");
+        assertSame(po, team.get(0));
+        assertSame(plan, team.get(1));
+        assertSame(dev, team.get(2));
+        assertThat(team).allSatisfy(n -> assertThat(n.getMemory().getTotalTokenUsed()).isZero());
     }
 
     @Test
@@ -154,9 +151,7 @@ class AiPoAgentTest {
         var plan = new AiPlanAgent(config, new ToolService());
         var review = new AiReviewAgent(config, new ToolService());
         var dev = new AiDevAgent(config, new ToolService());
-        var delegate = new PoDelegateTool(new NamedAgent("Da Thinka", plan),
-                new NamedAgent("Da Dok", review),
-                new NamedAgent("Da Mek", dev), t -> List.of(), () -> 80000);
+        var delegate = new PoDelegateTool(plan, review, dev, t -> List.of(), () -> 80000);
         var toolService = new ToolService(false);
         toolService.addTool(delegate);
         return new PoSetup(new AiPoAgent(config, toolService), plan, review, dev);

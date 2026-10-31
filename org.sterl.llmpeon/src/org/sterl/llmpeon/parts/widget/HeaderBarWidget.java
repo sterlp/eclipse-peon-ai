@@ -14,7 +14,7 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
-import org.sterl.llmpeon.agent.NamedAgent;
+import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.parts.ai.CodegraphConnectionService;
 import org.sterl.llmpeon.parts.ai.PeonAiService.ToolStatus;
 import org.sterl.llmpeon.parts.shared.EclipseUiUtil;
@@ -48,8 +48,8 @@ public class HeaderBarWidget extends Composite {
     public HeaderBarWidget(Composite parent, int style,
             Supplier<String> activeAgentName,
             Supplier<List<ToolStatus>> toolStatus,
-            Supplier<List<NamedAgent>> statusAgents,
-            Consumer<NamedAgent> onSlaveCompactClick,
+            Supplier<List<AiAgent>> statusAgents,
+            Consumer<AiAgent> onSlaveCompactClick,
             Supplier<Boolean> turnInFlight) {
         super(parent, style);
         this.activeAgentName = activeAgentName;

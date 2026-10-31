@@ -283,8 +283,8 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
 
         // THEN Plan / Review / Dev still filter askUser out (R9 unchanged)
         for (var slaveName : List.of("Plan", "Review", "Dev")) {
-            var slave = po.getTeam().stream().filter(n -> n.uiName().equals(slaveName))
-                    .findFirst().orElseThrow().agent();
+            var slave = po.getTeam().stream().filter(n -> n.getName().equals(slaveName))
+                    .findFirst().orElseThrow();
             assertFalse(slaveName + " must not get askUser (R9)", slave.isToolActive(askUser));
         }
     }
@@ -891,8 +891,8 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         aiService.setActiveAgent(AiPoAgent.NAME);
 
-        var uiNames = aiService.getStatusAgents().stream().map(n -> n.uiName()).toList();
-        assertEquals(List.of("Jon", "Plan", "Dev", "Review"), uiNames);
+        var agentNames = aiService.getStatusAgents().stream().map(AiAgent::getName).toList();
+        assertEquals(List.of("Jon", "Plan", "Dev", "Review"), agentNames);
     }
 
     /** GIVEN any other agent is active THEN the status widget shows nothing (empty list). */

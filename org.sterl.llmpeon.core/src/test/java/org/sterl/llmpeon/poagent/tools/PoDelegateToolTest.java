@@ -19,7 +19,6 @@ import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.AiReviewAgent;
-import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.compact.CompactFeedback;
@@ -60,21 +59,17 @@ class PoDelegateToolTest {
         return newTool(t -> List.of());
     }
 
-    private PoDelegateTool newTool(Function<NamedAgent, List<ContextItem>> ordersFor) {
+    private PoDelegateTool newTool(Function<AiAgent, List<ContextItem>> ordersFor) {
         return newTool(ordersFor, () -> 80000);
     }
 
-    private PoDelegateTool newTool(Function<NamedAgent, List<ContextItem>> ordersFor,
+    private PoDelegateTool newTool(Function<AiAgent, List<ContextItem>> ordersFor,
             IntSupplier autoCompactAfter) {
-        return new PoDelegateTool(new NamedAgent("Da Thinka", planSlave()),
-                new NamedAgent("Da Dok", reviewSlave()),
-                new NamedAgent("Da Mek", devSlave()), ordersFor, autoCompactAfter);
+        return new PoDelegateTool(planSlave(), reviewSlave(), devSlave(), ordersFor, autoCompactAfter);
     }
 
     private PoDelegateTool newTool(AiAgent plan, AiAgent review, AiAgent dev, IntSupplier autoCompactAfter) {
-        return new PoDelegateTool(new NamedAgent("Da Thinka", plan),
-                new NamedAgent("Da Dok", review),
-                new NamedAgent("Da Mek", dev),
+        return new PoDelegateTool(plan, review, dev,
                 t -> List.of(), autoCompactAfter);
     }
 
@@ -262,7 +257,7 @@ class PoDelegateToolTest {
 
         // THEN
         assertThat(reply).containsPattern("Context: ~\\d+ \\(estimate\\) token - \\d+% used\\.");
-        assertThat(reply).contains("Da Dok compacted.");
+        assertThat(reply).contains(AiReviewAgent.NAME + " compacted.");
         assertThat(tool.getReviewSlave().getMemory().containsUserMessage("second review")).isFalse();
     }
 
@@ -271,7 +266,7 @@ class PoDelegateToolTest {
      *  only 1 message (R-CC-9), so the guard also covers the direct re-compact case. */
     @Test
     void compactDev_skipsWithHonestMessage_whenSlaveBelowThreeMessages() {
-        // GIVEN — Da Mek with exactly 2 messages
+        // GIVEN — the Dev slave with exactly 2 messages
         var tool = newTool();
         var dev = tool.getDevSlave();
         dev.getMemory().add(UserMessage.from("old"));
@@ -465,7 +460,7 @@ class PoDelegateToolTest {
      */
     @Test
     void slave_doesNotCompactViaCompactFactor_anymore() {
-        // GIVEN — Da Mek at 72 000 (0.9 × 80 000), above the 0.7 rule line (56 000)
+        // GIVEN — the Dev slave at 72 000 (0.9 × 80 000), above the 0.7 rule line (56 000)
         var dev = devSlave();
         var memory = dev.getMemory();
         for (int i = 0; i < 2; i++) {
@@ -531,7 +526,7 @@ class PoDelegateToolTest {
         var reply = tool.compactDev();
 
         // THEN — the LLM still gets its tool reply ...
-        assertThat(reply).contains("Da Mek compacted.");
+        assertThat(reply).contains(AiDevAgent.NAME + " compacted.");
         // AND — the chat shows exactly one start and one end line: a slave reads like the root (R-CT-8)
         assertThat(toolLines).filteredOn(l -> l.startsWith(CompactFeedback.START_PREFIX)).hasSize(1);
         var endLines = toolLines.stream().filter(l -> l.contains(CompactFeedback.END_MARKER)).toList();
@@ -540,8 +535,8 @@ class PoDelegateToolTest {
         // suffix and the result size (system clock ⇒ pattern, not a literal)
         assertThat(endLines.getFirst()).matches("🗜 " + AiDevAgent.NAME + CompactFeedback.END_MARKER
                 + "\\d+ → 1 messages, ~\\d+ → ~\\d+ tokens \\(\\d+(?:m \\d+)?s, \\d{2}:\\d{2}\\) \\(\\d+ chars\\)");
-        // AND — the removed "Da Mek compacted." onTool line never returns as a second success message
-        assertThat(toolLines).noneMatch(l -> l.startsWith("Da Mek compacted."));
+        // AND — the removed "<name> compacted." onTool line never returns as a second success message
+        assertThat(toolLines).noneMatch(l -> l.startsWith(AiDevAgent.NAME + " compacted."));
     }
 
 }

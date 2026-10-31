@@ -10,7 +10,6 @@ import org.eclipse.core.resources.IProject;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.AiReviewAgent;
-import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.context.AgentsMdContextItem;
 import org.sterl.llmpeon.context.ContextItem;
@@ -79,7 +78,7 @@ public class BuildPoAgentComponent {
         // never WRITE it — strip the memory-write tool from their effective set; only Jon curates it.
         Predicate<SmartToolExecutor> noPrivilegedTools = t -> !(t.getTool() instanceof WorkspaceMemoryTool)
                 && !(t.getTool() instanceof AskUserTool);
-        // Eager shared slaves (ADR-0025): created once here and handed — as the same NamedAgent objects —
+        // Eager shared slaves (ADR-0025): created once here and handed — as the same instances —
         // to both the delegate tool (which drives them) and AiPoAgent (which exposes them via getTeam()).
         var planSlave = new AiPlanAgent(configuredModel, sharedToolService) {
             @Override protected Predicate<SmartToolExecutor> classFilter() {
@@ -99,19 +98,16 @@ public class BuildPoAgentComponent {
             }
         };
 
-        var planMember = new NamedAgent(AiPlanAgent.NAME, planSlave);
-        var reviewMember = new NamedAgent(AiReviewAgent.NAME, reviewSlave);
-        var devMember = new NamedAgent(AiDevAgent.NAME, devSlave);
         // Slaves also need the same relevant context as the active agent (Jon gets it via userContext).
         // The shared memory rides in their system prompt (static context — re-baked by
         // PeonAiService.initStaticContext); the turn orders below carry the plan file
         // + AGENTS.md (base + agent-specific AGENTS-<agent>.md, ADR-0029)
         // + the live Workspace-Memory snapshot (ADR-0032).
         // Slaves compact at 70 % via PoDelegateTool before a new task.
-        var jonDelegateTool = new PoDelegateTool(planMember, reviewMember, devMember, target -> {
+        var jonDelegateTool = new PoDelegateTool(planSlave, reviewSlave, devSlave, target -> {
             var orders = new LinkedList<ContextItem>();
             orders.add(new EclipseFileContextItem(PlanTool.OVERVIEW_FILE, projectRef));
-            orders.addAll(AgentsMdContextItem.itemsFor(target.agent().getName(), projectRef));
+            orders.addAll(AgentsMdContextItem.itemsFor(target.getName(), projectRef));
             // Shared memory live per delegation (ADR-0032): the function runs lazy per dispatch(),
             // so the slaves always read the current snapshot (dedupKey carries the entries-hash).
             orders.add(wmt);
@@ -125,7 +121,7 @@ public class BuildPoAgentComponent {
         poToolService.addTool(sharedTools.docsLinterTool());
         poToolService.addTool(sharedTools.docsIdTool());
         // Header team order = lifecycle order (user decision): plan → build → review.
-        var poAgent = new AiPoAgent(configuredModel, poToolService, historyStateDir, List.of(planMember, devMember, reviewMember));
+        var poAgent = new AiPoAgent(configuredModel, poToolService, historyStateDir, List.of(planSlave, devSlave, reviewSlave));
 
         return poAgent;
     }

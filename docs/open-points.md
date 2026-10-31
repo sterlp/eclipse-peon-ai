@@ -9,11 +9,13 @@ Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.
   **kein** Agent irgendein Pattern, gilt jetzt die Default-Ordnung (Jon zuerst, Rest alphabetisch)
   samt `log.warn` — Regel **R5** in `org.sterl.llmpeon.core/docs/agent-ordering.md`. Pauls eigene
   `agent-order.txt` wird nicht migriert (Clean Break — er zieht sie selbst auf die neuen Namen).
-- ❓ **Issue 1 — `NamedAgent` löschbar:** seit dem Alignment ist `uiName ≡ getName()` an jeder
-  Produktionsstelle (`ProjectRuntime:74-76`, `BuildPoAgentComponent:102-104`, `AiPoAgent.getTeam:98`);
-  divergiert nur in Stale-Test-Fixtures. SOLL: Record löschen, Consumers nutzen `AiAgent` +
-  `getName()` (Clean Break über core → plugin → aifactory, VOLL-Grep-Inventar, eigener Slice).
-  Paul 2026-10-31: „richtig, aber nicht gleich loslegen" — Fix auf Ansage.
+- 🔒 **Issue 1 — `NamedAgent` gelöscht** (gebaut auf `web-factory-goon`): der Record trug keine
+  Information mehr — `uiName ≡ getName()` an jeder Produktionsstelle, divergiert nur in
+  Stale-Test-Fixtures. Clean Break ohne Alias und ohne Migration über core → plugin → aifactory:
+  Team-Mitglieder (`AiPoAgent.getTeam()`), `PoDelegateTool`, `AgentsTool`, Header-Widget und
+  Roster-Tests arbeiten direkt auf `AiAgent` + `getName()`. ADR-0025 und `docs/adr/index.md`
+  bleiben bewusst historisch auf `NamedAgent` (Protokoll, keine aktuelle Schnittstelle).
+  Paul 2026-10-31: „richtig".
 
 ## 2026-10-30 — Namensalignment-Nachzieh-Zyklus (Jon, Nachtzyklus)
 

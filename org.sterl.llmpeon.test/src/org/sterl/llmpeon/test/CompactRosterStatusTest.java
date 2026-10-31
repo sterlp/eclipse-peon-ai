@@ -12,7 +12,6 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.junit.Test;
 import org.sterl.llmpeon.agent.AiAgent;
-import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.parts.widget.AiAgentStatusWidget;
@@ -38,8 +37,8 @@ public class CompactRosterStatusTest extends AbstractSwtUiTest {
     public void compactingRendersYellowDot() {
         ui(() -> {
             var roster = new AiAgentStatusWidget(shell, SWT.NONE,
-                    () -> List.of(new NamedAgent("Probe Boss", stub(true, false)),
-                            new NamedAgent("Probe Slave", stub(true, true))),
+                    () -> List.of(stub("Probe Boss", true, false),
+                            stub("Probe Slave", true, true)),
                     agent -> { }, () -> false);
             try {
                 roster.layout(true, true);
@@ -65,8 +64,8 @@ public class CompactRosterStatusTest extends AbstractSwtUiTest {
     public void idleAndWorkingRowsKeepTheirDots() {
         ui(() -> {
             var roster = new AiAgentStatusWidget(shell, SWT.NONE,
-                    () -> List.of(new NamedAgent("Probe Boss", stub(false, false)),
-                            new NamedAgent("Probe Slave", stub(true, false))),
+                    () -> List.of(stub("Probe Boss", false, false),
+                            stub("Probe Slave", true, false)),
                     agent -> { }, () -> false);
             try {
                 roster.layout(true, true);
@@ -90,9 +89,9 @@ public class CompactRosterStatusTest extends AbstractSwtUiTest {
                 .map(Label::getText).toList();
     }
 
-    private static AiAgent stub(boolean working, boolean compacting) {
+    private static AiAgent stub(String name, boolean working, boolean compacting) {
         return new AiAgent() {
-            @Override public String getName() { return "probe"; }
+            @Override public String getName() { return name; }
             @Override public String getSystemPrompt() { return ""; }
             @Override public ChatResponse call(String message, AiMonitor monitor) { return null; }
             @Override public CompactResult compact(AiMonitor monitor) { return CompactResult.skippedSmall(); }

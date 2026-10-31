@@ -8,7 +8,7 @@ import org.sterl.llmpeon.shared.StringUtil;
 
 /**
  * Pure (SWT-free) render model for the plugin's agent-status widget. Maps an orchestrator's visible team
- * (a {@link NamedAgent} list — see {@code AiPoAgent.getTeam()}) to display rows {@code uiName (Xk)}.
+ * (a {@link AiAgent} list — see {@code AiPoAgent.getTeam()}) to display rows {@code getName() (Xk)}.
  * <p>
  * The first entry is the orchestrator itself (Jon); the rest are his team (Plan, Dev, Review).
  * The 🟢 sits on the working leaf: a slave glows while it works, and — the <b>leaf rule</b> — Jon
@@ -39,14 +39,13 @@ public final class AiAgentStatusModel {
 
     private AiAgentStatusModel() {}
 
-    /** Live entry point for the widget: reads {@code uiName} + live {@code isWorking()}/
+    /** Live entry point for the widget: reads {@code getName()} + live {@code isWorking()}/
      *  {@code isCompacting()}/context off each team member, then applies the pure {@link #build(List)} logic. */
-    public static List<Entry> rows(List<NamedAgent> team) {
+    public static List<Entry> rows(List<AiAgent> team) {
         if (team == null || team.isEmpty()) return List.of();
         var snapshot = new ArrayList<Row>(team.size());
-        for (var member : team) {
-            var agent = member.agent();
-            snapshot.add(new Row(member.uiName(), agent.getMemory().getTotalTokenUsed(),
+        for (var agent : team) {
+            snapshot.add(new Row(agent.getName(), agent.getMemory().getTotalTokenUsed(),
                     agent.isWorking(), agent.isCompacting(), agent.getMemory().isTokenEstimate()));
         }
         return build(snapshot);

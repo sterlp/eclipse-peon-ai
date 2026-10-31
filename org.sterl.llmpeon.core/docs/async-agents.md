@@ -27,7 +27,7 @@ klären:
 1. **Dead-Counter:** `asyncRunning` wird **nirgends** inkrementiert/dekrementiert — `runsAsync` ist
    faktisch immer `maxConcurrent > 0`. Entweder Zähler richtig führen (try/finally um dispatch),
    oder bewusst weglassen und `maxConcurrent > 0` als Schalter dokumentieren.
-2. **Gleicher Agent + Nebenläufigkeit:** zwei Tasks auf denselben `NamedAgent` teilen sein Memory/
+2. **Gleicher Agent + Nebenläufigkeit:** zwei Tasks auf denselben `AiAgent` teilen sein Memory/
    History — interleaved Corruption ist vorprogrammiert. Empfehlung: **Lock pro Agent** (ein laufender
    Task je Agent, Rest queue) statt freie Nebenläufigkeit — das passt auch zum Verhalten der heutigen
    Slaven (RAM-only, seriell).

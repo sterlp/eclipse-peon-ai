@@ -18,7 +18,6 @@ import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.AiReviewAgent;
-import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -484,7 +483,7 @@ public class PeonAiService {
      * choke-point (ADR-0025): the widget pulls this list and stays type-agnostic, the {@code AiAgent}
      * interface stays lean.
      */
-    public List<NamedAgent> getStatusAgents() {
+    public List<AiAgent> getStatusAgents() {
         return getActiveAgent() instanceof AiPoAgent po ? po.getTeam() : List.of();
     }
 
@@ -542,7 +541,6 @@ public class PeonAiService {
                 .filter(AiPoAgent.class::isInstance)
                 .map(AiPoAgent.class::cast)
                 .map(po -> po.getTeam().stream()
-                        .map(NamedAgent::agent)
                         .filter(agent -> matchesSlot(slotId, agent))
                         .findFirst()
                         .orElse(null))

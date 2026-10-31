@@ -627,7 +627,7 @@ class AbstractAgentTest {
         assertThat(result.status()).isEqualTo(CompactResult.Status.SKIPPED_SMALL);
         assertThat(streamMock.getCallCount()).isZero();
         assertThat(agent.isCompacting()).isFalse();
-        assertThat(AiAgentStatusModel.rows(List.of(new NamedAgent("Da Mek", agent))))
+        assertThat(AiAgentStatusModel.rows(List.of(agent)))
                 .as("a skipped compact never renders a Compact-Status")
                 .noneMatch(AiAgentStatusModel.Entry::compacting);
     }

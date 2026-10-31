@@ -26,8 +26,9 @@ Nicht-PO-Agent aktiv:
 
 **Gebautes Design (MVP, Pull/MVC statt Observer):**
 
-- **`NamedAgent(String uiName, AiAgent agent)`** — schlichter Record. `AiPoAgent.getTeam()` hält die
-  feste Reihenfolge **Jon (=`this`) → Plan → Dev → Review** (BuildPoAgentComponent.java:135);
+- **`AiAgent` + `getName()`** — die Team-Mitglieder sind die Agenten selbst, kein Wrapper.
+  `AiPoAgent.getTeam()` hält die feste Reihenfolge **Jon (=`this`) → Plan → Dev → Review**
+  (BuildPoAgentComponent.java:135);
   die Sklaven-Instanzen werden einmal erzeugt und an `AiPoAgent` **und** `PoDelegateTool` geteilt.
 - **`PeonAiService.getStatusAgents()`** — der eine `instanceof`-Choke-Point:
   `getActiveAgent() instanceof AiPoAgent po ? po.getTeam() : List.of()`. Kein Orchestrierungs-State

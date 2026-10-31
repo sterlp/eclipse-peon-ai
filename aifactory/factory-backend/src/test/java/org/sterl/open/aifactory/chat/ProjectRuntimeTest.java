@@ -11,7 +11,7 @@ import java.util.concurrent.Executors;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.sterl.llmpeon.agent.NamedAgent;
+import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.poagent.AiPoAgent;
 
@@ -51,11 +51,11 @@ class ProjectRuntimeTest {
         ProjectRuntime runtime = runtime(home.resolve("state").resolve("project-2"));
 
         assertThat(runtime.jon().getTeam())
-                .extracting(NamedAgent::uiName)
+                .extracting(AiAgent::getName)
                 .containsExactly("Jon", "Plan", "Dev", "Review");
         assertThat(runtime.jon().getTeam())
-                .allSatisfy(member -> assertThat(member.agent().getMemory().size())
-                        .as("%s starts empty", member.uiName())
+                .allSatisfy(member -> assertThat(member.getMemory().size())
+                        .as("%s starts empty", member.getName())
                         .isZero());
     }
 

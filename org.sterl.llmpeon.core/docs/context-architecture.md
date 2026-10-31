@@ -239,10 +239,12 @@ THEN nichts wird injiziert und keine Exception / kein Status-Eintrag
 
 ## Offene Punkte
 
-> **Slaves & AGENTS-\<agent\>.md (Namens-Bug):** Solange der `NamedAgent`-Wrapper existiert
-> (UI-Name "Plan" ≠ Agent-Name), bekommen Slaves nur die base `AGENTS.md`.
-> `AGENTS-da-thinka.md` / `AGENTS-da-mek.md` funktionieren erst wenn die Slaves direkt benannt
-> sind (Side Quest, Backlog).
+> **Slaves & AGENTS-\<agent\>.md (Namens-Bug) — 🔒 erledigt (2026-10-31):** Der
+> `NamedAgent`-Wrapper ist entfernt (Clean Break), Team-Mitglieder sind die Agenten selbst und ihr
+> `getName()` ist der Anrede-Name. `AgentsMdContextItem.itemsFor(target.getName(), …)` sucht damit
+> direkt `AGENTS-Plan.md` / `AGENTS-Dev.md` / `AGENTS-Review.md` (Case-Varianten inbegriffen,
+> gepinnt in `AgentsMdContextItemTest`). `AGENTS-da-thinka.md` / `AGENTS-da-mek.md` sind Altbestand
+> vor ADR-0079.
 
 ## Potenzial zum Aufräumen
 

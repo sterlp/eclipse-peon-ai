@@ -50,7 +50,6 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
-import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.poagent.AiPoAgent;
@@ -452,8 +451,7 @@ class WritePinningTest {
     /** Dev, wie Jon ihn kennt — derselbe Runtime, dieselbe Instanz, kein zweiter Agent. */
     private static AiAgent devMemberOf(ProjectRuntime runtime) {
         return runtime.jon().getTeam().stream()
-                .filter(member -> AiDevAgent.NAME.equals(member.agent().getName()))
-                .map(NamedAgent::agent)
+                .filter(member -> AiDevAgent.NAME.equals(member.getName()))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("Jons Team traegt keinen Dev: "
                         + runtime.jon().getTeam()));

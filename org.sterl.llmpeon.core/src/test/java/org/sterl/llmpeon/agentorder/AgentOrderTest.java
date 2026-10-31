@@ -211,7 +211,7 @@ class AgentOrderTest extends AbstractMemoryFileTest {
      * name yield exactly ONE dropdown entry — the first wins, the collision is surfaced via warn.
      */
     @Test
-    void sortDropsDuplicateNamedAgentsWithWarning() throws Exception {
+    void sortDropsDuplicateAgentsWithWarning() throws Exception {
         // GIVEN — a catch-all pattern and two distinct agent instances with the same name
         AgentOrder subject = loadedWith(".*");
         AiAgent first = agent("Dup");

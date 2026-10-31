@@ -9,10 +9,10 @@ import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.AiReviewAgent;
-import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.poagent.AiPoAgent;
@@ -71,16 +71,16 @@ final class ProjectRuntime {
 
         JonToolSet toolSet = JonToolSet.forProject(projectRoot);
         WriteValidator writeValidator = toolSet.writeValidator();
-        NamedAgent plan = new NamedAgent(AiPlanAgent.NAME, new AiPlanAgent(model, toolSet.tools()));
-        NamedAgent review = new NamedAgent(AiReviewAgent.NAME, new AiReviewAgent(model, toolSet.tools()));
-        NamedAgent dev = new NamedAgent(AiDevAgent.NAME, new AiDevAgent(model, toolSet.tools()) {
+        AiAgent plan = new AiPlanAgent(model, toolSet.tools());
+        AiAgent review = new AiReviewAgent(model, toolSet.tools());
+        AiAgent dev = new AiDevAgent(model, toolSet.tools()) {
             @Override
             public WriteValidator getWriteValidator() {
                 // UC-WP-8/9 name the team too, and the core default is ALLOW_ALL — Dev gets exactly
                 // Jon's two roots, from the same instance, so one rule has one source (R-WP-6)
                 return writeValidator;
             }
-        });
+        };
         // registered before the agent is built, otherwise Jon cannot delegate in his first turn; the
         // budget is a supplier so a changed config takes effect without a rebuild
         toolSet.addDelegateTool(plan, review, dev, () -> model.getConfig().getAutoCompactAfter());
@@ -99,7 +99,7 @@ final class ProjectRuntime {
 
         // keyed by the core's tool names, filled with the names this factory built, so the product names
         // a member in exactly one place (D1) and a history line needs no second record of its author
-        this.names = authorTable(plan.uiName(), dev.uiName(), review.uiName());
+        this.names = authorTable(plan.getName(), dev.getName(), review.getName());
         this.monitor = new SseTurnMonitor(projectId, streams);
     }
 
