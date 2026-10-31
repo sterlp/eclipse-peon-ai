@@ -6,4 +6,4 @@ Alias for `org.sterl.llmpeon.core`.
 - **Shared lib for two products** (Eclipse plugin + AI Factory web app). Before extending a core
   contract read [docs/ground-rules.md](docs/ground-rules.md) — extend only if clearly generic for all.
 - Use Lombok for POJOs.
-- Run tests using Eclipse tools (`runTests`).
+- Run tests with Maven Surefire (ground truth, see parent) — build/test recipes: skill `peon-build-test`.

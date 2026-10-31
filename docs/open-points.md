@@ -43,8 +43,11 @@ Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.
   Live-Test-Client (Delegation-, TeamInternals-, WritePinning-, ChatTurn-Test je eine, plus
   `eventNames()`-Duplikat in `DelegatedAnswerTest.LiveStream`) — Infrastruktur, keine doppelte Szene;
   eigener rein mechanischer Refactor über ~500 Test-Zeilen mit eigenem Gate.
-- ❓ **`AGENTS.md:3` nennt weiter `Peon-PO`/`Peon-Plan`/`Peon-Dev`** — Paul-WIP (AGENTS*.md wird nie
-  von mir committet/berührt); Zeile bei Gelegenheit von Paul auf Jon/Plan/Dev ziehen.
+- ❓ **Edit-Tool-Falle — Tool-Defekt oder Bedienungsart?** `AGENTS.md` beschreibt
+  `eclipseReplaceLines`/`diskReplaceLines` als wiederholt *insert statt replace* und Teil-Match-
+  Deletionen in `editFile` als stille Fragment-Reste (Fälle 2026-09-12, 2026-10-22, 2026-10-30).
+  Offen für Paul: ist das ein Tool-Bug, den wir upstream melden/beheben (dann AGENTS-Passage später
+  kürzen), oder bedienungsseitig (dann bleibt die Always-on-Regel stehen)?
 - ❓ **Manuelle Nachweise Agenten-Namen/Origin (Paul):** Browser-Proof Fabrik auf 8099 + Plugin-Harness
   `test-chat.html` („Delegation (Jon · Dev · Jon)“, „AI without origin“) — braucht Pauls Modell-Konfig
   und Augen.

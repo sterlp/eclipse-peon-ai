@@ -1,78 +1,63 @@
 # Open Ends / Memory — Session-Zwischenstand
 
 > Zwischenstand, kein Protokoll: Erledigtes fliegt raus.
-> Branch `main` — R-AEM-3 ist gemergt (`27ed5b21`, Tag 2.15.1).
+> Branch `web-factory-goon`, HEAD `329f0d2b` — Reparatur-Zyklus 2026-10-30 **komplett** (Inc 1–8 +
+> Delta `e68a560e` + Abschluss `329f0d2b`, Da-Dok-Review behandelt, Plan archiviert
+> `overview-done-2026-10-31-00-48.md`). **Merge-Entscheidung (Squash-Default) liegt bei Paul.**
 
-## Jetzt — Origin im Core + Namensalignment: GEBAUT, Review + Delta abgeschlossen (2026-10-30)
+## Zyklus-Ergebnis (2026-10-30/31)
 
-- **Alle 6 Inkremente + Docs/Prompt-Commits + Delta-Inkrement grün & gepusht** auf
-  `web-factory-goon` (`c025695c` · `8c35da01` · `63bbfe3a` · `7680b1d6` · `db48c3f8` · `1ec40ef1` ·
-  `afd8890b` · `7bf3181b` · **`4260475b`**). Delta `4260475b` = Review-Fixes: LOW-1..4
-  (NAME-Konstanten, `AgentNames.isJon` statisch, SseTurnMonitor-Abhängigkeit raus, Kommentar),
-  BUG-1-Pin `AgentsMdContextItemTest#test_jon_resolvesOnlyToCleanBreakNames`, Mutation-Nachweis
-  `OwnerMonitor` (fill-if-null → 2 rote Tests wie prognostiziert, revertet). Lint = Baseline.
-- **Review-Durchgang abgeschlossen (REJECTED → Befunde behandelt):** BUG-2/3/5 + Homepage-Reste von Jon in
-  Docs gefixt (ADR-0078 an gebauten Mechanismus angepasst, `aifactory/docs/memory.md` „Jetzt" neu,
-  header-Doc-Ork-Namen gezogen); BUG-1 per Clean Break entschieden (⏳ open-points: Paul
-  bestätigen lassen); BUG-4 = ❓ Paul (AGENTS.md); BUG-6 = ADR-0078-Abweichungsnotiz. P1
-  (Queue-Drain-Race) → ❓ open-points.
-- **⚠️ Rename `AGENTS-PO.md` → `AGENTS-JON.md` liegt uncommittet im Working Tree** (`git mv`) —
-  Agenten committen `AGENTS*.md` nie: Paul bestätigen und selbst committen (⏳ open-points).
-- **Manuelle Nachweise offen (Paul):** Browser-Proof Fabrik auf 8099 + Plugin-Harness
-  (`test-chat.html`, zwei Klicks) — Dev kann sie nicht allein fahren.
-- **⏳/❓ offen:** siehe [open-points.md](open-points.md) Abschnitt 2026-10-30.
-- **Rules für den Bau:** Paul committet selbst · `lintDocsAndTests` je
-  Inkrement, UC-Anker bleiben · keine Tool-Call-Id-Buchführung (ADR-0078 Decision 6) ·
-  `AgentsTool` = Paul WIP, out of scope (`AgentsTool.java:126,136,193,195` Virtual-Thread-Emission).
-- **SOLL:** ADR-0078 (D1–D6, Accepted, 2026-10-30 angepasst) + ADR-0079 (Namen); `aifactory/docs/chat.md`
-  (R-WP-4, UC-WP-39/40 ✅ + ⏳ Fehler-Fall), `aifactory-architektur.md`, AF-ADR-002 nachgezogen.
+- **Inc 1–6 (Bug-Hunt):** Slave erbt nicht mehr Jons Identitätszeile (`ProjectRuntime:98` →
+  `List.of()`, Javadoc-Vertrag an `AiPoAgent.setStaticContext`) · tote Plugin-Namens-Schreiber weg
+  (`BuildPoAgentComponent`) · `Peon-`-Strip ersatzlos gelöscht (Custom `Peon-Dev` erbt nie
+  `AGENTS-DEV.md`) · 3 doppelte Tests gelöscht, 2 Alleinstellungen umgezogen ·
+  **Scaffold heißt `Scaffold`** (Prompt-Zeilen von Jon selbst, Clean Break, Glossar-Zeile,
+  CHANGELOG/Release-Note) · Ork-Namen in 17 SOLL-Docs + Kommentaren gezogen, Evidenz-Zahlen aus
+  docs raus.
+- **Inc 7 (AGENTS*.md, alles uncommittet):** `AGENTS-PO.md` → `AGENTS-JON.md` (Jon, `git mv` — lädt
+  jetzt wieder) · AGENTS-DEV.md-Linter-Bullet auf R-DL-26 gestellt · Root-AGENTS.md Edit-Tool-Passage
+  gekürzt · Plugin-/Core-`AGENTS.md`-Widersprüche behoben (Background-Jobs-Duplikat raus,
+  Surefire statt `runTests`). Paul: committet den Working Tree bei Gelegenheit.
+- **Inc 8 (P1 Queue-Drain-Race):** bestätigt und gefixt — Claim+Enqueue atomar
+  (`claimTurnSlotOrQueue`), Release atomar mit letztem Queue-Blick (`nextQueuedEntryOrReleaseSlot`);
+  roter Test `AbstractAgentQueueReleaseRaceTest`; ChatFirstTouch-Flaky deterministisch gefixt.
+  Invariante als **Rule 10** in `queued-user-messages.md`.
+- **Gates final:** Core **1425/0/0/0** · Fabrik **107/0/0/0** · Tycho-Plugin **445/0/0/53** ·
+  Lint 2 = Baseline, UC 285/285.
 
-## Danach
+## Offen für Paul (je eine Frage / Bestätigung)
 
-- **Arbeitsbaum-Rauschen (Paul fragen):** `@SuppressWarnings("null")`-Zeilen in `ExceptionUtil.java`,
-  `ToolService.java`, `ShellTool.java`, `AgentToolConfigTest.java`, `DefaultCodegraphProbeTest.java`
-  (11:52, IDE-Quickfix?) — uncommitted, nicht committet.
-- **Codegraph-Toolset-Slice** (R-CG-6-Änderung, `CODEGRAPH_MCP_TOOLS=explore,search,files`,
-  Paul 2026-10-29: ja).
+1. **Merge von `web-factory-goon`** (Squash-Default) + Commit des uncommitteten AGENTS*.md-Working
+   Trees (Rename + Säuberung, siehe open-points ⏳).
+2. ⏳-Rückversicherungen in [open-points.md](open-points.md) Abschnitt 2026-10-30: P1-Claim-Seite
+   (Monitor-Paar-Invariante akzeptiert), Fehler-Ergebnis als Mitglieder-Zeile, Rename-Bestätigung.
+3. ❓: **Edit-Tool-Falle** (Tool-Defekt upstream melden oder Bedienungsregel?), manuelle Nachweise
+   (Browser 8099, `test-chat.html`), 🔒-Reste ok?
+4. Ork-/Peon-Altbestand ~35 SOLL-Docs (Inventar in open-points) — Massen-Rename braucht Paul
+   (Glossar-Regel 6).
 
-## Offen für Paul (je eine Frage)
+## Backlog (nicht gestartet)
 
-1. **Deferred-Reset Compact-UI** (⏳, open-points) — „müssen wir klären".
-2. ⏳-Rückversicherungen in [open-points.md](open-points.md): Delegations-Compact-Kosten (ADR-0071),
-   Compact-Briefing-Schema, `codegraph`-Name reserviert, R-CG-15, R-CC-19, Windows-`cmd /c`,
-   Pauls ShellTool-WIP, Read-Tools-OutputTrim, `PeonAiService.current()`.
-3. Bug-Triage (noch offen): totes MCP-Tool in Spec-Liste, `PoDelegateTool.dispatch`-Catch
-   (jetzt zusätzlich durch R-AEM-3-Wrap minimal leichter erreichbar — Suspicion aus Review),
-   ApiRetry-Fehlerklassen-Tabelle, Header-State-Leak, Auto-Compact bei Context-Overflow
-   (nächster Zyklus laut Order 2026-10-14), `org.sterl.llmpeon.test` baut nicht.
-
-## Neu aufgenommen (Paul 2026-10-29, Backlog — nicht gestartet)
-
-- **„Kein `throw` ohne Message"** (Regel-Kandidatin, ❓ open-points) — Inventar message-loser
-  Throws, SOLL in ground-rules.md, dann Batches.
-- **Warnungs-Aufräum-Zyklus** (❓ open-points): core + plugin, eigener Branch, Inkrement 1 =
-  VOLL-Inventar + Triage (nichts ändern), dann Batches je Warnklasse. `@SuppressWarnings`-Rauschen
-  (5 Dateien, uncommitted) im selben Zyklus klären.
-
-## Backlog
-
-- **Async-Shell-Tool (Paul-Prio)**, danach async Agents ([async-agents.md](../org.sterl.llmpeon.core/docs/async-agents.md)) — Merge-Check-Item „geteilte disk-Tool-Instanzen / mutable `AbstractTool.request`" VOR dem Async-Bau festlegen (open-points, Night-Cycle 4).
-- agent-origin: **läuft** (siehe oben) · Bug-Triage T-1/T-1a/T-3/T-4/T-9 · E2E E2/Refresh-Seam · `result 0k`.
-- Klein: `MutableClock` 7× → Fixture · `AbstractAgent.asyncCall` ohne Aufrufer · Lint-Baseline Core
-  (14 UNBELEGT_ERLEDIGT, 13 VERWAIST UC-DEF-*) · historische `*-plan.md` löschen? ·
-  `StringUtil.oneLine`-Konsolidierung (Da-Dok-LOW, 4. „eine Zeile"-Implementierung) ·
-  `effectiveUrl`-Schnitt auf `ConfiguredChatModel` (Da-Dok-LOW).
-- aifactory: V6–V10-Folgen in [aifactory/docs/open-points.md](../aifactory/docs/open-points.md),
-  `aifactory-architektur.md` Config-Abschnitt vor Config-Planung.
-- [open-points.md](open-points.md) ~370 Zeilen → eigener Aufräum-Zyklus mit Paul.
+- **P3:** SSE-Client-Kopien (5×) in Fabrik-Tests extrahieren — nächster Zyklus, eigenes Gate.
+- **P1-Variante:** Cancel-/Fehler-Pfad-Release ohne atomaren Queue-Blick — nächster Bug-Zyklus,
+  test-first (⏳ open-points).
+- Async-Shell-Tool (Paul-Prio) → async Agents; Merge-Check „geteilte disk-Tool-Instanzen" vorher.
+- Bug-Triage-Reste: totes MCP-Tool in Spec-Liste, `PoDelegateTool.dispatch`-Catch, ApiRetry-
+  Fehlerklassen, Header-State-Leak, Auto-Compact bei Context-Overflow, `org.sterl.llmpeon.test`
+  Surefire-Basis.
+- Neu aufgenommen (2026-10-29): „Kein `throw` ohne Message" · Warnungs-Aufräum-Zyklus (inkl. 5
+  `@SuppressWarnings`-Dateien, uncommitted).
+- Klein: `MutableClock` 7× → Fixture · `AbstractAgent.asyncCall` ohne Aufrufer · Lint-Baseline Core ·
+  historische `*-plan.md` löschen? · `StringUtil.oneLine`-Konsolidierung · `effectiveUrl`-Schnitt.
 
 ## Notizen
 
-- System-Prompts generisch, keine Sprache/Plattform bevorzugen.
-- Commit: EXPLIZITE Pfadliste; Pauls WIP nie (`README.md`, `peon-plan/`, `ai-e2e-test/**`,
-  `non-peon-ai-agents-md/**`, `pauls-product-vision.md`, `AGENTS*.md`, `bugs/**`).
-- Lint: `docRoots`/`testRoots` immer einschränken. Nach jedem Edit Zielbereich zurücklesen.
-- `ThreadSafeMemory.add` joint UserMessages — Seed-Fixtures mit `AiMessage` trennen.
-- Windows: `indexOf('\n')` in `lineSeparator()`-Strings.
-- **Skill-Kandidat (Da-Dok-Review, umzusetzen):** `test-honesty` — „Regel an der Form einer externen
-  Exception ⇒ ein Test muss diese Form durch die echte Wickel-Schicht reproduzieren" (B1-Lektion).
+- System-Prompts generisch; Scaffold-Prompts stehen auf `Scaffold` (Jon editiert System-Prompts
+  selbst, Übersicht: `core/docs/system-prompts.md`).
+- Commit: EXPLIZITE Pfadliste; Pauls WIP nie (`AGENTS*.md`, `peon-plan/**`, `README.md`,
+  `ai-e2e-test/**`, `pauls-product-vision.md`, `bugs/**`).
+- Lint: `docRoots` weglassen = Auto-Discovery (R-DL-26); `findings:`-Zeile melden, nie `Scanned:`.
+- Skill `peon-build-test` trägt jetzt: `releng/llmpeon-target` im `-pl` des **Test**-Gates ·
+  Core-`static final`-Rename braucht `clean` im Plugin-Bau. Ledger-Zeilen in skill-impact.md.
+- Da-Dok-Empfehlungen immer am IST verifizieren — diesmal: seine (b)-Empfehlung wäre ein
+  nie-feuernder Guard gewesen; (a) mit dokumentierter Invariante gewählt.

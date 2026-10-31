@@ -305,12 +305,15 @@ public class AIChatView implements EclipseAiMonitor {
     // -------------------------------------------------------------------------
     // EclipseAiMonitor
     // -------------------------------------------------------------------------
-
+    // TODO monitor bug/limit we don't see here the agent itself ...
     @Override
     public void onChatMessage(int iteration, ChatRequest.Builder request) {
-        chatHistory.updateLiveResponseInUIThread("waiting for AI...", 0, null);
         // First loop callback where the agent's working flag is already true — light up the 🟢.
-        EclipseUtil.runInUiThread(parent, () -> headerBar.refreshRoster());
+        EclipseUtil.runInUiThread(parent, () -> {
+            headerBar.refreshRoster();
+            chatHistory.updateLiveResponse("waiting for AI...", 0, null);
+            monitorRef.get().setTaskName("waiting for AI...");
+        });
     }
 
     @Override
@@ -320,11 +323,13 @@ public class AIChatView implements EclipseAiMonitor {
 
             if (m.role() == Type.TOOL) {
                 chatHistory.updateLiveResponse(m.message(), 0, "");
+                monitorRef.get().setTaskName(m.message());
             }
 
             chatHistory.appendMessage(m);
-            actionsBar.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
             headerBar.refreshRoster();
+            // TODO makes only sense if it is the current agent?
+            actionsBar.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
         });
     }
 
@@ -634,8 +639,8 @@ public class AIChatView implements EclipseAiMonitor {
         inFlightTurns.incrementAndGet();
         LOG.info("turn submit: agent=" + agent.getName() + " in-flight=" + inFlightTurns.get());
         lockWhileWorking(true);
-        Job.create("Peon AI request", monitor -> {
-            monitor.beginTask("Arbeit, Arbeit!", 100);
+        Job.create("AI request", monitor -> {
+            monitor.beginTask(agent.getName() + " is working ...", 100);
             monitorRef.set(monitor);
             Exception ex = null;
             ChatResponse cr = null;

@@ -18,19 +18,15 @@ Base: `AGENTS.md`. System prompt: `developer.md`.
   build/test run: `mvn -o -pl org.sterl.llmpeon,releng/llmpeon-target -am package -DskipTests`,
   then refresh + build `org.sterl.llmpeon` AND `org.sterl.llmpeon.test`. Full procedure +
   stale-artifact diagnostics: skill `peon-build-test`.
-- **Docs-ID-Marker am Test: aus dem Feature-Doc kopieren, nie erfinden** (hit 2026-10-17, codegraph
-  inc-19/20: Da-Dok REJECTED — 12 `// UC-CG-*`-Marker in Tests, ohne dass die UC-IDs im Doc
-  existierten; die Feature-Regeln heißen dort `R-CG-*`). R-X-n-Regeln tragen keine UC-X-n-
-  Überschriften — die Marker-Form (pure ID-Zeile, kein Zusatztext) muss zur Doc-Form passen.
-  Sobald ein Plan ID-Marker vorsieht, gehört `lintDocsAndTests` in das Inkrement-Gate:
-  VERWAIST/UNBELEGT_ERLEDIGT blockiert, nicht erst der Review-Lauf.
-  Invokation: `idPattern` ist **UC-only** (`UC-[A-Z]+-\d+[a-z]?`) — Regel-Marker `R-*` sind keine
-  UC-IDs; ein Pattern, das auch `R-*` matcht, liefert eine Masse Schein-VERWAIST statt der kleinen
-  Baseline aus UNBELEGT- und MANUELL-Findings. `docRoots` immer ALLE DREI Roots explizit setzen (`docs`,
-  `org.sterl.llmpeon.core/docs`, `org.sterl.llmpeon/docs`) — fehlt einer, liefert der Linter
-  Schein-VERWAIST für dessen Scope (hit 2026-10-23: 84 Schein-VERWAIST ohne `org.sterl.llmpeon/docs`).
-  Melden: die echte `findings: N`-Zeile aus dem Output — nie die `Scanned: N doc file(s)`-Anzahl als
-  „Findings" (hit 2026-10-24, R-OD-8 F3).
+- **Sobald ein Plan ID-Marker vorsieht, gehört `lintDocsAndTests` in das Inkrement-Gate** —
+  VERWAIST/UNBELEGT_ERLEDIGT blockieren das Inkrement, nicht erst den Review-Lauf (hit 2026-10-17:
+  12 `// UC-CG-*`-Marker ohne die IDs im Doc liefen durch sechs grüne Gates). `R-*` sind keine
+  UC-IDs → `idPattern` **UC-only** (`UC-[A-Z]+-\d+[a-z]?`); ein Pattern, das auch `R-*` matcht,
+  liefert eine Masse Schein-VERWAIST statt der kleinen Baseline aus UNBELEGT- und MANUELL-Findings
+  (`org.sterl.llmpeon.core/docs/docs-linter.md` R-DL-14). `docRoots` **gar nicht** übergeben
+  (Auto-Discovery findet alle `docs`-Bäume, R-DL-26) oder alle — eine teilweise explizite Liste
+  gewinnt und blendet den Rest still aus (hit 2026-10-23: 84 Schein-VERWAIST zu enger Scope).
+  Melden: die echte `findings: N`-Zeile, nie `Scanned: N doc file(s)` (hit 2026-10-24, R-OD-8 F3).
 - **Never widen scope silently.** Fixes outside the released plan — even correct ones, even
   one-liners — get reported to the PO first. TABU lists in a plan are binding.
 - **Doc-Input, der als erledigt zitiert wird, gegen den COMMITTED Stand prüfen** (hit 2026-10-23,

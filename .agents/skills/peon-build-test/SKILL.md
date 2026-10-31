@@ -77,7 +77,9 @@ description: llmpeon repo build & test procedure — core→plugin jar trap (rea
   -am` does **not** pull the host plugin into the reactor (the fragment requires it as an OSGi bundle,
   not a Maven dependency) → stale local-p2 host → phantom `NoSuchMethodError` on green code
   (2026-09-17 R-SEL-4, `UserContext.setTextSelection`). Correct: `-pl
-  org.sterl.llmpeon,org.sterl.llmpeon.test -am verify`.
+  releng/llmpeon-target,org.sterl.llmpeon,org.sterl.llmpeon.test -am verify` (the target module must
+  stay in `-pl` for the TEST gate too — offline, the target-platform artifact is not in `~/.m2`, hit
+  2026-10-30: `-pl` without it dies with `ProvisionException … releases/2026-09` before any compile).
 - **SWT tests are skipped headless (hit 2026-10-23):** Tycho-surefire runs without a workbench
   display, so every `AbstractSwtUiTest` subclass is `Assume`-skipped (visible as ~50 skips). A widget
   test is therefore only *compiled* by `mvn … verify` — run it once with `eclipseRunJavaTests` against
@@ -100,6 +102,10 @@ description: llmpeon repo build & test procedure — core→plugin jar trap (rea
 
 ## Stale artifacts
 
+- **Rename einer Core-`static final`-Konstante erfordert `clean` im Plugin-Bau (hit 2026-10-30):**
+  `static final String` wird **inline** kompiliert — ein Tycho-Lauf ohne `clean` hält das alte Literal
+  in `target/classes`/`bin/` gegen den frischen Core im Bundle (`javap`: `ldc "Peon-Scaffold"` nach dem
+  Rename) und meldet Phantom-Fehlschläge in Tests, die das Literal erwarten.
 - **Headless Tycho ships stale `bin/` (hit 2026-10-19):** Tycho packages from the PDE output folder
   `bin/`, which `mvn clean` never touches; a disk-tool source write without a following
   `eclipseRefreshProject` leaves class-mtime > source-mtime, so JDT skips the recompile and the
