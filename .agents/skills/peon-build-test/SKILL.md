@@ -59,6 +59,19 @@ description: llmpeon repo build & test procedure — core→plugin jar trap (rea
    (`-pl … -am -Dtest=<Klasse>`), muss für Core `-Dsurefire.failIfNoSpecifiedTests=false` mitgeben —
    sonst bricht Core mit „No tests matching pattern".
 
+## aifactory gate (separate reactor, hit 2026-10-31)
+
+- `aifactory/` is its OWN Maven reactor — `cd aifactory && mvn -o -pl factory-backend test` resolves
+  `llmpeon-core` from `~/.m2`, NOT from the workspace target dirs. After ANY core API change the gate
+  needs **`mvn -o install -pl org.sterl.llmpeon.core` first** (repo root), otherwise it breaks with
+  phantom signature errors on brand-new core symbols.
+- **`clean` is mandatory there (measured 2026-10-31):** without it the factory gate runs GREEN on
+  STALE classes — `factory-backend/target/classes` keeps the old `ProjectRuntime.class` (old mtime)
+  while core's signature changed; the compile step skips "up to date" sources. `mvn -o clean -pl
+  factory-backend test` (or `-pl factory-backend clean test`) is the honest form.
+- Symptom pattern: aifactory gate fails or "passes" with signature/reference errors that the core
+  gate just disproved — suspect the `~/.m2` snapshot first, not the code.
+
 ## Plugin tests (OSGi, JUnit 4)
 
 - `org.sterl.llmpeon.test` runs via the Eclipse test runner. A NEW test class needs the user's manual

@@ -106,7 +106,7 @@ behandelt deshalb **leeren Plan-Text wie „kein Plan"** — nie clear + Erfolg 
 - Der Chat-Fallback-Zweig (leere letzte AiMessage) wird vom „leer = kein Plan"-Guard **ebenfalls**
   erfasst — einheitliche Semantik (Da-Dok F3, 2026-10-24).
 
-### R-PT-5 — Die Projektbindung stellt die Plan-Referenz für den aktiven Plan-Agenten her ❌ specified (2026-10-31, Da-Dok-Review Mini-Zyklus)
+### R-PT-5 — Die Projektbindung stellt die Plan-Referenz für den aktiven Plan-Agenten her ✅ done (2026-10-31, Da-Dok-Review Mini-Zyklus)
 
 `planRef` ist ein Cache ohne Invariante: `setProject` leert ihn (stale reference — R-PT-4-Prinzip),
 und bislang baute nur die **nächste Agent-Aktivierung** ihn wieder auf. Seit der aktive Agent beim
@@ -118,7 +118,7 @@ wird die Referenz aus dem Workspace-Plan neu aufgebaut. Invariante: **aktiver Pl
 Workspace ⇒ planRef gesetzt.** Der Aufbau prüft zuerst den Agenten, dann den Plan (kein Plan-I/O für
 Dev/Jon); andere Agenten behalten das leere Referenz-Verhalten.
 
-#### UC-PT-5 — restoredPlanAgentGetsItsPlanReferenceOnProjectBinding ❌ specified
+#### UC-PT-5 — restoredPlanAgentGetsItsPlanReferenceOnProjectBinding ✅
 - GIVEN der gemerkte Agent ist Plan und `peon-plan/overview.md` existiert WHEN der Service startet und
   das Projekt gebunden wird THEN ein `onHandoff` übergibt den Plan-Datei-Inhalt (nicht die letzte
   AiMessage aus der History).
