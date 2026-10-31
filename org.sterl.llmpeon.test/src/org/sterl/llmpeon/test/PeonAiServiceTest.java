@@ -311,9 +311,11 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         aiService.setActiveAgent(aiService.getAgents().stream().filter(a -> a.getName().equals(AiPlanAgent.NAME)).findFirst().orElseThrow());
         // AND
         aiService.getActiveAgent().getMemory().clear();
-        aiService.setProject(project);
+        // AND no plan in the workspace — setProject re-establishes the reference of an active plan
+        // agent (R-PT-5), so the delete has to precede the binding for this GIVEN to hold
         aiService.getToolService().getTool(EclipseWorkspaceWriteFileTool.class).get().eclipseDeleteResource("peon-plan");
-        
+        aiService.setProject(project);
+
         // WHEN
         assertFalse(aiService.onHandoff());
         // AND
@@ -2559,6 +2561,86 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         // THEN: Jon is active again, not the Dev default
         assertEquals("the remembered agent survives the service build",
                 AiPoAgent.NAME, restarted.getActiveAgent().getName());
+    }
+
+    /**
+     * R-PT-5 (org.sterl.llmpeon/docs/plan-tool.md): the project binding re-establishes the plan
+     * reference of an already active plan agent. The discriminator is the source of the handoff text —
+     * the plan file, never the last answer of his persisted history.
+     */
+    // UC-PT-5
+    @Test
+    public void restoredPlanAgentGetsItsPlanReferenceOnProjectBinding() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN: the user picked Plan (the key is the fixture here) and the project holds a plan
+        var planFile = "/" + PeonTestFixture.PROJECT_NAME + "/" + PlanTool.OVERVIEW_FILE;
+        eclipseWriteFile(planFile, "# plan\nR-PT-5-DISK-MARKER\n");
+        aiService.setActiveAgent(AiPlanAgent.NAME);
+        assertEquals(AiPlanAgent.NAME, InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID)
+                .get(REMEMBERED_AGENT_KEY, null));
+
+        var restarted = newServiceWithRememberedAgent();
+        // AND: the temptation of the fallback branch — Plan's last answer of an earlier session
+        restarted.getActiveAgent().getMemory().add(AiMessage.from("STALE-MEMORY"));
+        assertEquals("the restart has to start on Plan, otherwise this is not the case under test",
+                AiPlanAgent.NAME, restarted.getActiveAgent().getName());
+
+        try {
+            // WHEN
+            restarted.setProject(project);
+
+            // THEN
+            assertTrue("a restored plan agent with a plan in the project must hand off",
+                    restarted.onHandoff());
+            assertEquals(AiDevAgent.NAME, restarted.getActiveAgent().getName());
+            var messages = restarted.getActiveAgent().getMemory().getCopy();
+            assertHasUserMessageWith(messages, PlanTool.OVERVIEW_FILE);
+            assertHasUserMessageWith(messages, "R-PT-5-DISK-MARKER");
+            assertHasNoUserMessageWith(messages, "Handover from Plan:");
+        } finally {
+            eclipseDeleteResource(planFile);
+            forgetRememberedAgent();
+        }
+    }
+
+    /**
+     * UC-PT-5 BDD line 2: binding a project never reads the plan for an agent that cannot hand one
+     * off — the reference stays empty for every agent but the plan agent.
+     */
+    // UC-PT-5
+    @Test
+    public void projectBindingLeavesNonPlanAgentWithoutPlanReference() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN: Jon remembered (not Plan) while the project does hold a plan
+        var planFile = "/" + PeonTestFixture.PROJECT_NAME + "/" + PlanTool.OVERVIEW_FILE;
+        eclipseWriteFile(planFile, "# plan\nnever handed off\n");
+        aiService.setActiveAgent(AiPoAgent.NAME);
+
+        var restarted = newServiceWithRememberedAgent();
+        try {
+            assertEquals(AiPoAgent.NAME, restarted.getActiveAgent().getName());
+            restarted.setProject(project);
+            assertTrue("the plan must be there, otherwise the empty reference proves nothing",
+                    restarted.getSharedToolService().getTool(PlanTool.class).orElseThrow().hasPlan());
+
+            // THEN
+            assertNull("only an active plan agent may hold the plan reference",
+                    ((AgentContextComponent) readField(restarted, "agentContext")).planRef());
+        } finally {
+            eclipseDeleteResource(planFile);
+            forgetRememberedAgent();
+        }
+    }
+
+    /** A second service for the same workspace — the restart, built from what the wire key holds. */
+    private PeonAiService newServiceWithRememberedAgent() {
+        var ccm = new ConfiguredChatModel(LlmConfig.builder()
+                .model("test").url("http://localhost:0")
+                .configDir(Path.of(System.getProperty("java.io.tmpdir"), ".peon-test")).build());
+        ccm.setChatModel(streamMock.buildOkMock());
+        return new PeonAiService(() -> {}, null, null, null, ccm);
     }
 
     /** Lowercase skill names currently visible in the effective view (config + project slots). */

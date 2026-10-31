@@ -301,10 +301,15 @@ public class PeonAiService {
     /**
      * Updates the active project across all project-aware services.
      * Safe to call from any thread — each downstream setter manages its own state.
+     * <p>
+     * Ends by re-establishing the plan reference for an already active plan agent
+     * (R-PT-5, org.sterl.llmpeon/docs/plan-tool.md). Because that check looks at the agent before it
+     * touches the plan, binding a project reads no plan for Dev or Jon and stays cheap on every
+     * selection change.
      * @return <code>true</code> if changed
      */
     public boolean setProject(IProject project) {
-        agentContext.clearPlan(); // stale reference — restore on next agent activation if needed
+        agentContext.clearPlan(); // stale reference — re-established below if a plan agent is active (R-PT-5)
 
         var projectPath = JdtUtil.pathOf(project);
 
@@ -329,6 +334,9 @@ public class PeonAiService {
         }
         var changed = this.userContext.setCurrentProject(project);
         if (changed) codegraph.projectChanged();
+        // R-PT-5 (org.sterl.llmpeon/docs/plan-tool.md): unconditional like the clearPlan() above —
+        // a selection inside the SAME project has to re-arm the reference too.
+        preloadPlanIfNeeded();
         return changed;
     }
 
@@ -675,15 +683,17 @@ public class PeonAiService {
         return org.sterl.llmpeon.prompt.PromptLoader.load("po-tutorial.md");
     }
 
+    /**
+     * R-PT-5 (org.sterl.llmpeon/docs/plan-tool.md): the agent is asked before the plan is touched —
+     * an agent that never hands a plan off must not pay for the plan refresh, which is also what
+     * keeps the call from {@code setProject} cheap on every selection change.
+     */
     private void preloadPlanIfNeeded() {
+        if (!(getActiveAgent() instanceof AiPlanAgent)) return; // UC-PT-5: no plan I/O for Dev/Jon
+        if (agentContext.planRef() != null) return;
         if (!planTool.hasPlan()) return;
 
-        var agent = getActiveAgent();
-        if (agent instanceof AiPlanAgent) {
-            if (agentContext.planRef() == null) {
-                agentContext.setPlan(getProject().getFile(PlanTool.OVERVIEW_FILE));
-            }
-        }
+        agentContext.setPlan(getProject().getFile(PlanTool.OVERVIEW_FILE));
     }
 
     public void onPlanSaved(IFile planFile) {

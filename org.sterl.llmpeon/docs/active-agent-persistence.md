@@ -59,6 +59,10 @@ Was der Harness nicht prüft, ist der Eclipse-Neustart selbst und was bis dahin 
 - GIVEN der gemerkte Agent wird beim Start gesetzt, WHEN derselbe Setz-Pfad wie im Dropdown läuft,
   THEN wird der Wert nicht erneut geschrieben — kein Schreib-Loop, kein Flush beim Start.
   Umgesetzt, indem `restoreActiveAgent()` `applyActiveAgent` **ohne** `rememberActiveAgent` nutzt.
+- GIVEN der gemerkte Agent ist der Plan-Agent WHEN der Service startet THEN setzt der Restore nur den
+  Agenten — die Plan-Referenz, die eine Dropdown-Aktivierung mit bekanntem Projekt setzen würde, kommt
+  mit der Projektbindung nach (`setProject` → [plan-tool.md](plan-tool.md) R-PT-5); der Restore läuft
+  bewusst vor dem ersten `setProject` (R2-Test pinnt die Konstruktor-Position).
 
 ### R4 — Ein verschwundener Agent lässt den Wert verfallen
 
