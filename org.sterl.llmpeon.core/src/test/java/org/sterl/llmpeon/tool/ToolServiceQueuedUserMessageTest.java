@@ -22,6 +22,7 @@ import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.queuedmessages.QueuedUserMessages;
 import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
@@ -194,6 +195,76 @@ class ToolServiceQueuedUserMessageTest {
         assertThat(toolLines).noneMatch(line -> line.startsWith("Reading queued User message:"));
     }
 
+    /**
+     * R12 over R11: an askUser result ends with the user's answer, so a late „!" must ride on the
+     * NEXT result of the same round — never behind that answer, and never as a second block on the
+     * same result.
+     */
+    @Test
+    void urgentArrivingAfterAnAskUserResultRidesOnTheNextResultWithoutOne() {
+        // GIVEN — round = [askUser, echo]; the „!" arrives once the question is answered and the
+        // echo of the same round is still running
+        var arriving = new AtomicInteger();
+        var agentRef = new AtomicReference<AiDevAgent>();
+        service.addTool(new AskUserFormTool(() -> {
+            if (arriving.compareAndSet(0, 1)) agentRef.get().queueUrgentMessage("bitte abbrechen");
+        }));
+        var round = new AtomicInteger();
+        var model = modelAnswering(req -> round.incrementAndGet() == 1
+                ? toolCalls("askUser", "echo")
+                : answer("done"));
+        var agent = agent(model);
+        agentRef.set(agent);
+
+        // WHEN
+        runRound(agent, model);
+
+        // THEN — the block lands on the first result still free of one …
+        var results = toolResults(sent.get(1).messages());
+        assertThat(results).hasSize(2);
+        assertThat(results.get(1).text()).isEqualTo(OUTPUT + LN + LN
+                + TaggedResult.PREFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE + LN
+                + "(queued 14:32): bitte abbrechen" + LN
+                + TaggedResult.SUFFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE);
+        // AND — the askUser result stayed exactly as the tool built it: one block, answer as last line …
+        assertThat(results.getFirst().text()).isEqualTo(askUserResultForm());
+        // AND — delivered once, so the follow-up turn has nothing left to repeat …
+        assertThat(agent.getQueuedMessageCount()).isZero();
+        assertThat(toolLines).containsExactly(
+                "Reading queued User message: bitte abbrechen (queued 14:32)");
+    }
+
+    /**
+     * A drain without a consumer would be a silent loss (disclosure is mandatory), so a round whose
+     * results all carry a block delivers nothing — the entry waits for the follow-up turn (R8.3).
+     */
+    @Test
+    void askUserOnlyRoundLeavesLateUrgentEntriesQueued() {
+        // GIVEN — a round of exactly one askUser result, the „!" arrives after its answer is built
+        var arriving = new AtomicInteger();
+        var agentRef = new AtomicReference<AiDevAgent>();
+        service.addTool(new AskUserFormTool(() -> {
+            if (arriving.compareAndSet(0, 1)) agentRef.get().queueUrgentMessage("bitte abbrechen");
+        }));
+        var round = new AtomicInteger();
+        var model = modelAnswering(req -> round.incrementAndGet() == 1
+                ? toolCalls("askUser")
+                : answer("done"));
+        var agent = agent(model);
+        agentRef.set(agent);
+
+        // WHEN
+        runRound(agent, model);
+
+        // THEN — nothing was attached to any result of the round …
+        assertThat(toolResults(sent.get(1).messages()))
+                .allSatisfy(result -> assertThat(result.text()).doesNotContain("bitte abbrechen"));
+        // AND — and nothing was consumed either: the entry is still queued for the follow-up turn …
+        assertThat(agent.getQueuedMessageCount()).isEqualTo(1);
+        // AND — with no disclosure line for a delivery that never happened.
+        assertThat(toolLines).noneMatch(line -> line.startsWith("Reading queued User message:"));
+    }
+
     // ========== fixture ==========
 
     /** A tool with a fixed answer and a hook, so a test can let a message arrive mid-round. */
@@ -209,6 +280,30 @@ class ToolServiceQueuedUserMessageTest {
         }
 
         @Override public void withToolRequest(ToolLoopRequest request) {}
+    }
+
+    /**
+     * The RESULT FORM of the plugin's askUser (which is not reachable from core): the queued block it
+     * rode with, then the answer as the last line. The hook runs after that text is built — the state
+     * of the world once the question is through and later tools of the round still run.
+     */
+    static class AskUserFormTool implements SmartTool {
+        private final Runnable afterAnswer;
+
+        AskUserFormTool(Runnable afterAnswer) { this.afterAnswer = afterAnswer; }
+
+        @Tool("fake tool answering in the askUser result form")
+        public String askUser() {
+            var answer = askUserResultForm();
+            afterAnswer.run();
+            return answer;
+        }
+
+        @Override public void withToolRequest(ToolLoopRequest request) {}
+    }
+
+    private static String askUserResultForm() {
+        return QueuedUserMessages.block(List.of("(queued 14:32): alt")) + LN + "yes";
     }
 
     /** An agent owning {@link #service} — so its turn and the test drive the same tool set. */
@@ -239,11 +334,18 @@ class ToolServiceQueuedUserMessageTest {
     }
 
     private ChatResponse twoToolCalls() {
+        return toolCalls("echo", "echo");
+    }
+
+    /** One AI answer containing exactly the given tool calls, in that order. */
+    private ChatResponse toolCalls(String... names) {
+        var requests = new ArrayList<ToolExecutionRequest>();
+        for (int i = 0; i < names.length; i++) {
+            requests.add(ToolExecutionRequest.builder()
+                    .id(String.valueOf(i + 1)).name(names[i]).arguments("{}").build());
+        }
         return ChatResponse.builder().aiMessage(AiMessage.builder()
-                .toolExecutionRequests(List.of(
-                        ToolExecutionRequest.builder().id("1").name("echo").arguments("{}").build(),
-                        ToolExecutionRequest.builder().id("2").name("echo").arguments("{}").build()))
-                .build()).build();
+                .toolExecutionRequests(requests).build()).build();
     }
 
     private ChatResponse answer(String text) {

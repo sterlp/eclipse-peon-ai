@@ -249,22 +249,31 @@ public class ToolService {
     }
 
     /**
-     * Rule 11: the urgent entries a round picked up ride on <b>one</b> result — the first of the
-     * round — so several tool calls of one answer still deliver the block exactly once. The block
-     * goes behind the tool's own output, which keeps the result a non-pure block (R-TR-2): the
-     * compact keeps it. An agent-less loop (a search sub-agent) has no queue of its own — its parent
-     * must still see the entries, so nothing is drained there.
+     * Rule 11: the urgent entries a round picked up ride on <b>one</b> result, so several tool calls
+     * of one answer still deliver the block exactly once. The target is the first result not already
+     * carrying a block — a result that does one ends with the user's answer (R12) and must keep it as
+     * the last line. The block goes behind the tool's own output, which keeps the result a non-pure
+     * block (R-TR-2): the compact keeps it. An agent-less loop (a search sub-agent) has no queue of
+     * its own — its parent must still see the entries, so nothing is drained there.
      */
     private void attachUrgentMessages(List<ToolExecutionResultMessage> toolResults, ToolLoopRequest req) {
         var agent = req.getAgent();
         if (agent == null || toolResults.isEmpty()) return;
 
+        // the target is picked BEFORE the drain — a drain is final and discloses, so entries without
+        // a consumer would be lost silently; they stay queued for the follow-up turn instead (R8.3)
+        var target = -1;
+        for (int i = 0; i < toolResults.size(); i++) {
+            if (!QueuedUserMessages.carriesBlock(toolResults.get(i).text())) { target = i; break; }
+        }
+        if (target < 0) return;
+
         var block = QueuedUserMessages.block(agent.takeUrgentMessages(req.getMonitor()));
         if (block == null) return;
 
-        var first = toolResults.getFirst();
-        toolResults.set(0, ToolExecutionResultMessage.from(first.id(), first.toolName(),
-                first.text() + TaggedResult.LN + TaggedResult.LN + block));
+        var at = toolResults.get(target);
+        toolResults.set(target, ToolExecutionResultMessage.from(at.id(), at.toolName(),
+                at.text() + TaggedResult.LN + TaggedResult.LN + block));
     }
     
     /** Merges all SystemMessages into one at the front (compatibility with local LLMs). */

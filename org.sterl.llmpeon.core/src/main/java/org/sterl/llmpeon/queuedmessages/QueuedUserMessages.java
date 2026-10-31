@@ -47,4 +47,14 @@ public final class QueuedUserMessages {
         if (bodyLines == null || bodyLines.isEmpty()) return null;
         return new TaggedResult(TaggedResult.TAG_QUEUED_USER_MESSAGE, String.join(TaggedResult.LN, bodyLines));
     }
+
+    /**
+     * Whether a tool result already carries one of our blocks — such a result is no delivery target,
+     * because an {@code askUser} result ends with the user's answer and a second block would push it
+     * into the middle (R12). Recognised by the head line alone, so no tag literal leaks into the
+     * tool layer.
+     */
+    public static boolean carriesBlock(@Nullable String toolText) {
+        return toolText != null && toolText.contains(TaggedResult.PREFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE);
+    }
 }
