@@ -119,6 +119,21 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
 
 ## ❓ offen
 
+* **❓ Core: der Abbruch verliert eine bereits gepollte Queue-Eingabe** (2026-11-01, Inc 5d gemessen) —
+  [UC-WP-50](chat.md) verspricht „gequeuete Eingaben bleiben in der Queue"; tatsächlich verliert
+  `AbstractAgent.call` eine Eingabe, die der laufende Turn beim Stop schon gepollt hat (Poll, dann
+  Cancel-Ausstieg, der Drain findet eine leere Queue). Nur noch wartende Eingaben legt
+  `handleAbortAndDrain` als Memory-Zeile ab. Die Fabrik kann das nicht reparieren: sie setzt genau das
+  Flag, das auch der Plugin-Stop setzt. UC-WP-50 bleibt deshalb ❌, und der Test benennt die Lücke.
+  *Fix:* Core-Story — den zuletzt gepollten Eintrag beim Cancel zurücklegen (oder vor dem Verlassen
+  drainen); danach UC-WP-50 ✅.
+* **❓ `AGENTS.md`-Language-Block („UI: English") widerspricht der gebauten UI** (2026-11-01) — die
+  Fabrik-UI ist deutsch (`Senden`, `Stop`, `bereit`, `Schließen`, Kachel-Labels), Plan §9 hat das als
+  Regel geführt, Kommentare sind dagegen englisch; Folge ist auch der deutsche Draht-Wert
+  `"[kein Text]"` in `AgentTranscriptDto`. Paul entscheidet: UI auf Englisch (eigene Story — alle
+  sichtbaren Texte + UI-Tests) **oder** `AGENTS.md` sagt „UI: deutsch" (eine Zeile; Draht-Werte
+  bleiben deutsch). Bis dahin bleibt alles wie gebaut.
+
 ### Docs-Review gegen Pauls Produktvision (2026-10-27) — eine Frage nach der anderen
 
 * **❓ V6-Folge:** Im MVP gibt es keine Nutzer (Paul): alle teilen `user/` und — offen — wohl auch ein

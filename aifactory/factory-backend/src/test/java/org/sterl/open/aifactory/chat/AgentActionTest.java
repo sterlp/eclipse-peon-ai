@@ -2,11 +2,15 @@ package org.sterl.open.aifactory.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.Closeable;
 import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BooleanSupplier;
 
 import org.junit.jupiter.api.AfterEach;
@@ -33,15 +37,19 @@ import org.springframework.web.client.RestTemplate;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
+import org.sterl.llmpeon.compact.CompactConstants;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.poagent.AiPoAgent;
 import org.sterl.open.aifactory.chat.dto.AgentActionRequest;
 import org.sterl.open.aifactory.chat.dto.AgentTileDto;
+import org.sterl.open.aifactory.chat.dto.AgentTileState;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
 import org.sterl.open.aifactory.project.FakeGitConfig;
@@ -62,6 +70,11 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * <p>Every wait is a deadline on the <b>end</b> state. The {@code COMPACTING} window is deliberately not
  * proven by polling — it lasts milliseconds and would make the suite flaky; its rule is proven purely in
  * {@code AgentTilesTest}.</p>
+ *
+ * <p>A Compact is only believed when the <b>memory</b> changed: one line carrying the summary, never a
+ * status word. And the one collision the review measured — a send while an action holds the project — is
+ * produced on demand by an endpoint that accepts and never answers, so the turn's wait is observed instead
+ * of hoped for.</p>
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(FakeGitConfig.class)
@@ -71,6 +84,12 @@ class AgentActionTest {
     /** Real tool content that keeps one turn busy long enough for an action to hit a running project. */
     private static final String SLEEP_TOOL = "{\"command\":\"sleep 3\",\"timeout\":20}";
     private static final String SLOW_INPUT = "MITGLIEDS-LAUF: Schlaf drei Sekunden";
+
+    /** The answer the compressor gets back: a memory holding this line was compacted, not skipped. */
+    private static final String SUMMARY = "ZUSAMMENFASSUNG: Devs Auftrag und seine Zwischenschritte";
+
+    /** The queued answer of the input that was sent while an action held the project. */
+    private static final String ANSWER_AFTER_THE_ACTION = "ANTWORT-NACH-DER-AKTION";
 
     @TempDir
     static Path home;
@@ -190,6 +209,94 @@ class AgentActionTest {
                 .isNotEmpty();
     }
 
+    /**
+     * UC-WP-13 over the real edge: Compact on one member leaves <b>that memory</b> as the summary alone.
+     * The count is the proof — a memory of one line holding the summary can only be the result of a
+     * Compact that ran, because {@code SKIPPED_SMALL} keeps every line where it was and is never a success
+     * here. That is also why the seed is above the core's guard instead of at it.
+     */
+    @Test
+    @Timeout(60)
+    // UC-WP-13
+    void compactTouchesOnlyThatAgent() throws IOException {
+        writeFactoryConfig("inc5e-compact");
+        Project project = projects.add("https://git.example.com/acme/compact-member.git").project();
+        ProjectRuntime runtime = runtimes.runtime(project.id());
+        seedEveryAgent(runtime);
+        AiAgent dev = member(runtime, AiDevAgent.NAME);
+        seedLongConversation(dev);
+        long tokensBefore = tile(project.id(), AiDevAgent.NAME).tokens();
+        assertThat(dev.getMemory().size())
+                .as("under the core's guard nothing would run at all — a skip must never read as a compact")
+                .isGreaterThanOrEqualTo(CompactConstants.MIN_COMPACT_MESSAGES);
+
+        model.queueResponse(SUMMARY);
+        assertThat(act(project.id(), AiDevAgent.NAME, "compact")).isEqualTo(HttpStatus.ACCEPTED.value());
+        awaitUntil(() -> !dev.isCompacting() && !dev.isWorking(), 20_000, "Devs Compact endete");
+
+        List<ChatMessage> lines = dev.getMemory().getCopy();
+        assertThat(lines)
+                .as("a compacted memory is the summary on its own — the four lines are gone, not kept beside it")
+                .hasSize(1);
+        assertThat(textOf(lines.get(0)))
+                .as("and that one line is the summary the compressor answered")
+                .contains(SUMMARY);
+        assertThat(tile(project.id(), AiDevAgent.NAME).tokens())
+                .as("his tile counts less than before the Compact — that is what the user sees")
+                .isLessThan(tokensBefore);
+        assertThat(runtime.jon().getTeam())
+                .filteredOn(agent -> !AiDevAgent.NAME.equals(agent.getName()))
+                .as("one Compact is one agent: nobody else gained a summary line or lost their own")
+                .allSatisfy(agent -> assertThat(agent.getMemory().getCopy())
+                        .as("%s was left alone", agent.getName())
+                        .hasSize(2));
+    }
+
+    /**
+     * Internal, no own id — the wiring BUG-1 asks for: a send during a running action is neither refused
+     * (R-WP-10, UC-WP-14) nor lost. The action is a Compact of <b>Jon</b>, because that is the overlap the
+     * review measured — the core holds his working flag over the summary call, so a turn started beside it
+     * loses the slot claim, answers {@code null} and never reaches the model: no {@code done}, no answer,
+     * the input gone. Here the Compact hangs in that very model call, so the wait is observed instead of
+     * hoped for.
+     */
+    @Test
+    @Timeout(90)
+    void sendDuringAnActionIsAnsweredNotLost() throws IOException {
+        try (HeldModel held = new HeldModel()) {
+            writeFactoryConfig("inc5e-held", held.url());
+            Project project = projects.add("https://git.example.com/acme/send-during-action.git").project();
+            ProjectRuntime runtime = runtimes.runtime(project.id());
+            AiAgent jon = runtime.jon();
+            seedEveryAgent(runtime);
+            seedLongConversation(jon);
+
+            assertThat(act(project.id(), AiPoAgent.NAME, "compact")).isEqualTo(HttpStatus.ACCEPTED.value());
+            awaitUntil(jon::isCompacting, 20_000, "Jons Compact hängt in seinem Modell-Call");
+
+            // the next turn reads its config per turn (UC-WP-24): back to the mock, which holds the answer
+            writeFactoryConfig("inc5e-answered", model.getUrl());
+            model.queueResponse(ANSWER_AFTER_THE_ACTION);
+            int requestsBefore = model.getRequestBodies().size();
+            send(project.id(), "FRAGE WÄHREND DER AKTION");
+
+            assertThat(jon.isCompacting())
+                    .as("the action still holds the project at the moment the input was taken")
+                    .isTrue();
+            // letting the Compact go is what lets the turn run — the test never waits for a timeout
+            held.close();
+
+            awaitUntil(() -> messages(project.id()).stream()
+                    .anyMatch(line -> line.text() != null && line.text().contains(ANSWER_AFTER_THE_ACTION)),
+                    30_000, "die Eingabe während der Aktion wurde danach beantwortet");
+            assertThat(model.getRequestBodies())
+                    .as("exactly one model call answered it — beside the action there was none, and it was never refused")
+                    .hasSize(requestsBefore + 1);
+            awaitUntil(() -> tile(project.id(), AiPoAgent.NAME).state() == AgentTileState.IDLE, 20_000,
+                    "Jons Kachel endet bereit");
+        }
+    }
+
     // ------------------------------------------------------------------ seeding and the edges
 
     /**
@@ -203,6 +310,19 @@ class AgentActionTest {
         }
     }
 
+    /**
+     * Two long lines on top of the seed: the Compact's guard counts messages, its tile figure counts
+     * tokens, and both have to be worth comparing afterwards.
+     */
+    private void seedLongConversation(AiAgent agent) {
+        agent.getMemory().add(UserMessage.from("VERTIEFTE AUFGABE: "
+                + "Der Auftrag lautet, die Kacheln des Chat-Views zu bauen und dabei jede Regel des Plans zu halten. "
+                + "Dabei darf der Datei-Bereich nicht angefasst werden. ".repeat(3)));
+        agent.getMemory().add(AiMessage.from("VERTIEFTE ANTWORT: "
+                + "Die Kacheln lesen den Core und erfinden keine Zahl; Clear und Compact laufen auf dem "
+                + "Executor des Projekts und nie auf dem Thread des Aufrufers. ".repeat(3)));
+    }
+
     private AiAgent member(ProjectRuntime runtime, String name) {
         return runtime.jon().getTeam().stream()
                 .filter(agent -> name.equals(agent.getName()))
@@ -212,7 +332,15 @@ class AgentActionTest {
 
     private static String textOf(ChatMessage message) {
         if (message instanceof UserMessage user) {
-            return user.singleText();
+            // every text part joined: a compacted memory re-seeds its summary among the turn context, so a
+            // singleText() read would throw on exactly the line this class wants to look at
+            StringBuilder text = new StringBuilder();
+            for (Content content : user.contents()) {
+                if (content instanceof TextContent txt) {
+                    text.append(txt.text());
+                }
+            }
+            return text.toString();
         }
         if (message instanceof AiMessage answer) {
             return String.valueOf(answer.text());
@@ -264,11 +392,21 @@ class AgentActionTest {
 
     /** The factory's own file — the same one the settings view writes. Never {@code ~/.peon}. */
     private void writeFactoryConfig(String model) throws IOException {
+        writeFactoryConfig(model, this.model.getUrl());
+    }
+
+    /**
+     * The same file aimed at another endpoint — the way to put a Compact's model call somewhere that never
+     * answers. The timeout is written too, so a held call ends by itself if a test ever forgets to release
+     * it: a mistake here must stay a red test and never become a hanging suite.
+     */
+    private void writeFactoryConfig(String model, String url) throws IOException {
         Properties properties = new Properties();
         properties.setProperty(LlmConfigKeys.PROVIDER_TYPE, "OPEN_AI");
         properties.setProperty(LlmConfigKeys.MODEL, model);
-        properties.setProperty(LlmConfigKeys.URL, this.model.getUrl());
+        properties.setProperty(LlmConfigKeys.URL, url);
         properties.setProperty(LlmConfigKeys.API_KEY, "test-key");
+        properties.setProperty(LlmConfigKeys.TIMEOUT, "20");
         try (var out = Files.newOutputStream(home.resolve(FactoryHome.CONFIG_FILE))) {
             properties.store(out, "AgentActionTest");
         }
@@ -290,6 +428,52 @@ class AgentActionTest {
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("interrupted while waiting for the tile", interrupted);
+        }
+    }
+
+    /**
+     * A model endpoint that accepts and never answers — the only way to hold a Compact inside its model
+     * call long enough to send into the same project while it runs. Closing it ends the held call, and
+     * that is what lets the waiting turn run: a claim is proven by an end state here, never by waiting out
+     * a timeout.
+     */
+    private static final class HeldModel implements AutoCloseable {
+
+        private final ServerSocket listener;
+        private final List<Socket> accepted = new CopyOnWriteArrayList<>();
+
+        HeldModel() throws IOException {
+            listener = new ServerSocket(0);
+            Thread acceptor = new Thread(() -> {
+                while (!listener.isClosed()) {
+                    try {
+                        accepted.add(listener.accept());
+                    } catch (IOException closed) {
+                        return;
+                    }
+                }
+            }, "held-model-endpoint");
+            acceptor.setDaemon(true);
+            acceptor.start();
+        }
+
+        /** The shape an OpenAI endpoint is configured with — the same {@code /v1} the mock answers under. */
+        String url() {
+            return "http://127.0.0.1:" + listener.getLocalPort() + "/v1";
+        }
+
+        @Override
+        public void close() {
+            accepted.forEach(HeldModel::quietly);
+            quietly(listener);
+        }
+
+        private static void quietly(Closeable toClose) {
+            try {
+                toClose.close();
+            } catch (IOException ignored) {
+                // ending the test matters more than what the socket made of it
+            }
         }
     }
 }

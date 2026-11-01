@@ -35,7 +35,9 @@ export function ChatTiles({ tiles, onAction, onInspect }: Props) {
   return (
     <ul className="chat-tiles" data-testid="chat-tiles" aria-label="Team">
       {tiles.map(tile => {
-        const busy = tile.state !== 'IDLE'
+        // only a state that holds the agent blocks an action — a failure is over, and the server takes a
+        // Clear on an idle agent at once, so disabling on ERROR would strand the tile until the next turn
+        const busy = tile.state === 'WORKING' || tile.state === 'COMPACTING'
         return (
           <li key={tile.name} className="chat-tile" data-testid={`tile-${tile.name}`}>
             <span className="chat-tile-name">{tile.name}</span>

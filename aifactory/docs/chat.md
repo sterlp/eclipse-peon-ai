@@ -173,8 +173,9 @@ Jede Kachel von **Plan, Dev und Review** öffnet rechts einen **schreibgeschütz
 eigene Gespräch dieses Agenten (Slide-out). Search ist kein Agent (Sub-Loop von Jon,
 [ADR-0079](adr/0079-display-names-without-ork-names.md)) und bekommt keinen Blick. Standard bleibt
 Jons Chat; der Nutzer kann in den Chat eines Agenten wechseln und zurück. Interaktion läuft
-weiterhin nur über Jon ([R-WP-4](chat.md)): kein Eingabefeld im Blick, **Stop** im UI stoppt den
-laufenden Turn vollständig (wie bisher). Die Einsicht liest den RAM-Stand des Agenten im Core —
+weiterhin nur über Jon ([R-WP-4](chat.md)): kein Eingabefeld im Blick. **Stop** im UI stoppt den
+laufenden Turn vollständig (wie bisher) — die Regel selbst und ihre Grenze (Queue-Klausel) stehen in
+[UC-WP-50](chat.md); dieser Absatz behauptet kein Queue-Verhalten. Die Einsicht liest den RAM-Stand des Agenten im Core —
 **kein** zweiter Speicher; nach einem Neustart ist das Team leer ([R-WP-11](chat.md)), der Blick ist
 leer. **WEIL** „warum hat Dev das gebaut?" sonst nur über die finale Antwort beantwortbar wäre
 (Paul, 2026-11-01).

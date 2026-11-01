@@ -192,7 +192,11 @@ sequenceDiagram
   leer, R-WP-11); es gibt keine Route, die ein Agentengespräch anlegt oder wählt.
 * **Stop (UC-WP-50)** gehört zur Gesprächs-Kante: er bricht den laufenden Turn ab (Jon und laufende
   Delegationen), kein zweiter Turn-Pfad, keine zweite Speicherung — die already gezeigten Zeilen
-  bleiben, die Queue bleibt.
+  bleiben. Die Queue-Klausel von [UC-WP-50](chat.md) ist **nicht** erfüllt: eine Eingabe, die der
+  laufende Turn beim Abbruch schon aus der Queue gepollt hat, geht mit ihm verloren (gemessenes
+  Core-Verhalten: `AbstractAgent.call` pollt, die Cancel-Schleife verlässt, der Drain findet eine leere
+  Queue); nur was in diesem Moment noch wartet, überlebt (`handleAbortAndDrain` legt es als Memory-Zeile
+  ab). Das ist Core-Verhalten, nicht Fabrik-Code — UC-WP-50 bleibt offen.
 
 ## UI-Aufbau — dieselben Komponenten wie im Backend (Entscheidung 2026-10-26)
 

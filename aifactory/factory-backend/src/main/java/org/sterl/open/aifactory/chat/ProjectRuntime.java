@@ -5,8 +5,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import org.slf4j.Logger;
@@ -62,14 +60,10 @@ final class ProjectRuntime {
     private final AgentNames names;
 
     /**
-     * Set on the caller's thread by {@link #submit} and cleared by the task: a tile action or a stop that
-     * arrives one millisecond after a send must see the turn the user already started, not the moment the
-     * worker thread picked the task up.
+     * Who holds this project right now — a turn or one tile action, decided in one place so the two can
+     * never meet inside a memory, and so that a send during an action waits instead of being refused.
      */
-    private final AtomicBoolean turnInFlight = new AtomicBoolean();
-
-    /** The action currently on the turn executor — also the claim that keeps a second one out. */
-    private final AtomicReference<AgentActing> acting = new AtomicReference<>();
+    private final TurnClaim claim = new TurnClaim();
 
     /** The agent whose turn failed; his tile shows ERROR, and only while he is idle again (UC-WP-11). */
     private volatile String failedAgent;
@@ -127,7 +121,7 @@ final class ProjectRuntime {
     }
 
     private AgentTileDto tileOf(AiAgent agent, AgentTiles.Seat seat, long budget) {
-        AgentActing current = acting.get();
+        TurnClaim.Action current = claim.action();
         boolean actingHere = current != null && current.name().equalsIgnoreCase(agent.getName());
         // the core sets no flag for a clear, so the claimed action is what makes the tile answer at once
         boolean working = agent.isWorking() || actingHere && current.action() == AgentAction.CLEAR;
@@ -165,23 +159,24 @@ final class ProjectRuntime {
      * a clear the user asked for in the middle of a turn is not a wish he still holds afterwards.
      *
      * <p>It runs on {@link #turns} and never on this thread: Clear and Compact mutate a memory that a
-     * parallel turn would write over, which is the same reason one project has one turn executor.</p>
+     * parallel turn would write over. That is held, not promised — {@link TurnClaim#claimAction} takes the
+     * project here, on the caller's thread, and a turn that starts from now on waits for the action to
+     * finish rather than running beside it.</p>
      */
     void act(String name, AgentAction action) {
         AiAgent agent = tileNamed(name);
         if (!AgentTiles.capabilitiesOf(seatOf(agent)).contains(action.capability())) {
             throw new IllegalArgumentException(agent.getName() + " offers no " + action);
         }
-        AgentActing claim = new AgentActing(agent.getName(), action);
-        if (turnInFlight.get() || teamIsWorking() || !acting.compareAndSet(null, claim)) {
-            throw new IllegalStateException("a turn or another action is still running");
-        }
+        claim.claimAction(agent.getName(), action, teamIsWorking());
         streams.publish(projectId, new ChatEvent.Agents(tiles()));
         turns.submit(() -> {
             try {
                 runAct(agent, action);
             } finally {
-                acting.set(null);
+                // released before the snapshot: a reader that is allowed to act again never sees the tile
+                // still holding the action, and a turn task waiting for this wakes on the same release
+                claim.releaseAction();
                 streams.publish(projectId, new ChatEvent.Agents(tiles()));
             }
         });
@@ -253,10 +248,6 @@ final class ProjectRuntime {
         }
     }
 
-    /** An action this runtime has claimed for one of its tiles. */
-    private record AgentActing(String name, AgentAction action) {
-    }
-
     /**
      * The one author table of a project's chat: the core's delegation tools, named by the team this
      * factory built. Package-private and single — what is in here is what a history line can be
@@ -293,7 +284,7 @@ final class ProjectRuntime {
     void submit(String text) {
         // the send that finds no turn in flight is the one that opens it — the flag is set on this thread,
         // so a stop arriving one millisecond later already addresses the turn the user just started (D-13)
-        boolean opensTurn = !turnInFlight.getAndSet(true);
+        boolean opensTurn = claim.openTurn();
         failedAgent = null;
         searchWorking = false;
         turns.submit(() -> {
@@ -308,6 +299,9 @@ final class ProjectRuntime {
                     // has just been given. Never on the caller's thread, which may hold a stop it just got
                     monitor.resetCancel();
                 }
+                // a Clear or Compact that claimed the project first runs to its end: this waits and never
+                // refuses, because an input sent during an action is still wanted after it (BUG-1)
+                claim.awaitNoAction();
                 // the tiles answer before the core sets his working flag, and a previous turn's ERROR
                 // leaves the display with this line instead of lingering until the first tool line
                 streams.publish(projectId, new ChatEvent.Agents(tiles()));
@@ -342,7 +336,7 @@ final class ProjectRuntime {
                     // the end snapshot goes out while the turn still owns the project, so a tile never shows
                     // WORKING to a reader that is already allowed to act again
                     streams.publish(projectId, new ChatEvent.Agents(tiles()));
-                    turnInFlight.set(false);
+                    claim.endTurn();
                 }
             }
         });
@@ -360,10 +354,12 @@ final class ProjectRuntime {
      * :331 on the cancel, the drain at :334 finds an empty queue), so chat.md's last clause of UC-WP-50
      * stays open. Refused while no turn runs — a {@link IllegalStateException} ⇒ 409 — because a stop
      * without a turn is a click that meant nothing, and a half Compact is not something a turn's stop
-     * should touch (D-17).</p>
+     * should touch (D-17) — which is also why a turn that is only <em>waiting</em> behind an action cannot
+     * be stopped yet: it shares this monitor's one cancel flag with that action, so the same click is
+     * accepted as soon as the action has released the project.</p>
      */
     void stop() {
-        if (!turnInFlight.get()) {
+        if (!claim.turnIsStoppable()) {
             throw new IllegalStateException("no turn is running");
         }
         monitor.cancel();

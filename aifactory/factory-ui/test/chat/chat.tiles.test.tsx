@@ -79,9 +79,31 @@ test('compactShowsItsOwnState', () => {
   )
 
   expect(screen.getByTestId('tile-state-Dev')).toHaveTextContent('kompaktiert')
-  // a tile only acts on an idle agent — a second action would write over the running one (UC-WP-12 guard)
+  // an agent that works or compacts offers nothing — a second action would write over the running one
   expect(screen.getByTestId('tile-clear-Dev')).toBeDisabled()
   expect(screen.getByTestId('tile-compact-Dev')).toBeDisabled()
+})
+
+// UC-WP-12
+test('clearStaysOfferedAfterAFailure', () => {
+  render(
+    <ChatTiles
+      tiles={[
+        tile('Jon', 'ERROR'),
+        tile('Dev', 'WORKING', { capabilities: ['CONTEXT', 'CLEAR', 'COMPACT', 'TRANSCRIPT'] }),
+      ]}
+      onAction={vi.fn()}
+      onInspect={vi.fn()}
+    />,
+  )
+
+  expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent('Fehler')
+  // a failure is over: UC-WP-12 names no state condition and the server takes a Clear on an idle agent,
+  // so a tile that stayed shut here would strand the only way out of the failed conversation
+  expect(screen.getByTestId('tile-clear-Jon')).toBeEnabled()
+  expect(screen.getByTestId('tile-compact-Jon')).toBeEnabled()
+  // the state that really holds an agent still blocks it — that guard is the server's 409, seen as a button
+  expect(screen.getByTestId('tile-clear-Dev')).toBeDisabled()
 })
 
 // UC-WP-12

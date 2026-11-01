@@ -18,15 +18,15 @@ const KIND_LABEL: Record<TranscriptKind, string> = {
 }
 
 /**
- * Der Blick in das eigene Gespräch eines Agenten (R-WP-26, UC-WP-49): ein Slide-over neben dem Chat, das
- * zeigt, was das Memory genau dieses Agenten hält — die gestellte Aufgabe, seine eigenen Werkzeug-Zeilen,
- * seine Antwort. Gezeichnet wird, was die Kante schickt: kein Eingabefeld, kein Senden, keine zweite
- * Seite, denn die Kante hat nichts davon (UC-WP-40 bleibt scharf — Jons Chat bleibt frei davon).
+ * The insight into one agent's own conversation (R-WP-26, UC-WP-49): a slide-over beside the chat that
+ * shows what exactly this agent's memory holds — the task it was given, its own tool lines, its answer.
+ * What is drawn is what the edge sends: no input, no send, no fourth page, because the edge is none of
+ * those (UC-WP-40 stays sharp — Jon's chat stays free of a member's internals).
  *
- * Die Reads gehören zur Komponente und hängen an Projekt und Name: eine andere Kachel liest erneut, und
- * nach einem Neustart ist der Blick leer, weil ein Mitglieds-Memory RAM und sonst nichts ist (R-WP-11).
- * Er ist ein Bereich des Chat-Views und kein vierter Tab (R-WP-1), und er kennt nur den Namen, den die
- * Kachel trägt — die Fähigkeitsmenge der Kachel entscheidet, ob er sich überhaupt öffnen lässt (D-14).
+ * The reads belong to the component and hang on project and name: another tile reads again, and after a
+ * restart the insight is empty, because a member's memory is RAM and nothing else (R-WP-11). It is an
+ * area of the chat view and no fourth tab (R-WP-1), and it knows only the name its tile carries — the
+ * tile's capability set decides whether it can be opened at all (D-14).
  */
 export function ChatInsight({ projectId, name, onClose }: Props) {
   const [transcript, setTranscript] = useState<AgentTranscript | null>(null)
@@ -41,7 +41,7 @@ export function ChatInsight({ projectId, name, onClose }: Props) {
           setError(null)
         }
       })
-      // ein abgelehnter Name ist eine Zeile Text dort, wo das Gespräch stünde — kein Dialog, kein Retry
+      // a refused name is one line of text where the conversation would stand — no dialog, no retry
       .catch(reason => {
         if (mounted) {
           setTranscript(null)
