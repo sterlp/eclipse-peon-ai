@@ -189,8 +189,10 @@ class TeamInternalsTest {
                     .as("Jon's answer over two members stays one answer, live (UC-WP-7)")
                     .isEqualTo(JON_ANSWER);
             assertThat(stream.eventNames())
-                    .as("still exactly the three known names — no member line under a fourth")
-                    .containsOnly("partial", "tool", "done");
+                    .as("no member line under a name of its own: the conversation keeps its three names,"
+                            + " the tile snapshot is the one addition and carries no text of anybody (R-WP-7)"
+                            + " — member text stays off every data line, asserted by wireText above")
+                    .containsOnly("partial", "tool", "done", "agents");
             assertThat(stream.countOf("done")).as("two members, one turn, one done").isEqualTo(1);
             assertThat(stream.countOf("error")).isZero();
         }

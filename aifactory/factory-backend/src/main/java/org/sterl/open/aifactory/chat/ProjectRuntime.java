@@ -5,6 +5,8 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import org.slf4j.Logger;
@@ -15,11 +17,14 @@ import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.AiReviewAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.poagent.AiPoAgent;
 import org.sterl.llmpeon.poagent.tools.PoDelegateTool;
 import org.sterl.llmpeon.tool.WriteValidator;
 import org.sterl.llmpeon.tool.tools.SearchAgentTool;
 import org.sterl.open.aifactory.config.TurnNotConfiguredException;
+import org.sterl.open.aifactory.chat.dto.AgentAction;
+import org.sterl.open.aifactory.chat.dto.AgentTileDto;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -42,7 +47,7 @@ final class ProjectRuntime {
 
     private static final Logger LOG = LoggerFactory.getLogger(ProjectRuntime.class);
 
-    /** This factory's label for a search result line — its own word, not the core's loop stamp ({@code SearchAgentTool.LOOP_NAME}). */
+    /** This factory's label for a search result line and for its tile — its own word, not the core's loop stamp ({@code SearchAgentTool.LOOP_NAME}). */
     private static final String SEARCH_AGENT_DISPLAY_NAME = "Search";
 
     private final String projectId;
@@ -53,6 +58,22 @@ final class ProjectRuntime {
     private final ExecutorService turns;
     private final SseTurnMonitor monitor;
     private final AgentNames names;
+
+    /**
+     * Set on the caller's thread by {@link #submit} and cleared by the task: a tile action or a stop that
+     * arrives one millisecond after a send must see the turn the user already started, not the moment the
+     * worker thread picked the task up.
+     */
+    private final AtomicBoolean turnInFlight = new AtomicBoolean();
+
+    /** The action currently on the turn executor — also the claim that keeps a second one out. */
+    private final AtomicReference<AgentActing> acting = new AtomicReference<>();
+
+    /** The agent whose turn failed; his tile shows ERROR, and only while he is idle again (UC-WP-11). */
+    private volatile String failedAgent;
+
+    /** The search sub-loop owns no agent instance — his tile's state is the one fact his lines tell us. */
+    private volatile boolean searchWorking;
 
     /**
      * @param initialConfig the config the model is built with — the plain read, because a project must
@@ -100,7 +121,117 @@ final class ProjectRuntime {
         // keyed by the core's tool names, filled with the names this factory built, so the product names
         // a member in exactly one place (D1) and a history line needs no second record of its author
         this.names = authorTable(plan.getName(), dev.getName(), review.getName());
-        this.monitor = new SseTurnMonitor(projectId, streams);
+        this.monitor = new SseTurnMonitor(projectId, streams, this::tiles, this::sawOrigin);
+    }
+
+    private AgentTileDto tileOf(AiAgent agent, AgentTiles.Seat seat, long budget) {
+        AgentActing current = acting.get();
+        boolean actingHere = current != null && current.name().equalsIgnoreCase(agent.getName());
+        // the core sets no flag for a clear, so the claimed action is what makes the tile answer at once
+        boolean working = agent.isWorking() || actingHere && current.action() == AgentAction.CLEAR;
+        boolean compacting = agent.isCompacting() || actingHere && current.action() == AgentAction.COMPACT;
+        long tokens = agent.getMemory().getTotalTokenUsed();
+        boolean estimate = agent.getMemory().isTokenEstimate();
+        return AgentTiles.of(agent.getName(), tokens, estimate, agent.tokenContextUsedInPercent(), budget,
+                working, compacting, agent == jon && failedAgent != null,
+                AgentTiles.capabilitiesOf(seat));
+    }
+
+    /**
+     * The team's tiles — one snapshot of live core state, read on demand and never stored (R-WP-11).
+     * Safe to call from a monitor callback or the turn thread: every number is a volatile read of an
+     * agent that is already running, nothing here blocks on a turn.
+     *
+     * <p>The order is the product's: Jon, then his team in the core's lifecycle order, then the search
+     * sub-loop. A member the core added later appears without any change here.</p>
+     */
+    List<AgentTileDto> tiles() {
+        long budget = model.getConfig().getAutoCompactAfter();
+        List<AgentTileDto> tiles = new ArrayList<>();
+        for (AiAgent agent : jon.getTeam()) {
+            tiles.add(tileOf(agent, agent == jon ? AgentTiles.Seat.JON : AgentTiles.Seat.MEMBER, budget));
+        }
+        tiles.add(AgentTiles.of(SEARCH_AGENT_DISPLAY_NAME, 0L, false, 0, 0L, searchWorking, false, false,
+                AgentTiles.capabilitiesOf(AgentTiles.Seat.SUB_LOOP)));
+        return List.copyOf(tiles);
+    }
+
+    /**
+     * An action for one tile. Two refusals, in this order: a name that is not a tile is a wrong request
+     * ({@link IllegalArgumentException} ⇒ 400) even while a turn runs, and a running turn or a second
+     * action is a busy project ({@link IllegalStateException} ⇒ 409) — an action is never queued, because
+     * a clear the user asked for in the middle of a turn is not a wish he still holds afterwards.
+     *
+     * <p>It runs on {@link #turns} and never on this thread: Clear and Compact mutate a memory that a
+     * parallel turn would write over, which is the same reason one project has one turn executor.</p>
+     */
+    void act(String name, AgentAction action) {
+        AiAgent agent = tileNamed(name);
+        AgentTiles.Seat seat = agent == jon ? AgentTiles.Seat.JON : AgentTiles.Seat.MEMBER;
+        if (!AgentTiles.capabilitiesOf(seat).contains(action.capability())) {
+            throw new IllegalArgumentException(agent.getName() + " offers no " + action);
+        }
+        AgentActing claim = new AgentActing(agent.getName(), action);
+        if (turnInFlight.get() || teamIsWorking() || !acting.compareAndSet(null, claim)) {
+            throw new IllegalStateException("a turn or another action is still running");
+        }
+        streams.publish(projectId, new ChatEvent.Agents(tiles()));
+        turns.submit(() -> {
+            try {
+                runAct(agent, action);
+            } finally {
+                acting.set(null);
+                streams.publish(projectId, new ChatEvent.Agents(tiles()));
+            }
+        });
+    }
+
+    /** The team member a tile names — the roster is the only address space, so no name is a free path. */
+    private AiAgent tileNamed(String name) {
+        for (AiAgent agent : jon.getTeam()) {
+            if (agent.getName().equalsIgnoreCase(name)) {
+                return agent;
+            }
+        }
+        throw new IllegalArgumentException("no tile named " + name);
+    }
+
+    private boolean teamIsWorking() {
+        for (AiAgent agent : jon.getTeam()) {
+            if (agent.isWorking() || agent.isCompacting()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** A failed Compact is a live line and no new channel (D-8); {@code SKIPPED_SMALL} is a no-op, not news. */
+    private void runAct(AiAgent agent, AgentAction action) {
+        try {
+            if (action == AgentAction.CLEAR) {
+                agent.clear();
+            } else {
+                CompactResult result = agent.compact(monitor);
+                if (result.status() == CompactResult.Status.FAILED_EMPTY) {
+                    streams.publish(projectId, new ChatEvent.ToolLine(agent.getName() + ": " + result.resultLine()));
+                }
+            }
+        } catch (RuntimeException failure) {
+            LOG.error("{} of agent {} of project {} failed", action, agent.getName(), projectId, failure);
+            streams.publish(projectId, new ChatEvent.ToolLine(agent.getName() + ": " + action
+                    + " failed — the server log names the reason"));
+        }
+    }
+
+    /** A search line is the only proof that the sub-loop is running — it owns no agent to ask. */
+    private void sawOrigin(String origin) {
+        if (SearchAgentTool.LOOP_NAME.equals(origin)) {
+            searchWorking = true;
+        }
+    }
+
+    /** An action this runtime has claimed for one of its tiles. */
+    private record AgentActing(String name, AgentAction action) {
     }
 
     /**
@@ -132,9 +263,15 @@ final class ProjectRuntime {
      * own.</p>
      */
     void submit(String text) {
+        turnInFlight.set(true);
+        failedAgent = null;
+        searchWorking = false;
         turns.submit(() -> {
             long startedAt = System.nanoTime();
             try {
+                // the tiles answer before the core sets his working flag, and a previous turn's ERROR
+                // leaves the display with this line instead of lingering until the first tool line
+                streams.publish(projectId, new ChatEvent.Agents(tiles()));
                 model.updateConfig(configForTurn.get());
                 ChatResponse answer = jon.call(text, monitor);
                 if (answer != null) {
@@ -142,11 +279,19 @@ final class ProjectRuntime {
                             new ChatEvent.Done(Duration.ofNanos(System.nanoTime() - startedAt).toMillis()));
                 }
             } catch (TurnNotConfiguredException notConfigured) {
+                failedAgent = jon.getName();
                 streams.publish(projectId, new ChatEvent.Failed(notConfigured.getMessage()));
             } catch (RuntimeException failure) {
+                failedAgent = jon.getName();
                 LOG.error("chat turn of project {} failed", projectId, failure);
                 streams.publish(projectId,
                         new ChatEvent.Failed("the turn failed — the server log names the reason"));
+            } finally {
+                searchWorking = false;
+                // the end snapshot goes out while the turn still owns the project, so a tile never shows
+                // WORKING to a reader that is already allowed to act again
+                streams.publish(projectId, new ChatEvent.Agents(tiles()));
+                turnInFlight.set(false);
             }
         });
     }

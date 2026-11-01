@@ -144,7 +144,7 @@ Jon und sein Team bekommen **alle** Core-Werkzeuge inklusive Shell (`disk*`, `we
   Disk-Werkzeuge an — die Factory könnte sonst ihre eigentliche Arbeit nicht tun; eine von Hand
   eingetragene `false` ändert daran nichts.
 
-### R-WP-7 — Eine Kachel je Agent mit Kontext, Status, Clear und Compact 🚧
+### R-WP-7 — Eine Kachel je Agent mit Kontext, Status, Clear und Compact ✅
 
 Kopf des Chat-Views: eine Kachel für jeden Agenten von Jons Team (Jon, Plan, Dev, Review,
 Search) — Name, Kontextgröße, Statusanzeige, **Clear**- und **Compact**-Knopf. Kontextgröße ist
@@ -154,16 +154,16 @@ Die **Search**-Kachel zeigt diese Zahl nicht — Search ist ein Sub-Loop von Jon
 kein Clear/Compact. Kacheln von Plan, Dev und Review öffnen den schreibgeschützten Blick in das
 eigene Gespräch ([R-WP-26](chat.md)).
 
-#### UC-WP-11 — teamTilesShowContextAndStatus ❌
+#### UC-WP-11 — teamTilesShowContextAndStatus ✅
 - GIVEN der Chat-View WHEN er geöffnet wird THEN trägt jede Team-Kachel Name, Kontextzahl und
   Status; der Status wechselt bei Arbeit/Compact/Fehler ohne manuelles Aktualisieren. Die
   Search-Kachel trägt als Sub-Loop keinen Kontextwert.
 
-#### UC-WP-12 — clearOnJonCascadesTeam ❌
+#### UC-WP-12 — clearOnJonCascadesTeam ✅
 - GIVEN ein laufendes Team WHEN **Clear** auf Jons Kachel geklickt wird THEN sind Jon und sein Team
   leer (Parität zum Plugin); **Clear** auf einer Team-Kachel leert nur diesen Agenten.
 
-#### UC-WP-13 — compactAffectsOnlyThatAgent ❌
+#### UC-WP-13 — compactAffectsOnlyThatAgent ✅
 - GIVEN eine Kachel WHEN **Compact** geklickt wird THEN kompaktiert genau dieser Agent und die
   Kachel zeigt den Compact als eigenen Zustand.
 

@@ -168,9 +168,10 @@ class DelegatedAnswerTest {
                     .as("Jon's own answer still grows live on the same wire")
                     .isEqualTo(JON_ANSWER);
             assertThat(stream.eventNames())
-                    .as("the wire speaks exactly the three known names — a member line leaking under a"
-                            + " fourth name is red here, not merely unnamed")
-                    .containsOnly("partial", "tool", "done");
+                    .as("the conversation still speaks its three names, plus the tile snapshot — a member"
+                            + " line under a name of its own would be a fourth, and the member's text is"
+                            + " checked against every data line above (R-WP-7)")
+                    .containsOnly("partial", "tool", "done", "agents");
             assertThat(stream.countOf("done"))
                     .as("and it stays one done for the whole turn — the team's line is not a second answer")
                     .isEqualTo(1);

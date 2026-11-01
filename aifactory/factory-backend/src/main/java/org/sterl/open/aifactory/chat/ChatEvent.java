@@ -1,5 +1,9 @@
 package org.sterl.open.aifactory.chat;
 
+import java.util.List;
+
+import org.sterl.open.aifactory.chat.dto.AgentTileDto;
+
 /**
  * The inner event language of a turn: {@link SseTurnMonitor} translates the core's
  * {@code AiMonitor} callbacks into these, {@link ChatStreamRegistry} is the only one who knows what
@@ -27,4 +31,13 @@ public sealed interface ChatEvent {
     /** The turn failed; the message names the missing field or the error, never a config value. */
     record Failed(String message) implements ChatEvent {
     }
+
+    /**
+     * The team's tiles as one snapshot — the whole roster every time, never a delta, so the UI replaces
+     * its list instead of accumulating (R-WP-7). Live only: like every other event it is not stored, and
+     * a reconnect reads the roster again over {@code GET …/agents}.
+     */
+    record Agents(List<AgentTileDto> tiles) implements ChatEvent {
+    }
+
 }

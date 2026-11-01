@@ -53,7 +53,7 @@ MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabi
 * [UI](ui.md) — vier Seiten unter `/ui/`, Reload bleibt auf der Seite, Look. ◐ (Auslieferung ✅, Seiten/Router ❌)
 * [Projekte](project.md) — Git-Checkout als Projekt: klonen, eindeutig, entfernen, nie interaktiv, Live-Status. ◐
 * [Jon-Chat](chat.md) — ein Jon, ein Gespräch je Projekt: Streaming, Queue, Neustart, Tools, Kacheln. ◐
-  (Herkunft je Zeile ✅ UC-WP-39/40; Kacheln 🚧 R-WP-7, Blick je Agent ❌ R-WP-26)
+  (Herkunft je Zeile ✅ UC-WP-39/40; Kacheln ✅ R-WP-7, Blick je Agent ❌ R-WP-26)
 * [Dateien](files.md) — Schreiben nur in Projekt + TMP, Datei-Bereich lesend. ◐ (gebaut, reviewed 2026-11-01)
 * [Config](config.md) — eigene Datei der Factory, Config-Seite maskiert, „überschreiben" je Agent. ◐
 * [Nutzer](user.md) — Name statt Login, `[User Name]:` an Jon und Paco. ❌

@@ -1,6 +1,7 @@
 package org.sterl.open.aifactory.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.fail;
 
 import java.lang.annotation.Annotation;
@@ -45,8 +46,17 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import org.sterl.llmpeon.agent.AiDevAgent;
+import org.sterl.llmpeon.agent.AiPlanAgent;
+import org.sterl.llmpeon.agent.AiReviewAgent;
+import org.sterl.llmpeon.poagent.AiPoAgent;
+import org.sterl.open.aifactory.chat.dto.AgentAction;
+import org.sterl.open.aifactory.chat.dto.AgentActionRequest;
+import org.sterl.open.aifactory.chat.dto.AgentTileDto;
+import org.sterl.open.aifactory.chat.dto.AgentTileState;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
+import org.sterl.open.aifactory.chat.dto.TileCapability;
 import org.sterl.open.aifactory.project.FakeGitConfig;
 import org.sterl.open.aifactory.project.Project;
 import org.sterl.open.aifactory.project.ProjectService;
@@ -56,6 +66,12 @@ import org.sterl.open.aifactory.project.ProjectService;
  * on the surface: the handlers the running application actually registers, and the model types those
  * handlers can carry. A second conversation would have to arrive through one of the two — a path
  * segment, a request field, or a second runtime behind the same project — and each is refused here.
+ *
+ * <p>Two route families are frozen here, not one: the three conversation edges (unchanged since Inc 3) and
+ * the <b>tile family</b> of Inc 5b. That is a sharpening, not a loosening — a route that is in neither set
+ * lands in the conversation bucket and fails it, and the tile family has its own exact path form. What the
+ * tile family may not do is stated positively at the end of the test: it knows one roster and refuses every
+ * other name.</p>
  *
  * <p>Deliberately annotation-based, never parameter-name based: the aifactory build compiles without
  * {@code -parameters}, so parameter names are {@code arg0} and would prove nothing (AGENTS-DEV). The
@@ -69,9 +85,20 @@ class OneChatPerProjectTest {
     private static final String GIT_URL = "https://git.example.com/acme/one-chat.git";
     private static final String MODEL_PACKAGE = "org.sterl.open.aifactory.chat.dto";
 
-    /** One project id, then one of the three known segments — nothing that could select a dialogue. */
+    /** One project id, then one of the three known conversation segments — nothing that could select a dialogue. */
     private static final Pattern ONE_PROJECT_PATH =
             Pattern.compile("^/api/projects/\\{id\\}/(messages|events)$");
+
+    /**
+     * The tile family (Inc 5b, architecture doc "Die drei Gesprächs-Kanten bleiben drei"): one project id,
+     * one path, and a tile named <b>in the body</b> — never a second path placeholder, which is what would
+     * make an agent selectable the way a conversation must never be.
+     */
+    private static final Pattern TILE_PATH = Pattern.compile("^/api/projects/\\{id\\}/agents$");
+
+    private static final Set<Route> TILE_ROUTES = Set.of(
+            new Route(HttpMethod.GET, "/api/projects/{id}/agents"),
+            new Route(HttpMethod.POST, "/api/projects/{id}/agents"));
 
     /** The names a second conversation or a user concept would have to use. */
     private static final Set<String> FORBIDDEN_FIELD_NAMES = Set.of(
@@ -105,16 +132,25 @@ class OneChatPerProjectTest {
                 .containsExactly("ChatController");
 
         List<Route> routes = routesOf(controllers);
-        assertThat(routes)
-                .as("genau die drei Kanten des Arch-Docs — jede weitere wäre ein zweiter Gesprächsweg")
+        List<Route> tileFamily = routes.stream().filter(TILE_ROUTES::contains).toList();
+        List<Route> conversation = routes.stream().filter(route -> !TILE_ROUTES.contains(route)).toList();
+        assertThat(conversation)
+                .as("genau die drei Gesprächskanten des Arch-Docs — jede weitere Kante wäre ein zweiter"
+                        + " Gesprächsweg, auch unter einem neuen Pfad")
                 .containsExactlyInAnyOrder(
                         new Route(HttpMethod.GET, "/api/projects/{id}/messages"),
                         new Route(HttpMethod.POST, "/api/projects/{id}/messages"),
                         new Route(HttpMethod.GET, "/api/projects/{id}/events"));
         // with the set fixed there is nothing left to delete a conversation with, and the only POST is
         // the one that sends into the existing conversation
-        assertThat(routes)
+        assertThat(conversation)
                 .allSatisfy(route -> assertThat(route.path()).as("route %s", route).matches(ONE_PROJECT_PATH));
+        assertThat(tileFamily)
+                .as("die Kachel-Familie ist die einzige Erweiterung und selbst eingefroren — sie adressiert"
+                        + " eine Kachel dieses Projekts, nie ein Gespräch")
+                .containsExactlyInAnyOrderElementsOf(TILE_ROUTES);
+        assertThat(tileFamily)
+                .allSatisfy(route -> assertThat(route.path()).as("route %s", route).matches(TILE_PATH));
 
         assertThat(handlersOf(controllers))
                 .as("jeder Handler nimmt genau ein Projekt entgegen — ein zweiter Pfad-Platzhalter oder"
@@ -130,12 +166,24 @@ class OneChatPerProjectTest {
 
         Map<Class<?>, List<String>> modelFields = modelFieldsOf(controllers);
         assertThat(modelFields)
-                .as("die Verlaufslesung und die Eingabe sind die ganze Gesprächs-Sprache")
-                .containsOnlyKeys(ChatMessageDto.class, SendMessageRequest.class);
+                .as("die Verlaufslesung, die Eingabe und die Kachel-Sprache sind die ganze Sprache"
+                        + " dieser Kanten — ein weiterer Typ wäre ein weiterer Angebotsweg")
+                .containsOnlyKeys(ChatMessageDto.class, SendMessageRequest.class, AgentTileDto.class,
+                        AgentActionRequest.class, AgentTileState.class, TileCapability.class);
         // the third field is the author R-WP-4 asks for — the guard below is what this list is for: a
         // fourth field, whatever it is called, is a second conversation or a user concept
         assertThat(modelFields.get(ChatMessageDto.class)).containsExactly("role", "text", "origin");
         assertThat(modelFields.get(SendMessageRequest.class)).containsExactly("text");
+        // a tile names an agent of this project's own team and carries numbers — no conversation, no author
+        assertThat(modelFields.get(AgentTileDto.class)).containsExactly("name", "context", "tokens", "estimate",
+                "contextPercent", "budget", "state", "capabilities");
+        assertThat(modelFields.get(AgentActionRequest.class)).containsExactly("name", "action");
+        assertThat(modelFields.get(AgentTileState.class))
+                .as("ein Kachel-Zustand ist ein geschlossenes Wertset")
+                .containsExactly("IDLE", "WORKING", "COMPACTING", "ERROR");
+        assertThat(modelFields.get(TileCapability.class))
+                .as("TRANSCRIPT ist die einzige Fähigkeit, die hier nichts aufbaut (Inc 5c liest sie)")
+                .containsExactly("CONTEXT", "CLEAR", "COMPACT", "TRANSCRIPT");
         Set<String> everyFieldOfATransportedType = new TreeSet<>();
         modelFields.values().forEach(everyFieldOfATransportedType::addAll);
         assertThat(everyFieldOfATransportedType)
@@ -163,6 +211,25 @@ class OneChatPerProjectTest {
         assertThat(runtimes.history(project.id()))
                 .as("und beide Leitungen lesen denselben Verlauf")
                 .isEqualTo(runtime.history());
+
+        // the positive replacement for „no second edge": the tile family can only address this project's
+        // own roster, it never creates, selects or answers a conversation (R-WP-7, UC-WP-16)
+        assertThat(runtimes.agents(project.id()))
+                .as("die Kanten kennen genau Jons Team und seinen Such-Sub-Loop")
+                .extracting(AgentTileDto::name)
+                .containsExactly(AiPoAgent.NAME, AiPlanAgent.NAME, AiDevAgent.NAME, AiReviewAgent.NAME,
+                        "Search");
+        assertThat(runtimes.agents(project.id()))
+                .filteredOn(tile -> "Search".equals(tile.name()))
+                .as("der Sub-Loop bietet nichts an — also auch keinen Weg in ein zweites Gespräch")
+                .singleElement()
+                .satisfies(tile -> assertThat(tile.capabilities()).isEmpty());
+        assertThatThrownBy(() -> runtimes.act(project.id(), "Fantom", AgentAction.CLEAR))
+                .as("ein Name, der keine Kachel dieses Projekts ist, wird abgelehnt")
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(runtimes.runtimeCount())
+                .as("die Kachel-Kanten öffnen kein zweites Gespräch auf")
+                .isEqualTo(1);
     }
 
     // ------------------------------------------------------------------ surface
@@ -294,6 +361,14 @@ class OneChatPerProjectTest {
         }
         Map<Class<?>, List<String>> fields = new LinkedHashMap<>();
         for (Class<?> modelType : modelTypes) {
+            if (modelType.isEnum()) {
+                // an enum cannot name a conversation: its wire values are a closed set, and that set is
+                // read here as if it were a field list, so the forbidden-name check below covers it too
+                fields.put(modelType, Arrays.stream(modelType.getEnumConstants())
+                        .map(value -> ((Enum<?>) value).name())
+                        .toList());
+                continue;
+            }
             assertThat(modelType.isRecord())
                     .as("%s überträgt das Gespräch als Record", modelType.getSimpleName())
                     .isTrue();

@@ -127,6 +127,80 @@ button {
 }
 
 
+/* Kacheln: eine je Agent, Kopf des Chat-Views — Zahl, Status und Knöpfe kommen vom Server (R-WP-7). */
+.chat-tiles {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+
+  .chat-tile {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    padding: 0.25rem 0.45rem;
+    font-size: 0.82rem;
+  }
+
+  .chat-tile-name {
+    font-weight: 600;
+    color: var(--text-h);
+  }
+
+  .chat-tile-context {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--text);
+  }
+
+  .chat-tile-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--text);
+
+    &::before {
+      content: '';
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      background: var(--border);
+    }
+
+    &.working::before {
+      background: var(--accent);
+    }
+
+    &.compacting::before {
+      background: #d4a017;
+    }
+
+    &.error::before {
+      background: #b3261e;
+    }
+  }
+
+  /* Knopfmaße wie die Wurzel-Umschalter des Datei-Bereichs — dieselbe Zeile, derselbe Takt. */
+  button {
+    border: 1px solid transparent;
+    border-radius: 0.4rem;
+    padding: 0.2rem 0.5rem;
+    background: none;
+    color: var(--text);
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  }
+}
+
+
 .chat-log {
   list-style: none;
   margin: 0 0 1rem;

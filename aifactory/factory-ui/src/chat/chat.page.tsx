@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 
 import { listMessages, sendMessage, type ChatMessage, type ChatStreamEvent } from './chat.client'
+import { agentAction, listAgents, type AgentAction, type AgentTile } from './chat.agents.client'
 import { ChatComposer } from './chat.composer'
 import { ChatLog } from './chat.log'
+import { ChatTiles } from './chat.tiles'
 import { openChatStream } from './chat.stream'
 import { errorMessage } from '../shared/api.client'
 import type { Project } from '../shared/dto'
@@ -30,10 +32,16 @@ const RECONNECT_MS = 500
  * append</em>. So a dropped stream and a browser reload lose exactly the live lines and nothing else
  * (R-WP-11), and the reconnect path needs no second buffer and no event memory.
  *
+ * The team's tiles ({@link ChatTiles}) follow the same rule in their own family: read on mount, replaced
+ * by every `agents` snapshot, never merged — and re-read after an action, because 202 only said
+ * <em>taken</em>. This component holds the state of both, and it knows no agent name: a tile says what it
+ * offers (D-14).
+ *
  * The page holds the state; {@link ChatLog} and {@link ChatComposer} only draw it.
  */
 export function ChatPage({ project, files }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [tiles, setTiles] = useState<AgentTile[]>([])
   const [outgoing, setOutgoing] = useState<string[]>([])
   const [live, setLive] = useState('')
   const [toolLines, setToolLines] = useState<string[]>([])
@@ -57,6 +65,16 @@ export function ChatPage({ project, files }: Props) {
     return listMessages(projectId).then(applyHistory).catch(reason => setError(errorMessage(reason)))
   }, [applyHistory, projectId])
 
+  /** The roster of tiles is read, not kept: an `agents` snapshot may have been dropped by a slow reader. */
+  const refreshTiles = useCallback((): Promise<void> => {
+    if (projectId === null) {
+      return Promise.resolve()
+    }
+    return listAgents(projectId)
+      .then(setTiles)
+      .catch(reason => setError(errorMessage(reason)))
+  }, [projectId])
+
   const applyEvent = useCallback(
     (event: ChatStreamEvent) => {
       switch (event.kind) {
@@ -73,14 +91,20 @@ export function ChatPage({ project, files }: Props) {
           // one reload per turn — the turn that drained a queued input closes that input too, and the
           // history that lands carries every finished line, the team's own answer among them
           void refresh()
+          // the end snapshot usually arrives on its own; reading again covers the reader who lost it
+          void refreshTiles()
           break
         case 'error':
           // the reason is a line in the chat, the composer stays usable (Q1)
           setError(event.message)
           break
+        case 'agents':
+          // replace, never merge — a snapshot that accumulated would become a second history (R-WP-7)
+          setTiles(event.tiles)
+          break
       }
     },
-    [refresh],
+    [refresh, refreshTiles],
   )
 
   useEffect(() => {
@@ -109,6 +133,7 @@ export function ChatPage({ project, files }: Props) {
     }
 
     void refresh()
+    void refreshTiles()
     connect()
     input.current?.focus()
     return () => {
@@ -118,7 +143,7 @@ export function ChatPage({ project, files }: Props) {
         clearTimeout(reconnect)
       }
     }
-  }, [applyEvent, projectId, refresh])
+  }, [applyEvent, projectId, refresh, refreshTiles])
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -139,6 +164,28 @@ export function ChatPage({ project, files }: Props) {
     }
   }
 
+  /**
+   * Clear or Compact one tile. 202 says <em>taken</em>, so both reads follow; a refusal (409 while a turn
+   * runs, 400 for a tile that offers nothing) is a line in the chat like any other error and changes
+   * nothing (UC-WP-12, UC-WP-13).
+   */
+  async function act(name: string, action: AgentAction) {
+    if (projectId === null) {
+      return
+    }
+    setError(null)
+    try {
+      await agentAction(projectId, name, action)
+    } catch (reason) {
+      setError(errorMessage(reason))
+      return
+    }
+    // the history is re-read for every action, not only for the conversation's own agent: this component
+    // knows no agent names, and a read of the single truth is cheaper than a rule about who owns it
+    void refreshTiles()
+    void refresh()
+  }
+
   if (project === null) {
     return (
       <section className="view" aria-label="Chat">
@@ -153,6 +200,7 @@ export function ChatPage({ project, files }: Props) {
       <section className="view" aria-label="Chat">
         <h1>Chat</h1>
         <p className="hint">Projekt: {project.name}</p>
+        <ChatTiles tiles={tiles} onAction={act} />
         <ChatLog messages={messages} outgoing={outgoing} live={live} toolLines={toolLines} />
         {error !== null && (
           <p className="chat-error" data-testid="chat-error" role="alert">

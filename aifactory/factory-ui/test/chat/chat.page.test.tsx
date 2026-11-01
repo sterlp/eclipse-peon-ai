@@ -5,6 +5,7 @@ import AppShell from '../../src/app/app.shell'
 import { ChatPage } from '../../src/chat/chat.page'
 import { project } from '../shared/fixtures'
 import type { ChatMessage } from '../../src/chat/chat.client'
+import type { AgentTile, AgentTileState } from '../../src/chat/chat.agents.client'
 
 interface Chat {
   calls: { method: string; path: string; body?: string }[]
@@ -12,6 +13,8 @@ interface Chat {
   countOf(pathEnd: string, method: string): number
   /** The answer of the next history read, so a test can hand back what the turn wrote. */
   setMessages(messages: ChatMessage[]): void
+  /** Every `POST …/agents` answers this instead of 202 — the refusal a running turn produces. */
+  refuseActions(status: number, message: string): void
   /** Writes bytes onto the open stream — may stop in the middle of an event. */
   push(text: string): Promise<void>
   closeStream(): Promise<void>
@@ -22,6 +25,20 @@ const ANSWER: ChatMessage = { role: 'jon', text: 'Im Root liegen: pom.xml und RE
 /** A team member's final answer — role `jon` with an author, never a third role (UC-WP-39). */
 const TEAM_ANSWER: ChatMessage = { role: 'jon', text: 'Eine Banane.', origin: 'Dev' }
 const JONS_ANSWER: ChatMessage = { role: 'jon', text: 'Dev nennt eine Banane.', origin: 'Jon' }
+
+/** One roster entry as the server sends it — the tile family of R-WP-7. */
+function tile(name: string, state: AgentTileState): AgentTile {
+  return {
+    name,
+    context: '3k',
+    tokens: 3_400,
+    estimate: false,
+    contextPercent: 3,
+    budget: 100_000,
+    state,
+    capabilities: ['CONTEXT', 'CLEAR', 'COMPACT'],
+  }
+}
 
 let active: Chat | undefined
 
@@ -36,13 +53,20 @@ async function flush(): Promise<void> {
 }
 
 /**
- * `fetch` stand-in for the three chat edges. The stream body is a `ReadableStream` the test writes
- * into byte by byte, so a chunk may end anywhere — including inside one event's JSON.
+ * `fetch` stand-in for the chat edges: the three conversation edges and the tile family (R-WP-7). The
+ * stream body is a `ReadableStream` the test writes into byte by byte, so a chunk may end anywhere —
+ * including inside one event's JSON.
  */
-function stubChat(initial: { messages?: ChatMessage[]; projects?: unknown[] } = {}): Chat {
+function stubChat(
+  initial: { messages?: ChatMessage[]; projects?: unknown[]; agents?: AgentTile[] } = {},
+): Chat {
   const calls: Chat['calls'] = []
   const encoder = new TextEncoder()
-  const state = { messages: initial.messages ?? [] }
+  const state = {
+    messages: initial.messages ?? [],
+    agents: initial.agents ?? [],
+    refusal: undefined as { status: number; message: string } | undefined,
+  }
   let controller: ReadableStreamDefaultController<Uint8Array> | undefined
 
   vi.stubGlobal(
@@ -62,6 +86,19 @@ function stubChat(initial: { messages?: ChatMessage[]; projects?: unknown[] } = 
           { status: 200, headers: { 'content-type': 'text/event-stream' } },
         )
       }
+      if (path.endsWith('/agents') && method === 'POST') {
+        if (state.refusal !== undefined) {
+          return json(state.refusal.status, {
+            status: state.refusal.status,
+            error: 'conflict',
+            message: state.refusal.message,
+          })
+        }
+        return new Response(null, { status: 202 })
+      }
+      if (path.endsWith('/agents')) {
+        return json(200, state.agents)
+      }
       if (path.endsWith('/messages') && method === 'POST') {
         return new Response(null, { status: 202 })
       }
@@ -78,6 +115,9 @@ function stubChat(initial: { messages?: ChatMessage[]; projects?: unknown[] } = 
       calls.filter(call => call.method === method && call.path.endsWith(pathEnd)).length,
     setMessages: messages => {
       state.messages = messages
+    },
+    refuseActions: (status, message) => {
+      state.refusal = { status, message }
     },
     push: async (text: string) => {
       await act(async () => {
@@ -245,7 +285,11 @@ test('droppedStreamReopensAndReadsHistory', async () => {
 
 // UC-WP-16
 test('oneChatPerProject', async () => {
-  const chat = stubChat({ messages: [QUESTION, ANSWER], projects: [project()] })
+  const chat = stubChat({
+    messages: [QUESTION, ANSWER],
+    projects: [project()],
+    agents: [tile('Jon', 'IDLE'), tile('Plan', 'IDLE')],
+  })
   render(<AppShell />)
   expect(await screen.findByLabelText('Git-URL')).toBeInTheDocument()
 
@@ -253,14 +297,24 @@ test('oneChatPerProject', async () => {
   const opened = await screen.findByRole('region', { name: 'Chat' })
   await screen.findByText(ANSWER.text)
 
-  // the only control the chat has is the one that writes into THIS conversation
+  // the only control the chat has is the one that writes into THIS conversation — the tile actions of
+  // Inc 5b sit beside it and are asserted separately below: they clear or compact an agent, they open,
+  // rename or delete nothing, so the guard's question is untouched (R-WP-7)
   const controls = within(opened)
     .queryAllByRole('button')
+    .filter(control => control.closest('.chat-tiles') === null)
     .map(control => control.textContent?.trim() ?? '')
   expect(controls).toEqual(['Senden'])
   expect(controls.filter(label => /neue|gespräch|dialog|verlauf|wechseln|öffnen|clear|lösch/i.test(label))).toEqual(
     [],
   )
+  // the positive replacement: what the tiles add is exactly the two actions, and nothing that selects a
+  // conversation — the roster is the only thing a tile can address
+  const tileControls = within(opened)
+    .queryAllByRole('button')
+    .filter(control => control.closest('.chat-tiles') !== null)
+    .map(control => control.textContent?.trim() ?? '')
+  expect([...new Set(tileControls)].sort()).toEqual(['Clear', 'Compact'])
 
   fireEvent.click(screen.getByRole('tab', { name: 'Projekte' }))
   expect(screen.queryByTestId('chat-log')).toBeNull()
@@ -343,7 +397,48 @@ test('reconnectReadsTeamAnswerFromTheHistory', async () => {
   expect(screen.queryByTestId('chat-live')).toBeNull()
 })
 
-/** The author labels on the screen, in reading order — the shape of R-WP-4's claim. */
-function authorsOnScreen(): (string | null)[] {
+// UC-WP-11
+test('tileStateFollowsTheStream', async () => {
+  const chat = stubChat({ messages: [QUESTION], agents: [tile('Jon', 'IDLE'), tile('Dev', 'IDLE')] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent('bereit')
+  const historyReads = chat.countOf('/messages', 'GET')
+  const rosterReads = chat.countOf('/agents', 'GET')
+
+  // the snapshot arrives on the wire and replaces the list — no second read of anything (R-WP-7)
+  await chat.push(event('agents', { tiles: [tile('Jon', 'WORKING'), tile('Dev', 'COMPACTING')] }))
+
+  expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent('arbeitet')
+  expect(screen.getByTestId('tile-state-Dev')).toHaveTextContent('kompaktiert')
+  expect(chat.countOf('/messages', 'GET')).toBe(historyReads)
+  expect(chat.countOf('/agents', 'GET')).toBe(rosterReads)
+  // and a tile that is not idle offers nothing any more (UC-WP-12's guard, seen from the screen)
+  expect(screen.getByTestId('tile-clear-Jon')).toBeDisabled()
+})
+
+// UC-WP-12
+test('clearOnATileNamesThatTileAndARefusalIsALine', async () => {
+  const chat = stubChat({ messages: [QUESTION], agents: [tile('Jon', 'IDLE'), tile('Dev', 'IDLE')] })
+  chat.refuseActions(409, 'a turn or another action is still running')
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.click(screen.getByTestId('tile-clear-Dev'))
+  await waitFor(() => expect(screen.getByTestId('chat-error')).toHaveTextContent(/still running/))
+
+  // one POST, and it addresses exactly the tile that was clicked — name and action, nothing else
+  expect(chat.countOf('/agents', 'POST')).toBe(1)
+  const post = chat.calls.find(call => call.method === 'POST')
+  expect(post?.path).toBe('/api/projects/demo-1a2b3c4/agents')
+  expect(JSON.parse(post?.body ?? '{}')).toEqual({ name: 'Dev', action: 'clear' })
+  // the refusal changed nothing: no re-read of the chat and no new roster
+  expect(chat.countOf('/messages', 'GET')).toBe(1)
+  expect(chat.countOf('/agents', 'GET')).toBe(1)
+  expect(screen.getByTestId('chat-log')).toBeInTheDocument()
+})
+
+/** The author labels on the screen, in reading order — the shape of R-WP-4's claim. */function authorsOnScreen(): (string | null)[] {
   return screen.getAllByTestId('chat-line-author').map(label => label.textContent)
 }

@@ -62,7 +62,7 @@ const TREE: Record<string, DirectoryResponse | FileResponse> = {
 }
 
 /**
- * `fetch` stand-in for the four edges the shell and the chat touch. `files` answers out of `TREE` by
+ * `fetch` stand-in for the edges the shell and the chat touch. `files` answers out of `TREE` by
  * `root|path`, so a test asserts on the path the area asked for instead of scripting the sequence.
  */
 function stubFactory(): Factory {
@@ -88,6 +88,10 @@ function stubFactory(): Factory {
         )
       }
       if (path.endsWith('/messages')) {
+        return json(200, [])
+      }
+      // the tile family has no part in this class — an empty roster keeps the chat head out of the way
+      if (path.endsWith('/agents')) {
         return json(200, [])
       }
       if (path.startsWith(FILES_PATH)) {

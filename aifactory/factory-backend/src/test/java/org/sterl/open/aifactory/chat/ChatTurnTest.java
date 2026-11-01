@@ -185,6 +185,18 @@ class ChatTurnTest {
             assertThat(stream.payloads("tool"))
                     .as("the tool line names the absolute path, so the user sees where it went")
                     .anySatisfy(line -> assertThat(line).contains(marker.toString()));
+
+            // UC-WP-11 — a tile's state after the turn is the roster's end snapshot: it must reach the
+            // same connection that is already allowed to act again (ProjectRuntime.submit, finally)
+            // UC-WP-11 — the roster a tile shows after a turn is the last thing that turn sends: no reader
+            // who is already allowed to act again may keep seeing WORKING (ProjectRuntime.submit, finally)
+            stream.awaitLastEvent("agents");
+            List<String> rosters = stream.payloads("agents");
+            assertThat(rosters.get(rosters.size() - 1))
+                    .as("the snapshot after a finished turn leaves every agent idle")
+                    .contains("\"state\":\"IDLE\"")
+                    .doesNotContain("WORKING")
+                    .doesNotContain("COMPACTING");
         }
 
         assertThat(MODEL.getCapturedTool("shellRunCommand")).as("Jon offers the shell").isPresent();
@@ -492,6 +504,16 @@ class ChatTurnTest {
 
         void awaitEvent(String name, int count) {
             await(() -> countOf(name) >= count, "event " + name + " x" + count + " on the stream");
+        }
+
+        /**
+         * Waits until {@code name} is the <b>last</b> event of this connection. For the end of a turn: its
+         * last event is the roster snapshot, and nothing follows it — so a positive wait here cannot pass
+         * too early, unlike a count that a monitor's earlier snapshot has already satisfied.
+         */
+        void awaitLastEvent(String name) {
+            await(() -> !names.isEmpty() && name.equals(names.get(names.size() - 1)),
+                    "last event " + name + " on the stream");
         }
 
         /** A negative assertion needs a grace window — this is the only fixed wait in this class. */

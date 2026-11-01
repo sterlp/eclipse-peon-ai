@@ -12,6 +12,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import org.sterl.open.aifactory.config.FactoryConfigService;
+import org.sterl.open.aifactory.chat.dto.AgentAction;
+import org.sterl.open.aifactory.chat.dto.AgentTileDto;
 import org.sterl.open.aifactory.project.ProjectNotFoundException;
 import org.sterl.open.aifactory.project.ProjectRemoved;
 import org.sterl.open.aifactory.project.ProjectService;
@@ -24,7 +26,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * (§3.3.1), so a change to the turn mechanics never touches this class.
  *
  * <p>Every entry point answers for an unknown project with {@link ProjectNotFoundException} — the 404
- * half of all three edges, and the shared advice of {@code project} answers it.</p>
+ * half of every edge, and the shared advice of {@code project} answers it.</p>
  */
 @Component
 public class ProjectRuntimeRegistry {
@@ -69,6 +71,20 @@ public class ProjectRuntimeRegistry {
 
     public List<ChatLine> history(String projectId) {
         return runtime(projectId).history();
+    }
+
+    /** The team's tiles, read live — re-connect means read, so this and the SSE snapshot share one source. */
+    public List<AgentTileDto> agents(String projectId) {
+        return runtime(projectId).tiles();
+    }
+
+    /**
+     * Clear or Compact one tile. A name that is no tile and an action that tile does not offer are
+     * {@link IllegalArgumentException} (400), a busy project is {@link IllegalStateException} (409) — an
+     * action is refused, never queued.
+     */
+    public void act(String projectId, String name, AgentAction action) {
+        runtime(projectId).act(name, action);
     }
 
     /**

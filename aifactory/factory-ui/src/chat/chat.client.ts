@@ -1,4 +1,5 @@
 import { request } from '../shared/api.client'
+import type { AgentTile } from './chat.agents.client'
 
 /**
  * One line of the shared history. `origin` names the agent that spoke — set for Jon's own line and
@@ -17,12 +18,17 @@ export interface ChatMessage {
  * line, `done` closes one <em>turn</em> — an input that queued up behind a running one is closed by that
  * turn's `done` too — and `error` is a turn failure; the composer stays usable either way. Finished text
  * of anybody, team member included, is never an event: it arrives with the history (`done` reads it).
+ *
+ * `agents` is the one event that is not part of a conversation: the whole tile roster, every time. The UI
+ * <em>replaces</em> its list with it and accumulates nothing, so a snapshot can never become a second
+ * history (R-WP-7) and a lost one costs nothing — the roster is read again on mount.
  */
 export type ChatStreamEvent =
   | { kind: 'partial'; thinking: boolean; text: string }
   | { kind: 'tool'; text: string }
   | { kind: 'done'; millis: number }
   | { kind: 'error'; message: string }
+  | { kind: 'agents'; tiles: AgentTile[] }
 
 export interface ChatStreamHandlers {
   onEvent: (event: ChatStreamEvent) => void

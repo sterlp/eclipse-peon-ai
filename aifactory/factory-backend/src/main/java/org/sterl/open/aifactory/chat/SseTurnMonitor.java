@@ -1,8 +1,14 @@
 package org.sterl.open.aifactory.chat;
 
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
+import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
+import org.sterl.open.aifactory.chat.dto.AgentTileDto;
 
 /**
  * The one place that knows the core's callback language: every {@link AiMonitor} callback of a project
@@ -38,10 +44,21 @@ class SseTurnMonitor implements AiMonitor {
 
     private final String projectId;
     private final ChatStreamRegistry streams;
+    private final Supplier<List<AgentTileDto>> roster;
+    private final Consumer<String> sawOrigin;
 
-    SseTurnMonitor(String projectId, ChatStreamRegistry streams) {
+    /**
+     * @param roster    the project's tiles, read again per callback — the monitor keeps no roster of its
+     *                  own, so a snapshot cannot be stale (R-WP-7: snapshot, no accumulation)
+     * @param sawOrigin every stamp this monitor sees, also the ones whose lines it drops — the search
+     *                  sub-loop owns no agent instance and is known to the tiles only through his lines
+     */
+    SseTurnMonitor(String projectId, ChatStreamRegistry streams, Supplier<List<AgentTileDto>> roster,
+            Consumer<String> sawOrigin) {
         this.projectId = projectId;
         this.streams = streams;
+        this.roster = roster;
+        this.sawOrigin = sawOrigin;
     }
 
     @Override
@@ -60,12 +77,22 @@ class SseTurnMonitor implements AiMonitor {
 
     @Override
     public void onChatResponse(SimpleMessage message) {
+        sawOrigin.accept(message.origin());
+        // the tiles ride along before the origin filter: who is working is a fact about the team, and a
+        // member's line is exactly the moment his tile lights up — a snapshot, so order never matters
+        streams.publish(projectId, new ChatEvent.Agents(roster.get()));
         if (!isJon(message.origin())) {
             return;
         }
         if (message.role() == SimpleMessage.Type.TOOL || message.role() == SimpleMessage.Type.PROBLEM) {
             streams.publish(projectId, new ChatEvent.ToolLine(message.message()));
         }
+    }
+
+    /** The core has released its compacting flag here — the end state of UC-WP-13 goes out on this callback. */
+    @Override
+    public void onCompactCompleted(String agentName, CompactResult result) {
+        streams.publish(projectId, new ChatEvent.Agents(roster.get()));
     }
 
     /**

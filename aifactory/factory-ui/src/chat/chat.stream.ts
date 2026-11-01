@@ -1,4 +1,5 @@
 import type { ChatStreamEvent, ChatStreamHandlers } from './chat.client'
+import type { AgentTile } from './chat.agents.client'
 
 /**
  * Reads the SSE wire with `fetch` + `ReadableStream` instead of `EventSource`: the parsing is what
@@ -139,6 +140,14 @@ function toEvent(name: string, payload: string): ChatStreamEvent | null {
       return { kind: 'done', millis: Number(fields.millis ?? 0) }
     case 'error':
       return { kind: 'error', message: String(fields.message ?? 'unbekannter Fehler') }
+    case 'agents': {
+      // the whole roster, and the view replaces its list with it — a snapshot never accumulates, so it
+      // cannot grow into a second history (R-WP-7); a payload without a list is not my error to guess
+      if (!Array.isArray(fields.tiles)) {
+        return null
+      }
+      return { kind: 'agents', tiles: fields.tiles as AgentTile[] }
+    }
     default:
       return null
   }
