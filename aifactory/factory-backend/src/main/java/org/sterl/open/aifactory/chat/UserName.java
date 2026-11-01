@@ -20,6 +20,14 @@ final class UserName {
     private static final String PREFIX = "[User ";
     private static final String SUFFIX = "]: ";
 
+    /**
+     * Stands in front of a format a person typed himself: {@link #payload} writes it, {@link #parse}
+     * takes exactly one of them off again. Read at one position only — where the format would start —
+     * so it can only ever say "this bracket came from a hand, not from the factory" and never edits a
+     * name or a quoted text.
+     */
+    private static final String ESCAPE = "\\";
+
     private UserName() {
     }
 
@@ -33,10 +41,18 @@ final class UserName {
      * What Jon is handed: the name in front of the text, or the text alone when there is no name.
      * A name is never refused, only cleaned — a browser carrying a broken name keeps its chat, since
      * there is nothing to protect (R-WP-17: no login, no user-owned area).
+     *
+     * <p>The prefix is this factory's <b>protocol, not an identity card</b> (R-WP-25): a line that
+     * already opens like the format and carries no name is written with one escape in front, so
+     * {@link #parse} cannot read a sender out of a bracket nobody sent as a name. The escape is taken
+     * off on the way back — the person reads his own line unchanged (UC-WP-48 GIVEN 3).</p>
      */
     static String payload(String name, String text) {
         String cleaned = clean(name);
-        return cleaned == null ? text : PREFIX + cleaned + SUFFIX + text;
+        if (cleaned != null) {
+            return PREFIX + cleaned + SUFFIX + text;
+        }
+        return text.startsWith(PREFIX, leadingEscapes(text, 0)) ? ESCAPE + text : text;
     }
 
     /** The name as the format can hold it: no control character, no bracket that would close it early. */
@@ -56,10 +72,24 @@ final class UserName {
     }
 
     /**
+     * How many escapes a text already carries at {@code from}. Counted, not just tested for one, so a
+     * line that opens with the format stays readable no matter how often a person escaped it himself —
+     * one escape is added and exactly one is taken off.
+     */
+    private static int leadingEscapes(String text, int from) {
+        int at = from;
+        while (text.startsWith(ESCAPE, at)) {
+            at += ESCAPE.length();
+        }
+        return at - from;
+    }
+
+    /**
      * The sender of a stored line, and the line without his name. Looked for at the start of the text
      * and — for an input the core took into its queue — directly behind the core's own marker, which
      * stays exactly as the core wrote it (Q6). Never at an arbitrary line start: a person may quote
-     * this very format and then has to read it back unchanged.
+     * this very format and then has to read it back unchanged. Only an <b>unescaped</b> format names a
+     * sender: an escaped one is the person's own text (R-WP-25).
      *
      * @param text the stored text, as {@code ProjectRuntime#history} read it from the memory
      */
@@ -71,6 +101,12 @@ final class UserName {
                 return new Parsed(null, text);
             }
             start = markerEnd + 2;
+        }
+        int escapes = leadingEscapes(text, start);
+        if (escapes > 0 && text.startsWith(PREFIX, start + escapes)) {
+            // a format that comes escaped was typed, not written: nobody is named here, and one escape
+            // goes back off — the one payload added — so the line reads as it was typed (UC-WP-48)
+            return new Parsed(null, text.substring(0, start) + text.substring(start + ESCAPE.length()));
         }
         if (!text.startsWith(PREFIX, start)) {
             return new Parsed(null, text);

@@ -27,11 +27,17 @@ Ist ein Name bekannt (R-WP-17), beginnt jede Nachricht an Jon und an Paco mit `[
 Namen gibt es kein Präfix. Der Chat zeigt den Namen statt „YOU" — für **alle** Betrachter, der Jon-Chat
 ist geteilt; ohne Namen „YOU". Der Name steht damit im Verlauf und überlebt einen Neustart
 ([R-WP-11](chat.md)). Der Prompt der Fabrik erklärt das Präfix in einer Zeile (nur Fabrik, nicht
-Plugin). **WEIL** Jon im geteilten Chat sonst die Wünsche mehrerer Nutzer vermischt.
+Plugin). Das Präfix ist **Protokoll der Fabrik, kein Ausweis**: eine Zeile, die ohne Namen gesendet
+wurde, wird niemandem zugeschrieben — tippt der Nutzer selbst `[User Anna]: …`, bleibt das Text; die
+Fabrik schützt das Schreibformat davor, als Herkunft gelesen zu werden. **WEIL** Jon im geteilten Chat
+sonst die Wünsche mehrerer Nutzer vermischt — und ein fälschbarer Absender genau das kaputt macht.
 
 #### UC-WP-48 — messageCarriesUserName ✅
 - GIVEN Paul und Anna im selben Projekt WHEN Anna „bitte X" schreibt THEN sieht Jon `[User Anna]: bitte X`
   und beide sehen im Chat „Anna" als Absender.
 - GIVEN kein Name gesetzt WHEN der Nutzer schreibt THEN sieht Jon den Text ohne Präfix und der Chat
   zeigt „YOU".
+- GIVEN kein Name gesetzt und der Nutzer tippt eine Zeile, die wie ein Präfix aussieht (`[User Anna]: …`)
+  WHEN sie im Verlauf erscheint THEN steht sie unter „YOU", ihr Text bleibt lesbar und sie wird
+  niemandem zugeschrieben.
 - GIVEN ein Neustart WHEN der Verlauf gelesen wird THEN steht an Annas Zeile weiterhin „Anna".

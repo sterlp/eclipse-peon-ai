@@ -76,4 +76,48 @@ class UserNameTest {
         assertThat(parsed.name()).isNull();
         assertThat(parsed.text()).isEqualTo(text);
     }
+
+    @Test
+    // UC-WP-48
+    void aTypedPrefixStaysTextAndNamesNobody() {
+        String typed = "[User Anna]: bitte X";
+
+        UserName.Parsed parsed = UserName.parse(UserName.payload(null, typed));
+
+        assertThat(parsed.name())
+                .as("das Präfix ist Protokoll der Fabrik, kein Ausweis: eine selbst getippte Format-Zeile"
+                        + " schreibt niemandem etwas zu (R-WP-25)")
+                .isNull();
+        assertThat(parsed.text())
+                .as("und der Mensch liest seine Zeile genau so, wie er sie getippt hat")
+                .isEqualTo(typed);
+    }
+
+    @Test
+    // UC-WP-48
+    void aTypedPrefixBehindTheQueueMarkerNamesNobody() {
+        String stored = "[Queued Message] (10:15): " + UserName.payload(null, "[User Anna]: weiter");
+
+        UserName.Parsed parsed = UserName.parse(stored);
+
+        assertThat(parsed.name()).as("auch eine gewartete Eingabe erbt keinen Absender").isNull();
+        assertThat(parsed.text())
+                .as("die Marke des Cores bleibt stehen, die getippte Format-Zeile dahinter bleibt lesbar")
+                .isEqualTo("[Queued Message] (10:15): [User Anna]: weiter");
+    }
+
+    @Test
+    // UC-WP-48
+    void anEscapeTheFactoryNeverWroteStaysAsTyped() {
+        // wer die Format-Zeile selbst escape't, verliert nur das eine Zeichen, das payload ergänzt hat …
+        assertThat(UserName.parse(UserName.payload(null, "\\[User Anna]: weiter")).text())
+                .isEqualTo("\\[User Anna]: weiter");
+        // … und eine Zeile, die nur mit einem Backslash beginnt, ist gar kein Präfix und wird gar nicht
+        // angefasst
+        assertThat(UserName.parse(UserName.payload(null, "\\order abgeben")).text())
+                .isEqualTo("\\order abgeben");
+        // ein echter Absender steht davon unberührt, sein eigener Text bleibt als Text stehen
+        assertThat(UserName.parse(UserName.payload("Anna", "[User Paul]: weiter")))
+                .isEqualTo(new UserName.Parsed("Anna", "[User Paul]: weiter"));
+    }
 }
