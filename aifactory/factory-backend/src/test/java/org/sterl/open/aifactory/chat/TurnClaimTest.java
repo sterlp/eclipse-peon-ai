@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 
@@ -28,7 +30,11 @@ class TurnClaimTest {
         claim.claimAction("Dev", AgentAction.COMPACT, false);
         CountDownLatch reachedTheCore = new CountDownLatch(1);
         Thread turn = Thread.ofVirtual().start(() -> {
-            claim.awaitNoAction();
+            try {
+                claim.awaitNoAction();
+            } catch (TimeoutException gaveUp) {
+                throw new IllegalStateException("the turn gave up instead of waiting for the release", gaveUp);
+            }
             reachedTheCore.countDown();
         });
 
@@ -40,6 +46,38 @@ class TurnClaimTest {
         assertThat(reachedTheCore.await(5, SECONDS))
                 .as("and the release is what lets it go — the input is answered, never dropped")
                 .isTrue();
+        turn.join(SECONDS.toMillis(5));
+    }
+
+    /**
+     * The same wait needs an end of its own: a claim is released by the {@code finally} of a task, so a task
+     * that never ran would leave every later turn of this project standing in the wait — silently, with no
+     * answer and no free project. The deadline is proven with a short one, never by waiting out the
+     * production limit.
+     */
+    @Test
+    void aWaitingTurnGivesUpOnItsOwnDeadline() throws Exception {
+        TurnClaim claim = new TurnClaim();
+        claim.claimAction("Dev", AgentAction.COMPACT, false);
+        CountDownLatch gaveUp = new CountDownLatch(1);
+        AtomicReference<Exception> failure = new AtomicReference<>();
+        Thread turn = Thread.ofVirtual().start(() -> {
+            try {
+                claim.awaitNoAction(50);
+            } catch (Exception stuck) {
+                failure.set(stuck);
+            } finally {
+                gaveUp.countDown();
+            }
+        });
+
+        assertThat(gaveUp.await(2, SECONDS))
+                .as("a wait without a limit is a silent block — the turn admits it instead")
+                .isTrue();
+        assertThat(failure.get())
+                .as("and it admits it as a named timeout, not as a turn that quietly never ran")
+                .isInstanceOf(TimeoutException.class)
+                .hasMessageContaining("50 ms");
         turn.join(SECONDS.toMillis(5));
     }
 

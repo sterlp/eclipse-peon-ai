@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 
 import org.slf4j.Logger;
@@ -169,17 +170,36 @@ final class ProjectRuntime {
             throw new IllegalArgumentException(agent.getName() + " offers no " + action);
         }
         claim.claimAction(agent.getName(), action, teamIsWorking());
-        streams.publish(projectId, new ChatEvent.Agents(tiles()));
-        turns.submit(() -> {
-            try {
-                runAct(agent, action);
-            } finally {
-                // released before the snapshot: a reader that is allowed to act again never sees the tile
-                // still holding the action, and a turn task waiting for this wakes on the same release
-                claim.releaseAction();
-                streams.publish(projectId, new ChatEvent.Agents(tiles()));
-            }
-        });
+        try {
+            streams.publish(projectId, new ChatEvent.Agents(tiles()));
+            turns.submit(() -> {
+                try {
+                    // the flag belongs to a turn, and an action can only claim the project while no turn is
+                    // in flight — so whatever the flag holds here belongs to a turn that is already over.
+                    // Taken at the start, not after: measured 2026-11-01, a Compact that inherits the stop of
+                    // that earlier turn is canceled by the core at its first partial and reports
+                    // „COMPACT failed" for as long as nobody sends again (§16 PRE-EXISTING). A stop cannot
+                    // reach this window anyway (turnIsStoppable needs a free claim), so nothing live is cleared
+                    monitor.resetCancel();
+                    runAct(agent, action);
+                } finally {
+                    // released before the snapshot: a reader that is allowed to act again never sees the tile
+                    // still holding the action, and a turn task waiting for this wakes on the same release
+                    claim.releaseAction();
+                    streams.publish(projectId, new ChatEvent.Agents(tiles()));
+                }
+            });
+        } catch (RuntimeException taskNeverStarted) {
+            // the release belongs to a task that will now never run: without this the project stays claimed
+            // for every later send and every later action until the factory restarts (§16 CONCERN 2)
+            claim.releaseAction();
+            LOG.error("action {} of agent {} of project {} was never started", action, agent.getName(),
+                    projectId, taskNeverStarted);
+            // the tiles are read live, so this only tells the browsers that were watching: a refusal they
+            // cannot see would leave the tile holding an action that never ran
+            streams.publish(projectId, new ChatEvent.Agents(tiles()));
+            throw taskNeverStarted;
+        }
     }
 
     /** The seat a name sits on — the one source of what its tile may do (D-14). */
@@ -313,6 +333,14 @@ final class ProjectRuntime {
                     streams.publish(projectId,
                             new ChatEvent.Done(Duration.ofNanos(System.nanoTime() - startedAt).toMillis()));
                 }
+            } catch (TimeoutException neverReleased) {
+                // the wait gave up: the project is handed back with a word about it instead of standing in
+                // the wait forever — only the send that opened the turn owns that end (see finally)
+                failedAgent = jon.getName();
+                LOG.error("turn of project {} never got the project back from a claimed action", projectId,
+                        neverReleased);
+                streams.publish(projectId, new ChatEvent.Failed(
+                        "the project is still held by an action — this turn ended, the server log names the reason"));
             } catch (TurnNotConfiguredException notConfigured) {
                 ranTurn = ranTurn || askedCore;
                 failedAgent = jon.getName();

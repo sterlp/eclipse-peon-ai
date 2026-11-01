@@ -88,8 +88,10 @@ class SseTurnMonitor implements AiMonitor {
     }
 
     /**
-     * Called by the runtime <b>before</b> every call to Jon: without it the first stop would stop every
-     * later turn of the project too, because a project keeps one monitor for its whole life.
+     * Called by the runtime <b>before</b> every call to Jon and <b>before</b> every tile action: without it
+     * the first stop would stop every later turn of the project too, and a Compact, which never resets,
+     * would keep failing against the flag of a stop that ended long before it — because a project keeps one
+     * monitor for its whole life.
      */
     void resetCancel() {
         canceled = false;

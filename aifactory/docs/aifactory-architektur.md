@@ -162,8 +162,8 @@ sequenceDiagram
   U->>C: POST /api/projects/{id}/agents {name, action}
   C->>R: act(id, name, action)
   R->>P: act(name, action)
-  P->>P: busy? (Turn läuft oder ein Agent arbeitet) ⇒ 409
   P->>P: Name im Roster? sonst 400
+  P->>P: busy? (Turn läuft oder ein Agent arbeitet) ⇒ 409
   P->>S: Agents(tiles) — Zustand „startet"
   P->>A: über den Turn-Executor: clear() bzw. compact(monitor)
   C-->>U: 202
@@ -182,10 +182,13 @@ sequenceDiagram
   der Plugin-Wert (`getTotalTokenUsed()` + `isTokenEstimate()`, Prozent gegen das Auto-Compact-Budget);
   die Fabrik formatiert nicht selbst. Search ist ein Sub-Loop — Kachel ohne Kontext, kein Clear/Compact,
   kein Blick (R-WP-7/R-WP-26).
-* **Clear/Compact laufen über den Turn-Executor des Projekts**, nie auf dem HTTP-Thread — Clear/Compact
-  mutieren das Memory, ein paralleler Turn würde sie zerschreiben. `POST` antwortet `202`; läuft ein
-  Turn, wird die Aktion abgelehnt (`409`), nicht eingereiht. Fehler einer Aktion sind eine
-  `tool`-Zeile (live), kein neuer Kanal.
+* **Ein Claim je Projekt — Turn und Aktion treffen sich nie** (`TurnClaim` in `chat`, Inc 5e):
+  Clear/Compact mutieren das Memory, ein paralleler Turn würde sie zerschreiben; der Claim entscheidet
+  „Turn läuft" und „Aktion läuft" in **einem** Monitor. `POST` antwortet `202`; läuft ein Turn, wird die
+  Aktion abgelehnt (`409`), nicht eingereiht. Umgekehrt wartet ein Senden hinter einer laufenden Aktion
+  — Senden wird **nie** abgelehnt (R-WP-10). Ein Stop während einer wartenden Aktion wird abgelehnt
+  (`409`): der Cancel-Flag gehört der Aktion, ein halber Compact ist kein Ergebnis (D-17). Fehler einer
+  Aktion sind eine `tool`-Zeile (live), kein neuer Kanal.
 * **Der Blick (`GET …/agents/{name}`) liest das Core-Memory im RAM** (`AiAgent.getMemory()`) —
   schreibgeschützt, nur für Plan/Dev/Review (Jon/Search ⇒ 400), begrenzt (letzte 500 Zeilen, 8 192
   Zeichen je Zeile, `truncated`-Kennzeichnung). Nach einem Neustart ist der Blick leer (Team beginnt

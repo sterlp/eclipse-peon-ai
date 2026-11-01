@@ -1,5 +1,10 @@
 package org.sterl.open.aifactory.chat;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
+
+import java.util.concurrent.TimeoutException;
+
 import org.sterl.open.aifactory.chat.dto.AgentAction;
 
 /**
@@ -18,6 +23,13 @@ import org.sterl.open.aifactory.chat.dto.AgentAction;
  * outside, so reading the tiles and asking for a stop are never made to wait by a turn or a Compact.</p>
  */
 final class TurnClaim {
+
+    /**
+     * How long a turn task waits for a claimed action. Generous against a Compact that is doing its work,
+     * short enough that a project which can never be released is a red line in the log instead of a chat
+     * that quietly stops answering (§16 CONCERN 2).
+     */
+    private static final long ACTION_WAIT_TIMEOUT_MS = 10_000;
 
     /** An action this project claimed for one tile — the tiles show it before the core knows. */
     record Action(String name, AgentAction action) {
@@ -88,11 +100,28 @@ final class TurnClaim {
     /**
      * Blocks a turn task while an action holds the claim. It waits and never refuses: the input a user sent
      * during an action is answered after it, which is the whole of BUG-1.
+     *
+     * <p>The deadline is what keeps that promise honest. The release belongs to the {@code finally} of a
+     * task, so a task that was never started or never reached leaves the project claimed; without a limit
+     * every later turn of this project would stand here for the life of the factory, answering nothing and
+     * freeing nothing. A {@link TimeoutException} is the honest end of that wait — the turn says so and
+     * gives the project back.</p>
      */
-    synchronized void awaitNoAction() {
+    synchronized void awaitNoAction() throws TimeoutException {
+        awaitNoAction(ACTION_WAIT_TIMEOUT_MS);
+    }
+
+    /** The same wait with the limit a test can reach. */
+    synchronized void awaitNoAction(long timeoutMs) throws TimeoutException {
+        long until = System.nanoTime() + MILLISECONDS.toNanos(timeoutMs);
         while (action != null) {
+            long remaining = until - System.nanoTime();
+            if (remaining <= 0) {
+                throw new TimeoutException("the claimed action did not release the project within "
+                        + timeoutMs + " ms");
+            }
             try {
-                wait();
+                wait(Math.max(1, NANOSECONDS.toMillis(remaining)));
             } catch (InterruptedException interrupted) {
                 Thread.currentThread().interrupt();
                 throw new IllegalStateException("interrupted while waiting for the running action",

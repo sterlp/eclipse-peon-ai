@@ -1,16 +1,26 @@
 package org.sterl.open.aifactory.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 import java.util.Properties;
+import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 
 import org.junit.jupiter.api.AfterEach;
@@ -47,6 +57,8 @@ import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.compact.CompactConstants;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.poagent.AiPoAgent;
+import org.sterl.open.aifactory.config.FactoryConfigService;
+import org.sterl.open.aifactory.chat.dto.AgentAction;
 import org.sterl.open.aifactory.chat.dto.AgentActionRequest;
 import org.sterl.open.aifactory.chat.dto.AgentTileDto;
 import org.sterl.open.aifactory.chat.dto.AgentTileState;
@@ -67,8 +79,10 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * turn, and it is slowed by a real {@code sleep 3} shell tool (the pattern of {@code ChatQueueTest}),
  * never by a wait that could pass by accident.</p>
  *
- * <p>Every wait is a deadline on the <b>end</b> state. The {@code COMPACTING} window is deliberately not
- * proven by polling — it lasts milliseconds and would make the suite flaky; its rule is proven purely in
+ * <p>Every wait is a deadline on the <b>end</b> state, and every end state is read behind a handshake: a
+ * test only starts counting after the tile really holds the action. The core's own {@code COMPACTING} flag
+ * is never polled — it is set inside the task and gone again before the next poll of a fast mock, so it
+ * would make this class the flaky one it means to be not; the rule behind it is proven purely in
  * {@code AgentTilesTest}.</p>
  *
  * <p>A Compact is only believed when the <b>memory</b> changed: one line carrying the summary, never a
@@ -99,6 +113,16 @@ class AgentActionTest {
 
     @Autowired
     private ProjectService projects;
+
+    /** For the runtime a test builds by hand — the constructor is the seam, the registry is not asked. */
+    @Autowired
+    private FactoryConfigService config;
+
+    @Autowired
+    private ChatStreamRegistry streams;
+
+    @Autowired
+    private FactoryHome factoryHome;
 
     @LocalServerPort
     private int port;
@@ -232,7 +256,14 @@ class AgentActionTest {
 
         model.queueResponse(SUMMARY);
         assertThat(act(project.id(), AiDevAgent.NAME, "compact")).isEqualTo(HttpStatus.ACCEPTED.value());
-        awaitUntil(() -> !dev.isCompacting() && !dev.isWorking(), 20_000, "Devs Compact endete");
+        // the claim is taken on the request thread, so the tile already holds the action when 202 answers —
+        // that is the handshake this wait needs, because the end state is also true before the task starts.
+        // The core's own flag could not be it: set inside the task and gone again before the next poll of a
+        // mock that answers at once, it would make this test the flaky one it is meant to rule out
+        awaitUntil(() -> tile(project.id(), AiDevAgent.NAME).state() == AgentTileState.COMPACTING, 20_000,
+                "Devs Kachel hält die Aktion, bevor ihr Ende gezählt wird");
+        awaitUntil(() -> tile(project.id(), AiDevAgent.NAME).state() == AgentTileState.IDLE, 20_000,
+                "Devs Compact endete — bereit wird die Kachel erst mit der Freigabe des Tasks");
 
         List<ChatMessage> lines = dev.getMemory().getCopy();
         assertThat(lines)
@@ -297,6 +328,80 @@ class AgentActionTest {
         }
     }
 
+    /**
+     * UC-WP-13 on the track a stop leaves behind: a project keeps <b>one</b> monitor, so the cancel flag of
+     * the turn the user ended would be handed to the next action of the project — and the compressor reads
+     * that flag. Until the fix this test passed <em>and</em> failed on the same code: against an endpoint
+     * that answers at once, the response and the cancel race in the core, so only an answer that arrives
+     * later than the core's own 1500 ms check shows what the flag really did. Same endpoint for both calls,
+     * because the runtime reads its model once per turn and an action never re-reads it.
+     */
+    @Test
+    @Timeout(90)
+    // UC-WP-13
+    void compactAfterAStopStillRuns() throws IOException {
+        // 2500 ms > the core's 1500 ms wait-step, < the 20 s timeout of this config
+        try (DelayedModel late = new DelayedModel(SUMMARY, 2_500)) {
+            writeFactoryConfig("inc5f-late", late.url());
+            Project project = projects.add("https://git.example.com/acme/compact-after-stop.git").project();
+            ProjectRuntime runtime = runtimes.runtime(project.id());
+
+            send(project.id(), "FRAGE, DEREN TURN DER NUTZER BEENDET");
+            awaitUntil(runtime.jon()::isWorking, 20_000, "Jon hängt an seinem Modell-Call");
+            assertThat(stop(project.id()))
+                    .as("the running turn is stopped, as UC-WP-50 promises")
+                    .isEqualTo(HttpStatus.ACCEPTED.value());
+            awaitUntil(() -> !runtime.jon().isWorking(), 30_000, "der Turn endete nach dem Stop");
+
+            AiAgent dev = member(runtime, AiDevAgent.NAME);
+            seedEveryAgent(runtime);
+            seedLongConversation(dev);
+            long tokensBefore = tile(project.id(), AiDevAgent.NAME).tokens();
+            actUntilAccepted(project.id(), AiDevAgent.NAME, "compact");
+            awaitUntil(() -> tile(project.id(), AiDevAgent.NAME).state() == AgentTileState.IDLE, 20_000,
+                    "Devs Compact lief zu Ende");
+
+            List<ChatMessage> lines = dev.getMemory().getCopy();
+            assertThat(lines)
+                    .as("a Compact after a stop is a Compact and not the failure of a flag nobody reset")
+                    .hasSize(1);
+            assertThat(textOf(lines.get(0)))
+                    .as("and its one line is the summary, so the compressor really was answered")
+                    .contains(SUMMARY);
+            assertThat(tile(project.id(), AiDevAgent.NAME).tokens())
+                    .as("his tile counts less than before — the user sees a result, not a stale number")
+                    .isLessThan(tokensBefore);
+        }
+    }
+
+    /**
+     * Internal, no own id — the leak §16 measured: the claim is taken on the request thread and released by
+     * the task that runs the action, so a task that was never started would hold this project until the
+     * factory restarts. The rejection is produced on purpose with an executor that refuses exactly its first
+     * task — the smallest honest stand-in for a refused submit, and no timing window involved.
+     */
+    @Test
+    @Timeout(60)
+    void anActionWhoseTaskNeverStartedLeavesTheProjectFree() throws IOException {
+        writeFactoryConfig("inc5f-rejected-task");
+        Project project = projects.add("https://git.example.com/acme/rejected-action.git").project();
+        ProjectRuntime runtime = new ProjectRuntime(project.id(), project.localPath(),
+                factoryHome.stateDir(project.id()), config::load, config::loadForTurn, streams,
+                new RefusesItsFirstTask());
+        seedEveryAgent(runtime);
+
+        assertThatThrownBy(() -> runtime.act(AiPoAgent.NAME, AgentAction.CLEAR))
+                .as("the edge says what happened instead of answering 202 for a task that never ran")
+                .isInstanceOf(RejectedExecutionException.class);
+        assertThat(runtime.jon().getMemory().getCopy())
+                .as("and the refused attempt changed nothing")
+                .isNotEmpty();
+
+        runtime.act(AiPoAgent.NAME, AgentAction.CLEAR);
+        awaitUntil(() -> runtime.jon().getMemory().getCopy().isEmpty(), 20_000,
+                "der zweite Versuch lief wirklich — ein Projekt darf nicht für immer claimed bleiben");
+    }
+
     // ------------------------------------------------------------------ seeding and the edges
 
     /**
@@ -353,6 +458,28 @@ class AgentActionTest {
         headers.setContentType(MediaType.APPLICATION_JSON);
         return http.postForEntity(url(projectId, "agents"),
                 new HttpEntity<>(new AgentActionRequest(name, action), headers), String.class)
+                .getStatusCode().value();
+    }
+
+    /**
+     * An action asked for directly after a turn. The turn's own {@code finally} is the last thing to free
+     * the project, so a refusal here only says it has not closed yet — the acceptance is the handshake, and
+     * a project that never frees again goes red at the deadline instead of being waited past.
+     */
+    private void actUntilAccepted(String projectId, String name, String action) {
+        long until = System.currentTimeMillis() + 20_000;
+        int status = act(projectId, name, action);
+        while (status == HttpStatus.CONFLICT.value() && System.currentTimeMillis() < until) {
+            sleep();
+            status = act(projectId, name, action);
+        }
+        assertThat(status)
+                .as("%s auf %s wurde angenommen — ein Projekt, das nicht freigibt, bleibt zu", action, name)
+                .isEqualTo(HttpStatus.ACCEPTED.value());
+    }
+
+    private int stop(String projectId) {
+        return http.postForEntity(url(projectId, "messages/stop"), HttpEntity.EMPTY, String.class)
                 .getStatusCode().value();
     }
 
@@ -431,6 +558,15 @@ class AgentActionTest {
         }
     }
 
+    /** An endpoint of a test is closed, not negotiated with — what it makes of it is its own business. */
+    private static void quietly(Closeable toClose) {
+        try {
+            toClose.close();
+        } catch (IOException ignored) {
+            // ending the test matters more than what the socket made of it
+        }
+    }
+
     /**
      * A model endpoint that accepts and never answers — the only way to hold a Compact inside its model
      * call long enough to send into the same project while it runs. Closing it ends the held call, and
@@ -464,16 +600,150 @@ class AgentActionTest {
 
         @Override
         public void close() {
-            accepted.forEach(HeldModel::quietly);
+            accepted.forEach(AgentActionTest::quietly);
             quietly(listener);
         }
+    }
 
-        private static void quietly(Closeable toClose) {
-            try {
-                toClose.close();
-            } catch (IOException ignored) {
-                // ending the test matters more than what the socket made of it
+    /**
+     * A model endpoint that answers every request once and <b>late</b>. The pause is what makes a cancel
+     * observable: the core gives its wait up every 1500 ms and reads the project's cancel flag there, while
+     * an endpoint that answers at once lets the response and the cancel race inside the core (measured
+     * 2026-11-01: the same code passed and failed). Written here, in the framing the mock proves against the
+     * same client, because the core's mock has no pause and the core is not this increment's to change.
+     */
+    private static final class DelayedModel implements AutoCloseable {
+
+        private final ServerSocket listener;
+        private final String answer;
+        private final long pauseMs;
+        private final List<Socket> accepted = new CopyOnWriteArrayList<>();
+
+        DelayedModel(String answer, long pauseMs) throws IOException {
+            this.answer = answer;
+            this.pauseMs = pauseMs;
+            listener = new ServerSocket(0);
+            Thread acceptor = new Thread(() -> {
+                while (!listener.isClosed()) {
+                    try {
+                        Socket client = listener.accept();
+                        accepted.add(client);
+                        Thread.ofVirtual().start(() -> answerLate(client));
+                    } catch (IOException closed) {
+                        return;
+                    }
+                }
+            }, "delayed-model-endpoint");
+            acceptor.setDaemon(true);
+            acceptor.start();
+        }
+
+        /** The shape an OpenAI endpoint is configured with — the same {@code /v1} the mock answers under. */
+        String url() {
+            return "http://127.0.0.1:" + listener.getLocalPort() + "/v1";
+        }
+
+        private void answerLate(Socket client) {
+            try (client) {
+                readRequest(client.getInputStream());
+                Thread.sleep(pauseMs);
+                byte[] body = sse().getBytes(StandardCharsets.UTF_8);
+                OutputStream out = client.getOutputStream();
+                out.write(("HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: "
+                        + body.length + "\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+                out.write(body);
+                out.flush();
+            } catch (Exception ended) {
+                // the call was released or the test ended — either way this endpoint has nothing left to say
             }
+        }
+
+        /** role, content, finish, {@code [DONE]} — the four chunks the mock sends for a plain answer. */
+        private String sse() {
+            return chunk("", null) + chunk(answer, null) + chunk("", "stop") + "data: [DONE]\n\n";
+        }
+
+        private String chunk(String content, String finishReason) {
+            return "data: {\"id\":\"chatcmpl-delayed\",\"object\":\"chat.completion.chunk\",\"choices\":[{"
+                    + "\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"" + content + "\"}"
+                    + (finishReason == null ? "" : ",\"finish_reason\":\"" + finishReason + "\"")
+                    + "}]}\n\n";
+        }
+
+        /** The whole request has to be taken, or the client sits in a write this socket never reads. */
+        private static void readRequest(InputStream in) throws IOException {
+            StringBuilder headers = new StringBuilder();
+            int read;
+            while ((read = in.read()) != -1) {
+                headers.append((char) read);
+                if (headers.indexOf("\r\n\r\n") >= 0) {
+                    break;
+                }
+            }
+            for (int left = contentLengthOf(headers); left > 0; left--) {
+                if (in.read() == -1) {
+                    return;
+                }
+            }
+        }
+
+        private static int contentLengthOf(CharSequence headers) {
+            for (String line : headers.toString().split("\r\n")) {
+                if (line.toLowerCase(Locale.ROOT).startsWith("content-length:")) {
+                    return Integer.parseInt(line.substring(line.indexOf(':') + 1).trim());
+                }
+            }
+            return 0;
+        }
+
+        @Override
+        public void close() {
+            accepted.forEach(AgentActionTest::quietly);
+            quietly(listener);
+        }
+    }
+
+    /**
+     * An executor that refuses its first task and runs every later one — the honest stand-in for a refused
+     * submit, with no timing window of its own. Virtual threads, so it leaves no platform thread behind.
+     */
+    private static final class RefusesItsFirstTask extends AbstractExecutorService {
+
+        private final ExecutorService delegate = Executors.newVirtualThreadPerTaskExecutor();
+        private boolean refused;
+
+        @Override
+        public synchronized void execute(Runnable command) {
+            if (!refused) {
+                refused = true;
+                throw new RejectedExecutionException("refused on purpose — the leak this stands in for");
+            }
+            delegate.execute(command);
+        }
+
+        @Override
+        public void shutdown() {
+            delegate.shutdown();
+        }
+
+        @Override
+        public List<Runnable> shutdownNow() {
+            return delegate.shutdownNow();
+        }
+
+        @Override
+        public boolean isShutdown() {
+            return delegate.isShutdown();
+        }
+
+        @Override
+        public boolean isTerminated() {
+            return delegate.isTerminated();
+        }
+
+        @Override
+        public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+            return delegate.awaitTermination(timeout, unit);
         }
     }
 }
