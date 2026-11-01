@@ -409,6 +409,36 @@ test('withoutANameTheLineSaysYOU', async () => {
   expect(userAuthorsOnScreen()).toEqual(['YOU', 'YOU'])
 })
 
+// UC-WP-48
+test('theSendCarriesTheName', async () => {
+  const chat = stubChat({ messages: [] })
+  render(<ChatPage project={project()} user=" Anna " />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'bitte X' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+
+  // the name travels as its own field, trimmed: the server owns the prefix of the memory (R-WP-25), and
+  // a field that is only spaces is no name — the browser sends exactly what a nameless one sends
+  const post = chat.calls.find(call => call.method === 'POST')
+  expect(JSON.parse(post?.body ?? '{}')).toEqual({ text: 'bitte X', user: 'Anna' })
+  expect(Object.keys(JSON.parse(post?.body ?? '{}'))).toEqual(['text', 'user'])
+})
+
+// UC-WP-48
+test('theOwnLineShowsTheName', async () => {
+  stubChat({ messages: [] })
+  render(<ChatPage project={project()} user="Anna" />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'bitte X' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+
+  // before the history confirms the line, it already carries his name — otherwise it jumps on the read
+  expect(userAuthorsOnScreen()).toEqual(['Anna'])
+})
+
 // UC-WP-40
 test('onlyFinalAnswersFromTheTeam', async () => {
   const chat = stubChat({ messages: [QUESTION] })

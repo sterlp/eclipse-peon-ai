@@ -8,6 +8,8 @@ interface Props {
   messages: ChatMessage[]
   /** Inputs the user sent that the history does not carry yet (a queued input is written at turn start). */
   outgoing: string[]
+  /** The name of this browser (R-WP-25) — the author of its own, not yet confirmed lines; null shows the role label. */
+  user?: string | null
   live: string
   toolLines: string[]
 }
@@ -21,7 +23,7 @@ interface Props {
  * line stays nameless when the server named none: no "System", no "Peon", no invented agent (R-WP-4).
  * A thinking delta never reaches here (§3.3.3, Q7).
  */
-export function ChatLog({ messages, outgoing, live, toolLines }: Props) {
+export function ChatLog({ messages, outgoing, user, live, toolLines }: Props) {
   const empty = messages.length === 0 && outgoing.length === 0 && live === ''
   return (
     <ul className="chat-log" data-testid="chat-log" aria-label="Verlauf">
@@ -33,8 +35,8 @@ export function ChatLog({ messages, outgoing, live, toolLines }: Props) {
       ))}
       {outgoing.map((text, index) => (
         <li key={`outgoing-${index}`} className="chat-line user pending" data-testid="chat-line-user">
-          {/* the name of the own browser arrives with its identity (6c); until then the role label */}
-          <ChatAuthor origin={USER_ROLE_LABEL} />
+          {/* his own name, so the line does not jump when the history brings the server's author back */}
+          <ChatAuthor origin={user ?? USER_ROLE_LABEL} />
           <span className="chat-text">{text}</span>
         </li>
       ))}

@@ -25,6 +25,12 @@ interface Props {
    * `project` (§4.3.4 of the increment).
    */
   files?: ReactNode
+  /**
+   * The name of this browser (R-WP-25), given by the shell that holds it — identity is not per project,
+   * so this component neither stores nor interprets it: it labels the sends and the own pending lines.
+   * Absent means no name: no field on the wire, no prefix, the role label on the screen (UC-WP-48).
+   */
+  user?: string | null
 }
 
 /** How long the view waits before it asks again — long enough not to hammer a restarting server. */
@@ -54,7 +60,7 @@ const RECONNECT_MS = 500
  *
  * The page holds the state; {@link ChatLog} and {@link ChatComposer} only draw it.
  */
-export function ChatPage({ project, files }: Props) {
+export function ChatPage({ project, files, user }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [tiles, setTiles] = useState<AgentTile[]>([])
   const [outgoing, setOutgoing] = useState<string[]>([])
@@ -193,7 +199,8 @@ export function ChatPage({ project, files }: Props) {
     setRunningTurn(projectId)
     stoppedTurn.current = null
     try {
-      await sendMessage(projectId, text)
+      // the name of this browser goes with it, and only when there is one (R-WP-25, UC-WP-48)
+      await sendMessage(projectId, text, user)
     } catch (reason) {
       setOutgoing(previous => previous.slice(0, -1))
       setRunningTurn(null)
@@ -269,7 +276,7 @@ export function ChatPage({ project, files }: Props) {
         <h1>Chat</h1>
         <p className="hint">Projekt: {project.name}</p>
         <ChatTiles tiles={tiles} onAction={act} onInspect={setInsight} />
-        <ChatLog messages={messages} outgoing={outgoing} live={live} toolLines={toolLines} />
+        <ChatLog messages={messages} outgoing={outgoing} user={user} live={live} toolLines={toolLines} />
         {error !== null && (
           <p className="chat-error" data-testid="chat-error" role="alert">
             {error}

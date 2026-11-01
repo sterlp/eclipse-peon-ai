@@ -187,8 +187,11 @@ sequenceDiagram
   „Turn läuft" und „Aktion läuft" in **einem** Monitor. `POST` antwortet `202`; läuft ein Turn, wird die
   Aktion abgelehnt (`409`), nicht eingereiht. Umgekehrt wartet ein Senden hinter einer laufenden Aktion
   — Senden wird **nie** abgelehnt (R-WP-10). Ein Stop während einer wartenden Aktion wird abgelehnt
-  (`409`): der Cancel-Flag gehört der Aktion, ein halber Compact ist kein Ergebnis (D-17). Fehler einer
-  Aktion sind eine `tool`-Zeile (live), kein neuer Kanal.
+  (`409`): der Cancel-Flag gehört der Aktion, ein halber Compact ist kein Ergebnis (D-17). Nach einer
+  abgeschlossenen Aktion ist der Cancel-Flag gelöscht — ein Compact nach einem Stop läuft. Wartet ein
+  Senden länger als **10 s** auf die Freigabe (Frist gegen das Claim-Leck), endet der Turn als
+  `failed`-Event, nie als stiller Block. Fehler einer Aktion sind eine `tool`-Zeile (live), kein neuer
+  Kanal.
 * **Der Blick (`GET …/agents/{name}`) liest das Core-Memory im RAM** (`AiAgent.getMemory()`) —
   schreibgeschützt, nur für Plan/Dev/Review (Jon/Search ⇒ 400), begrenzt (letzte 500 Zeilen, 8 192
   Zeichen je Zeile, `truncated`-Kennzeichnung). Nach einem Neustart ist der Blick leer (Team beginnt

@@ -46,11 +46,16 @@ export async function listMessages(projectId: string): Promise<ChatMessage[]> {
 /**
  * Fire and forget — the server answers 202 with no body whether or not Jon is busy, because a busy
  * project queues the input instead of refusing it (R-WP-10).
+ *
+ * `user` is the name of this browser (R-WP-25): a label of the sender, never an addressee, and it is left
+ * out of the body entirely when the browser holds none — then the request is exactly `{ text }` and the
+ * server writes no prefix (UC-WP-48).
  */
-export async function sendMessage(projectId: string, text: string): Promise<void> {
+export async function sendMessage(projectId: string, text: string, user?: string | null): Promise<void> {
+  const name = user?.trim()
   return request<void>(`/api/projects/${encodeURIComponent(projectId)}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text, ...(name ? { user: name } : {}) }),
   })
 }
 

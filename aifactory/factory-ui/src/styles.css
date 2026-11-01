@@ -21,6 +21,18 @@
   color: var(--text-h);
 }
 
+/* The browser's own name, at the end of the header — small, because it is a label and not a workspace. */
+.app-user {
+  margin-left: auto;
+  width: 9rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+
 .tabs {
   display: flex;
   gap: 0.25rem;
