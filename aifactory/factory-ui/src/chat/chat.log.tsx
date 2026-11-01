@@ -1,5 +1,8 @@
 import type { ChatMessage } from './chat.client'
 
+/** The label of R-WP-25 for a user line without a name — a role, not an invented author. */
+const USER_ROLE_LABEL = 'YOU'
+
 interface Props {
   /** The finished lines — the only truth for text a turn has written (R-WP-11). */
   messages: ChatMessage[]
@@ -13,8 +16,10 @@ interface Props {
  * One project's conversation as the screen shows it: history, then the still unconfirmed own inputs,
  * then the live line and the tool lines of the running turn.
  *
- * Every line names its author when it has one and stays nameless when it has none — no "System", no
- * "Peon", no invented label (R-WP-4). A thinking delta never reaches here (§3.3.3, Q7).
+ * A user's line always names its author — the person the server named, or the role label of the doc —
+ * because the chat is shared and every viewer has to read the same thing (R-WP-25, UC-WP-48). An agent's
+ * line stays nameless when the server named none: no "System", no "Peon", no invented agent (R-WP-4).
+ * A thinking delta never reaches here (§3.3.3, Q7).
  */
 export function ChatLog({ messages, outgoing, live, toolLines }: Props) {
   const empty = messages.length === 0 && outgoing.length === 0 && live === ''
@@ -22,12 +27,14 @@ export function ChatLog({ messages, outgoing, live, toolLines }: Props) {
     <ul className="chat-log" data-testid="chat-log" aria-label="Verlauf">
       {messages.map((message, index) => (
         <li key={`history-${index}`} className={`chat-line ${message.role}`} data-testid={`chat-line-${message.role}`}>
-          <ChatAuthor origin={message.origin} />
+          <ChatAuthor origin={authorOf(message)} />
           <span className="chat-text">{message.text}</span>
         </li>
       ))}
       {outgoing.map((text, index) => (
         <li key={`outgoing-${index}`} className="chat-line user pending" data-testid="chat-line-user">
+          {/* the name of the own browser arrives with its identity (6c); until then the role label */}
+          <ChatAuthor origin={USER_ROLE_LABEL} />
           <span className="chat-text">{text}</span>
         </li>
       ))}
@@ -44,6 +51,11 @@ export function ChatLog({ messages, outgoing, live, toolLines }: Props) {
       {empty && <li className="empty-state">Noch keine Nachrichten</li>}
     </ul>
   )
+}
+
+/** A user's author is the person the server named, or the doc's role label; an agent's is only ever what the server named. */
+function authorOf(message: ChatMessage): string | null | undefined {
+  return message.role === 'user' ? (message.origin ?? USER_ROLE_LABEL) : message.origin
 }
 
 /** The author of one line — drawn only where one exists, because an invented label would be a lie. */

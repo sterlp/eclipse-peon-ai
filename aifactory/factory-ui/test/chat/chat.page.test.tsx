@@ -23,6 +23,8 @@ interface Chat {
 }
 
 const QUESTION: ChatMessage = { role: 'user', text: 'wo liegen die Dateien?' }
+/** A user line the server named — the shape of R-WP-25: the author is a person, not an agent. */
+const ANNAS_QUESTION: ChatMessage = { role: 'user', text: 'bitte X', origin: 'Anna' }
 const ANSWER: ChatMessage = { role: 'jon', text: 'Im Root liegen: pom.xml und README.md' }
 /** A team member's final answer — role `jon` with an author, never a third role (UC-WP-39). */
 const TEAM_ANSWER: ChatMessage = { role: 'jon', text: 'Eine Banane.', origin: 'Dev' }
@@ -364,13 +366,47 @@ test('everyLineCarriesItsAuthor', async () => {
   render(<ChatPage project={project()} />)
   await flush()
 
-  // exactly two lines have an agent relationship, and exactly those two carry a name (R-WP-4)
-  expect(authorsOnScreen()).toEqual(['Dev', 'Jon'])
+  // exactly two lines have an agent relationship, and exactly those two carry an agent name (R-WP-4)
+  expect(agentAuthorsOnScreen()).toEqual(['Dev', 'Jon'])
 
-  // the own input has no agent relationship: no label, and nothing standing in for one
-  const own = screen.getByTestId('chat-line-user')
-  expect(within(own).queryAllByTestId('chat-line-author')).toHaveLength(0)
+  // the own input has no agent relationship, so it names no agent — what it names is the role label the
+  // doc gives a nameless user line (R-WP-25); the named case is UC-WP-48 below
+  expect(userAuthorsOnScreen()).toEqual(['YOU'])
   expect(screen.queryByText(/System|Peon|Unbekannt/i)).toBeNull()
+})
+
+// UC-WP-48
+test('theSharedChatShowsWhoWroteIt', async () => {
+  stubChat({ messages: [ANNAS_QUESTION, TEAM_ANSWER, JONS_ANSWER] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  // the server names the person, so a viewer who never typed anything reads the same author (R-WP-25)
+  expect(userAuthorsOnScreen()).toEqual(['Anna'])
+  expect(within(screen.getByTestId('chat-line-user')).getByText('Anna')).toBeInTheDocument()
+  expect(within(screen.getByTestId('chat-line-user')).getByText(ANNAS_QUESTION.text)).toBeInTheDocument()
+  // and the person never becomes an agent of the conversation
+  expect(agentAuthorsOnScreen()).toEqual(['Dev', 'Jon'])
+})
+
+// UC-WP-48
+test('withoutANameTheLineSaysYOU', async () => {
+  const chat = stubChat({ messages: [QUESTION, ANSWER] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  // GIVEN no name set THEN the line says YOU — the doc's role label, not a guessed author
+  expect(userAuthorsOnScreen()).toEqual(['YOU'])
+  // a line the server left without an agent stays nameless (R-WP-4)
+  const jonsLine = screen.getByTestId('chat-line-jon')
+  expect(within(jonsLine).queryAllByTestId('chat-line-author')).toHaveLength(0)
+  expect(agentAuthorsOnScreen()).toEqual([])
+
+  // the own, still unconfirmed line carries the same label, so it does not jump when the history arrives
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'und ohne Namen' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  expect(chat.countOf('/messages', 'POST')).toBe(1)
+  expect(userAuthorsOnScreen()).toEqual(['YOU', 'YOU'])
 })
 
 // UC-WP-40
@@ -393,7 +429,7 @@ test('onlyFinalAnswersFromTheTeam', async () => {
   chat.setMessages([QUESTION, TEAM_ANSWER, JONS_ANSWER])
   await chat.push(event('done', { millis: 4321 }))
 
-  expect(authorsOnScreen()).toEqual(['Dev', 'Jon'])
+  expect(agentAuthorsOnScreen()).toEqual(['Dev', 'Jon'])
   expect(screen.getAllByTestId('chat-line-jon')).toHaveLength(2)
   expect(screen.getAllByText('Eine Banane.')).toHaveLength(1)
   expect(screen.getByTestId('chat-log').textContent).not.toContain('DENKTEXT-AUS-MITGLIED')
@@ -415,7 +451,7 @@ test('reconnectReadsTeamAnswerFromTheHistory', async () => {
   await waitFor(() => expect(chat.countOf('/events', 'GET')).toBe(2), { timeout: 1500 })
 
   expect(screen.getAllByText('Eine Banane.')).toHaveLength(1)
-  expect(authorsOnScreen()).toEqual(['Dev', 'Jon'])
+  expect(agentAuthorsOnScreen()).toEqual(['Dev', 'Jon'])
   expect(screen.queryByTestId('chat-live')).toBeNull()
 })
 
@@ -528,7 +564,18 @@ test('aCompactingTileOffersNoStop', async () => {
   expect(screen.getByTestId('chat-stop')).toBeDisabled()
 })
 
-/** The author labels on the screen, in reading order — the shape of R-WP-4's claim. */
-function authorsOnScreen(): (string | null)[] {
-  return screen.getAllByTestId('chat-line-author').map(label => label.textContent)
+/** The author labels of the agent lines, in reading order — the shape of R-WP-4's claim. */
+function agentAuthorsOnScreen(): (string | null)[] {
+  return authorsOfLines('chat-line-jon')
+}
+
+/** The author labels of the user lines, in reading order — what every viewer reads (R-WP-25, UC-WP-48). */
+function userAuthorsOnScreen(): (string | null)[] {
+  return authorsOfLines('chat-line-user')
+}
+
+function authorsOfLines(lineTestId: string): (string | null)[] {
+  return screen
+    .getAllByTestId(lineTestId)
+    .flatMap(line => within(line).queryAllByTestId('chat-line-author').map(label => label.textContent))
 }

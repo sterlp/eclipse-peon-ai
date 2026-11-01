@@ -2,10 +2,10 @@ import { request } from '../shared/api.client'
 import type { AgentTile } from './chat.agents.client'
 
 /**
- * One line of the shared history. `origin` names the agent that spoke — set for Jon's own line and
- * for a team member's final answer, absent for the user's line, because a line without an agent
- * relationship carries no name (R-WP-4). It is never guessed: what the server does not name, the
- * screen leaves unnamed.
+ * One line of the shared history. `origin` names who spoke — the agent that spoke for Jon's own line and
+ * a team member's final answer, the person for a user's line (R-WP-25). A user's line without a name
+ * carries none and the screen shows its role label; an agent's line without one stays unnamed, because
+ * the server never guesses and the UI invents nothing (R-WP-4).
  */
 export interface ChatMessage {
   role: 'user' | 'jon'
