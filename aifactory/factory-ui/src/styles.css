@@ -431,3 +431,11 @@ button {
     overflow-wrap: anywhere;
   }
 }
+
+/* Stop: der zweite Control des Composers beendet den laufenden Turn — Knopfmaße wie Senden (UC-WP-50). */
+.chat-stop {
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}

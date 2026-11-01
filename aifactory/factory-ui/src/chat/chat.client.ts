@@ -53,3 +53,17 @@ export async function sendMessage(projectId: string, text: string): Promise<void
     body: JSON.stringify({ text }),
   })
 }
+
+/**
+ * End the turn that is running (UC-WP-50). It belongs to the conversation's own edge: it writes nothing,
+ * starts nothing and names no addressee — the same single conversation, only shorter.
+ *
+ * 202 means the stop was <em>taken</em>; the end itself arrives as `done` on the live wire. 409 means no
+ * turn was running — the caller treats that as "already over" and shows no message of its own, because a
+ * refusal here denies the user nothing he wanted.
+ */
+export async function stopTurn(projectId: string): Promise<void> {
+  return request<void>(`/api/projects/${encodeURIComponent(projectId)}/messages/stop`, {
+    method: 'POST',
+  })
+}

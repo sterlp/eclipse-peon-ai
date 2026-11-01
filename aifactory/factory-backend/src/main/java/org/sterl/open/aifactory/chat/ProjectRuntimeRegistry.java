@@ -98,6 +98,14 @@ public class ProjectRuntimeRegistry {
     }
 
     /**
+     * Stop the turn that is running (UC-WP-50). No turn is {@link IllegalStateException} (409), an unknown
+     * project 404 — and nothing else: the stop ends a conversation, it never opens one.
+     */
+    public void stop(String projectId) {
+        runtime(projectId).stop();
+    }
+
+    /**
      * A removed project loses its runtime and its listeners: an agent of a project that no longer exists
      * would keep his memory and his queue alive for nothing, and a stream of a gone project would keep
      * publishing. Only the registration goes — {@code state/<id>} stays, because R-WP-19 names exactly two

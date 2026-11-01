@@ -4,15 +4,19 @@ interface Props {
   draft: string
   /** The page focuses the field when the project opens — so the ref stays with the page's effect. */
   inputRef: RefObject<HTMLInputElement | null>
+  /** A turn is running on this project — the only thing that makes a stop mean something (UC-WP-50). */
+  busy: boolean
   onDraftChange: (value: string) => void
   onSubmit: (event: FormEvent) => void
+  onStop: () => void
 }
 
 /**
- * The only control the chat has (UC-WP-6): it writes into this project's conversation and names no
- * addressee — there is no agent to choose here.
+ * The chat's two controls (UC-WP-6, UC-WP-50): one writes into this project's conversation, one ends the
+ * turn that runs. Neither names an addressee — there is no agent to choose here — and the second one writes
+ * nothing: sending stays enabled while Jon works, because his queue takes the input (R-WP-10).
  */
-export function ChatComposer({ draft, inputRef, onDraftChange, onSubmit }: Props) {
+export function ChatComposer({ draft, inputRef, busy, onDraftChange, onSubmit, onStop }: Props) {
   return (
     <form className="chat-composer" onSubmit={event => void onSubmit(event)}>
       <input
@@ -26,6 +30,15 @@ export function ChatComposer({ draft, inputRef, onDraftChange, onSubmit }: Props
       />
       <button type="submit" data-testid="chat-send" disabled={draft.trim() === ''}>
         Senden
+      </button>
+      <button
+        type="button"
+        className="chat-stop"
+        data-testid="chat-stop"
+        disabled={!busy}
+        onClick={() => void onStop()}
+      >
+        Stop
       </button>
     </form>
   )

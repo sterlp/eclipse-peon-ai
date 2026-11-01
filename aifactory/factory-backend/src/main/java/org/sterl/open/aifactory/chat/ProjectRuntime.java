@@ -284,39 +284,89 @@ final class ProjectRuntime {
      * {@code call()} returns, and {@code call()} answers what queued up while it ran. An input that came
      * in while he worked is answered by that turn and by its {@code done}, so it sends none of its
      * own.</p>
+     *
+     * <p>A task of a queued input therefore also <b>owns nothing</b>: it frees no project, resets no cancel
+     * flag and ends no turn — its {@code call()} answers {@code null} precisely because another turn is
+     * running, and a task that cleared the project there would hand out a turn the project still has
+     * (UC-WP-50: the stop of that turn must still be accepted).</p>
      */
     void submit(String text) {
-        turnInFlight.set(true);
+        // the send that finds no turn in flight is the one that opens it — the flag is set on this thread,
+        // so a stop arriving one millisecond later already addresses the turn the user just started (D-13)
+        boolean opensTurn = !turnInFlight.getAndSet(true);
         failedAgent = null;
         searchWorking = false;
         turns.submit(() -> {
             long startedAt = System.nanoTime();
+            boolean ranTurn = opensTurn;
+            boolean askedCore = false;
             try {
+                if (opensTurn) {
+                    // a turn starts with a clean cancel flag — the monitor outlives the turn, so the stop of
+                    // the previous one must not be born into this one (D-17). Only the send that opened the
+                    // turn may clear it: a queued input arriving here would clear the stop the running turn
+                    // has just been given. Never on the caller's thread, which may hold a stop it just got
+                    monitor.resetCancel();
+                }
                 // the tiles answer before the core sets his working flag, and a previous turn's ERROR
                 // leaves the display with this line instead of lingering until the first tool line
                 streams.publish(projectId, new ChatEvent.Agents(tiles()));
                 model.updateConfig(configForTurn.get());
+                askedCore = true;
                 ChatResponse answer = jon.call(text, monitor);
+                ranTurn = ranTurn || answer != null;
                 if (answer != null) {
                     streams.publish(projectId,
                             new ChatEvent.Done(Duration.ofNanos(System.nanoTime() - startedAt).toMillis()));
                 }
             } catch (TurnNotConfiguredException notConfigured) {
+                ranTurn = ranTurn || askedCore;
                 failedAgent = jon.getName();
                 streams.publish(projectId, new ChatEvent.Failed(notConfigured.getMessage()));
             } catch (RuntimeException failure) {
-                failedAgent = jon.getName();
-                LOG.error("chat turn of project {} failed", projectId, failure);
-                streams.publish(projectId,
-                        new ChatEvent.Failed("the turn failed — the server log names the reason"));
+                ranTurn = ranTurn || askedCore;
+                if (TurnOutcome.of(failure) == TurnOutcome.CANCELED) {
+                    // the user ended this turn himself: done, no error, no failed tile — and the lines he
+                    // already saw stay, because nothing here is re-read (UC-WP-50, D-16)
+                    streams.publish(projectId,
+                            new ChatEvent.Done(Duration.ofNanos(System.nanoTime() - startedAt).toMillis()));
+                } else {
+                    failedAgent = jon.getName();
+                    LOG.error("chat turn of project {} failed", projectId, failure);
+                    streams.publish(projectId,
+                            new ChatEvent.Failed("the turn failed — the server log names the reason"));
+                }
             } finally {
-                searchWorking = false;
-                // the end snapshot goes out while the turn still owns the project, so a tile never shows
-                // WORKING to a reader that is already allowed to act again
-                streams.publish(projectId, new ChatEvent.Agents(tiles()));
-                turnInFlight.set(false);
+                if (ranTurn) {
+                    searchWorking = false;
+                    // the end snapshot goes out while the turn still owns the project, so a tile never shows
+                    // WORKING to a reader that is already allowed to act again
+                    streams.publish(projectId, new ChatEvent.Agents(tiles()));
+                    turnInFlight.set(false);
+                }
             }
         });
+    }
+
+    /**
+     * The counter-movement of {@link #submit} (UC-WP-50): one flag on the project's one monitor, which Jon,
+     * every running delegation and the search sub-loop share — so his turn and theirs end together, with no
+     * thread interrupted and no second turn path. The core reads the flag between its model calls, which is
+     * also the boundary a test has to respect: a tool that is already running runs to its end.
+     *
+     * <p>It writes nothing and starts nothing: the lines the user has seen stay live and the history stays
+     * the memory. A queued input is the core's own business — measured 2026-11-01, an input its turn had
+     * already polled is dropped by the abort ({@code AbstractAgent.call} polls at :318, the loop leaves at
+     * :331 on the cancel, the drain at :334 finds an empty queue), so chat.md's last clause of UC-WP-50
+     * stays open. Refused while no turn runs — a {@link IllegalStateException} ⇒ 409 — because a stop
+     * without a turn is a click that meant nothing, and a half Compact is not something a turn's stop
+     * should touch (D-17).</p>
+     */
+    void stop() {
+        if (!turnInFlight.get()) {
+            throw new IllegalStateException("no turn is running");
+        }
+        monitor.cancel();
     }
 
     /**

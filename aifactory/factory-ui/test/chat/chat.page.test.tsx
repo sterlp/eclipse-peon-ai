@@ -15,6 +15,8 @@ interface Chat {
   setMessages(messages: ChatMessage[]): void
   /** Every `POST …/agents` answers this instead of 202 — the refusal a running turn produces. */
   refuseActions(status: number, message: string): void
+  /** Every `POST …/messages/stop` answers this instead of 202 — the refusal of an ended turn. */
+  setStopAnswer(status: number, message: string): void
   /** Writes bytes onto the open stream — may stop in the middle of an event. */
   push(text: string): Promise<void>
   closeStream(): Promise<void>
@@ -53,9 +55,9 @@ async function flush(): Promise<void> {
 }
 
 /**
- * `fetch` stand-in for the chat edges: the three conversation edges and the tile family (R-WP-7). The
- * stream body is a `ReadableStream` the test writes into byte by byte, so a chunk may end anywhere —
- * including inside one event's JSON.
+ * `fetch` stand-in for the chat edges: the conversation edges (send, stop, events) and the tile family
+ * (R-WP-7). The stream body is a `ReadableStream` the test writes into byte by byte, so a chunk may end
+ * anywhere — including inside one event's JSON.
  */
 function stubChat(
   initial: { messages?: ChatMessage[]; projects?: unknown[]; agents?: AgentTile[] } = {},
@@ -66,6 +68,7 @@ function stubChat(
     messages: initial.messages ?? [],
     agents: initial.agents ?? [],
     refusal: undefined as { status: number; message: string } | undefined,
+    stopAnswer: undefined as { status: number; message: string } | undefined,
   }
   let controller: ReadableStreamDefaultController<Uint8Array> | undefined
 
@@ -99,6 +102,16 @@ function stubChat(
       if (path.endsWith('/agents')) {
         return json(200, state.agents)
       }
+      if (path.endsWith('/messages/stop')) {
+        if (state.stopAnswer !== undefined) {
+          return json(state.stopAnswer.status, {
+            status: state.stopAnswer.status,
+            error: 'conflict',
+            message: state.stopAnswer.message,
+          })
+        }
+        return new Response(null, { status: 202 })
+      }
       if (path.endsWith('/messages') && method === 'POST') {
         return new Response(null, { status: 202 })
       }
@@ -118,6 +131,9 @@ function stubChat(
     },
     refuseActions: (status, message) => {
       state.refusal = { status, message }
+    },
+    setStopAnswer: (status, message) => {
+      state.stopAnswer = { status, message }
     },
     push: async (text: string) => {
       await act(async () => {
@@ -302,14 +318,14 @@ test('oneChatPerProject', async () => {
   const opened = await screen.findByRole('region', { name: 'Chat' })
   await screen.findByText(ANSWER.text)
 
-  // the only control the chat has is the one that writes into THIS conversation — the tile actions of
-  // Inc 5b sit beside it and are asserted separately below: they clear or compact an agent, they open,
-  // rename or delete nothing, so the guard's question is untouched (R-WP-7)
+  // the controls the chat has: one writes into THIS conversation, one ends its running turn (UC-WP-50) —
+  // it names no addressee and starts nothing. The tile actions of Inc 5b sit beside them and are asserted
+  // separately below: they clear or compact an agent, they open, rename or delete nothing (R-WP-7)
   const controls = within(opened)
     .queryAllByRole('button')
     .filter(control => control.closest('.chat-tiles') === null)
     .map(control => control.textContent?.trim() ?? '')
-  expect(controls).toEqual(['Senden'])
+  expect(controls).toEqual(['Senden', 'Stop'])
   expect(controls.filter(label => /neue|gespräch|dialog|verlauf|wechseln|öffnen|clear|lösch/i.test(label))).toEqual(
     [],
   )
@@ -445,6 +461,74 @@ test('clearOnATileNamesThatTileAndARefusalIsALine', async () => {
   expect(screen.getByTestId('chat-log')).toBeInTheDocument()
 })
 
-/** The author labels on the screen, in reading order — the shape of R-WP-4's claim. */function authorsOnScreen(): (string | null)[] {
+// UC-WP-50
+test('stopKeepsTheShownLines', async () => {
+  const chat = stubChat({ messages: [QUESTION], agents: [tile('Jon', 'IDLE')] })
+  render(<ChatPage project={project()} />)
+  await flush()
+  // nothing runs, so nothing can be stopped
+  expect(screen.getByTestId('chat-stop')).toBeDisabled()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'schlaf drei sekunden' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+  const historyReads = chat.countOf('/messages', 'GET')
+
+  await chat.push(event('partial', { kind: 'answer', text: 'Ich schlafe gerade' }))
+  expect(screen.getByTestId('chat-live')).toHaveTextContent('Ich schlafe gerade')
+  expect(screen.getByTestId('chat-stop')).toBeEnabled()
+
+  fireEvent.click(screen.getByTestId('chat-stop'))
+  await flush()
+
+  // exactly one call, on the stop edge, and it starts nothing: no second send, no history read
+  const stops = chat.calls.filter(call => call.path.endsWith('/messages/stop'))
+  expect(stops.map(call => call.method)).toEqual(['POST'])
+  expect(stops[0]?.path).toBe('/api/projects/demo-1a2b3c4/messages/stop')
+  expect(chat.countOf('/messages', 'POST')).toBe(1)
+  expect(chat.countOf('/messages', 'GET')).toBe(historyReads)
+
+  // the turn ends: what he was shown stays on the screen, because the history kept less than that
+  chat.setMessages([QUESTION])
+  await chat.push(event('done', { millis: 5 }))
+
+  expect(screen.getByTestId('chat-live')).toHaveTextContent('Ich schlafe gerade')
+  expect(screen.getByText('schlaf drei sekunden')).toBeInTheDocument()
+  expect(chat.countOf('/messages', 'GET')).toBe(historyReads)
+  expect(screen.getByTestId('chat-stop')).toBeDisabled()
+})
+
+// UC-WP-50
+test('stopOnAFinishedTurnIsSilent', async () => {
+  // a roster that says WORKING is enough to offer the stop — another user's turn is stoppable too (UC-WP-22)
+  const chat = stubChat({ messages: [QUESTION], agents: [tile('Jon', 'WORKING')] })
+  chat.setStopAnswer(409, 'no turn is running')
+  render(<ChatPage project={project()} />)
+  await flush()
+  expect(screen.getByTestId('chat-stop')).toBeEnabled()
+  const rosterReads = chat.countOf('/agents', 'GET')
+
+  fireEvent.click(screen.getByTestId('chat-stop'))
+  await waitFor(() => expect(chat.countOf('/agents', 'GET')).toBe(rosterReads + 1))
+
+  // 409 says the turn was already over — that is what the click wanted, so it is not an error line
+  expect(screen.queryByTestId('chat-error')).toBeNull()
+  expect(chat.countOf('/messages', 'POST')).toBe(0)
+  expect(chat.countOf('/messages', 'GET')).toBe(1)
+})
+
+// UC-WP-50
+test('aCompactingTileOffersNoStop', async () => {
+  // a half Compact is not something a turn's stop may cut — so it is not a turn to stop (D-17)
+  stubChat({ messages: [QUESTION], agents: [tile('Jon', 'COMPACTING')] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent('kompaktiert')
+  expect(screen.getByTestId('chat-stop')).toBeDisabled()
+})
+
+/** The author labels on the screen, in reading order — the shape of R-WP-4's claim. */
+function authorsOnScreen(): (string | null)[] {
   return screen.getAllByTestId('chat-line-author').map(label => label.textContent)
 }

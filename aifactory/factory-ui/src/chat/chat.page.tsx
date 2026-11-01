@@ -1,14 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 
-import { listMessages, sendMessage, type ChatMessage, type ChatStreamEvent } from './chat.client'
+import {
+  listMessages,
+  sendMessage,
+  stopTurn,
+  type ChatMessage,
+  type ChatStreamEvent,
+} from './chat.client'
 import { agentAction, listAgents, type AgentAction, type AgentTile } from './chat.agents.client'
 import { ChatComposer } from './chat.composer'
 import { ChatInsight } from './chat.insight'
 import { ChatLog } from './chat.log'
 import { ChatTiles } from './chat.tiles'
 import { openChatStream } from './chat.stream'
-import { errorMessage } from '../shared/api.client'
+import { ApiRequestError, errorMessage } from '../shared/api.client'
 import type { Project } from '../shared/dto'
 
 interface Props {
@@ -42,6 +48,10 @@ const RECONNECT_MS = 500
  * conversation (UC-WP-49). It is drawn after the {@link files} slot and so lies above the file area, and
  * it stays a region of this view — no fourth tab, no router (R-WP-1).
  *
+ * The composer's second control ends the running turn (UC-WP-50). After an accepted stop this view does
+ * <em>not</em> re-read the history: the live lines the user was already shown are all that exists of the
+ * stopped turn, and there is no second store to read them back from (R-WP-11).
+ *
  * The page holds the state; {@link ChatLog} and {@link ChatComposer} only draw it.
  */
 export function ChatPage({ project, files }: Props) {
@@ -54,6 +64,13 @@ export function ChatPage({ project, files }: Props) {
   const [error, setError] = useState<string | null>(null)
   /** The tile whose insight is open — a name, not a conversation: there is still exactly one of those. */
   const [insight, setInsight] = useState<string | null>(null)
+  /**
+   * The project whose turn we started and have not seen end — held by id, so switching the project ends it
+   * here without an effect writing state (UC-WP-50).
+   */
+  const [runningTurn, setRunningTurn] = useState<string | null>(null)
+  /** The project whose turn the user asked to end, so its `done` must not read over his lines (D-16). */
+  const stoppedTurn = useRef<string | null>(null)
   const input = useRef<HTMLInputElement>(null)
   const projectId = project?.id ?? null
 
@@ -97,13 +114,21 @@ export function ChatPage({ project, files }: Props) {
         case 'done':
           // one reload per turn — the turn that drained a queued input closes that input too, and the
           // history that lands carries every finished line, the team's own answer among them
-          void refresh()
+          if (stoppedTurn.current === projectId) {
+            // UC-WP-50: after an accepted stop the lines he has seen stay on the screen — there is no
+            // second store to read them back from, and a history read would throw them away (D-16, R-WP-11)
+            stoppedTurn.current = null
+          } else {
+            void refresh()
+          }
           // the end snapshot usually arrives on its own; reading again covers the reader who lost it
           void refreshTiles()
+          setRunningTurn(null)
           break
         case 'error':
           // the reason is a line in the chat, the composer stays usable (Q1)
           setError(event.message)
+          setRunningTurn(null)
           break
         case 'agents':
           // replace, never merge — a snapshot that accumulated would become a second history (R-WP-7)
@@ -111,7 +136,7 @@ export function ChatPage({ project, files }: Props) {
           break
       }
     },
-    [refresh, refreshTiles],
+    [projectId, refresh, refreshTiles],
   )
 
   useEffect(() => {
@@ -163,13 +188,49 @@ export function ChatPage({ project, files }: Props) {
     setOutgoing(previous => [...previous, text])
     setDraft('')
     setError(null)
+    // the send is what opens the turn, so the flag follows the intent and not the answer (D-13): 202 only
+    // says "taken", and a stop that comes one moment later must already address this turn
+    setRunningTurn(projectId)
+    stoppedTurn.current = null
     try {
       await sendMessage(projectId, text)
     } catch (reason) {
       setOutgoing(previous => previous.slice(0, -1))
+      setRunningTurn(null)
       setError(errorMessage(reason))
     }
   }
+
+  /**
+   * Stop the running turn (UC-WP-50). A 409 is not shown: it says the turn was already over, which is
+   * what the click wanted, and the roster is read again so the tiles say so too (D-17). Any other
+   * refusal is a line in the chat like any other error.
+   */
+  async function stop() {
+    if (projectId === null) {
+      return
+    }
+    setError(null)
+    try {
+      await stopTurn(projectId)
+      // remembered for the `done` that follows: his lines stay, the history is not re-read (D-16)
+      stoppedTurn.current = projectId
+    } catch (reason) {
+      if (!isAlreadyOver(reason)) {
+        setError(errorMessage(reason))
+        return
+      }
+    }
+    void refreshTiles()
+  }
+
+  /**
+   * A turn is running when we started one that has not ended, or when the roster shows an agent working —
+   * another user's turn on the same project is a turn the user here may stop (UC-WP-22). COMPACTING is
+   * deliberately not one of them: a half Compact is not something a turn's stop may cut (D-17).
+   */
+  const busy =
+    (runningTurn !== null && runningTurn === projectId) || tiles.some(tile => tile.state === 'WORKING')
 
   /**
    * Clear or Compact one tile. 202 says <em>taken</em>, so both reads follow; a refusal (409 while a turn
@@ -214,7 +275,14 @@ export function ChatPage({ project, files }: Props) {
             {error}
           </p>
         )}
-        <ChatComposer draft={draft} inputRef={input} onDraftChange={setDraft} onSubmit={submit} />
+        <ChatComposer
+          draft={draft}
+          inputRef={input}
+          busy={busy}
+          onDraftChange={setDraft}
+          onSubmit={submit}
+          onStop={stop}
+        />
       </section>
       {files}
       {insight !== null && (
@@ -222,6 +290,14 @@ export function ChatPage({ project, files }: Props) {
       )}
     </>
   )
+}
+
+/**
+ * The server's "no turn is running" (409) to a stop. The user got what he asked for either way, so this
+ * one refusal is absorbed instead of printed (UC-WP-50, D-17).
+ */
+function isAlreadyOver(error: unknown): boolean {
+  return error instanceof ApiRequestError && (error.apiError?.status ?? 0) === 409
 }
 
 /**

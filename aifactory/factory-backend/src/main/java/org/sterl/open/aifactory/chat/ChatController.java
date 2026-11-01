@@ -25,7 +25,9 @@ import jakarta.servlet.http.HttpServletResponse;
  * The HTTP edges of the chat, and the only class here that knows HTTP and JSON. <b>Three conversation
  * edges</b> — {@code GET/POST …/messages} and {@code GET …/events} — and the <b>tile family</b>
  * {@code GET/POST …/agents} with {@code GET …/agents/{name}} (architecture doc "Die drei Gesprächs-Kanten
- * bleiben drei").
+ * bleiben drei"). The edge {@code …/messages} answers as two routes: sending starts a turn,
+ * {@code POST …/messages/stop} ends the one that runs, so an edge is one place of the conversation and not
+ * one HTTP method (UC-WP-50).
  *
  * <p>The family is deliberately narrower than it looks: it addresses a tile of this project's own team, it
  * starts neither a turn nor a second conversation, and it can neither create an agent nor choose who to
@@ -63,6 +65,20 @@ public class ChatController {
     @ResponseStatus(HttpStatus.ACCEPTED)
     public void send(@PathVariable("id") String projectId, @RequestBody SendMessageRequest request) {
         runtimes.submit(projectId, request == null ? null : request.text());
+    }
+
+    /**
+     * End the turn that is running (UC-WP-50). 202 means the stop was taken, not that the turn is over —
+     * its end arrives as {@code done} on the live wire, and the lines already shown stay. 409 while no turn
+     * runs, which the browser reads as "it was already over" and answers with no message of its own.
+     *
+     * <p>The fourth route of the conversation's three edges: it writes nothing and starts nothing, so it
+     * cannot become a second conversation, and it carries no body and no name (R-WP-11, UC-WP-16).</p>
+     */
+    @PostMapping("/api/projects/{id}/messages/stop")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public void stop(@PathVariable("id") String projectId) {
+        runtimes.stop(projectId);
     }
 
     /**

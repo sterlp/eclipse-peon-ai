@@ -69,13 +69,17 @@ import org.sterl.open.aifactory.project.ProjectService;
  * handlers can carry. A second conversation would have to arrive through one of the two — a path
  * segment, a request field, or a second runtime behind the same project — and each is refused here.
  *
- * <p>Two route families are frozen here, not one: the three conversation edges (unchanged since Inc 3) and
- * the <b>tile family</b> of Inc 5b/5c. That is a sharpening, not a loosening — a route that is in neither set
+ * <p>Two route families are frozen here, not one: the conversation edges of the Arch-Doc and the
+ * <b>tile family</b> of Inc 5b/5c. The conversation side carries <b>three edges and four routes</b> since
+ * Inc 5d: the edge that carries the conversation also carries its <b>end</b> ({@code POST …/messages/stop},
+ * UC-WP-50) — one conversation per project still means one address per project, and the fourth route adds
+ * neither a placeholder nor a body. That is a sharpening, not a loosening — a route that is in neither set
  * lands in the conversation bucket and fails it, and the tile family has its own exact path form. That form
  * is also where the <b>one</b> further placeholder is decided: {@code \{name\}} appears behind
  * {@code agents} and nowhere else, and every handler must still take exactly one {@code \{id\}}. What the
  * tile family may not do is stated positively at the end of the test: it knows one roster, it reads a tile
- * of it, and it refuses every other name.</p>
+ * of it, and it refuses every other name. The stop is stated positively the same way: with no turn running
+ * it refuses itself and opens nothing.</p>
  *
  * <p>Deliberately annotation-based, never parameter-name based: the aifactory build compiles without
  * {@code -parameters}, so parameter names are {@code arg0} and would prove nothing (AGENTS-DEV). The
@@ -89,9 +93,9 @@ class OneChatPerProjectTest {
     private static final String GIT_URL = "https://git.example.com/acme/one-chat.git";
     private static final String MODEL_PACKAGE = "org.sterl.open.aifactory.chat.dto";
 
-    /** One project id, then one of the three known conversation segments — nothing that could select a dialogue. */
+    /** One project id, then one of the known conversation segments — nothing that could select a dialogue. */
     private static final Pattern ONE_PROJECT_PATH =
-            Pattern.compile("^/api/projects/\\{id\\}/(messages|events)$");
+            Pattern.compile("^/api/projects/\\{id\\}/(messages|messages/stop|events)$");
 
     /**
      * The tile family (Inc 5b/5c, architecture doc "Die drei Gesprächs-Kanten bleiben drei"): one project
@@ -141,14 +145,15 @@ class OneChatPerProjectTest {
         List<Route> tileFamily = routes.stream().filter(TILE_ROUTES::contains).toList();
         List<Route> conversation = routes.stream().filter(route -> !TILE_ROUTES.contains(route)).toList();
         assertThat(conversation)
-                .as("genau die drei Gesprächskanten des Arch-Docs — jede weitere Kante wäre ein zweiter"
-                        + " Gesprächsweg, auch unter einem neuen Pfad")
+                .as("genau die drei Gesprächskanten des Arch-Docs als vier Routen — jede weitere Kante"
+                        + " wäre ein zweiter Gesprächsweg, auch unter einem neuen Pfad")
                 .containsExactlyInAnyOrder(
                         new Route(HttpMethod.GET, "/api/projects/{id}/messages"),
                         new Route(HttpMethod.POST, "/api/projects/{id}/messages"),
+                        new Route(HttpMethod.POST, "/api/projects/{id}/messages/stop"),
                         new Route(HttpMethod.GET, "/api/projects/{id}/events"));
-        // with the set fixed there is nothing left to delete a conversation with, and the only POST is
-        // the one that sends into the existing conversation
+        // with the set fixed there is nothing left to delete a conversation with, and the two POSTs are the
+        // one that sends into it and the one that ends the turn that runs (UC-WP-50)
         assertThat(conversation)
                 .allSatisfy(route -> assertThat(route.path()).as("route %s", route).matches(ONE_PROJECT_PATH));
         assertThat(tileFamily)
@@ -250,6 +255,14 @@ class OneChatPerProjectTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThat(runtimes.transcript(project.id(), AiDevAgent.NAME).lines())
                 .as("der Blick liest eine Kachel, er baut nichts auf — schon gar kein zweites Gespräch")
+                .isEmpty();
+        // the positive replacement for the fourth route: the stop ends the one conversation's turn, it
+        // cannot be aimed at another one and it opens nothing (UC-WP-50, UC-WP-16)
+        assertThatThrownBy(() -> runtimes.stop(project.id()))
+                .as("ohne laufenden Turn gibt es nichts zu stoppen — die Kante hat nichts auszuwählen")
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(runtimes.history(project.id()))
+                .as("ein abgelehnter Stop schreibt nichts in das Gespräch")
                 .isEmpty();
         assertThat(runtimes.runtimeCount())
                 .as("die Kachel-Kanten öffnen kein zweites Gespräch auf")

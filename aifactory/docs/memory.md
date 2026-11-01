@@ -29,23 +29,22 @@ Paul freigegeben (autonom): „alles bekannte umsetzen, kleine Incremente, schö
 
 ## Backlog dieses Zyklus (kleine Incremente, je grün)
 
-1. **Inc 5a** — Review-Härtung: C-1 (Symlink im Listing), C-3 (oxlint `chat ↛ project`), C-4
-   (Schreibwurzeln == Lesewurzeln), LOW-Kommentare. Fabrik/UI-only.
-2. **Inc 5b** — Kacheln (UC-WP-11/12/13, R-WP-7 🚧): Name, Kontextzahl, Status, Clear/Compact; Clear auf
-   Jon kaskadiert.
-3. **Inc 5c** — Blick (UC-WP-49): Slide-out je Kachel, RAM-Stand des Agenten lesen. **Vorab klären:** hat
-   der Core schon einen Lese-Zugriff auf das Agenten-Gespräch (`AiAgent`-Memory)? Wenn nein → Core-Touch =
-   Blocker, Story parken + Proposal an Paul (Approval-Pflicht 2026-10-29).
-4. **Inc 6** — Nutzername (R-WP-17/R-WP-25, UC-WP-25/48): Name im Browser-Speicher, `[User <Name>]:` an
+1. ~~**Inc 5a**~~ · ~~**Inc 5b**~~ · ~~**Inc 5c**~~ · **Inc 5d** — gebaut (2026-11-01, Branch `web-factory-mvp`,
+   wartet auf Review): 5a Härtung (C-1 Symlink-Listing, C-3 oxlint `chat ↛ project`, C-4 Wurzel-Parität,
+   L-1…L-5) · 5b Kacheln (UC-WP-11/12/13, R-WP-7 ✅) · 5c Blick (UC-WP-49, R-WP-26 ✅) · 5d Stop
+   (UC-WP-50, `POST …/messages/stop`, Cancel-Flag am `SseTurnMonitor`). **Offen für Jon:** UC-WP-50 bleibt
+   ❌ — `chat.md:87` „gequeuete Eingaben bleiben in der Queue" hält nicht (s. Fallstricke); Entscheidung
+   Core-Fix (Paul) oder Doc-Umformulierung.
+2. **Inc 6** — Nutzername (R-WP-17/R-WP-25, UC-WP-25/48): Name im Browser-Speicher, `[User <Name>]:` an
    Jon, Chat zeigt Namen statt „YOU", Prompt-Zeile Fabrik-only.
-5. **Paco** — nach 5/6 (siehe oben).
+3. **Paco** — nach 6 (siehe oben).
 
 ## Code-Stand
 
 | Inc | Inhalt | Stand |
 |-----|--------|-------|
 | 0–4 + 3f + Origin | Registry/Clone, Auslieferung, Config, Chat, Schreib-Pinning, Datei-Bereich, Herkunft | **auf main**, reviewed (CONCERNS s. o.) |
-| 5a · 5b · 5c | Härtung · Kacheln · Blick | nicht gebaut |
+| 5a · 5b · 5c · 5d | Härtung · Kacheln · Blick · Stop | gebaut (Branch `web-factory-mvp`), Review steht aus |
 | 6 | Nutzername (UC-WP-25/48) | nicht gebaut |
 | danach | Paco, Config-Repo, UI-Seiten/Router | nicht gebaut |
 
@@ -54,12 +53,25 @@ Paul freigegeben (autonom): „alles bekannte umsetzen, kleine Incremente, schö
 * Baureihenfolge: Kern `clean test` → `install -DskipTests` → Fabrik `clean verify`; immer `clean`
   (Eclipse-Lombok-Stümpfe in `target/classes`).
 * `MockLlmServer`: kein `getRequestCount()`, fängt keine `system`-Nachrichten; `@P(name=…)` für Tool-Namen.
+  Leere Queue ⇒ Antwort „No queued response - default mock answer"; die **ganze** SSE-Antwort geht in einem
+  Stück auf den Draht ⇒ ein Abbruch *mitten* im Stream ist damit nicht reproduzierbar.
+* Cancel: der Core liest `AiMonitor.isCanceled()` **zwischen** den Modell-Aufrufen — ein laufendes Tool läuft
+  zu Ende, der Tool-Loop endet danach **normal** (kein Wurf ⇒ `done` über den Normalpfad). Eine
+  `CancellationException` erreicht die Fabrik nur im Retry-Backoff (`ApiRetry`: credit 0 ⇒ erster Fehler wirft
+  sofort, ab credit 1 wird gewartet; die Wire-Zeile `API error — attempt …` ist das Warte-Signal,
+  `AgentStopTest#stopInsideTheRetryWaitEndsTheTurnAsAnEnd`).
+* `AbstractAgent.call` verwirft eine **bereits gepollte** Queue-Eingabe beim Abbruch (poll :318, Schleifen-Ausstieg
+  :331, Drain :334 leer) ⇒ gemessen 2026-11-01: die Eingabe ist weg; deshalb bleibt UC-WP-50 ❌.
+* `ThreadSafeMemory:128` fügt ein Tool-Ergebnis ohne `AiMessage` mit einer künstlichen `AiMessage.from("ok")`
+  zusammen ⇒ eine `jon/ok`-Verlaufszeile und eine WARN sind kein zusätzlicher Modell-Aufruf.
+* `-Dtest=…` im Reaktor braucht `-Dsurefire.failIfNoSpecifiedTests=false` (`factory-ui` hat keine Java-Tests);
+  `mvn -q` ist bei Erfolg stumm ⇒ Zahlen aus `factory-backend/target/surefire-reports/*.txt`.
 * Guards `OneChatPerProjectTest`/`SharedProjectChatTest` (DTO-Feldliste + Verbotliste) nicht anfassen.
 * Port 8080 = IDE → Nachweise auf 8099; `~/.peon` vor/nach vergleichen; `@TempDir` liegt auf macOS unter
   TMP → Test-Homes nach `target/` (nicht TMP).
 * `lintDocsAndTests`: `root=/Users/sterlp/dev/workset/peon-ai`, `docRoots:["docs"]` (relativ zum Root!),
-  `testRoots` Fabrik+UI, `idPattern UC-WP-\\d+`. Stand 2026-11-01: UC 48/48; ids 79/38; findings 10;
-  VERWAIST 0.
+  `testRoots` Fabrik+UI, `idPattern UC-WP-\\d+`. Stand 2026-11-01 (nach Inc 5d): UC 50/50; ids 114/43;
+  findings 7 (UC-WP-43…48, 25); VERWAIST 0.
 * eclipseEditFile: `oldString`-Parameter wird bei langen Blöcken nicht übertragen → lange Edits über
   `eclipseWriteFile` (ganzes File) oder `eclipseReplaceLines` (Zeilennummer).
 * `web-prototype.md` existiert nicht mehr (Restructure `703916ce`) — SOLL liegt in `chat.md`/`files.md`.

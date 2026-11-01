@@ -39,6 +39,14 @@ import org.sterl.open.aifactory.chat.dto.AgentTileDto;
  * the history, and a second copy on the wire would be a second truth (R-WP-11). {@code START}/{@code END}
  * carry no value, {@code TOOL} chunks duplicate the {@code tool} line that {@link #onChatResponse}
  * already sends.</p>
+ *
+ * <p><b>The monitor is also the stop.</b> Being one per project is what makes {@link #isCanceled()} enough
+ * for the whole team: the core hands this same instance to a delegated member
+ * ({@code PoDelegateTool.dispatch → target.call(prompt, this.monitor)}, {@code OwnerMonitor} and
+ * {@code AsyncMonitor} passing {@code isCanceled()} through) and to the search sub-loop, so one flag ends
+ * the turn everywhere at once. That is the Eclipse plugin's route
+ * ({@code IProgressMonitor.setCanceled(true)}) without Eclipse, and the reason stopping needs no core
+ * change (UC-WP-50).</p>
  */
 class SseTurnMonitor implements AiMonitor {
 
@@ -46,6 +54,9 @@ class SseTurnMonitor implements AiMonitor {
     private final ChatStreamRegistry streams;
     private final Supplier<List<AgentTileDto>> roster;
     private final Consumer<String> sawOrigin;
+
+    /** The stop of UC-WP-50 — read by the core between its model calls, set by {@link ProjectRuntime#stop()}. */
+    private volatile boolean canceled;
 
     /**
      * @param roster    the project's tiles, read again per callback — the monitor keeps no roster of its
@@ -59,6 +70,29 @@ class SseTurnMonitor implements AiMonitor {
         this.streams = streams;
         this.roster = roster;
         this.sawOrigin = sawOrigin;
+    }
+
+    /**
+     * The core's one question for a stop. Overriding the {@link AiMonitor} default of {@code false} is the
+     * whole mechanism — the stream handle, the retry backoff, the tool loop and the delegation chain all
+     * read this flag, so the factory interrupts no thread and starts no second turn path.
+     */
+    @Override
+    public boolean isCanceled() {
+        return canceled;
+    }
+
+    /** Asked of the turn that is running now — a turn that has not started yet must not be born stopped. */
+    void cancel() {
+        canceled = true;
+    }
+
+    /**
+     * Called by the runtime <b>before</b> every call to Jon: without it the first stop would stop every
+     * later turn of the project too, because a project keeps one monitor for its whole life.
+     */
+    void resetCancel() {
+        canceled = false;
     }
 
     @Override
