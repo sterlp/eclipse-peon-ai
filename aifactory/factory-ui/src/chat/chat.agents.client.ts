@@ -47,3 +47,32 @@ export async function agentAction(
     body: JSON.stringify({ name, action }),
   })
 }
+
+/** Who spoke a line of an agent's own conversation — the core's roles, three names on the wire. */
+export type TranscriptKind = 'user' | 'agent' | 'tool'
+
+export interface TranscriptLine {
+  kind: TranscriptKind
+  text: string
+}
+
+/**
+ * One agent's own conversation (R-WP-26, UC-WP-49) — a bounded, read-only view of the core's memory.
+ * `truncated` says the older lines were dropped, and the caller must not offer a way to load them: the
+ * edge has none, because a second page would be a second history.
+ */
+export interface AgentTranscript {
+  name: string
+  truncated: boolean
+  lines: TranscriptLine[]
+}
+
+/**
+ * Read the own conversation of one tile's agent. Only a tile offering TRANSCRIPT has one — for any other
+ * name, and for a name the roster does not know, the server answers 400.
+ */
+export async function readTranscript(projectId: string, name: string): Promise<AgentTranscript> {
+  return request<AgentTranscript>(
+    `/api/projects/${encodeURIComponent(projectId)}/agents/${encodeURIComponent(name)}`,
+  )
+}

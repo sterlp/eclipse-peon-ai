@@ -25,6 +25,8 @@ import org.sterl.llmpeon.tool.tools.SearchAgentTool;
 import org.sterl.open.aifactory.config.TurnNotConfiguredException;
 import org.sterl.open.aifactory.chat.dto.AgentAction;
 import org.sterl.open.aifactory.chat.dto.AgentTileDto;
+import org.sterl.open.aifactory.chat.dto.AgentTranscriptDto;
+import org.sterl.open.aifactory.chat.dto.TileCapability;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -149,7 +151,7 @@ final class ProjectRuntime {
         long budget = model.getConfig().getAutoCompactAfter();
         List<AgentTileDto> tiles = new ArrayList<>();
         for (AiAgent agent : jon.getTeam()) {
-            tiles.add(tileOf(agent, agent == jon ? AgentTiles.Seat.JON : AgentTiles.Seat.MEMBER, budget));
+            tiles.add(tileOf(agent, seatOf(agent), budget));
         }
         tiles.add(AgentTiles.of(SEARCH_AGENT_DISPLAY_NAME, 0L, false, 0, 0L, searchWorking, false, false,
                 AgentTiles.capabilitiesOf(AgentTiles.Seat.SUB_LOOP)));
@@ -167,8 +169,7 @@ final class ProjectRuntime {
      */
     void act(String name, AgentAction action) {
         AiAgent agent = tileNamed(name);
-        AgentTiles.Seat seat = agent == jon ? AgentTiles.Seat.JON : AgentTiles.Seat.MEMBER;
-        if (!AgentTiles.capabilitiesOf(seat).contains(action.capability())) {
+        if (!AgentTiles.capabilitiesOf(seatOf(agent)).contains(action.capability())) {
             throw new IllegalArgumentException(agent.getName() + " offers no " + action);
         }
         AgentActing claim = new AgentActing(agent.getName(), action);
@@ -184,6 +185,28 @@ final class ProjectRuntime {
                 streams.publish(projectId, new ChatEvent.Agents(tiles()));
             }
         });
+    }
+
+    /** The seat a name sits on — the one source of what its tile may do (D-14). */
+    private AgentTiles.Seat seatOf(AiAgent agent) {
+        return agent == jon ? AgentTiles.Seat.JON : AgentTiles.Seat.MEMBER;
+    }
+
+    /**
+     * The insight into one tile's own conversation (R-WP-26, UC-WP-49), read out of the core's memory and
+     * out of nothing else. Two names answer 400 like an action does: one that is no tile of this project,
+     * and one whose tile offers no insight — Jon's conversation <b>is</b> the chat, and the search sub-loop
+     * owns no memory between its calls.
+     *
+     * <p>Nothing here is a conversation of its own: the edge reads, it cannot write, choose or start
+     * anything, so the chat stays the one conversation a project has (UC-WP-16).</p>
+     */
+    AgentTranscriptDto transcript(String name) {
+        AiAgent agent = tileNamed(name);
+        if (!AgentTiles.capabilitiesOf(seatOf(agent)).contains(TileCapability.TRANSCRIPT)) {
+            throw new IllegalArgumentException(agent.getName() + " offers no insight");
+        }
+        return AgentTranscript.of(agent.getName(), agent.getMemory().getCopy());
     }
 
     /** The team member a tile names — the roster is the only address space, so no name is a free path. */

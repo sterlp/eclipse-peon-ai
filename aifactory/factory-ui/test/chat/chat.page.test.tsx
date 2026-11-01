@@ -288,7 +288,12 @@ test('oneChatPerProject', async () => {
   const chat = stubChat({
     messages: [QUESTION, ANSWER],
     projects: [project()],
-    agents: [tile('Jon', 'IDLE'), tile('Plan', 'IDLE')],
+    // Plan carries TRANSCRIPT, so this guard also covers the third affordance Inc 5c adds to a member's
+    // tile — what a tile offers is the server's set, never a name (D-14)
+    agents: [
+      tile('Jon', 'IDLE'),
+      { ...tile('Plan', 'IDLE'), capabilities: ['CONTEXT', 'CLEAR', 'COMPACT', 'TRANSCRIPT'] },
+    ],
   })
   render(<AppShell />)
   expect(await screen.findByLabelText('Git-URL')).toBeInTheDocument()
@@ -308,13 +313,14 @@ test('oneChatPerProject', async () => {
   expect(controls.filter(label => /neue|gespräch|dialog|verlauf|wechseln|öffnen|clear|lösch/i.test(label))).toEqual(
     [],
   )
-  // the positive replacement: what the tiles add is exactly the two actions, and nothing that selects a
-  // conversation — the roster is the only thing a tile can address
+  // the positive replacement: what the tiles add is exactly the two actions plus, for the one tile that
+  // offers it, the read-only Blick — and nothing that selects a conversation: the roster is the only
+  // thing a tile can address (UC-WP-49 adds a read, not a second conversation)
   const tileControls = within(opened)
     .queryAllByRole('button')
     .filter(control => control.closest('.chat-tiles') !== null)
     .map(control => control.textContent?.trim() ?? '')
-  expect([...new Set(tileControls)].sort()).toEqual(['Clear', 'Compact'])
+  expect([...new Set(tileControls)].sort()).toEqual(['Blick', 'Clear', 'Compact'])
 
   fireEvent.click(screen.getByRole('tab', { name: 'Projekte' }))
   expect(screen.queryByTestId('chat-log')).toBeNull()

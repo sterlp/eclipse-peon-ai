@@ -14,6 +14,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.sterl.open.aifactory.config.FactoryConfigService;
 import org.sterl.open.aifactory.chat.dto.AgentAction;
 import org.sterl.open.aifactory.chat.dto.AgentTileDto;
+import org.sterl.open.aifactory.chat.dto.AgentTranscriptDto;
 import org.sterl.open.aifactory.project.ProjectNotFoundException;
 import org.sterl.open.aifactory.project.ProjectRemoved;
 import org.sterl.open.aifactory.project.ProjectService;
@@ -85,6 +86,15 @@ public class ProjectRuntimeRegistry {
      */
     public void act(String projectId, String name, AgentAction action) {
         runtime(projectId).act(name, action);
+    }
+
+    /**
+     * The read-only insight into one tile's own chat. A name that is no tile of this project, and a tile
+     * that offers no insight, are {@link IllegalArgumentException} (400) — this edge reads a conversation,
+     * it can never open, choose or start one.
+     */
+    public AgentTranscriptDto transcript(String projectId, String name) {
+        return runtime(projectId).transcript(name);
     }
 
     /**

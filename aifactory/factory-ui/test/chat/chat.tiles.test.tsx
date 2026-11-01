@@ -37,7 +37,7 @@ const TEAM: AgentTile[] = [
 ]
 
 function renderTeam(onAction = vi.fn()) {
-  render(<ChatTiles tiles={TEAM} onAction={onAction} />)
+  render(<ChatTiles tiles={TEAM} onAction={onAction} onInspect={vi.fn()} />)
   return onAction
 }
 
@@ -74,6 +74,7 @@ test('compactShowsItsOwnState', () => {
     <ChatTiles
       tiles={[tile('Dev', 'COMPACTING', { capabilities: ['CONTEXT', 'CLEAR', 'COMPACT', 'TRANSCRIPT'] })]}
       onAction={vi.fn()}
+      onInspect={vi.fn()}
     />,
   )
 
@@ -86,7 +87,13 @@ test('compactShowsItsOwnState', () => {
 // UC-WP-12
 test('actionNamesTheTileItWasClickedOn', () => {
   const seen: [string, AgentAction][] = []
-  render(<ChatTiles tiles={TEAM} onAction={(name, action) => seen.push([name, action])} />)
+  render(
+    <ChatTiles
+      tiles={TEAM}
+      onAction={(name, action) => seen.push([name, action])}
+      onInspect={vi.fn()}
+    />,
+  )
 
   fireEvent.click(screen.getByTestId('tile-clear-Plan'))
   fireEvent.click(screen.getByTestId('tile-compact-Jon'))

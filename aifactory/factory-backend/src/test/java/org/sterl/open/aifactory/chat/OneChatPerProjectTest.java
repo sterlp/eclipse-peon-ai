@@ -54,9 +54,11 @@ import org.sterl.open.aifactory.chat.dto.AgentAction;
 import org.sterl.open.aifactory.chat.dto.AgentActionRequest;
 import org.sterl.open.aifactory.chat.dto.AgentTileDto;
 import org.sterl.open.aifactory.chat.dto.AgentTileState;
+import org.sterl.open.aifactory.chat.dto.AgentTranscriptDto;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
 import org.sterl.open.aifactory.chat.dto.TileCapability;
+import org.sterl.open.aifactory.chat.dto.TranscriptLineDto;
 import org.sterl.open.aifactory.project.FakeGitConfig;
 import org.sterl.open.aifactory.project.Project;
 import org.sterl.open.aifactory.project.ProjectService;
@@ -68,10 +70,12 @@ import org.sterl.open.aifactory.project.ProjectService;
  * segment, a request field, or a second runtime behind the same project — and each is refused here.
  *
  * <p>Two route families are frozen here, not one: the three conversation edges (unchanged since Inc 3) and
- * the <b>tile family</b> of Inc 5b. That is a sharpening, not a loosening — a route that is in neither set
- * lands in the conversation bucket and fails it, and the tile family has its own exact path form. What the
- * tile family may not do is stated positively at the end of the test: it knows one roster and refuses every
- * other name.</p>
+ * the <b>tile family</b> of Inc 5b/5c. That is a sharpening, not a loosening — a route that is in neither set
+ * lands in the conversation bucket and fails it, and the tile family has its own exact path form. That form
+ * is also where the <b>one</b> further placeholder is decided: {@code \{name\}} appears behind
+ * {@code agents} and nowhere else, and every handler must still take exactly one {@code \{id\}}. What the
+ * tile family may not do is stated positively at the end of the test: it knows one roster, it reads a tile
+ * of it, and it refuses every other name.</p>
  *
  * <p>Deliberately annotation-based, never parameter-name based: the aifactory build compiles without
  * {@code -parameters}, so parameter names are {@code arg0} and would prove nothing (AGENTS-DEV). The
@@ -90,15 +94,17 @@ class OneChatPerProjectTest {
             Pattern.compile("^/api/projects/\\{id\\}/(messages|events)$");
 
     /**
-     * The tile family (Inc 5b, architecture doc "Die drei Gesprächs-Kanten bleiben drei"): one project id,
-     * one path, and a tile named <b>in the body</b> — never a second path placeholder, which is what would
-     * make an agent selectable the way a conversation must never be.
+     * The tile family (Inc 5b/5c, architecture doc "Die drei Gesprächs-Kanten bleiben drei"): one project
+     * id and either the roster or <b>one tile of that same project</b>. {@code \{name\}} is the second
+     * placeholder this application may have, and only ever behind {@code agents} — it names a tile to read,
+     * never a conversation to open, which is what the path form below pins down.
      */
-    private static final Pattern TILE_PATH = Pattern.compile("^/api/projects/\\{id\\}/agents$");
+    private static final Pattern TILE_PATH = Pattern.compile("^/api/projects/\\{id\\}/agents(/\\{name\\})?$");
 
     private static final Set<Route> TILE_ROUTES = Set.of(
             new Route(HttpMethod.GET, "/api/projects/{id}/agents"),
-            new Route(HttpMethod.POST, "/api/projects/{id}/agents"));
+            new Route(HttpMethod.POST, "/api/projects/{id}/agents"),
+            new Route(HttpMethod.GET, "/api/projects/{id}/agents/{name}"));
 
     /** The names a second conversation or a user concept would have to use. */
     private static final Set<String> FORBIDDEN_FIELD_NAMES = Set.of(
@@ -156,9 +162,13 @@ class OneChatPerProjectTest {
                 .as("jeder Handler nimmt genau ein Projekt entgegen — ein zweiter Pfad-Platzhalter oder"
                         + " eine Request-Parameter wäre die Gesprächsauswahl")
                 .allSatisfy(handler -> {
-                    assertThat(pathVariableCount(handler))
-                            .as("%s nimmt genau ein {id} entgegen", handler.getName())
-                            .isEqualTo(1);
+                    List<String> placeholders = pathVariableNames(handler);
+                    // {name} ist der einzige weitere Platzhalter, und nur hinter agents: er nennt eine Kachel
+                    // desselben Projekts, die gelesen wird (R-WP-26) — nie ein Gespräch, das geöffnet wird
+                    assertThat(placeholders.stream().filter(name -> !"name".equals(name)).toList())
+                            .as("%s nimmt genau ein {id} entgegen — genommen werden %s", handler.getName(),
+                                    placeholders)
+                            .containsExactly("id");
                     assertThat(annotatedWithSomethingElse(handler))
                             .as("%s nimmt nichts weiter entgegen", handler.getName())
                             .isEmpty();
@@ -169,7 +179,8 @@ class OneChatPerProjectTest {
                 .as("die Verlaufslesung, die Eingabe und die Kachel-Sprache sind die ganze Sprache"
                         + " dieser Kanten — ein weiterer Typ wäre ein weiterer Angebotsweg")
                 .containsOnlyKeys(ChatMessageDto.class, SendMessageRequest.class, AgentTileDto.class,
-                        AgentActionRequest.class, AgentTileState.class, TileCapability.class);
+                        AgentActionRequest.class, AgentTileState.class, TileCapability.class,
+                        AgentTranscriptDto.class, TranscriptLineDto.class);
         // the third field is the author R-WP-4 asks for — the guard below is what this list is for: a
         // fourth field, whatever it is called, is a second conversation or a user concept
         assertThat(modelFields.get(ChatMessageDto.class)).containsExactly("role", "text", "origin");
@@ -178,6 +189,10 @@ class OneChatPerProjectTest {
         assertThat(modelFields.get(AgentTileDto.class)).containsExactly("name", "context", "tokens", "estimate",
                 "contextPercent", "budget", "state", "capabilities");
         assertThat(modelFields.get(AgentActionRequest.class)).containsExactly("name", "action");
+        // der Blick liest eine Kachel: ein Agentenname, ein Cap-Flag und Zeilen — kein Feld, das ein
+        // Gespräch adressieren oder einen Autor erfinden könnte
+        assertThat(modelFields.get(AgentTranscriptDto.class)).containsExactly("name", "truncated", "lines");
+        assertThat(modelFields.get(TranscriptLineDto.class)).containsExactly("kind", "text");
         assertThat(modelFields.get(AgentTileState.class))
                 .as("ein Kachel-Zustand ist ein geschlossenes Wertset")
                 .containsExactly("IDLE", "WORKING", "COMPACTING", "ERROR");
@@ -227,6 +242,15 @@ class OneChatPerProjectTest {
         assertThatThrownBy(() -> runtimes.act(project.id(), "Fantom", AgentAction.CLEAR))
                 .as("ein Name, der keine Kachel dieses Projekts ist, wird abgelehnt")
                 .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> runtimes.transcript(project.id(), "Fantom"))
+                .as("lesend gilt dieselbe Grenze — der Roster ist die einzige Adresse")
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> runtimes.transcript(project.id(), AiPoAgent.NAME))
+                .as("Jons Gespräch ist der Chat selbst; der Blick öffnet sich nur vor Plan, Dev und Review")
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(runtimes.transcript(project.id(), AiDevAgent.NAME).lines())
+                .as("der Blick liest eine Kachel, er baut nichts auf — schon gar kein zweites Gespräch")
+                .isEmpty();
         assertThat(runtimes.runtimeCount())
                 .as("die Kachel-Kanten öffnen kein zweites Gespräch auf")
                 .isEqualTo(1);
@@ -325,10 +349,20 @@ class OneChatPerProjectTest {
         return handlers;
     }
 
-    private static long pathVariableCount(Method handler) {
-        return Arrays.stream(handler.getParameters())
-                .filter(parameter -> parameter.isAnnotationPresent(PathVariable.class))
-                .count();
+    /** The declared path placeholders, named as the handler names them — the build has no {@code -parameters}. */
+    private static List<String> pathVariableNames(Method handler) {
+        List<String> names = new ArrayList<>();
+        for (Parameter parameter : handler.getParameters()) {
+            PathVariable variable = parameter.getAnnotation(PathVariable.class);
+            if (variable == null) {
+                continue;
+            }
+            assertThat(variable.value())
+                    .as("ein Platzhalter ohne eigenen Namen läuft ins Leere — dieser Build hat kein -parameters")
+                    .isNotBlank();
+            names.add(variable.value());
+        }
+        return names;
     }
 
     /** Anything a caller could address besides the path: a query, a header, a cookie. */

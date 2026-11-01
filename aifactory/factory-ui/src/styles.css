@@ -354,3 +354,80 @@ button {
     overflow-wrap: anywhere;
   }
 }
+
+
+/* Blick in das Gespräch eines Agenten: dieselbe Geometrie wie der Datei-Bereich, eine Ebene darüber (R-WP-26). */
+.chat-insight {
+  position: fixed;
+  inset: 0 0 0 auto;
+  z-index: 1;
+  width: min(24rem, 92vw);
+  padding: 1rem 1.25rem 2rem;
+  overflow-y: auto;
+  background: var(--bg);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow);
+
+  .chat-insight-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .chat-insight-agent {
+    font-weight: 650;
+    color: var(--text-h);
+    overflow-wrap: anywhere;
+  }
+
+  .chat-insight-readonly {
+    font-size: 0.75rem;
+    color: var(--text);
+  }
+
+  .chat-insight-head button {
+    margin-left: auto;
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    padding: 0.2rem 0.5rem;
+    background: none;
+    color: var(--text-h);
+    cursor: pointer;
+  }
+
+  .chat-insight-list {
+    list-style: none;
+    margin: 0 0 0.75rem;
+    padding: 0;
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .chat-insight-line {
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    padding: 0.4rem 0.55rem;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+
+    &.agent {
+      background: var(--code-bg);
+    }
+  }
+
+  .chat-insight-kind {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text);
+  }
+
+  .chat-insight-error {
+    color: #b3261e;
+    margin: 0 0 0.75rem;
+    overflow-wrap: anywhere;
+  }
+}

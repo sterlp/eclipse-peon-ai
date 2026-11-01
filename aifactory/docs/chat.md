@@ -167,7 +167,7 @@ eigene Gespräch ([R-WP-26](chat.md)).
 - GIVEN eine Kachel WHEN **Compact** geklickt wird THEN kompaktiert genau dieser Agent und die
   Kachel zeigt den Compact als eigenen Zustand.
 
-### R-WP-26 — Der Blick in den Agenten-Chat (Slide-out) ❌
+### R-WP-26 — Der Blick in den Agenten-Chat (Slide-out) ✅
 
 Jede Kachel von **Plan, Dev und Review** öffnet rechts einen **schreibgeschützten** Blick in das
 eigene Gespräch dieses Agenten (Slide-out). Search ist kein Agent (Sub-Loop von Jon,
@@ -179,7 +179,7 @@ laufenden Turn vollständig (wie bisher). Die Einsicht liest den RAM-Stand des A
 leer. **WEIL** „warum hat Dev das gebaut?" sonst nur über die finale Antwort beantwortbar wäre
 (Paul, 2026-11-01).
 
-#### UC-WP-49 — agentChatIsReadOnlyInsight ❌
+#### UC-WP-49 — agentChatIsReadOnlyInsight ✅
 - GIVEN Jon delegiert WHEN der Nutzer die Kachel eines Mitglieds öffnet THEN zeigt der Blick das
   eigene Gespräch des Agenten (Zwischenschritte, eigene Werkzeug-Zeilen), schreibgeschützt; der
   Jon-Chat zeigt weiterhin nur die Delegations-Zeilen und die finale Antwort (UC-WP-40).

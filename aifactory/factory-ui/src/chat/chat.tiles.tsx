@@ -5,6 +5,8 @@ interface Props {
   tiles: AgentTile[]
   /** Asks for an action on one tile; the page owns the call and what a refusal means. */
   onAction: (name: string, action: AgentAction) => void
+  /** Asks for the read-only insight into one tile's own conversation (UC-WP-49) — offered per tile. */
+  onInspect: (name: string) => void
 }
 
 const STATE_LABEL: Record<AgentTileState, string> = {
@@ -21,8 +23,12 @@ const STATE_LABEL: Record<AgentTileState, string> = {
  * The tile's capability set is the only rule this component follows — there is no agent name in here, so
  * a Search sub-loop without affordances and a member with an insight need no branch (D-14). A number the
  * server does not send is shown as a dash and never as a computed guess.
+ *
+ * A tile offering TRANSCRIPT also offers <em>Blick</em>: the read-only insight into that agent's own
+ * conversation (UC-WP-49). It is a control beside the others rather than a click on the whole tile,
+ * because the tile already carries buttons and a button may not hold a button.
  */
-export function ChatTiles({ tiles, onAction }: Props) {
+export function ChatTiles({ tiles, onAction, onInspect }: Props) {
   if (tiles.length === 0) {
     return null
   }
@@ -51,6 +57,16 @@ export function ChatTiles({ tiles, onAction }: Props) {
             >
               {STATE_LABEL[tile.state]}
             </span>
+            {tile.capabilities.includes('TRANSCRIPT') && (
+              <button
+                type="button"
+                className="chat-tile-open"
+                data-testid={`tile-open-${tile.name}`}
+                onClick={() => onInspect(tile.name)}
+              >
+                Blick
+              </button>
+            )}
             {tile.capabilities.includes('CLEAR') && (
               <button
                 type="button"

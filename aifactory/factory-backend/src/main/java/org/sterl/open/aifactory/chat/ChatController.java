@@ -15,6 +15,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.sterl.open.aifactory.chat.dto.AgentAction;
 import org.sterl.open.aifactory.chat.dto.AgentActionRequest;
 import org.sterl.open.aifactory.chat.dto.AgentTileDto;
+import org.sterl.open.aifactory.chat.dto.AgentTranscriptDto;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
 
@@ -23,11 +24,13 @@ import jakarta.servlet.http.HttpServletResponse;
 /**
  * The HTTP edges of the chat, and the only class here that knows HTTP and JSON. <b>Three conversation
  * edges</b> — {@code GET/POST …/messages} and {@code GET …/events} — and the <b>tile family</b>
- * {@code GET/POST …/agents} (architecture doc "Die drei Gesprächs-Kanten bleiben drei").
+ * {@code GET/POST …/agents} with {@code GET …/agents/{name}} (architecture doc "Die drei Gesprächs-Kanten
+ * bleiben drei").
  *
- * <p>The family is deliberately narrower than it looks: it addresses a tile of this project's own team,
- * it starts neither a turn nor a second conversation, and it can neither create nor select an agent —
- * which is why there is still no second way to open a conversation (R-WP-11, UC-WP-16).</p>
+ * <p>The family is deliberately narrower than it looks: it addresses a tile of this project's own team, it
+ * starts neither a turn nor a second conversation, and it can neither create an agent nor choose who to
+ * talk to. The one name in a path <b>reads</b> that tile's own chat and writes nothing — the conversation a
+ * project <em>has</em> stays exactly one, and it stays Jon's (R-WP-11, UC-WP-16, R-WP-26).</p>
  *
  * <p>It answers nothing about the turn: a POST is accepted and the work happens on the project's runtime,
  * so a browser that goes away takes no turn with it (architecture doc "prüft nichts über den Turn
@@ -99,5 +102,16 @@ public class ChatController {
             throw new IllegalArgumentException("name and action are required");
         }
         runtimes.act(projectId, request.name(), AgentAction.from(request.action()));
+    }
+
+    /**
+     * The insight into one tile's own chat (R-WP-26): the member's memory as the core holds it, read-only
+     * and under the transcript's caps. 400 for a name that is no tile and for Jon and Search, whose tiles
+     * offer no insight — no route here creates, selects or starts a conversation (UC-WP-16).
+     */
+    @GetMapping("/api/projects/{id}/agents/{name}")
+    public AgentTranscriptDto transcript(@PathVariable("id") String projectId,
+            @PathVariable("name") String name) {
+        return runtimes.transcript(projectId, name);
     }
 }

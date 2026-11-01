@@ -4,6 +4,7 @@ import type { FormEvent, ReactNode } from 'react'
 import { listMessages, sendMessage, type ChatMessage, type ChatStreamEvent } from './chat.client'
 import { agentAction, listAgents, type AgentAction, type AgentTile } from './chat.agents.client'
 import { ChatComposer } from './chat.composer'
+import { ChatInsight } from './chat.insight'
 import { ChatLog } from './chat.log'
 import { ChatTiles } from './chat.tiles'
 import { openChatStream } from './chat.stream'
@@ -37,6 +38,10 @@ const RECONNECT_MS = 500
  * <em>taken</em>. This component holds the state of both, and it knows no agent name: a tile says what it
  * offers (D-14).
  *
+ * A tile offering TRANSCRIPT opens {@link ChatInsight}, the read-only look into that agent's own
+ * conversation (UC-WP-49). It is drawn after the {@link files} slot and so lies above the file area, and
+ * it stays a region of this view — no fourth tab, no router (R-WP-1).
+ *
  * The page holds the state; {@link ChatLog} and {@link ChatComposer} only draw it.
  */
 export function ChatPage({ project, files }: Props) {
@@ -47,6 +52,8 @@ export function ChatPage({ project, files }: Props) {
   const [toolLines, setToolLines] = useState<string[]>([])
   const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
+  /** The tile whose insight is open — a name, not a conversation: there is still exactly one of those. */
+  const [insight, setInsight] = useState<string | null>(null)
   const input = useRef<HTMLInputElement>(null)
   const projectId = project?.id ?? null
 
@@ -200,7 +207,7 @@ export function ChatPage({ project, files }: Props) {
       <section className="view" aria-label="Chat">
         <h1>Chat</h1>
         <p className="hint">Projekt: {project.name}</p>
-        <ChatTiles tiles={tiles} onAction={act} />
+        <ChatTiles tiles={tiles} onAction={act} onInspect={setInsight} />
         <ChatLog messages={messages} outgoing={outgoing} live={live} toolLines={toolLines} />
         {error !== null && (
           <p className="chat-error" data-testid="chat-error" role="alert">
@@ -210,6 +217,9 @@ export function ChatPage({ project, files }: Props) {
         <ChatComposer draft={draft} inputRef={input} onDraftChange={setDraft} onSubmit={submit} />
       </section>
       {files}
+      {insight !== null && (
+        <ChatInsight projectId={project.id} name={insight} onClose={() => setInsight(null)} />
+      )}
     </>
   )
 }
