@@ -16,6 +16,7 @@ import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.AiReviewAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.poagent.AiPoAgent;
 import org.sterl.llmpeon.poagent.tools.PoDelegateTool;
@@ -112,9 +113,10 @@ final class ProjectRuntime {
             }
         };
         // shared static context only — the identity lines are the core's job: this call is what hands
-        // every slave its own name (AiPoAgent.setStaticContext), a name of its own must never ride along
-        this.jon.setStaticContext(List.of());
-
+        // every slave its own name (AiPoAgent.setStaticContext), a name of its own must never ride along.
+        // The one text this factory adds is the format of a sender (R-WP-25): it names no person, so the
+        // copy the core fans out to every member says something true to all of them and identity to none.
+        this.jon.setStaticContext(List.of(ContextItem.of(UserName.promptLine())));
         // keyed by the core's tool names, filled with the names this factory built, so the product names
         // a member in exactly one place (D1) and a history line needs no second record of its author
         this.names = authorTable(plan.getName(), dev.getName(), review.getName());
@@ -301,7 +303,11 @@ final class ProjectRuntime {
      * running, and a task that cleared the project there would hand out a turn the project still has
      * (UC-WP-50: the stop of that turn must still be accepted).</p>
      */
-    void submit(String text) {
+    void submit(String text, String user) {
+        // the name stands in front of the text before the core sees either one: the memory is the one
+        // store, so a name written into it needs no field of its own and outlives a restart by itself
+        // (R-WP-25, R-WP-11, UC-WP-48 GIVEN 3). Nothing below changes for it — claim, reset, done.
+        String message = UserName.payload(user, text);
         // the send that finds no turn in flight is the one that opens it — the flag is set on this thread,
         // so a stop arriving one millisecond later already addresses the turn the user just started (D-13)
         boolean opensTurn = claim.openTurn();
@@ -327,7 +333,7 @@ final class ProjectRuntime {
                 streams.publish(projectId, new ChatEvent.Agents(tiles()));
                 model.updateConfig(configForTurn.get());
                 askedCore = true;
-                ChatResponse answer = jon.call(text, monitor);
+                ChatResponse answer = jon.call(message, monitor);
                 ranTurn = ranTurn || answer != null;
                 if (answer != null) {
                     streams.publish(projectId,
@@ -400,16 +406,18 @@ final class ProjectRuntime {
      * it is reality and not the factory's to hide (Q6).
      *
      * <p>Every line states its author (R-WP-4, UC-WP-39): Jon by name, the member by name, the typed
-     * input by none. So the team's answer is read back out of the one history file the core already
-     * keeps — no second store, no parsing of the text the model sees (R-WP-11).</p>
+     * input by the name his message carries (R-WP-25). So the team's answer is read back out of the one
+     * history file the core already keeps — no second store, and nothing read out of a text that is not
+     * the factory's own: the single thing parsed here is the prefix this component wrote in front of a
+     * send, by {@link UserName}, at the two positions that one writes it at (D-6-3).</p>
      */
     List<ChatLine> history() {
         List<ChatLine> lines = new ArrayList<>();
         for (ChatMessage message : jon.getMemory().getCopy()) {
-            if (message instanceof UserMessage user) {
-                String text = textOf(user);
-                if (!text.isBlank()) {
-                    lines.add(ChatLine.user(text));
+            if (message instanceof UserMessage typed) {
+                UserName.Parsed sender = UserName.parse(textOf(typed));
+                if (!sender.text().isBlank()) {
+                    lines.add(ChatLine.user(sender.text(), sender.name()));
                 }
             } else if (message instanceof ToolExecutionResultMessage result) {
                 ChatLine memberAnswer = finalTeamAnswerOf(result);

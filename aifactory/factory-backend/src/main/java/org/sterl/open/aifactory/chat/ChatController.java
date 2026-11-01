@@ -60,11 +60,15 @@ public class ChatController {
     /**
      * Always 202 — also when Jon is busy, because his queue takes the input (D2). A turn that cannot
      * start for a missing setting is answered here as accepted and fails as an {@code error} event (Q1).
+     *
+     * <p>The edge carries the text <b>and</b> the label of the person who typed it (R-WP-25); it still
+     * carries no addressee, and the label is turned into the message prefix by the component, not here.</p>
      */
     @PostMapping("/api/projects/{id}/messages")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public void send(@PathVariable("id") String projectId, @RequestBody SendMessageRequest request) {
-        runtimes.submit(projectId, request == null ? null : request.text());
+        runtimes.submit(projectId, request == null ? null : request.text(),
+                request == null ? null : request.user());
     }
 
     /**

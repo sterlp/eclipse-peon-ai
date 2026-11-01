@@ -83,7 +83,7 @@ class ProjectRuntimeTest {
         memory.add(AiMessage.from("second answer"));
 
         assertThat(runtime.history()).containsExactly(
-                ChatLine.user("first question"),
+                ChatLine.user("first question", null),
                 // the member line is its tool result verbatim, statistics line included: shortening it
                 // would be the factory's guess about what matters (R-WP-11)
                 ChatLine.jon(answered, "Dev"),
@@ -92,7 +92,7 @@ class ProjectRuntimeTest {
                 ChatLine.jon(withoutAnswer, "Dev"),
                 ChatLine.jon(failure, "Dev"),
                 ChatLine.jon("the answer", AiPoAgent.NAME),
-                ChatLine.user("[Queued Message] (10:15): later question"),
+                ChatLine.user("[Queued Message] (10:15): later question", null),
                 ChatLine.jon("second answer", AiPoAgent.NAME));
     }
 

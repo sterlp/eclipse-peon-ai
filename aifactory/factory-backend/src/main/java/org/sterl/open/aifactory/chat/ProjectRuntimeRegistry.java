@@ -62,12 +62,15 @@ public class ProjectRuntimeRegistry {
     /**
      * Fire and forget — the caller's thread is never used for the turn, which is what lets the POST answer
      * 202 while Jon is still working, and what lets a second input reach the queue of the same Jon (D2).
+     *
+     * @param user the sender's label (R-WP-25); it goes in front of the text and chooses nothing, so a
+     *             name is no second conversation and no addressee (UC-WP-48, UC-WP-16)
      */
-    public void submit(String projectId, String text) {
+    public void submit(String projectId, String text, String user) {
         if (text == null || text.isBlank()) {
             throw new IllegalArgumentException("text must not be blank");
         }
-        runtime(projectId).submit(text);
+        runtime(projectId).submit(text, user);
     }
 
     public List<ChatLine> history(String projectId) {

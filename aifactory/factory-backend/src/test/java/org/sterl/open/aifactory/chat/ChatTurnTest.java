@@ -211,8 +211,9 @@ class ChatTurnTest {
 
         assertThat(Arrays.stream(SendMessageRequest.class.getRecordComponents())
                 .map(recordComponent -> recordComponent.getName()).toList())
-                .as("the composer sends the text and nothing else — no field can name another agent")
-                .containsExactly("text");
+                .as("the composer sends its text and its sender-label — no field can name another agent"
+                        + " or another conversation (Inc 6 added the label of the person, R-WP-25)")
+                .containsExactly("text", "user");
 
         try (ChatStream stream = new ChatStream(project.id())) {
             MODEL.queueResponse("erste Antwort");

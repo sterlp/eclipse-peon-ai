@@ -46,8 +46,9 @@ import org.sterl.open.aifactory.shared.FactoryHome;
 /**
  * One project has one Jon and one conversation, and everyone who opens it works in that one (R-WP-15).
  * The two clients here are two {@link RestTemplate}s with nothing in common — no cookie, no session, no
- * user concept anywhere in the factory in Increment 3 — so what they read back can only be the same
- * conversation of the same runtime, never a private copy.
+ * account — so what they read back can only be the same conversation of the same runtime, never a private
+ * copy. Since Inc 6 each one says who it is (R-WP-25), and that stays a <b>label</b>: two names, one
+ * conversation, one Jon (UC-WP-48 GIVEN 1).
  *
  * <p>The model double is per test: a turn is fire-and-forget, so a failing test leaves a turn running on
  * the shared executor, and that orphan must point at its own stopped server instead of draining the next
@@ -62,6 +63,9 @@ class SharedProjectChatTest {
     private static final String ANSWER_A = "Jons Antwort auf A";
     private static final String QUESTION_B = "Frage von B";
     private static final String ANSWER_B = "Jons Antwort auf B";
+    /** The two people of UC-WP-48 GIVEN 1 — a label each client sends, not an account (R-WP-17). */
+    private static final String PERSON_A = "Anna";
+    private static final String PERSON_B = "Paul";
 
     @TempDir
     static Path home;
@@ -99,14 +103,14 @@ class SharedProjectChatTest {
     }
 
     @Test
-    // UC-WP-21
+    // UC-WP-21, UC-WP-48
     void secondUserSeesSameProjectChat() throws Exception {
         writeFactoryConfig("inc3d-shared");
         String projectId = createProject(userA, "shared-project-chat");
         assertThat(runtimes.runtimeCount()).isEqualTo(0);
 
         model.queueResponse(ANSWER_A);
-        assertThat(send(userA, projectId, QUESTION_A).getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(send(userA, projectId, QUESTION_A, PERSON_A).getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
         // B does not open a conversation of its own to wait in — it reads the one A is in
         awaitAnswer(userB, projectId, ANSWER_A);
 
@@ -125,17 +129,18 @@ class SharedProjectChatTest {
         // idle before B sends: a still-running turn would take the input into its queue, and the history
         // would carry the core's [Queued Message] marker — a different use case, proven in UC-WP-14
         awaitUntil(() -> !shared.jon().isWorking(), 20_000, "Jons erster Turn ist zu Ende");
-        assertThat(send(userB, projectId, QUESTION_B).getStatusCode())
+        assertThat(send(userB, projectId, QUESTION_B, PERSON_B).getStatusCode())
                 .as("B sendet in denselben Verlauf, nicht in eine eigene Kopie")
                 .isEqualTo(HttpStatus.ACCEPTED);
         awaitAnswer(userA, projectId, ANSWER_B);
 
         assertThat(messages(userA, projectId))
-                .as("A sieht Bs Eingabe und Jons Antwort darauf in seinem eigenen Verlauf")
+                .as("A sieht Bs Eingabe und Jons Antwort darauf in seinem eigenen Verlauf — und an Bs"
+                        + " Zeile steht ihr Name, weil der Verlauf geteilt ist (UC-WP-48 GIVEN 1)")
                 .containsExactly(
-                        new ChatMessageDto("user", QUESTION_A, null),
+                        new ChatMessageDto("user", QUESTION_A, PERSON_A),
                         new ChatMessageDto("jon", ANSWER_A, AiPoAgent.NAME),
-                        new ChatMessageDto("user", QUESTION_B, null),
+                        new ChatMessageDto("user", QUESTION_B, PERSON_B),
                         new ChatMessageDto("jon", ANSWER_B, AiPoAgent.NAME));
         assertThat(messages(userB, projectId)).isEqualTo(messages(userA, projectId));
         assertThat(runtimes.runtime(projectId))
@@ -143,14 +148,15 @@ class SharedProjectChatTest {
                 .isSameAs(shared);
 
         assertThat(fieldNames(ChatMessageDto.class))
-                .as("nichts in einer Antwort kann einen Nutzer nennen — 'origin' ist die Herkunft der"
-                        + " Zeile (R-WP-4), kein Nutzerfeld; das prüft die Verbotliste unten")
+                .as("'origin' ist die Herkunft der Zeile — seit Inc 6 nennt sie auch den Menschen, aber"
+                        + " kein Feld wählt ein Gespräch oder einen Agenten (R-WP-4, R-WP-25)")
                 .containsExactly("role", "text", "origin");
         assertThat(fieldNames(SendMessageRequest.class))
-                .as("nichts in einer Eingabe kann einen Nutzer nennen")
-                .containsExactly("text");
+                .as("genau ein Label-Feld für den Absender, sonst nichts — die Eingabe geht weiter an Jon")
+                .containsExactly("text", "user");
         assertThat(rawMessages(userB, projectId))
-                .as("und auf dem Draht steht kein Nutzerfeld")
+                .as("der Verlauf nennt den Menschen im bestehenden Herkunftsfeld — die Antwort erfindet"
+                        + " kein eigenes Nutzerfeld")
                 .doesNotContain("\"user\":")
                 .doesNotContain("\"name\":");
     }
@@ -174,11 +180,15 @@ class SharedProjectChatTest {
         return "/api/projects/" + projectId + "/messages";
     }
 
-    private ResponseEntity<String> send(RestTemplate client, String projectId, String text) {
+    /**
+     * One of the two people sends — by name, because since Inc 6 a send carries its sender's label
+     * (R-WP-25). The name is what makes them two here; it selects no conversation and no agent.
+     */
+    private ResponseEntity<String> send(RestTemplate client, String projectId, String text, String user) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         return client.postForEntity(url(messagesPath(projectId)),
-                new HttpEntity<>(new SendMessageRequest(text), headers), String.class);
+                new HttpEntity<>(new SendMessageRequest(text, user), headers), String.class);
     }
 
     private List<ChatMessageDto> messages(RestTemplate client, String projectId) {

@@ -4,12 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.fail;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.RecordComponent;
 import java.lang.reflect.Type;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,10 +21,14 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.BooleanSupplier;
 import java.util.regex.Pattern;
 
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
@@ -49,6 +56,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.AiReviewAgent;
+import org.sterl.llmpeon.ai.LlmConfigKeys;
+import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.poagent.AiPoAgent;
 import org.sterl.open.aifactory.chat.dto.AgentAction;
 import org.sterl.open.aifactory.chat.dto.AgentActionRequest;
@@ -62,6 +71,7 @@ import org.sterl.open.aifactory.chat.dto.TranscriptLineDto;
 import org.sterl.open.aifactory.project.FakeGitConfig;
 import org.sterl.open.aifactory.project.Project;
 import org.sterl.open.aifactory.project.ProjectService;
+import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
  * "Es gibt genau dieses eine Gespräch" (R-WP-11) is a statement about the API surface, so it is measured
@@ -93,6 +103,9 @@ class OneChatPerProjectTest {
     private static final String GIT_URL = "https://git.example.com/acme/one-chat.git";
     private static final String MODEL_PACKAGE = "org.sterl.open.aifactory.chat.dto";
 
+    /** Only for the named send at the end: a label has to reach a model to prove what it does not do. */
+    private static final MockLlmServer MODEL = new MockLlmServer(0);
+
     /** One project id, then one of the known conversation segments — nothing that could select a dialogue. */
     private static final Pattern ONE_PROJECT_PATH =
             Pattern.compile("^/api/projects/\\{id\\}/(messages|messages/stop|events)$");
@@ -110,10 +123,15 @@ class OneChatPerProjectTest {
             new Route(HttpMethod.POST, "/api/projects/{id}/agents"),
             new Route(HttpMethod.GET, "/api/projects/{id}/agents/{name}"));
 
-    /** The names a second conversation or a user concept would have to use. */
+    /**
+     * The names a second conversation would have to use. A <b>user</b> concept is no longer one of them:
+     * Inc 6 introduces it as a label a send carries with it (R-WP-17, R-WP-25), so {@code user} is allowed
+     * on the one request type that sends — the field list below pins it there exactly, and the positive
+     * check at the end of the test says what it may not do: choose nothing.
+     */
     private static final Set<String> FORBIDDEN_FIELD_NAMES = Set.of(
             "chatId", "sessionId", "threadId", "conversationId", "dialogId",
-            "user", "username", "userName", "author", "owner");
+            "username", "userName", "author", "owner");
 
     @TempDir
     static Path home;
@@ -130,6 +148,33 @@ class OneChatPerProjectTest {
     @DynamicPropertySource
     static void isolateHome(DynamicPropertyRegistry registry) {
         registry.add("aifactory.home", home::toString);
+    }
+
+    /**
+     * The positive check at the end sends, so this class needs a model: with no config no turn reaches a
+     * provider and nothing lands in the memory — the label could then never be read back as the origin of
+     * a line, which is exactly the statement the guard owes Inc 6.
+     */
+    @BeforeAll
+    static void startModelAndConfig() throws IOException {
+        MODEL.start();
+        writeFactoryConfig();
+    }
+
+    @AfterAll
+    static void stopModel() {
+        MODEL.stop();
+    }
+
+    private static void writeFactoryConfig() throws IOException {
+        Properties config = new Properties();
+        config.setProperty(LlmConfigKeys.PROVIDER_TYPE, "OPEN_AI");
+        config.setProperty(LlmConfigKeys.MODEL, "one-chat-guard");
+        config.setProperty(LlmConfigKeys.URL, MODEL.getUrl());
+        config.setProperty(LlmConfigKeys.API_KEY, "test-key");
+        try (OutputStream out = Files.newOutputStream(home.resolve(FactoryHome.CONFIG_FILE))) {
+            config.store(out, "one chat guard - the named send needs a model to reach");
+        }
     }
 
     @Test
@@ -186,10 +231,12 @@ class OneChatPerProjectTest {
                 .containsOnlyKeys(ChatMessageDto.class, SendMessageRequest.class, AgentTileDto.class,
                         AgentActionRequest.class, AgentTileState.class, TileCapability.class,
                         AgentTranscriptDto.class, TranscriptLineDto.class);
-        // the third field is the author R-WP-4 asks for — the guard below is what this list is for: a
-        // fourth field, whatever it is called, is a second conversation or a user concept
+        // the third field is the author R-WP-4 asks for, and since Inc 6 it can name a person too
+        // (R-WP-25) — the guard below is what these lists are for: any further field, whatever it is
+        // called, is a second conversation
         assertThat(modelFields.get(ChatMessageDto.class)).containsExactly("role", "text", "origin");
-        assertThat(modelFields.get(SendMessageRequest.class)).containsExactly("text");
+        // genau ein Label-Feld für den Absender: die Eingabe hat weiter keinen Adressaten (UC-WP-6)
+        assertThat(modelFields.get(SendMessageRequest.class)).containsExactly("text", "user");
         // a tile names an agent of this project's own team and carries numbers — no conversation, no author
         assertThat(modelFields.get(AgentTileDto.class)).containsExactly("name", "context", "tokens", "estimate",
                 "contextPercent", "budget", "state", "capabilities");
@@ -264,9 +311,40 @@ class OneChatPerProjectTest {
         assertThat(runtimes.history(project.id()))
                 .as("ein abgelehnter Stop schreibt nichts in das Gespräch")
                 .isEmpty();
+
+        // the positive replacement for „no request field may name a user" (Inc 6): the label is allowed
+        // because it chooses nothing — one project, one runtime, and the name comes back as the origin of
+        // the line that carried it
+        MODEL.queueResponse("Antwort an Anna");
+        runtimes.submit(project.id(), "hallo", "Anna");
+        awaitUntil(() -> runtimes.history(project.id()).stream()
+                .anyMatch(line -> "Antwort an Anna".equals(line.text())), 20_000,
+                "die benannte Eingabe ist beantwortet");
+        assertThat(runtimes.history(project.id()))
+                .as("das Label adressiert einen Menschen, nie ein Gespräch")
+                .containsExactly(
+                        ChatLine.user("hallo", "Anna"),
+                        ChatLine.jon("Antwort an Anna", AiPoAgent.NAME));
+
         assertThat(runtimes.runtimeCount())
-                .as("die Kachel-Kanten öffnen kein zweites Gespräch auf")
+                .as("ein benanntes Senden öffnet kein zweites Gespräch auf")
                 .isEqualTo(1);
+    }
+
+    /** Polls a condition with a deadline that fails as an assertion — a wait is never a proof (Inc 5). */
+    private static void awaitUntil(BooleanSupplier condition, long timeoutMs, String what) {
+        long until = System.currentTimeMillis() + timeoutMs;
+        while (!condition.getAsBoolean()) {
+            try {
+                Thread.sleep(25);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            assertThat(System.currentTimeMillis())
+                    .as("Timeout: %s wurde nicht erreicht", what)
+                    .isLessThan(until);
+        }
     }
 
     // ------------------------------------------------------------------ surface
