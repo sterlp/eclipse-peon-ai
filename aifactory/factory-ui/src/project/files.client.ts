@@ -7,6 +7,12 @@ export interface FileEntry {
   name: string
   directory: boolean
   size: number
+  /**
+   * A symlink, and the server never followed it (R-WP-14): `size` is then 0 and says nothing about the
+   * target, `directory` is false whatever the target is. `0` alone would not tell a link from an empty
+   * file, which is why the flag is its own field.
+   */
+  symlink: boolean
 }
 
 export interface DirectoryResponse {

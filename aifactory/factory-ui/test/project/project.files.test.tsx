@@ -24,6 +24,7 @@ function entries(...names: string[]): FileEntry[] {
     name,
     directory: !name.includes('.'),
     size: name.includes('.') ? 12 : 0,
+    symlink: false,
   }))
 }
 
@@ -35,9 +36,25 @@ function file(root: FileRoot, path: string, text: string): FileResponse {
   return { kind: 'file', root, path, text, size: text.length, binary: false, truncated: false }
 }
 
+/**
+ * A directory holding one link: the server marks it as a link and sends no metadata of its target —
+ * `size: 0` is "not followed", not "empty".
+ */
+const LINKED: DirectoryResponse = {
+  kind: 'directory',
+  root: 'checkout',
+  path: 'links',
+  entries: [
+    { name: 'inside-link.md', directory: false, size: 0, symlink: true },
+    { name: 'real.md', directory: false, size: 12, symlink: false },
+  ],
+  truncated: false,
+}
+
 /** The checkout the server would answer with — one entry per `root|path` the area can ask for. */
 const TREE: Record<string, DirectoryResponse | FileResponse> = {
-  'checkout|': directory('checkout', '', ['src', 'pom.xml']),
+  'checkout|': directory('checkout', '', ['src', 'pom.xml', 'links']),
+  'checkout|links': LINKED,
   'checkout|src': directory('checkout', 'src', ['main', 'test']),
   'checkout|src/main': directory('checkout', 'src/main', ['app.tsx']),
   'checkout|src/main/app.tsx': file('checkout', 'src/main/app.tsx', 'export const app = 1'),
@@ -213,4 +230,20 @@ test('fileAreaShowsTheRejectionInsteadOfContent', async () => {
   expect(screen.getByTestId('files-panel')).toBeInTheDocument()
   expect(screen.getByTestId('files-root-tmp')).toBeEnabled()
   expect(screen.getByTestId('files-open')).toBeEnabled()
+})
+
+// UC-WP-42
+test('aListedLinkSaysLinkAndNoByteCount', async () => {
+  stubFactory()
+  await openProjectChat()
+
+  fireEvent.click(screen.getByTestId('files-open'))
+  fireEvent.click(await screen.findByRole('button', { name: 'links/' }))
+
+  const link = await screen.findByRole('button', { name: 'inside-link.md (link)' })
+  expect(link.textContent).toContain('link')
+  // "0 B" would read as an empty file — the listing of a link says only that it was not followed
+  expect(link.textContent).not.toMatch(/0 B/)
+  // its sibling keeps its size: the label is the link's, not a general removal of sizes
+  expect(screen.getByRole('button', { name: 'real.md (12 B)' })).toBeInTheDocument()
 })

@@ -181,6 +181,23 @@ class ProjectFilesTest {
         assertThat(linked.get("kind").asText()).isEqualTo("file");
         assertThat(linked.get("text").asText()).isEqualTo("# demo\n");
 
+        // listing the same directory says no more than a read may say: a link is a name, its target is
+        // not stat-ed — neither of the two links carries the size or the kind of what it points at
+        ResponseEntity<String> listed = getResponse(files().queryParam("root", "checkout").build());
+        JsonNode linkListing = MAPPING.readTree(listed.getBody());
+        for (String name : List.of("escape.txt", "inside-link.md")) {
+            JsonNode entry = named(linkListing, name);
+            assertThat(entry).as("%s is listed at all", name).isNotNull();
+            assertThat(entry.get("symlink").asBoolean()).as("%s is marked as a link", name).isTrue();
+            assertThat(entry.get("directory").asBoolean()).as("%s is no directory", name).isFalse();
+            assertThat(entry.get("size").asLong()).as("%s carries no target size", name).isZero();
+        }
+        assertThat(listed.getBody())
+                .as("neither a byte count nor a path of a target reached the answer")
+                .doesNotContain("\"size\":21")
+                .doesNotContain(secret.toString())
+                .doesNotContain(outside.toString());
+
         // an unknown root is not the checkout by default either
         assertThat(getStatus(files().queryParam("root", "etwasanderes").build())).isEqualTo(400);
     }
@@ -217,6 +234,9 @@ class ProjectFilesTest {
         assertThat(binary.get("size").asLong()).isEqualTo(5L);
 
         assertThat(getStatus(files("nope-1234567").build())).isEqualTo(404);
+        // a project that is not registered is the 404 even when a second parameter is wrong too — the
+        // project is asked before the root is parsed, so a bad root cannot answer in its place
+        assertThat(getStatus(files("nope-1234567").queryParam("root", "etwasanderes").build())).isEqualTo(404);
         assertThat(getStatus(files().queryParam("root", "checkout")
                 .queryParam("path", "not-here.txt").build())).isEqualTo(404);
 

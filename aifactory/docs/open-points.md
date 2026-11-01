@@ -148,16 +148,16 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
   Umgebungsvariable — ssh liest das nicht, wirkt nur als `GIT_SSH_COMMAND="ssh -o BatchMode=yes"`. Heute
   folgenlos (SSH-URLs abgelehnt), wird mit SSH ([R-CR-7](config-repo.md)) zum Hänger — Fix gehört in
   dessen Bau (UC-CR-8 Passphrase-Fall).
-* **❓ V10 Inc 4** (Schreib-Pinning, Datei-Bereich) ist gebaut, aber nicht reviewt; Code seit AF-ADR-002 defekt.
+* **🔒 V10 Inc 4** (Schreib-Pinning, Datei-Bereich) — reviewed 2026-11-01 auf `web-factory-mvp`: CONCERNS,
+  kein Blocker; Da-Mek-Pinning, R6 und alle Inc-4-Tests halten dem Origin-Umbau stand. Die vier CONCERNS
+  (Symlink-Listing-Metadaten, Paritäts-Pin selbst-referentiell — Core-Test, `chat ↛ project` im UI
+  unmechanisch, Schreib-/Lesewurzeln an zwei Stellen) werden in Inc 5 gehärtet; die Core-Test-Anmerkung
+  braucht Pauls Freigabe.
 
 * **❓ Rollen und Rechte** (Vision: Admin = Config/Keys, User = alles außer Config, Reader = nur lesen +
   „Read Jon") — der MVP hat keinen Login (R-WP-17) und kann deshalb nicht unterscheiden: jeder darf
   alles. Empfehlung: Rollen **nicht** im MVP, sondern als eigene Story mit OAuth2 (Vision sagt dasselbe);
   bis dahin ist der Betrieb ein vertrauenswürdiger Kreis (Prototyp kennt nur einen Nutzernamen, R-WP-17).
   *Andersfall:* schon im MVP ein Admin-Passwort = halbherzige Authentifizierung, die ich nicht bauen würde.
-* **❓ Kachel → Chat-Slide-out je Team-Mitglied** (Vision: Klick auf eine Agenten-Kachel öffnet rechts
-  den Chat dieses Agenten, **nur lesbar**) — [R-WP-7](chat.md) kennt die Kachel mit Kontext,
-  Status, Clear, Compact, aber keinen Slide-out. Empfehlung: Inkrement 5 baut die Kacheln wie spezifiziert,
-  der Slide-out folgt direkt danach als eigenes Inkrement (er braucht die History-Zugriffe je Agent).
 * **❓ Story-Import** — wer holt `stories/` und `proposals/` in die Feature-Docs und wann? Bewusst außerhalb des
   Paco-Features ([Paco, Offene Punkte](paco.md)).

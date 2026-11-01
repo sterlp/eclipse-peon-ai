@@ -192,7 +192,13 @@ class WritePinningTest {
                     .singleElement()
                     .satisfies(line -> assertThat(line.text())
                             .startsWith(MEMBER_ANSWER + System.lineSeparator()));
-            assertThat(toolLineTexts(stream).subList(linesBeforeTeam, toolLineTexts(stream).size()))
+            // das Fenster erst greifbar, dann belegt: eine leere Fenster-Spanne wäre mit
+            // allSatisfy leer gewonnen, deshalb ist sie selbst die Aussage
+            List<String> afterDelegation = toolLineTexts(stream).subList(linesBeforeTeam, toolLineTexts(stream).size());
+            assertThat(afterDelegation)
+                    .as("nach der Delegation laufen Werkzeug-Zeilen über den Draht")
+                    .isNotEmpty();
+            assertThat(afterDelegation)
                     .as("vom Mitglied kommt nur seine Antwort an, seine Werkzeug-Zeile bleibt sein Internum (R-WP-4)")
                     .allSatisfy(line -> assertThat(line).doesNotContain("Created file:"));
         }

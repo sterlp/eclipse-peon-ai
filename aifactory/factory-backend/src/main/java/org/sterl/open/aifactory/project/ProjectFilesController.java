@@ -47,7 +47,7 @@ import org.sterl.open.aifactory.project.dto.ProjectFileRoot;
 @RequestMapping("/api/projects")
 public class ProjectFilesController {
 
-    /** Bounds against a 200 MB answer, not product promises (UC-WP-19 A4). */
+    /** Bounds the answer of this edge — not a product promise about how big a root may be. */
     static final int MAX_ENTRIES = 500;
     static final int MAX_TEXT_BYTES = 65536;
 
@@ -64,8 +64,10 @@ public class ProjectFilesController {
     public Object files(@PathVariable("id") String id,
             @RequestParam(name = "root", defaultValue = "checkout") String root,
             @RequestParam(name = "path", defaultValue = "") String path) {
-        ProjectFileRoot requestedRoot = ProjectFileRoot.from(root);
+        // the project is asked first: an id nobody registered is a 404 whatever else the request got
+        // wrong, so a second bad parameter must not answer in its place
         Project project = projects.find(id).orElseThrow(() -> new ProjectNotFoundException(id));
+        ProjectFileRoot requestedRoot = ProjectFileRoot.from(root);
         Path rootReal = realOrNotFound(requestedRoot.resolve(project.localPath()), requestedRoot);
         Path target = contain(requestedRoot, rootReal, path);
         String relative = relativize(rootReal, target);
@@ -160,11 +162,19 @@ public class ProjectFilesController {
         return ProjectDirectoryDto.of(root, path, entries, truncated);
     }
 
-    /** A child unreadable between listing and stat is still an entry — a listing is a directory, not an index. */
+    /**
+     * A child unreadable between listing and stat is still an entry — a listing is a directory, not an
+     * index. A symlink is answered before anything is stat-ed: {@code isDirectory}, {@code isRegularFile}
+     * and {@code size} all follow links, so asking them about a link reports the target — including a
+     * target outside the root, which is the knowledge UC-WP-42 refuses.
+     */
     private static ProjectEntryDto entry(Path child) {
+        if (Files.isSymbolicLink(child)) {
+            return new ProjectEntryDto(child.getFileName().toString(), false, 0L, true);
+        }
         boolean directory = Files.isDirectory(child);
         long size = directory || !Files.isRegularFile(child) ? 0L : sizeOf(child);
-        return new ProjectEntryDto(child.getFileName().toString(), directory, size);
+        return new ProjectEntryDto(child.getFileName().toString(), directory, size, false);
     }
 
     private static ProjectFileDto read(ProjectFileRoot root, String path, Path file) {

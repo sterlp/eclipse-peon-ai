@@ -143,7 +143,56 @@ sequenceDiagram
   `chat`; die Chat-Oberfläche hängt ihn nur ein. Im UI heißt die Komponente `project`
   (`project.files.tsx` + `files.client.ts`), der Chat-View bekommt sie als Slot von `app` — die
   Abhängigkeitsrichtung bleibt `app` → `chat` · `project`, `chat` kennt `project` nicht.
+* **Ein Symlink ist ein Name, keine Metadaten (Inc 5a).** Das Listing verfolgt einen Link nie:
+  ein Symlink erscheint mit `symlink: true`, `directory: false` und Größe 0 — auch wenn sein Ziel
+  regulär erscheint; Ziel-Wissen fließt nie in die Antwort. Der Leseweg bleibt unverändert: Link
+  innerhalb der Wurzel liest 200, ausbrechender Link endet 400 (UC-WP-42).
 
+
+### Kacheln und Blick je Agent (Design für Inc 5, chat.md R-WP-7/R-WP-26)
+
+```mermaid
+sequenceDiagram
+  participant U as Browser (Kachel)
+  participant C as ChatController
+  participant R as ProjectRuntimeRegistry
+  participant P as ProjectRuntime
+  participant A as AiAgent (Plan/Dev/Review/Jon)
+  participant S as ChatStreamRegistry
+  U->>C: POST /api/projects/{id}/agents {name, action}
+  C->>R: act(id, name, action)
+  R->>P: act(name, action)
+  P->>P: busy? (Turn läuft oder ein Agent arbeitet) ⇒ 409
+  P->>P: Name im Roster? sonst 400
+  P->>S: Agents(tiles) — Zustand „startet"
+  P->>A: über den Turn-Executor: clear() bzw. compact(monitor)
+  C-->>U: 202
+  A-->>S: Compact-Zeilen (Jons Origin) / Fehler als Tool-Zeile
+  P->>S: Agents(tiles) — endgültig
+  U->>C: GET /agents + GET /messages (neu lesen)
+```
+
+* **Die drei Gesprächs-Kanten bleiben drei.** `GET/POST …/messages` und `GET …/events` führen den
+  Turn; die **Kachel-Familie** (`GET …/agents` — Roster, `POST …/agents` — Clear/Compact,
+  `GET …/agents/{name}` — Blick) startet weder Turn noch zweiten Verlauf. Alles Agent-bezogene
+  bleibt im `chat`-Paket (`ComponentArchitectureTest` verbietet Agent-Instanzen anderswo).
+* **SSE `agents` ist ein Snapshot, kein Verlauf.** Das Event trägt die ganze Kachel-Liste, die UI
+  ersetzt ihren Zustand; kein Replay, kein zweiter Speicher. Frisch gelesen wird beim Mount/Reconnect
+  über `GET …/agents` (dieselbe Regel wie beim Verlauf: *re-connect ⇒ lesen*). Die Kontextzahl ist
+  der Plugin-Wert (`getTotalTokenUsed()` + `isTokenEstimate()`, Prozent gegen das Auto-Compact-Budget);
+  die Fabrik formatiert nicht selbst. Search ist ein Sub-Loop — Kachel ohne Kontext, kein Clear/Compact,
+  kein Blick (R-WP-7/R-WP-26).
+* **Clear/Compact laufen über den Turn-Executor des Projekts**, nie auf dem HTTP-Thread — Clear/Compact
+  mutieren das Memory, ein paralleler Turn würde sie zerschreiben. `POST` antwortet `202`; läuft ein
+  Turn, wird die Aktion abgelehnt (`409`), nicht eingereiht. Fehler einer Aktion sind eine
+  `tool`-Zeile (live), kein neuer Kanal.
+* **Der Blick (`GET …/agents/{name}`) liest das Core-Memory im RAM** (`AiAgent.getMemory()`) —
+  schreibgeschützt, nur für Plan/Dev/Review (Jon/Search ⇒ 400), begrenzt (letzte 500 Zeilen, 8 192
+  Zeichen je Zeile, `truncated`-Kennzeichnung). Nach einem Neustart ist der Blick leer (Team beginnt
+  leer, R-WP-11); es gibt keine Route, die ein Agentengespräch anlegt oder wählt.
+* **Stop (UC-WP-50)** gehört zur Gesprächs-Kante: er bricht den laufenden Turn ab (Jon und laufende
+  Delegationen), kein zweiter Turn-Pfad, keine zweite Speicherung — die already gezeigten Zeilen
+  bleiben, die Queue bleibt.
 
 ## UI-Aufbau — dieselben Komponenten wie im Backend (Entscheidung 2026-10-26)
 

@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 
-import { readFiles, type FileRoot, type FilesResponse } from './files.client'
+import { readFiles, type FileEntry, type FileRoot, type FilesResponse } from './files.client'
 import { errorMessage } from '../shared/api.client'
 import type { Project } from '../shared/dto'
 
 interface Props {
+  /**
+   * The addressed project. The area owns its root and path state and resets neither of them on its own,
+   * so the caller must key this component per project (`key={project.id}`) — unkeyed, the second project
+   * would open with the path of the one before it.
+   */
   project: Project
 }
 
@@ -12,6 +17,17 @@ const ROOTS: { value: FileRoot; label: string }[] = [
   { value: 'checkout', label: 'Checkout' },
   { value: 'tmp', label: 'TMP' },
 ]
+
+/**
+ * The suffix behind a name. A symlink is a name and nothing else — the server sends no metadata of its
+ * target, so `link` is the honest label and `0 B` would read as an empty file (UC-WP-42).
+ */
+function suffixOf(entry: FileEntry): string {
+  if (entry.directory) {
+    return '/'
+  }
+  return entry.symlink ? ' (link)' : ` (${entry.size} B)`
+}
 
 /**
  * The file area (R-WP-14, UC-WP-19): a read-only slide-over over the two roots the project may write
@@ -113,7 +129,7 @@ export function ProjectFiles({ project }: Props) {
                     onClick={() => enter(entry.name)}
                   >
                     {entry.name}
-                    {entry.directory ? '/' : ` (${entry.size} B)`}
+                    {suffixOf(entry)}
                   </button>
                 </li>
               ))}

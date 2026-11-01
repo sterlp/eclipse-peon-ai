@@ -32,9 +32,10 @@ Plugin zeigt sie als Überschrift
 ([agenten-namen-im-chat](../../org.sterl.llmpeon/docs/agenten-namen-im-chat.md)).
 
 **Man sieht nur Jon und die finalen Antworten seines Teams** — nicht die Unterhaltung eines
-Teammitglieds mit sich selbst: dessen **Denk- und Zwischenschritte** erscheinen im Chat **nie**,
+Teammitglieds mit sich selbst: dessen **Denk- und Zwischenschritte** erscheinen im Jon-Chat **nie**,
 weder live noch im Verlauf; sichtbar sind nur die Delegations-Zeilen und die finale Antwort. Es gibt
-genau **einen** Gesprächsstrang.
+genau **einen** Gesprächsstrang. Die **Einsicht** in das eigene Gespräch eines Mitglieds (lesend,
+außerhalb des Jon-Chats) regelt [R-WP-26](chat.md).
 
 #### UC-WP-6 — chatAlwaysGoesToJon ✅
 - GIVEN der Chat-View WHEN der Nutzer eine Nachricht sendet THEN antwortet Jon; ein Agenten-Wechsel
@@ -52,10 +53,12 @@ genau **einen** Gesprächsstrang.
 - GIVEN Jon delegiert per `askDev` an Dev WHEN der Turn endet (`done`) THEN steht dessen **finale**
   Antwort (das Werkzeug-Ergebnis, wie es ist — inkl. der angehängten Statistik-Zeile) als Zeile „Dev"
   im Chat; war das Ergebnis leer, erscheint ebenfalls eine Zeile („returned no result").
-- GIVEN dieselbe Delegation WHEN man den Chat betrachtet THEN sind die Zwischenschritte des
-  Teammitglieds (Denken, eigene Werkzeug-Aufrufe, Teilantworten) **nicht** sichtbar — sichtbar sind nur
-  die Delegations-Zeilen und die finale Antwort, es gibt genau einen Gesprächsstrang, keinen zweiten
-  Verlauf und keinen Mitschnitt je Agent.
+- GIVEN dieselbe Delegation WHEN man den Jon-Chat betrachtet THEN sind die Zwischenschritte des
+  Teammitglieds (Denken, eigene Werkzeug-Aufrufe, Teilantworten) **im Jon-Chat** nicht sichtbar —
+  sichtbar sind nur die Delegations-Zeilen und die finale Antwort; es gibt genau einen Gesprächsstrang,
+  keinen zweiten Verlauf und **in Jons Chat** keinen Mitschnitt je Agent. Das eigene Gespräch des
+  Mitglieds ist nur über den schreibgeschützten Blick seiner Kachel einsehbar ([R-WP-26](chat.md)) —
+  nie im Jon-Chat.
 - GIVEN ein Reload nach einer Delegation WHEN der Chat neu aufgebaut wird THEN ist die finale Antwort
   des Team-Mitglieds weiterhin Teil des Verlaufs (Live-Zeilen ausgenommen, R-WP-11) — in Jons Verlauf,
   nicht in einer zweiten Ablage.
@@ -76,6 +79,12 @@ Queue sind die des Cores — die Web-Schicht erfindet keinen zweiten Turn-Pfad.
 - GIVEN ein Zuschauer, der seine Verbindung nicht mehr liest WHEN ein Turn läuft THEN wird der Turn
   dadurch nicht aufgehalten und alle anderen Zuschauer sehen die Zeilen weiter — ein Zuschauer ist
   keine Bremse für das Projekt.
+
+#### UC-WP-50 — stopCancelsTheWholeTurn ❌
+- GIVEN ein laufender Turn WHEN der Nutzer **Stop** klickt THEN bricht die Fabrik den laufenden Turn
+  ab — Jon und jede laufende Delegation enden („alles gestopt", Paul 2026-11-01); schon gezeigte
+  Zeilen bleiben, es gibt keinen zweiten Speicher und keinen zweiten Turn-Pfad. Die Interaktion kehrt
+  an Jon zurück; gequeuete Eingaben bleiben in der Queue.
 
 ### R-WP-10 — Ein Turn je Projekt, weitere Eingaben in der Queue ✅
 
@@ -140,10 +149,15 @@ Jon und sein Team bekommen **alle** Core-Werkzeuge inklusive Shell (`disk*`, `we
 Kopf des Chat-Views: eine Kachel für jeden Agenten von Jons Team (Jon, Plan, Dev, Review,
 Search) — Name, Kontextgröße, Statusanzeige, **Clear**- und **Compact**-Knopf. Kontextgröße ist
 dieselbe Zahl wie im Plugin-Header: genutzte Tokens gegen das Auto-Compact-Budget des Agenten.
+Die **Search**-Kachel zeigt diese Zahl nicht — Search ist ein Sub-Loop von Jon
+([ADR-0079](adr/0079-display-names-without-ork-names.md)), hat keinen eigenen Kontext („—") und
+kein Clear/Compact. Kacheln von Plan, Dev und Review öffnen den schreibgeschützten Blick in das
+eigene Gespräch ([R-WP-26](chat.md)).
 
 #### UC-WP-11 — teamTilesShowContextAndStatus ❌
 - GIVEN der Chat-View WHEN er geöffnet wird THEN trägt jede Team-Kachel Name, Kontextzahl und
-  Status; der Status wechselt bei Arbeit/Compact/Fehler ohne manuelles Aktualisieren.
+  Status; der Status wechselt bei Arbeit/Compact/Fehler ohne manuelles Aktualisieren. Die
+  Search-Kachel trägt als Sub-Loop keinen Kontextwert.
 
 #### UC-WP-12 — clearOnJonCascadesTeam ❌
 - GIVEN ein laufendes Team WHEN **Clear** auf Jons Kachel geklickt wird THEN sind Jon und sein Team
@@ -152,3 +166,24 @@ dieselbe Zahl wie im Plugin-Header: genutzte Tokens gegen das Auto-Compact-Budge
 #### UC-WP-13 — compactAffectsOnlyThatAgent ❌
 - GIVEN eine Kachel WHEN **Compact** geklickt wird THEN kompaktiert genau dieser Agent und die
   Kachel zeigt den Compact als eigenen Zustand.
+
+### R-WP-26 — Der Blick in den Agenten-Chat (Slide-out) ❌
+
+Jede Kachel von **Plan, Dev und Review** öffnet rechts einen **schreibgeschützten** Blick in das
+eigene Gespräch dieses Agenten (Slide-out). Search ist kein Agent (Sub-Loop von Jon,
+[ADR-0079](adr/0079-display-names-without-ork-names.md)) und bekommt keinen Blick. Standard bleibt
+Jons Chat; der Nutzer kann in den Chat eines Agenten wechseln und zurück. Interaktion läuft
+weiterhin nur über Jon ([R-WP-4](chat.md)): kein Eingabefeld im Blick, **Stop** im UI stoppt den
+laufenden Turn vollständig (wie bisher). Die Einsicht liest den RAM-Stand des Agenten im Core —
+**kein** zweiter Speicher; nach einem Neustart ist das Team leer ([R-WP-11](chat.md)), der Blick ist
+leer. **WEIL** „warum hat Dev das gebaut?" sonst nur über die finale Antwort beantwortbar wäre
+(Paul, 2026-11-01).
+
+#### UC-WP-49 — agentChatIsReadOnlyInsight ❌
+- GIVEN Jon delegiert WHEN der Nutzer die Kachel eines Mitglieds öffnet THEN zeigt der Blick das
+  eigene Gespräch des Agenten (Zwischenschritte, eigene Werkzeug-Zeilen), schreibgeschützt; der
+  Jon-Chat zeigt weiterhin nur die Delegations-Zeilen und die finale Antwort (UC-WP-40).
+- GIVEN ein geöffneter Blick WHEN der Nutzer ihn betrachtet THEN gibt es kein Eingabe- oder
+  Bedienelement zum Schreiben; Stop stoppt den laufenden Turn (Jon und Team) vollständig.
+- GIVEN ein Neustart WHEN der Blick geöffnet wird THEN ist er leer (R-WP-11) — kein zweiter
+  Speicher und kein Mitschnitt im Jon-Chat.
