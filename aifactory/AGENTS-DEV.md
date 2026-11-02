@@ -80,8 +80,9 @@
 ## UI-Inkremente (Zyklus 2026-11-02, Inc 1a)
 
 - **Bootstrap liegt als npm-Paket bei** (bootstrap 5.3.8, react-bootstrap 2.10.10, bootstrap-icons
-  1.13.2 — laufen ohne Peer-Fehler gegen React 19). `vite.config.ts` setzt `css: false`, also sind
-  CSS-Importe in Vitest gestubbet: kein Bootstrap-Einfluss auf Tests. Im Produktions-Build landet
+  1.13.2 — laufen ohne Peer-Fehler gegen React 19). CSS ist in Vitest gestubbet (seit Inc 3a:
+  `test.css.include` lässt nur die zwei eigenen Sheets durch, Bootstrap bleibt stub), also kein
+  Bootstrap-Einfluss auf Tests. Im Produktions-Build landet
   Bootstrap **zuerst**, dann `index.css`-Tokens, dann `styles.css` (geprüft am dist-CSS:
   `.app-nav` bei Offset 309 k von 315 k) — deshalb gewinnt das eigene Theme ohne `!important`.
 - **`Nav.Link as="button"`** rendert `<button class="nav-link">` und setzt bei `active` nur die Klasse,
@@ -120,3 +121,21 @@
   (`ProjectWorkStates`, `ProjectWork`), liegen im **Wurzel-Paket** von `project`; `project` importiert
   nichts aus `chat`. `ComponentArchitectureTest` (Spring Modulith, `ApplicationModules.verify()`) läuft im
   Build mit und war grün.
+
+
+## Inc 3a (Zyklus 2026-11-02) — Farb- und Oberflächen-Vertrag der Chat-Zeilen
+
+- **jsdom beweist keine Farbe** (gemessen 2026-11-02): `getComputedStyle(...).borderLeftColor` ist
+  `"canvastext"`, native CSS-Nesting und `var()` werden nicht ausgewertet (`textAlign` dagegen schon).
+  Der Farbvertrag einer Regel wie R-WP-29 wird deshalb aus dem **Text des Stylesheets** gelesen
+  (`import.meta.glob` über `../../src/*.css` mit `query: '?raw'`) und über die Tokens geschlossen:
+  Klasse → Token → Wert aus `chat.html`.
+- **`?raw` auf `.css` liefert einen leeren String, solange `test.css` aus ist.** `test.css.include`
+  verlangt **RegExp**-Einträge (Strings lassen `vitest:css-disable` mit `re.test is not a function`
+  abstürzen), und die id trägt beim Raw-Laden ihre Query — die Regex muss also `\?|$` am Ende zulassen.
+- **Ein `<hr>` gehört in die Zeile, nicht zwischen die `<li>`** (HTML: ein `<ul>` darf nur `li` als
+  Kinder). Die Zeile, die eine neue Stimme beginnt, trägt ihr `hr` selbst — die Liste bleibt eine Liste
+  und die Trennlinie läuft trotzdem über die ganze Breite.
+- **Die Draht-Handle der Chat-Zeilen nicht umbenennen**: `chat-line-jon` / `chat-live` /
+  `chat-line-author` sind die Griffe von 20 bestehenden Tests. Die Stimme (user/agent) ist die **Klasse**,
+  der Draht (jon/user) der `data-testid`.
