@@ -96,6 +96,42 @@
   bestehendes Teardown-Rauschen: `mvn -o clean test` endet trotzdem mit `BUILD SUCCESS`, exit 0,
   `Tests run: 156, Failures: 0, Errors: 0`.
 
+## UI-Inkremente (Zyklus 2026-11-02, Inc 1b)
+
+- **Vitest kennt kein `.as(…)`** (gemessen 2026-11-02, Inc 1b): `expect(x).as('msg')` wirft
+  `Invalid Chai property: as`. Die Assertion-Nachricht ist das **zweite Argument** — `expect(offenders, 'why')
+  .toEqual([])`. `.as(…)` ist AssertJ und damit nur im Backend-Lauf gültig.
+- **Quellen-Scan in UI-Tests ohne Node-Typen**: `tsconfig.app.json` setzt `types: ["vite/client", …]`, also sind
+  `node:fs`, `node:path` und `process` in `src`+`test` **nicht** typisiert (`@types/node` liegt bei, gilt aber nur
+  für `tsconfig.node.json` → `vite.config.ts`). Ein Scan über `src/**` läuft trotzdem durch Vitest **und** `tsc -b`,
+  wenn er die Dateien als Text vom Bundler holt:
+  `import.meta.glob('../../src/**/*.{ts,tsx}', { query: '?raw', import: 'default', eager: true })`.
+  `import.meta.url` ist in Vitest **kein** `file:`-URL → `fileURLToPath(import.meta.url)` bringt
+  `TypeError: The URL must be of scheme file`.
+- **Catalog-Wert ≠ Feldwert** (UC-WP-53): ein `<select>` zeigt das Label aus `content.ts`, trägt aber den
+  **Draht-Wert** als `value` (`sendThinking`: Label `Yes`/`No`, value `yes`/`no`). Ein Test, der `element.value`
+  liest, darf den Catalog-Wert nicht erwarten — sonst fällt er, obwohl die Oberfläche richtig ist.
+
+
+## UI-Inkremente (Zyklus 2026-11-02, Inc 1c — URL-Routing)
+
+- **`addResolver` gehört nicht auf `ResourceHandlerRegistration`** (gemessen, Spring 7 / Boot 4):
+  `resourceChain(true)` gibt eine **`ResourceChainRegistration`** zurück, und erst dort sitzt
+  `addResolver(...)`. `resourceChain(true)` = `cacheResources(true)` → `CachingResourceResolver` steht
+  **vor** dem eigenen Resolver; Erweiterungspunkt ist `PathResourceResolver.getResource(String, Resource)`,
+  der delegiert **nie** an die Chain.
+- **Der spezifischere Handler gewinnt, deshalb ist die `assets/`-Ausnahme im Fallback nicht tragend**:
+  `/ui/assets/**` schlägt `/ui/**`, ein fehlendes Asset wird nie vom Fallback-Handler gesehen. Mutation
+  (`isAppRoute` zu `return true`) macht **nur** den `.map`-Fall rot — die Extension-Regel ist die
+  sichernde, die `assets/`-Regel ist Defense-in-depth.
+- **oxlint `react(only-export-components)`**: eine Datei, die eine Komponente exportiert, darf keine
+  Funktionen/Hooks exportieren (auch nicht im `test`-Baum). Ausgliederungen: Typ + Pfad-Helfer →
+  `app/app.paths.ts`, Outlet-Context-Hook → `app/app.context.ts`, Test-Sonde → eigene `.tsx`.
+  **Konstanten-Exporte sind erlaubt** (`BASENAME` bleibt).
+- **Routing macht Navigation async**: ein Klick rendert die Zielseite erst nach der Datenlesung, drei
+  Chat-Tests brauchen `findBy*` statt `getBy*` — `waitFor` mit Standard-1000 ms reicht, die Behauptung
+  bleibt dieselbe.
+
 
 ## Inc 2 (Zyklus 2026-11-02) — Live-Status der Projektliste (Backend + UI)
 
