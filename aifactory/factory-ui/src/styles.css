@@ -151,6 +151,29 @@ button {
     overflow-wrap: anywhere;
   }
 
+  /* The live state of the row (R-WP-24) — the agent's green for work, the tool's grey for idle. */
+  .project-work {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    border-left: 3px solid var(--tool);
+    padding-left: 0.45rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--tool);
+    white-space: nowrap;
+
+    &[data-working='true'] {
+      border-left-color: var(--agent);
+      color: var(--agent);
+    }
+  }
+
+  .project-queued {
+    color: var(--text);
+  }
+
   .remove {
     font-size: 0.85rem;
   }

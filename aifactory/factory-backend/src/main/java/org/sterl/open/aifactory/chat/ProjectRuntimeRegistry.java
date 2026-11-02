@@ -18,6 +18,7 @@ import org.sterl.open.aifactory.chat.dto.AgentTranscriptDto;
 import org.sterl.open.aifactory.project.ProjectNotFoundException;
 import org.sterl.open.aifactory.project.ProjectRemoved;
 import org.sterl.open.aifactory.project.ProjectService;
+import org.sterl.open.aifactory.project.ProjectStatusStream;
 import org.sterl.open.aifactory.project.Project;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
@@ -36,6 +37,7 @@ public class ProjectRuntimeRegistry {
     private final FactoryConfigService config;
     private final FactoryHome home;
     private final ChatStreamRegistry streams;
+    private final ProjectStatusStream status;
 
     private final Map<String, ProjectRuntime> runtimes = new ConcurrentHashMap<>();
 
@@ -43,11 +45,12 @@ public class ProjectRuntimeRegistry {
     private final ExecutorService turns = Executors.newVirtualThreadPerTaskExecutor();
 
     public ProjectRuntimeRegistry(ProjectService projects, FactoryConfigService config, FactoryHome home,
-            ChatStreamRegistry streams) {
+            ChatStreamRegistry streams, ProjectStatusStream status) {
         this.projects = projects;
         this.config = config;
         this.home = home;
         this.streams = streams;
+        this.status = status;
     }
 
     /**
@@ -141,9 +144,18 @@ public class ProjectRuntimeRegistry {
         // built outside the map, never in computeIfAbsent: building an agent must not hold a map bin, and
         // the first writer wins — two concurrent POSTs must not get two Jons on one history
         ProjectRuntime built = new ProjectRuntime(projectId, project.localPath(), home.stateDir(projectId),
-                config::load, config::loadForTurn, streams, turns);
+                config::load, config::loadForTurn, streams, status, turns);
         ProjectRuntime raced = runtimes.putIfAbsent(projectId, built);
         return raced != null ? raced : built;
+    }
+
+    /**
+     * The runtime of a project that already has one, and nothing else: reading a work state must not
+     * build a Jon, his team and their memory (R-WP-24, UC-WP-47) — the project list is opened to look at
+     * the registry.
+     */
+    ProjectRuntime peek(String projectId) {
+        return runtimes.get(projectId);
     }
 
     int runtimeCount() {

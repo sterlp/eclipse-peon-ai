@@ -37,6 +37,11 @@ export const content = {
     cloning: 'Cloning…',
     empty: 'No project',
     remove: 'Remove',
+    /** The row of a project (R-WP-24): a turn runs here, or nothing does. */
+    working: 'working',
+    free: 'free',
+    /** Said beside "working" — an input only waits while a turn runs, so this never stands alone. */
+    queued: (count: number): string => `${count} queued`,
     removeQuestion: (name: string): string =>
       `Remove ${name}? The clone folder is deleted with it.`,
   },

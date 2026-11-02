@@ -22,7 +22,7 @@ Smoke-Test am Prototypen.
 
 ## Regeln
 
-### R-WP-1 — Top-Navigation: Projekte, Chat, Settings ❌ (geschärft Paul 2026-11-02)
+### R-WP-1 — Top-Navigation: Projekte, Chat, Settings ✅ (geschärft Paul 2026-11-02)
 
 Die Navigation ist ein **Top-Menü mit genau drei Einträgen** — **Projekte**, **Chat**, **Settings**.
 Es gibt **keine linke Sidebar** im MVP: die Hauptfläche gehört dem Chat, man erreicht den Chat eines
@@ -34,27 +34,26 @@ Chats) ist die **spätere Vision** ([Paco](paco.md)) — kein MVP-Mechanismus, �
 [Open Points](open-points.md).
 
 **URL-stabil:** jede Navigation (Projekt öffnen, View wechseln) ändert die URL (**Aktion → URL →
-#### UC-WP-1 — pagesOfTheMvpApp ❌ (früher „showsExactlyTheseFourPages", umgebaut Paul 2026-11-02)
+UI-Change**) — kein rein funktionierender `useState`-Zustand; ein Reload bleibt auf der Seite
+(UC-WP-43).
+
+#### UC-WP-1 — pagesOfTheMvpApp ✅ (früher „showsExactlyTheseFourPages", umgebaut Paul 2026-11-02)
 - GIVEN die App WHEN der Nutzer navigiert THEN erreicht er global *Projekte* und *Settings* (Config,
   [R-WP-16](config.md)), je Projekt den *Jon-Chat* — keine weiteren Seiten im MVP; Datei-Bereich und
   Team-Kacheln liegen im Jon-Chat. Die *Paco*-Seite kommt mit der Paco-Story ([Paco](paco.md)).
 
-#### UC-WP-43 — reloadStaysOnThePage ❌
+#### UC-WP-43 — reloadStaysOnThePage ✅
 - GIVEN der Nutzer ist im Jon-Chat eines Projekts WHEN er den Browser neu lädt THEN ist er wieder im
   Jon-Chat desselben Projekts, mit vollständigem Verlauf.
 - GIVEN eine unbekannte Adresse unter `/ui/` WHEN sie aufgerufen wird THEN kommt die App
   (`index.html`) — kein `500`, keine Weiterleitungsschleife, und `/ui/assets/**` bleibt davon
   unberührt.
 
-
-UI-Change**) — kein rein funktionierender `useState`-Zustand; ein Reload bleibt auf der Seite
-(UC-WP-43).
-
-#### UC-WP-51 — chatOpensLastActiveProject ❌
+#### UC-WP-51 — chatOpensLastActiveProject ✅
 - GIVEN mehrere Projekte WHEN der Nutzer „Chat" klickt THEN öffnet sich der Chat des zuletzt aktiven
   Projekts; ohne aktives Projekt führt „Chat" auf die Projektliste.
 
-#### UC-WP-52 — everyNavigationChangesTheUrl ❌
+#### UC-WP-52 — everyNavigationChangesTheUrl ✅
 - GIVEN jede Navigation (Projekt öffnen, View wechseln) WHEN der Nutzer sie auslöst THEN ändert sich
   die URL entsprechend, und der direkte Aufruf dieser URL zeigt denselben Stand — kein Zustand nur
   im `useState`.

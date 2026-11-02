@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import org.slf4j.Logger;
@@ -27,6 +28,8 @@ import org.sterl.open.aifactory.chat.dto.AgentAction;
 import org.sterl.open.aifactory.chat.dto.AgentTileDto;
 import org.sterl.open.aifactory.chat.dto.AgentTranscriptDto;
 import org.sterl.open.aifactory.chat.dto.TileCapability;
+import org.sterl.open.aifactory.project.ProjectStatusStream;
+import org.sterl.open.aifactory.project.ProjectWork;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -57,6 +60,7 @@ final class ProjectRuntime {
     private final ConfiguredChatModel model;
     private final AiPoAgent jon;
     private final ChatStreamRegistry streams;
+    private final ProjectStatusStream status;
     private final ExecutorService turns;
     private final SseTurnMonitor monitor;
     private final AgentNames names;
@@ -66,6 +70,14 @@ final class ProjectRuntime {
      * never meet inside a memory, and so that a send during an action waits instead of being refused.
      */
     private final TurnClaim claim = new TurnClaim();
+
+    /**
+     * The accepted submits whose work is not over. One of them is being worked and the ones behind it
+     * wait, which is exactly the row the project list shows (R-WP-24) — deliberately not the core's
+     * flags: those only exist inside {@code call()} on the turn's thread, so an input that has just been
+     * taken would not be counted yet and the row would read free one input too early.
+     */
+    private final AtomicInteger outstanding = new AtomicInteger();
 
     /** The agent whose turn failed; his tile shows ERROR, and only while he is idle again (UC-WP-11). */
     private volatile String failedAgent;
@@ -81,10 +93,11 @@ final class ProjectRuntime {
      */
     ProjectRuntime(String projectId, Path projectRoot, Path stateDir,
             Supplier<LlmConfig> initialConfig, Supplier<LlmConfig> configForTurn,
-            ChatStreamRegistry streams, ExecutorService turns) {
+            ChatStreamRegistry streams, ProjectStatusStream status, ExecutorService turns) {
         this.projectId = projectId;
         this.configForTurn = configForTurn;
         this.streams = streams;
+        this.status = status;
         this.turns = turns;
         this.model = new ConfiguredChatModel(initialConfig.get());
 
@@ -314,6 +327,11 @@ final class ProjectRuntime {
         failedAgent = null;
         searchWorking = false;
         turns.submit(() -> {
+            // counted and shown before anything is asked: the row of the project list is the number of
+            // accepted submits whose work is not over, so an input that only waits behind this turn is
+            // on the wire while the turn before it still runs (R-WP-24, UC-WP-47)
+            outstanding.incrementAndGet();
+            status.publish(workState());
             long startedAt = System.nanoTime();
             boolean ranTurn = opensTurn;
             boolean askedCore = false;
@@ -365,6 +383,10 @@ final class ProjectRuntime {
                             new ChatEvent.Failed("the turn failed — the server log names the reason"));
                 }
             } finally {
+                // the number of this submit is the last thing it owes: with the last one the row goes
+                // free, and only then — a waited input is worked after the turn that held it (UC-WP-47)
+                outstanding.decrementAndGet();
+                status.publish(workState());
                 if (ranTurn) {
                     searchWorking = false;
                     // the end snapshot goes out while the turn still owns the project, so a tile never shows
@@ -374,6 +396,16 @@ final class ProjectRuntime {
                 }
             }
         });
+    }
+
+    /**
+     * The row of the project list (R-WP-24): working while an accepted submit of this runtime has not
+     * answered, and the submits behind it waiting. Read on demand and never kept — every change is pushed
+     * by {@link #submit} at the same moment the number moves.
+     */
+    ProjectWork workState() {
+        int open = outstanding.get();
+        return new ProjectWork(projectId, open > 0, Math.max(0, open - 1));
     }
 
     /**

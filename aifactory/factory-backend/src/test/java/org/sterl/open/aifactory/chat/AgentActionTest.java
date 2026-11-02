@@ -67,6 +67,7 @@ import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
 import org.sterl.open.aifactory.project.FakeGitConfig;
 import org.sterl.open.aifactory.project.Project;
 import org.sterl.open.aifactory.project.ProjectService;
+import org.sterl.open.aifactory.project.ProjectStatusStream;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
@@ -387,7 +388,7 @@ class AgentActionTest {
         Project project = projects.add("https://git.example.com/acme/rejected-action.git").project();
         ProjectRuntime runtime = new ProjectRuntime(project.id(), project.localPath(),
                 factoryHome.stateDir(project.id()), config::load, config::loadForTurn, streams,
-                new RefusesItsFirstTask());
+                new ProjectStatusStream(), new RefusesItsFirstTask());
         seedEveryAgent(runtime);
 
         assertThatThrownBy(() -> runtime.act(AiPoAgent.NAME, AgentAction.CLEAR))

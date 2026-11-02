@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 
 import { renderApp } from '../shared/app.harness'
 import { ProjectPage } from '../../src/project/project.page'
@@ -10,7 +18,11 @@ beforeEach(() => {
   cleanup()
 })
 
-afterEach(() => {
+afterEach(async () => {
+  // a work-state stream that never ends would leave the reader of the unmounted view pending (as in
+  // chat.page.test); awaited, because an unfinished act() would overlap the act() of the next test
+  await active?.closeStream()
+  active = undefined
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
@@ -18,20 +30,57 @@ afterEach(() => {
 type Script = { GET: unknown; POST: unknown; DELETE: unknown }
 type Call = { method: string; path: string; body?: string }
 
+interface Server {
+  script: Script
+  calls: Call[]
+  /** One event of the work-state wire, written as the server writes it. */
+  push(event: string, payload: unknown): Promise<void>
+  closeStream(): Promise<void>
+}
+
+let active: Server | undefined
+
 /**
  * Mutable `fetch` stand-in: `script` can be replaced between the steps of one test (the view
- * reloads the list after a POST/DELETE), every call is recorded.
+ * reloads the list after a POST/DELETE), every call is recorded. The work-state edge answers an open
+ * stream the test writes into, because its events are the whole point of R-WP-24.
  */
-function stubServer(initial: Partial<Script>): { script: Script; calls: Call[] } {
-  const server: { script: Script; calls: Call[] } = {
+function stubServer(initial: Partial<Script>): Server {
+  let controller: ReadableStreamDefaultController<Uint8Array> | undefined
+  const server: Server = {
     script: { GET: [], POST: undefined, DELETE: undefined, ...initial },
     calls: [],
+    push: async (event, payload) => {
+      await act(async () => {
+        controller?.enqueue(
+          new TextEncoder().encode(`event:${event}\ndata:${JSON.stringify(payload)}\n\n`),
+        )
+        await new Promise(resolve => setTimeout(resolve, 0))
+      })
+    },
+    closeStream: async () => {
+      await act(async () => {
+        controller?.close()
+        controller = undefined
+        await new Promise(resolve => setTimeout(resolve, 0))
+      })
+    },
   }
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const method = (init?.method ?? 'GET').toUpperCase()
       server.calls.push({ method, path: String(input), body: init?.body as string | undefined })
+      if (String(input).endsWith('/events')) {
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            start(opened) {
+              controller = opened
+            },
+          }),
+          { status: 200, headers: { 'content-type': 'text/event-stream' } },
+        )
+      }
       const answer = server.script[method as keyof Script]
       if (answer instanceof Error) {
         return response(400, { status: 400, error: 'Bad Request', message: answer.message })
@@ -44,6 +93,7 @@ function stubServer(initial: Partial<Script>): { script: Script; calls: Call[] }
       return response(method === 'POST' ? 201 : 200, answer)
     }),
   )
+  active = server
   return server
 }
 
@@ -181,4 +231,30 @@ test('removesProjectAfterConfirmation', async () => {
   expect(
     server.calls.some(call => call.method === 'DELETE' && call.path.includes('demo-1a2b3c4')),
   ).toBe(true)
+})
+
+
+// UC-WP-47
+test('theListShowsWorkingAndQueued', async () => {
+  const demo = project()
+  const server = stubServer({ GET: [demo] })
+  render(<ProjectPage onOpen={() => undefined} />)
+  const row = (await screen.findByText('demo')).closest('li') as HTMLElement
+
+  // nothing told about a project means free — the same answer a restart gives (R-WP-24)
+  expect(row).toHaveTextContent(content.projects.free)
+
+  await server.push('projects', { projects: [{ projectId: demo.id, working: true, queued: 0 }] })
+  expect(row).toHaveTextContent(content.projects.working)
+  expect(row.textContent).not.toContain('queued')
+
+  await server.push('project', { projectId: demo.id, working: true, queued: 1 })
+  expect(row).toHaveTextContent(content.projects.working)
+  expect(row).toHaveTextContent(content.projects.queued(1))
+
+  const reads = server.calls.filter(call => call.path === '/api/projects').length
+  await server.push('project', { projectId: demo.id, working: false, queued: 0 })
+  expect(row).toHaveTextContent(content.projects.free)
+  expect(row.textContent).not.toContain(content.projects.working)
+  expect(server.calls.filter(call => call.path === '/api/projects')).toHaveLength(reads)
 })
