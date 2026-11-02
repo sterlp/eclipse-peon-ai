@@ -71,3 +71,23 @@ Base: `AGENTS.md`. System prompt: `developer.md`.
 - **Catalog-Wert ≠ Feldwert** (UC-WP-53): ein `<select>` zeigt das Label aus `content.ts`, trägt aber den
   **Draht-Wert** als `value` (`sendThinking`: Label `Yes`/`No`, value `yes`/`no`). Ein Test, der `element.value`
   liest, darf den Catalog-Wert nicht erwarten — sonst fällt er, obwohl die Oberfläche richtig ist.
+
+
+## UI-Inkremente (Zyklus 2026-11-02, Inc 1c — URL-Routing)
+
+- **`addResolver` gehört nicht auf `ResourceHandlerRegistration`** (gemessen, Spring 7 / Boot 4):
+  `resourceChain(true)` gibt eine **`ResourceChainRegistration`** zurück, und erst dort sitzt
+  `addResolver(...)`. `resourceChain(true)` = `cacheResources(true)` → `CachingResourceResolver` steht
+  **vor** dem eigenen Resolver; Erweiterungspunkt ist `PathResourceResolver.getResource(String, Resource)`,
+  der delegiert **nie** an die Chain.
+- **Der spezifischere Handler gewinnt, deshalb ist die `assets/`-Ausnahme im Fallback nicht tragend**:
+  `/ui/assets/**` schlägt `/ui/**`, ein fehlendes Asset wird nie vom Fallback-Handler gesehen. Mutation
+  (`isAppRoute` zu `return true`) macht **nur** den `.map`-Fall rot — die Extension-Regel ist die
+  sichernde, die `assets/`-Regel ist Defense-in-depth.
+- **oxlint `react(only-export-components)`**: eine Datei, die eine Komponente exportiert, darf keine
+  Funktionen/Hooks exportieren (auch nicht im `test`-Baum). Ausgliederungen: Typ + Pfad-Helfer →
+  `app/app.paths.ts`, Outlet-Context-Hook → `app/app.context.ts`, Test-Sonde → eigene `.tsx`.
+  **Konstanten-Exporte sind erlaubt** (`BASENAME` bleibt).
+- **Routing macht Navigation async**: ein Klick rendert die Zielseite erst nach der Datenlesung, drei
+  Chat-Tests brauchen `findBy*` statt `getBy*` — `waitFor` mit Standard-1000 ms reicht, die Behauptung
+  bleibt dieselbe.
