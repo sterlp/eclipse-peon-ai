@@ -16,6 +16,8 @@ interface Chat {
   setMessages(messages: ChatMessage[]): void
   /** Every `POST …/agents` answers this instead of 202 — the refusal a running turn produces. */
   refuseActions(status: number, message: string): void
+  /** Every `POST …/messages` answers this instead of 202 — the send that never landed. */
+  refuseSend(status: number, message: string): void
   /** Every `POST …/messages/stop` answers this instead of 202 — the refusal of an ended turn. */
   setStopAnswer(status: number, message: string): void
   /** Writes bytes onto the open stream — may stop in the middle of an event. */
@@ -71,6 +73,7 @@ function stubChat(
     messages: initial.messages ?? [],
     agents: initial.agents ?? [],
     refusal: undefined as { status: number; message: string } | undefined,
+    sendRefusal: undefined as { status: number; message: string } | undefined,
     stopAnswer: undefined as { status: number; message: string } | undefined,
   }
   let controller: ReadableStreamDefaultController<Uint8Array> | undefined
@@ -116,6 +119,13 @@ function stubChat(
         return new Response(null, { status: 202 })
       }
       if (path.endsWith('/messages') && method === 'POST') {
+        if (state.sendRefusal !== undefined) {
+          return json(state.sendRefusal.status, {
+            status: state.sendRefusal.status,
+            error: 'unavailable',
+            message: state.sendRefusal.message,
+          })
+        }
         return new Response(null, { status: 202 })
       }
       if (path.endsWith('/messages')) {
@@ -134,6 +144,9 @@ function stubChat(
     },
     refuseActions: (status, message) => {
       state.refusal = { status, message }
+    },
+    refuseSend: (status, message) => {
+      state.sendRefusal = { status, message }
     },
     setStopAnswer: (status, message) => {
       state.stopAnswer = { status, message }
@@ -337,14 +350,14 @@ test('oneChatPerProject', async () => {
   const opened = await screen.findByRole('region', { name: content.chat.title })
   await waitFor(() => expect(agentLinesSaying(ANSWER.text)).toHaveLength(1))
 
-  // the controls the chat has: one writes into THIS conversation, one ends its running turn (UC-WP-50) —
-  // it names no addressee and starts nothing. The tile actions of Inc 5b sit beside them and are asserted
-  // separately below: they clear or compact an agent, they open, rename or delete nothing (R-WP-7)
+  // the controls the chat has: one writes into THIS conversation, one sends the last accepted text again
+  // (R-WP-30), one ends its running turn (UC-WP-50) — none names an addressee and none starts a conversation.
+  // The tile actions of Inc 5b sit beside them and are asserted separately below (R-WP-7)
   const controls = within(opened)
     .queryAllByRole('button')
     .filter(control => control.closest('.chat-tiles') === null)
     .map(control => control.textContent?.trim() ?? '')
-  expect(controls).toEqual([content.chat.send, content.chat.stop])
+  expect(controls).toEqual([content.chat.send, content.chat.resend, content.chat.stop])
   expect(
     controls.filter(label =>
       /neue|gespräch|dialog|verlauf|wechseln|öffnen|lösch|new|conversation|history|switch|open|delete|remove|clear/i.test(
@@ -771,11 +784,147 @@ test('consecutiveToolLinesAreMerged', async () => {
   expect(lines[9]).toBe('step 12')
 })
 
+// UC-WP-57
+test('resendSendsTheLastMessageAgain', async () => {
+  const chat = stubChat({ messages: [] })
+  render(<ChatPage project={project()} />)
+  await flush()
+  // nothing has been sent yet, so nothing can be sent again
+  expect(screen.getByTestId('chat-resend')).toBeDisabled()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+  expect(chat.countOf('/messages', 'POST')).toBe(1)
+  expect(screen.getByTestId('chat-resend')).toBeEnabled()
+
+  fireEvent.click(screen.getByTestId('chat-resend'))
+  await flush()
+
+  // the same text, twice, on the same edge — and the field was not touched a second time (R-WP-30)
+  expect(sentTexts(chat)).toEqual(['zähl die Dateien', 'zähl die Dateien'])
+  expect(screen.getByTestId('chat-input')).toHaveValue('')
+})
+
+// UC-WP-57
+test('aSendThatNeverLandedIsNotOfferedAgain', async () => {
+  const chat = stubChat({ messages: [] })
+  chat.refuseSend(503, 'the factory is not reachable')
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+
+  expect(screen.getByTestId('chat-error')).toHaveTextContent('the factory is not reachable')
+  // 202 is what makes a text "the last one": a text the queue never got is not something to send twice
+  expect(screen.getByTestId('chat-resend')).toBeDisabled()
+  expect(sentTexts(chat)).toEqual(['zähl die Dateien'])
+})
+
+// UC-WP-57
+test('resendWorksAfterAnError', async () => {
+  const chat = stubChat({ messages: [] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+  await chat.push(event('error', { message: 'Es fehlt ein Modellschlüssel für OPEN_AI' }))
+  expect(screen.getByTestId('chat-error')).toHaveTextContent('Es fehlt ein Modellschlüssel')
+
+  // the answer to a failed turn needs no new typing, and what he writes in the meantime stays (R-WP-30)
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'und jetzt mit Schlüssel' } })
+  fireEvent.click(screen.getByTestId('chat-resend'))
+  await flush()
+
+  expect(sentTexts(chat)).toEqual(['zähl die Dateien', 'zähl die Dateien'])
+  expect(screen.getByTestId('chat-input')).toHaveValue('und jetzt mit Schlüssel')
+})
+
+// UC-WP-58
+test('waitingBarShowsTheLivePreview', async () => {
+  const chat = stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  await flush()
+  // no turn, no wait
+  expect(screen.queryByTestId('chat-waiting')).toBeNull()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+
+  // GIVEN a turn that has delivered nothing THEN the words of the plugin
+  expect(screen.getByTestId('chat-waiting')).toHaveTextContent(content.chat.waitingForAi)
+
+  // GIVEN the stream delivers THEN the bar shows what it last reported, on one line — a preview beside
+  // the log and never a second copy of the answer (R-WP-31)
+  await chat.push(event('tool', { text: 'Running: `ls` in /home/me' }))
+  expect(screen.getByTestId('chat-waiting')).toHaveTextContent('Running: `ls`')
+
+  await chat.push(event('partial', { kind: 'answer', text: 'Im Root liegen:\npom.xml' }))
+  expect(screen.getByTestId('chat-waiting')).toHaveTextContent('pom.xml')
+  expect(screen.getByTestId('chat-waiting').textContent).not.toContain('Im Root liegen')
+
+  // and it is the plugin's line: sticky at the lower edge, mono, with a caret that blinks (R-WP-31)
+  const painted = declarations('.chat-waiting')
+  expect(painted).toContain('position: sticky')
+  expect(painted).toContain('font-family: var(--mono)')
+  expect(declarations('.chat-waiting-caret')).toContain('animation')
+})
+
+// UC-WP-58
+test('waitingBarEndsWithTheTurn', async () => {
+  const chat = stubChat({ messages: [] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+  await chat.push(event('partial', { kind: 'answer', text: 'Im Root liegen: pom.xml' }))
+  expect(screen.getByTestId('chat-waiting')).toBeInTheDocument()
+
+  chat.setMessages([ANSWER])
+  await chat.push(event('done', { millis: 12 }))
+
+  // the answer stays, the wait goes with the turn (R-WP-31)
+  expect(screen.queryByTestId('chat-waiting')).toBeNull()
+  expect(screen.getByTestId('chat-log')).toHaveTextContent('Im Root liegen: pom.xml')
+})
+
+// UC-WP-58
+test('waitingBarEndsWithAFailedTurn', async () => {
+  const chat = stubChat({ messages: [] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+  expect(screen.getByTestId('chat-waiting')).toBeInTheDocument()
+
+  // a failed turn is an ended turn: no wait line left standing above the reason (UC-WP-58)
+  await chat.push(event('error', { message: 'Es fehlt ein Modellschlüssel für OPEN_AI' }))
+
+  expect(screen.getByTestId('chat-error')).toHaveTextContent('Es fehlt ein Modellschlüssel')
+  expect(screen.queryByTestId('chat-waiting')).toBeNull()
+})
+
 
 
 /** The author labels of the agent lines, in reading order — the shape of R-WP-4's claim. */
 function agentAuthorsOnScreen(): (string | null)[] {
   return authorsOfLines('chat-line-jon')
+}
+
+/** The texts the queue got, in the order they were posted — what a resend really put on the wire. */
+function sentTexts(chat: Chat): string[] {
+  return chat.calls
+    .filter(call => call.method === 'POST' && call.path.endsWith('/messages'))
+    .map(call => String(JSON.parse(call.body ?? '{}').text))
 }
 
 /**

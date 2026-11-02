@@ -60,6 +60,10 @@ export const content = {
     messageToJon: 'Message to Jon',
     send: 'Send',
     stop: 'Stop',
+    /** The second send of R-WP-30: the same text again, without typing it again (UC-WP-57). */
+    resend: 'Resend',
+    /** The wait of a turn that has delivered nothing yet — the words of the plugin (R-WP-31). */
+    waitingForAi: 'Waiting for AI…',
     /** The fallback of an `error` event that carries no reason — better than an empty line. */
     unknownError: 'unknown error',
   },

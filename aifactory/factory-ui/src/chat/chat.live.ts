@@ -56,3 +56,16 @@ export function liveRuns(items: LiveItem[]): LiveItem[][] {
   return runs
 }
 
+
+/**
+ * What the waiting bar of the running turn shows (R-WP-31): the last thing the stream reported, on one
+ * line. It is a preview beside the log and never a second copy of the answer, so markup shows as typed.
+ */
+export function livePreview(items: LiveItem[]): string {
+  const last = items[items.length - 1]
+  if (last === undefined) {
+    return ''
+  }
+  const lines = last.text.split('\n').filter(line => line.trim() !== '')
+  return lines[lines.length - 1] ?? ''
+}

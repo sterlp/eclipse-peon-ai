@@ -431,17 +431,72 @@ button {
   color: var(--text);
 }
 
+/* Das Feld ist eine Textarea: Enter ist ihr Umbruch, Cmd/Ctrl+Enter ist der Send, den die Tastatur zum
+   Knopf hinzufügt (R-WP-30). Die Knöpfe stehen darunter, damit eine lange Frage ihre Breite behält. */
 .chat-composer {
-  display: flex;
+  display: grid;
   gap: 0.5rem;
 
-  input {
-    flex: 1;
+  textarea {
+    width: 100%;
+    min-height: 4.5rem;
     padding: 0.4rem 0.6rem;
     border: 1px solid var(--border);
     border-radius: 0.4rem;
     background: var(--bg);
     color: var(--text-h);
+    font: inherit;
+    resize: vertical;
+  }
+}
+
+.chat-composer-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Die Warte-Leiste eines Turns (R-WP-31) — die Zeile des Plugins: sticky am unteren Rand, in beiden Themen
+   dunkel, Mono, mit dem Cursor, der während des Turns blinkt. Das Grün ist das Agenten-Grün von chat.html. */
+.chat-waiting {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.6rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.4rem;
+  background: #1c2128;
+  color: #7ee787;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+
+/* Vorschau, nicht Verlauf: was der Stream zuletzt meldete, auf einer Zeile. */
+.chat-waiting-text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chat-waiting-caret {
+  flex: none;
+  inline-size: 0.5rem;
+  block-size: 0.95rem;
+  background: currentColor;
+  animation: chat-waiting-blink 1s steps(2, start) infinite;
+}
+
+@keyframes chat-waiting-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-waiting-caret {
+    animation: none;
   }
 }
 

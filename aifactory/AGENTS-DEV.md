@@ -204,3 +204,21 @@
 - **"Could not parse CSS stylesheet" in jsdom ist vorbestehend**, wenn der vite-Cache kalt ist: es kommt
   aus dem nativen CSS-Nesting in `styles.css` (seit Inc 1a), die HEAD-Version zeigt dasselbe. Erst
   `rm -rf node_modules/.vite` auf HEAD vergleichen, bevor ein Inkrement beschuldigt wird.
+
+
+## Inc 4 (Zyklus 2026-11-02) — Textarea, Warte-Leiste, Resend
+
+- **jsdom kennt `requestSubmit`, meldet es aber als „Not implemented"**, wenn das Formular sich danach
+  wirklich abgeben will: Ein Test-Double für `onSubmit` muss `event.preventDefault()` aufrufen, sonst
+  steht die Meldung im Output, obwohl der Submit-Event gelaufen ist und der Test grün ist.
+- **„Enter ist der Umbruch des Browsers" direkt bewiesen**: `fireEvent.keyDown(field, { key: 'Enter' })`
+  gibt `false` zurück, sobald die Komponente `preventDefault()` ruft — das ist die Assertion, nicht ein
+  Vergleich des Werts. Eine kontrollierte Textarea behält einen Mehrzeiler-Wert außerdem nur, wenn der
+  Test ein echtes `useState` als Eigentümer hat (`<input type="text">` wirft den `\n` in jsdom weg —
+  genau das ist der Unterschied, den der Fall zeigt).
+- **Die Warte-Leiste hängt an `busy`** — demselben Flag wie der Stop-Knopf: ein Turn eines anderen Browsers
+  liefert seine `partial`-Zeilen über denselben Stream, deshalb braucht „während ein Turn läuft" kein
+  zweites Flag und kein zweites Protokoll (R-WP-31, UC-WP-22).
+- **Der Steuerungs-Beweis aus Inc 5 (`oneChatPerProject`) friert die Knopf-Liste ein**: Wer dem Chat einen
+  Knopf hinzufügt, muss diese Liste mitziehen (R-WP-30 nennt Resend) — die Liste ist der Ort, an dem ein
+  vierter, gesprächswechselnder Knopf auffällt.

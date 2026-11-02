@@ -12,8 +12,15 @@ import { agentAction, listAgents, type AgentAction, type AgentTile } from './cha
 import { ChatComposer } from './chat.composer'
 import { ChatInsight } from './chat.insight'
 import { ChatLog } from './chat.log'
-import { appendLiveText, appendLiveTool, liveLinesAfterHistory, type LiveItem } from './chat.live'
+import {
+  appendLiveText,
+  appendLiveTool,
+  liveLinesAfterHistory,
+  livePreview,
+  type LiveItem,
+} from './chat.live'
 import { ChatTiles } from './chat.tiles'
+import { ChatWaiting } from './chat.waiting'
 import { openChatStream } from './chat.stream'
 import { ApiRequestError, errorMessage } from '../shared/api.client'
 import { content } from '../shared/content'
@@ -65,6 +72,11 @@ const RECONNECT_MS = 500
  * <em>not</em> re-read the history: the live lines the user was already shown are all that exists of the
  * stopped turn, and there is no second store to read them back from (R-WP-11).
  *
+ * Two things follow the turn itself: the text of an <em>accepted</em> send is kept for "Resend" (UC-WP-57),
+ * and {@link ChatWaiting} sits above the composer while a turn works and shows what the stream last
+ * reported (R-WP-31). Neither is a second memory: the first is one string of this browser's session, the
+ * second reads the live list the log already holds.
+ *
  * The page holds the state; {@link ChatLog} and {@link ChatComposer} only draw it.
  *
  * The head of the view names the project and nothing else: a second "Chat" heading would repeat the tab
@@ -76,6 +88,11 @@ export function ChatPage({ project, files, user }: Props) {
   const [outgoing, setOutgoing] = useState<string[]>([])
   const [live, setLive] = useState<LiveItem[]>([])
   const [draft, setDraft] = useState('')
+  /**
+   * The last text the server took (202) — the one "Resend" sends again (UC-WP-57). Held only after an
+   * accepted send: a text that never got through is not something the user should be offering twice.
+   */
+  const [lastSent, setLastSent] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   /** The tile whose insight is open — a name, not a conversation: there is still exactly one of those. */
   const [insight, setInsight] = useState<string | null>(null)
@@ -86,7 +103,7 @@ export function ChatPage({ project, files, user }: Props) {
   const [runningTurn, setRunningTurn] = useState<string | null>(null)
   /** The project whose turn the user asked to end, so its `done` must not read over his lines (D-16). */
   const stoppedTurn = useRef<string | null>(null)
-  const input = useRef<HTMLInputElement>(null)
+  const input = useRef<HTMLTextAreaElement>(null)
   /**
    * The rows the log shows — a live line is anchored at this count, so it keeps the place it happened at
    * even when the history read of `done` replaces the lines around it (D-7, UC-WP-54).
@@ -207,16 +224,17 @@ export function ChatPage({ project, files, user }: Props) {
     }
   }, [applyEvent, projectId, refresh, refreshTiles])
 
-  async function submit(event: FormEvent) {
-    event.preventDefault()
-    const text = draft.trim()
-    if (text === '' || projectId === null) {
+  /**
+   * One text into this project's conversation — whether it came from the field or from "Resend" makes no
+   * difference on the wire (UC-WP-57): the same edge, the same queue while a turn runs (R-WP-10).
+   */
+  async function send(text: string) {
+    if (projectId === null) {
       return
     }
     // shown before the server has it: a turn writes the user line into the memory only when it starts,
     // so a queued input would vanish from the screen until the next history read
     setOutgoing(previous => [...previous, text])
-    setDraft('')
     setError(null)
     // the send is what opens the turn, so the flag follows the intent and not the answer (D-13): 202 only
     // says "taken", and a stop that comes one moment later must already address this turn
@@ -225,10 +243,32 @@ export function ChatPage({ project, files, user }: Props) {
     try {
       // the name of this browser goes with it, and only when there is one (R-WP-25, UC-WP-48)
       await sendMessage(projectId, text, user)
+      // 202 is the moment this text becomes "the last one": a refusal never earns the Resend button
+      setLastSent(text)
     } catch (reason) {
       setOutgoing(previous => previous.slice(0, -1))
       setRunningTurn(null)
       setError(errorMessage(reason))
+    }
+  }
+
+  function submit(event: FormEvent) {
+    event.preventDefault()
+    const text = draft.trim()
+    if (text === '') {
+      return
+    }
+    setDraft('')
+    void send(text)
+  }
+
+  /**
+   * The last accepted text again, without the user typing it (UC-WP-57). What he has typed in the meantime
+   * stays in the field — a resend answers the failed turn, it does not empty what he is writing now.
+   */
+  function resend() {
+    if (lastSent !== null) {
+      void send(lastSent)
     }
   }
 
@@ -306,12 +346,17 @@ export function ChatPage({ project, files, user }: Props) {
             {error}
           </p>
         )}
+        {/* one rule with the stop button: while a turn works on this project, the wait is on the screen
+            (R-WP-31) — another browser's turn included, because this stream carries its lines anyway */}
+        {busy && <ChatWaiting preview={livePreview(live)} />}
         <ChatComposer
           draft={draft}
           inputRef={input}
           busy={busy}
+          lastSent={lastSent}
           onDraftChange={setDraft}
           onSubmit={submit}
+          onResend={resend}
           onStop={stop}
         />
       </section>
