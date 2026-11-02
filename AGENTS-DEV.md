@@ -55,3 +55,32 @@ Base: `AGENTS.md`. System prompt: `developer.md`.
   Evidenz lebt im Commit und ggf. in den memory-Tools, nie in `docs/**`.
 - Elegant, expressive modern Java (records, pattern matching, switch expressions, Lombok).
 - Skill-Footer beantworten; falschen Skill im selben Turn fixen.
+
+
+## Inc 3 (Zyklus 2026-11-02, Runde 2) — Chat scrollt in eigener Fläche
+
+- **Feste Shell ohne View-Scroll clippt die anderen Seiten** (gemessen am Layout, nicht am Test):
+  `#root { height: 100dvh; overflow: hidden }` nimmt Projektliste und Settings den einzigen Scroll.
+  `overflow-y: auto` an `.view` (alle Views) + `overflow: hidden` an `.chat-workspace > .view` gibt
+  jedem View seine eigene Fläche und dem Chat die innere; die Scroll-Regel gehört also **beiden**
+  Sheetschichten, nicht nur dem Chat.
+- **Scrollen ist in jsdom nur über das Blatt + einen Mock beweisbar**: `scrollHeight`/`clientHeight`
+  sind 0 und `scrollTop`-Schreiben verpufft (kein Layout). Mock mit `Object.defineProperty`
+  (`configurable: true`, eigener Getter/Setter für `scrollTop`), Geometrie 1000/300, dann
+  `fireEvent.scroll(log)` für die Leserichtung. Proben: Guard `atBottom` raus ⇒ **nur**
+  `readingUpIsNotRippedDown` rot; `area.scrollTop = area.scrollHeight` raus ⇒ **beide** Verhaltens-
+  tests rot (die 24-px-Klausel am Ende macht den zweiten nicht leerläufig).
+- **`declarations()` liest nur `styles.css`** — die Shell-Höhe steht in `index.css`. Neuer Zweig im
+  Helfer: `baseDeclarations(selector)` (derselbe Helfer, zweite Sheet); `tokenValues` liest schon immer
+  `index.css`, deshalb blieb den Tests der Unterschied bisher unsichtbar.
+- **`.chat-log` ist `display: grid` und scrollt als Flex-Kind trotzdem** — `flex: 1; min-height: 0;
+  overflow-y: auto` reicht, kein Umbau auf Block/Column. `min-height: 0` ist die Zeile, die den Scroll
+  überhaupt möglich macht (Flex-Kind darf unter seine Inhaltshöhe) — als Sheet-Assertion gepinnt.
+- **Die Warte-Leiste ist jetzt Block über dem Feld, nicht sticky** (Jon freigegeben, benannte
+  Abweichung): der UC-WP-58-Test hielt `position: sticky` — genau die Wurzel von F9. Assertion auf
+  Mono + Blink-Cursor **eingeengt** und im selben Test positiv ersetzt (kein `position:` im Block,
+  `nextElementSibling` ist der Composer, `.chat-log` trägt `overflow-y: auto`). Doc-Wortlaut
+  R-WP-31 („sticky am unteren Rand") auf „steht über der Eingabe" korrigiert.
+- **Nach Inc 3: Backend 202/0/0** (unverändert — reines UI-Inkrement), **UI 121 Tests / 15 Dateien**
+  (118/15), `tsc -b` 0, oxlint 0/0 (57 Dateien), Doc-Lint **0 Findings** bei UC **66/66**, 233
+  Test-Ids. UC-WP-66 bleibt ❌ (flippt Jon).
