@@ -1,28 +1,18 @@
 import MarkdownRender, { setCustomComponents } from 'markstream-react'
-import { ShikiHighlighter } from 'react-shiki/web'
+
+import { CodeView } from '../shared/code'
 
 /**
- * The code block of an answer (R-WP-28): react-shiki, not the renderer's own highlighter, so the block
- * follows the theme layer of the app instead of a second colour scheme. Both themes travel in the markup
- * as `--shiki-dark`, and `styles.css` decides which of them shows — the same switch the tokens of
- * `index.css` use, so a code block never disagrees with the rest of the screen.
+ * The code block of an answer (R-WP-28): the app's one highlighted view, so a fence in a reply and a
+ * file in the viewer are the same colours and the same theme switch — one component, one place to keep
+ * (see `shared/code.tsx`).
  *
- * An unknown language is plain text: react-shiki falls back on its own, so a fence for a language the
- * model invented highlights as nothing rather than breaking the answer around it.
+ * An unknown language is plain text: Shiki falls back on its own, so a fence for a language the model
+ * invented highlights as nothing rather than breaking the answer around it.
  */
 function ChatCodeBlock({ node }: { node: { language?: string; code?: string } }) {
   return (
-    <div className="chat-code" data-testid="chat-code">
-      <ShikiHighlighter
-        language={node.language as never}
-        theme={{ light: 'github-light', dark: 'github-dark' }}
-        engine="javascript"
-        addDefaultStyles={false}
-        showLanguage={false}
-      >
-        {node.code ?? ''}
-      </ShikiHighlighter>
-    </div>
+    <CodeView className="chat-code" testId="chat-code" language={node.language ?? 'text'} code={node.code ?? ''} />
   )
 }
 

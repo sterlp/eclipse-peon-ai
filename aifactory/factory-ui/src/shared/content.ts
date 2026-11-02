@@ -99,11 +99,17 @@ export const content = {
   files: {
     open: 'Files',
     title: 'Files',
+    openArea: 'Open the file area',
+    collapseArea: 'Close the file area',
     root: 'Root',
     roots: {
       checkout: 'Checkout',
+      checkoutHint: 'Project checkout',
       tmp: 'TMP',
+      tmpHint: 'Temporary directory',
     },
+    viewer: 'File',
+    backToTree: 'Back to folder',
     linkSuffix: ' (link)',
     emptyFolder: 'Empty folder',
     binary: (size: number): string => `Binary file (${size} B) — its content is not shown.`,

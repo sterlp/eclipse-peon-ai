@@ -113,14 +113,18 @@ function ChatRoute() {
   }
 
   return (
-    <ChatPage
-      // keyed like the file area: another project is another conversation, so nothing of the previous one
-      // — not its history, not its live lines — is carried into the chat that opens (R-WP-11)
-      key={project.id}
-      project={project}
-      user={user}
-      // keyed: another project is another checkout, so the file area starts closed at its own root
-      files={<ProjectFiles key={project.id} project={project} />}
-    />
+    // one row: the file panel takes a column of its own beside the chat instead of covering it, so
+    // reading a file never hides the conversation it belongs to (R-WP-33)
+    <div className="chat-workspace">
+      <ChatPage
+        // keyed like the file area: another project is another conversation, so nothing of the previous one
+        // — not its history, not its live lines — is carried into the chat that opens (R-WP-11)
+        key={project.id}
+        project={project}
+        user={user}
+        // keyed: another project is another checkout, so the file area starts closed at its own root
+        files={<ProjectFiles key={project.id} project={project} />}
+      />
+    </div>
   )
 }
