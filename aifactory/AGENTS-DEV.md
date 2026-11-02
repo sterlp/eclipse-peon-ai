@@ -94,3 +94,29 @@
 - **`[ERROR] Surefire is going to kill self fork JVM … 30 s after System.exit(0)`** im Backend-Lauf ist
   bestehendes Teardown-Rauschen: `mvn -o clean test` endet trotzdem mit `BUILD SUCCESS`, exit 0,
   `Tests run: 156, Failures: 0, Errors: 0`.
+
+
+## Inc 2 (Zyklus 2026-11-02) — Live-Status der Projektliste (Backend + UI)
+
+- **Der Arbeits-Zustand kommt aus `ProjectRuntime`, nicht aus den Core-Flaggen**: `isWorking()` und
+  `getQueuedMessageCount()` existieren nur **innerhalb** `call()` auf dem Turn-Thread — ein Delta, das beim
+  Submit veröffentlicht wird, sähe eine eben eingetroffene, noch wartende Eingabe nicht (UC-WP-47 wird
+  „working · 1 queued" nie). `ProjectRuntime` zählt deshalb seine angenommenen Submits (`outstanding`):
+  working = „eins hat noch nicht geantwortet", queued = die dahinter. Publish immer zusammen mit der
+  Zahlen-Änderung, nie woanders.
+- **Ein Neustart wird in diesem Repo mit einem zweiten Kontext über demselben Home bewiesen**
+  (`SpringApplicationBuilder(AifactoryApplication.class, FakeGitConfig.class)` auf `server.port=0`,
+  Muster: `ChatRestartTest`) — nicht mit `@DirtiesContext`. Test-Reihenfolge dann mit
+  `@TestMethodOrder(OrderAnnotation)`, weil der Neustart-Fall ein Projekt braucht, das vorher gearbeitet hat.
+- **`@SpringBootTest` + zweite Kontexte**: kein Cleanup nötig — `try (ConfigurableApplicationContext …)`
+  schließt den zweiten Kontext beim Verlassen des Blocks, der Port kommt aus
+  `((WebServerApplicationContext) ctx).getWebServer().getPort()`. Der `@SpringBootTest`-Context des Laufs
+  bleibt dabei unverändert geöffnet (zwei Server, beide auf `server.port=0`).
+- **SSE für die Projektliste = `fetch` + `shared/sse.client.ts`** (bewusst nicht `EventSource`): der
+  Parser liegt jetzt geteilt mit `chat.stream.ts` (CRLF, Chunk-Split, `:comment`). Ein UI-Test, dessen
+  View einen Stream öffnet, muss `…/events` mit einer offenen `ReadableStream` beantworten und sie im
+  `afterEach` schließen — sonst hängt der Reader der unmounted View (Muster: `project.page.test.tsx`).
+- **Modulgrenze über D-6**: die Status-Typen, die `chat` aus `project` sichtbar macht
+  (`ProjectWorkStates`, `ProjectWork`), liegen im **Wurzel-Paket** von `project`; `project` importiert
+  nichts aus `chat`. `ComponentArchitectureTest` (Spring Modulith, `ApplicationModules.verify()`) läuft im
+  Build mit und war grün.
