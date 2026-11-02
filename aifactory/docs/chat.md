@@ -235,12 +235,24 @@ Mehrzeiler möglich. Der Send-Knopf bleibt die klickbare Alternative. Zusätzlic
 ### R-WP-31 — Warte-Indikator während des Turns ❌ (Paul 2026-11-02)
 
 Während ein Turn läuft, zeigt der Chat eine kompakte **Warte-Leiste** („Waiting for AI…" wie im
-Plugin: sticky am unteren Rand, dunkel, Mono, blinkender Cursor) mit dem Live-Preview des Streams;
-der Idle-Zustand endet mit dem Turn.
+Plugin: sticky am unteren Rand, dunkel, Mono, blinkender Cursor) mit dem Live-Preview des Streams.
+Der **Warte-Zustand endet mit dem Turn** — `done`, `error` und ein **akzeptierter Stop** schließen ihn
+ab; danach trägt **keine** Zeile mehr den Warte-Rahmen, und die bis dahin gezeigten Zeilen bleiben
+stehen ([UC-WP-50](chat.md)). Der **Rahmen** gilt dabei dem Turn, den **dieser Browser** gestartet hat;
+die Warte-Leiste gilt jedem Turn dieses Projekts, auch dem eines anderen Nutzers ([UC-WP-22](chat.md)).
 
 #### UC-WP-58 — waitingIndicatorShowsLiveState ❌
 - GIVEN ein laufender Turn WHEN er noch nichts geliefert hat THEN zeigt die Warte-Leiste „Waiting for
   AI…"; WHEN der Stream liefert THEN wechselt sie auf das Live-Preview und endet mit dem Turn.
+
+#### UC-WP-65 — waitingMarkEndsWithTheTurn ❌
+- GIVEN eine eigene, noch nicht bestätigte Eingabe WHEN der Turn läuft THEN trägt ihre Zeile den
+  Warte-Rahmen.
+- GIVEN ein von diesem Browser gestarteter Turn WHEN `done` eintrifft THEN trägt **keine** Zeile den
+  Warte-Rahmen und die Zeilen des Turns bleiben sichtbar.
+- GIVEN ein laufender Turn WHEN ein `error` eintrifft THEN trägt **keine** Zeile den Warte-Rahmen.
+- GIVEN ein laufender Turn WHEN der Stop akzeptiert wird THEN trägt **keine** Zeile den Warte-Rahmen,
+  und was der Nutzer bis dahin gesehen hat, bleibt stehen (kein Geschichts-Read, D-16).
 
 ### R-WP-32 — Kacheln als Reihe oben, Klick öffnet den Blick ❌ (Paul 2026-11-02)
 
@@ -256,10 +268,11 @@ erst ein separater Link.
   sichtbarem Hover-Zustand.
 
 
-### R-WP-34 — Ein gescheiterter Turn ist eine Verlaufszeile ❌ (Paul 2026-11-02, Runde 2)
+### R-WP-34 — Ein gescheiterter Turn ist eine Verlaufszeile ✅ (Paul 2026-11-02, Runde 2)
 
 Scheitert ein Turn, bleiben **beides** im Verlauf: der Text, den der Nutzer gesendet hat, und
-**genau eine** Fehlerzeile („Turn failed: <Grund>"). Die Fehlerzeile trägt **keinen** Autor, ist
+**genau eine** Fehlerzeile. Gezeigt wird der **nackte Grund**; im Core-Memory trägt die Zeile den
+Marker `Turn failed: <Grund>` (der Marker ist Speicher-Konvention, kein UI-Text). Die Fehlerzeile trägt **keinen** Autor, ist
 **kein** Jon-Text und **kein** Werkzeug- oder Status-Zeile — sie ist deshalb gerade **nicht**
 live-only, sondern Teil dessen, was der Verlauf nach Neustart und Reload zeigt (Abgrenzung zu
 [R-WP-11](chat.md)). Sie liegt im **Core-Memory** des Projekts, wird über `GET …/messages` gelesen
@@ -267,7 +280,7 @@ und ist damit dem **Modell im nächsten Turn sichtbar** (Verwandtschaft zu R-AEM
 dass sein Turn gescheitert ist). Zwei Fehlschläge sind **zwei** Fehlerzeilen — keine Dedup, kein
 Überschreiben. Ein **Stop** ist kein Fehler und erzeugt keine Fehlerzeile ([UC-WP-50](chat.md)).
 
-#### UC-WP-64 — failedTurnIsAVisibleHistoryLine ❌
+#### UC-WP-64 — failedTurnIsAVisibleHistoryLine ✅
 - GIVEN ein Turn scheitert **vor** dem Modellaufruf (die Config trägt kein Modell) WHEN der Verlauf
   gelesen wird THEN steht die gesendete Nachricht und danach **genau eine** Fehlerzeile — ohne
   Autors, ohne Jon-Name.

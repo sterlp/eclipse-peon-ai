@@ -950,7 +950,88 @@ test('waitingBarEndsWithAFailedTurn', async () => {
   expect(screen.queryByTestId('chat-waiting')).toBeNull()
 })
 
+// UC-WP-65
+test('pendingFrameExistsWhileTheTurnRuns', async () => {
+  stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  await flush()
+  // a line the history carries is a fact: before a turn starts, nothing is framed
+  expect(framedLines()).toHaveLength(0)
 
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+
+  // the positive half of the rule, so "never painted" can never pass for it: while this browser's turn is
+  // open, its own input — the one the history does not carry yet — wears the waiting frame (R-WP-31)
+  expect(framedLines()).toHaveLength(1)
+  expect(framedLines()[0]).toHaveTextContent('zähl die Dateien')
+})
+
+// UC-WP-65
+test('stopLeavesNoPendingFrame', async () => {
+  const chat = stubChat({ messages: [QUESTION], agents: [tile('Jon', 'IDLE')] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'schlaf drei sekunden' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+  await chat.push(event('partial', { kind: 'answer', text: 'Ich schlafe gerade' }))
+  expect(framedLines().length, 'the frame stands while the turn runs').toBeGreaterThan(0)
+
+  fireEvent.click(screen.getByTestId('chat-stop'))
+  await flush()
+
+  // the accepted stop IS the end of the wait — the frame goes with the click, not with a later read, and
+  // everything he was shown stays on the screen (UC-WP-50, D-16)
+  expect(framedLines()).toHaveLength(0)
+  expect(screen.getByTestId('chat-live')).toHaveTextContent('Ich schlafe gerade')
+  expect(screen.getByTestId('chat-log')).toHaveTextContent('schlaf drei sekunden')
+
+  chat.setMessages([QUESTION])
+  await chat.push(event('done', { millis: 5 }))
+
+  expect(framedLines()).toHaveLength(0)
+  expect(screen.getByTestId('chat-live')).toHaveTextContent('Ich schlafe gerade')
+})
+
+// UC-WP-65
+test('failedTurnLeavesNoPendingFrame', async () => {
+  const chat = stubChat({ messages: [] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'und die Ordner' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+  expect(framedLines(), 'both of his own inputs wait on the turn').toHaveLength(2)
+
+  // the turn fails with one input confirmed by the conversation and the other still waiting: the frame ends
+  // with the turn either way, while the text of the waiting one stays where it was shown (R-WP-34, UC-WP-64)
+  chat.setMessages([
+    { role: 'user', text: 'zähl die Dateien', origin: 'Paul' },
+    { role: 'error', text: 'Es fehlt ein Modellschlüssel für OPEN_AI' },
+  ])
+  await chat.push(event('error', { message: 'Es fehlt ein Modellschlüssel für OPEN_AI' }))
+
+  expect(framedLines()).toHaveLength(0)
+  expect(screen.getByTestId('chat-log')).toHaveTextContent('und die Ordner')
+  expect(screen.getAllByTestId('chat-line-error')).toHaveLength(1)
+})
+
+
+
+/**
+ * The lines wearing the waiting frame — the dashed accent of R-WP-31, whatever voice they speak with. The
+ * frame is a class the page hands down, so the screen is the place to ask for it (UC-WP-65).
+ */
+function framedLines(): Element[] {
+  return Array.from(document.querySelectorAll('.chat-line.pending'))
+}
 
 /** The author labels of the agent lines, in reading order — the shape of R-WP-4's claim. */
 function agentAuthorsOnScreen(): (string | null)[] {

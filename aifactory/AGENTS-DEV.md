@@ -419,3 +419,21 @@
 
 - **Nach Inc 1: Backend 202** (195 + 7), **UI 115 Tests / 15 Dateien** (112/14), Doc-Lint **0 Findings** bei
   UC **64/64**, 227 Test-Ids. Marker UC-WP-64 bleibt ❌ (flippt Jon).
+
+
+## Inc 2 (Zyklus 2026-11-02, Runde 2) — Warte-Rahmen an einem Browser-Flag
+
+- **Der Rahmen ist nicht `busy`**: `busy` enthält auch ein WORKING-Tile eines fremden Turns (Stop-Knopf,
+  Warte-Leiste) — der Warte-Rahmen einer Zeile gehört allein dem Turn, den **dieser Browser** gestartet hat
+  (`runningTurn === projectId`, R-WP-31/UC-WP-65). Die Seite gibt das Flag nach unten durch; `Row.pending`
+  einer History-Zeile ist immer `false`.
+- **`stop()` löscht `runningTurn` selbst** (F10-Wurzel): das `done` nach einem akzeptierten Stop lässt den
+  History-Read aus (D-16), ein Rahmen, der auf einen Read wartet, würde nie enden. Zeilen bleiben stehen.
+- **`history().size() >= 2` ist seit R-WP-34 kein Beweis mehr für „beantwortet"**: ein fehlgeschlagener Turn
+  schreibt Nutzer- **und** Fehlerzeile und erfüllt dieselbe Bedingung. `ChatUserMessageTest` wartet jetzt auf
+  Jon-Zeilen (`awaitAnswers(projectId, n, …)`); Assertions unverändert.
+- **Beweisgrenze dieser Härtung**: der Flake war lastabhängig und lief danach zweimal grün — reproduzierbar ist
+  er nicht. Bewiesen ist nur die Tragfähigkeit der neuen Warte (Filter absichtlich auf `"error"` ⇒
+  Deadline-Fehler nach 20 s). Ein grüner Lauf belegt also nicht, dass die alte Warte in Ordnung war.
+- **Nach Inc 2: Backend 202** (unverändert — nur Warte-Bedingungen), **UI 118 Tests / 15 Dateien** (115/15),
+  Doc-Lint **0 Findings** bei UC **65/65**, 230 Test-Ids. UC-WP-65 bleibt ❌ (flippt Jon).

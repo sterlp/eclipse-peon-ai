@@ -297,6 +297,9 @@ export function ChatPage({ project, files, user }: Props) {
         return
       }
     }
+    // the end he asked for has been taken: the frame goes now, without waiting for a `done` that will not
+    // read anything over it — the lines on the screen stay (R-WP-31, UC-WP-65, D-16)
+    setRunningTurn(null)
     void refreshTiles()
   }
 
@@ -307,6 +310,13 @@ export function ChatPage({ project, files, user }: Props) {
    */
   const busy =
     (runningTurn !== null && runningTurn === projectId) || tiles.some(tile => tile.state === 'WORKING')
+
+  /**
+   * The waiting frame of the log — ours alone, never another browser's turn: `done`, `error` and an accepted
+   * stop each clear `runningTurn`, so no line carries the frame once this browser's turn is over while the
+   * lines it showed stay (R-WP-31, UC-WP-65).
+   */
+  const pending = runningTurn !== null && runningTurn === projectId
 
   /**
    * Clear or Compact one tile. 202 says <em>taken</em>, so both reads follow; a refusal (409 while a turn
@@ -345,7 +355,13 @@ export function ChatPage({ project, files, user }: Props) {
           <h1 className="chat-title">{project.name}</h1>
         </header>
         <ChatTiles tiles={tiles} onAction={act} onInspect={setInsight} />
-        <ChatLog messages={messages} outgoing={outgoing} user={user} live={live} />
+        <ChatLog
+          messages={messages}
+          outgoing={outgoing}
+          user={user}
+          live={live}
+          pending={pending}
+        />
         {/* this notice is the page's own trouble only — a request that failed here: a send refused, a
             refused stop, a tile action that did not run. A failed turn is not announced here: it is a
             line of the log, read from the conversation like every other line (R-WP-34, UC-WP-64) */}

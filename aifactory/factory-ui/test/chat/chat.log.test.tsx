@@ -15,7 +15,7 @@ const FAILURE: ChatMessage = { role: 'error', text: 'turn needs a model — set 
  * where the contract is written — see `test/shared/sheets.ts`.
  */
 test('roleChangeToAnErrorDrawsARule', () => {
-  const { container } = render(<ChatLog messages={[QUESTION, FAILURE]} outgoing={[]} live={[]} />)
+  const { container } = render(<ChatLog messages={[QUESTION, FAILURE]} outgoing={[]} live={[]} pending={false} />)
 
   // one rule for one change of voice, carried by the line that begins it, so the list stays a list
   expect(container.querySelectorAll('hr.chat-rule')).toHaveLength(1)
@@ -30,7 +30,15 @@ test('roleChangeToAnErrorDrawsARule', () => {
 
 /** The other half of the same rule: the failure shows the moment the stream reports it, in the log. */
 test('aLiveFailureIsALineAndNotAWaitingFrame', () => {
-  render(<ChatLog messages={[QUESTION]} outgoing={[]} live={appendLiveError([], 'no model configured', 1)} />)
+  render(
+    <ChatLog
+      messages={[QUESTION]}
+      outgoing={[]}
+      live={appendLiveError([], 'no model configured', 1)}
+      // the page's frame is on for the rest of the log, and the failure still carries none of it
+      pending
+    />,
+  )
 
   const failure = screen.getByTestId('chat-line-error')
   expect(failure).toHaveTextContent('no model configured')

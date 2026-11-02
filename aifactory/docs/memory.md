@@ -6,14 +6,27 @@ Proposal mit WARUM** (2026-10-29) — gilt auch für Core-Tests.
 
 ## Zyklus 2026-11-02 LÄUFT — UI-Nacharbeiten nach Pauls Smoke-Test
 
-Branch `web-factory-mvp`, Spitze `e740694b` (= origin). Plan: `peon-plan/overview.md` (Inc-4-Plan
-archiviert). Inc 5/6 + 7a/7b abgeschlossen: Backend **195/0/0**, UI **112 Tests/14 Dateien**,
-oxlint 0/0, UC **63/63** (Dev-Slot: Modell/URL/Key gespeichert, wirken nicht — ⏳). Review 7b
-**bestanden** (2026-11-02): 11 Fundstellen verarbeitet — Sperre am RMW, Kommentar-Fix, UI-Tests
-(Tippen hebt Remove auf, 400-Fall), `ConfigPatch`-Typisierung, `@Timeout`; Followup `47a24445`.
-Config-Docs R-WP-16/23 + UC-WP-44/45/46/62/63 ✅.
+Branch `web-factory-mvp`, Spitze `c3123717` (= origin). Inc 5/6 + 7a/7b + Review-Followup abgeschlossen:
+Backend **195/0/0**, UI **112 Tests/14 Dateien**, oxlint 0/0, UC **63/63** (Dev-Slot: Modell/URL/Key
+gespeichert, wirken nicht — ⏳). Review 7b bestanden; Plan archiviert (`overview-done-2026-11-02-17-15.md`,
+danach gelöscht — Pauls Regel: alte Pläne löschen, sobald die Docs stehen). Config-Docs
+R-WP-16/23 + UC-WP-44/45/46/62/63 ✅.
 
-**Pauls 19 Smoke-Test-Befunde (2026-11-02) = Backlog dieses Zyklus:**
+**Pauls 10 Feedback-Punkte (2026-11-02, Runde 2) = Backlog dieses Zyklus:**
+
+1. Alte Pläne: Jon löscht sie selbst, sobald die Docs stehen ✅ (6 Plugin-/Core-Archive + eigenes Archiv gelöscht)
+2. Chat-Rand zu stark; nur ein hr war gemeint — und der Trenner ist rechts statt links
+3. Gesendete Nachricht verschwindet nach Navigation; Fehler weder im Chat noch im UI sichtbar
+4. Think-Level je Agent einstellbar wie in Eclipse
+5. Files-Slide-out sitzt mittig am Pfeil — Deckel-Linie nicht bündig
+6. Datei-Viewer: Zeilen wie mit doppeltem Enter — zu weit auseinander
+7. Nach Key-Setzen verschwindet der Fehler im UI; der Chat soll den Fehler ebenfalls bekommen
+8. Nach Jons Antwort verschwindet der schwarze „in-flight"-Rahmen um meine Nachricht nicht
+9. Chat-Scroll fehlt; Input unten fixed wie in der Vorlage — Chat und Config kreativ überarbeiten
+10. Nach Stop bleibt der schwarze gestrichelte Rahmen
+
+**Runde 1 — 19 Smoke-Test-Befunde (2026-11-02): abgearbeitet (Details im gelöschten Archiv
+`overview-done-2026-11-02-17-15.md`):**
 
 1. Bootstrap rein; Config-UI Kraut und Rüben
 2. Config: Provider-Wechsel ohne Live-Update wie Eclipse
@@ -73,3 +86,6 @@ Config-Docs R-WP-16/23 + UC-WP-44/45/46/62/63 ✅.
 * Dev-Agent kann eigenmächtig „Review-Blöcke"/Entscheidungen in den Plan schreiben — Review-Verdicts
   und neue Inkremente kommen nur von Jon; nach garbled Antworten erst Statusanfrage (memory-Regel 3).
 * `web-prototype.md` existiert nicht mehr — SOLL in `chat.md`/`files.md`.
+* Plan-Archive: **nicht committen, sondern löschen** — Pauls Regel (2026-11-02, Runde 2): sobald die
+  Docs stehen, löscht Jon jedes Plan-Archiv selbst. Erledigt: 6 Plugin-/Core-Archive (Repo-Root
+  `peon-plan/`, Zyklen 27.–31.10.) + eigenes Archiv `overview-done-2026-11-02-17-15.md`.

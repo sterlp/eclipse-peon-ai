@@ -13,6 +13,8 @@ interface Props {
   user?: string | null
   /** The live lines of the running turn, each anchored at the rows that already stood when it arrived. */
   live: LiveItem[]
+  /** A turn this browser started is still open — the only thing that may paint a waiting frame (R-WP-31). */
+  pending: boolean
 }
 
 /**
@@ -26,7 +28,7 @@ interface Row {
   handle: string
   author: string | null
   text: string
-  /** Sent but not confirmed by the history yet — the accent line of the row is not a fact yet. */
+  /** True while the turn that started the line is open — its accent is not a fact yet (R-WP-31, UC-WP-65). */
   pending: boolean
 }
 
@@ -53,13 +55,14 @@ type Entry =
  * Tool activity is not a voice: it keeps the grey of `chat.html`, takes no part in the rule between the
  * voices, and never carries a name.
  */
-export function ChatLog({ messages, outgoing, user, live }: Props) {
+export function ChatLog({ messages, outgoing, user, live, pending }: Props) {
   const rows: Row[] = [
     ...messages.map((message): Row => ({
       voice: voiceOf(message),
       handle: `chat-line-${message.role}`,
       author: authorOf(message),
       text: message.text,
+      // a line the history carries is a fact — the frame never comes back to it (R-WP-31)
       pending: false,
     })),
     ...outgoing.map((text): Row => ({
@@ -68,7 +71,9 @@ export function ChatLog({ messages, outgoing, user, live }: Props) {
       // his own name, so the line does not jump when the history brings the server's author back
       author: user ?? content.chat.you,
       text,
-      pending: true,
+      // the frame is the page's call and not a property of the row: it ends with the turn, not with the
+      // history read that confirms the text (R-WP-31, UC-WP-65)
+      pending,
     })),
   ]
 
@@ -87,7 +92,7 @@ export function ChatLog({ messages, outgoing, user, live }: Props) {
           return (
             <li
               key={`live-${index}`}
-              className={failure ? 'chat-line error' : 'chat-line agent pending'}
+              className={failure ? 'chat-line error' : `chat-line agent${pending ? ' pending' : ''}`}
               data-testid={failure ? 'chat-line-error' : 'chat-live'}
             >
               {entry.rule && <hr className="chat-rule" />}
