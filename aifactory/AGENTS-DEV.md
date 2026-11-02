@@ -313,3 +313,43 @@
   `--no-semi --single-quote --print-width 100` plus `git diff --stat`-Prüfung.
 - **Nach Inc 7a: Backend 174** (config-Klassen 13→19 und 4→7), **UI 104 Tests / 13 Dateien**, Doc-Lint
   2 Findings (UC-WP-44/45 = Inc 7b).
+
+
+
+## Inc 7b (Zyklus 2026-11-02) — Agent-Overrides in der Agent-Datei
+
+- **`PromptYmlParser.parseYml` erfindet eine `name`-Zeile** (gemessen): fehlt der Name, setzt der Parser
+  `name = defaultSkillName(Elternordner)` ins Frontmatter, und `SimplePromptFile.render()` schreibt das
+  Live-Map zurück — wer nicht entfernt, schreibt ein Feld, das niemand gesetzt hat. Entfernen darf man sie
+  nur, wenn der Wert dem Ordner gleicht (ein echter Name gehört weiter der Datei).
+- **Der Kopf ist der Speicher, der Rumpf gehört dem Prompt**: `save()` schreibt `--- … ---` + Rumpf und legt
+  weder Ordner an noch Rechte — `createDirectories` und POSIX `600` sind Sache des Aufrufers. Ein geschriebene
+  Datei verliert den letzten Umbruch des Rumpfs (`render()` endet am Rumpf), deshalb prüft UC-WP-45 den Rumpf
+  auf `contains`, nicht bytegleich.
+- **Der Dev-Slot nimmt kein Modell, keine URL, keinen Key** (Q10-Familie): `LlmConfigLoader.agentRecord`
+  nullt sie für `dev`, `devAgentConfig()` erzwingt das Basis-Modell. Das Overlay spiegelt das — die Datei
+  trägt die Werte, `modelConfigFor("dev")` liefert sie nicht
+  (`aDevOverrideReachesOnlyTheFieldsTheCoreReads`); think ist das einzige Feld, das der Dev-Slot wirklich trägt.
+- **Overlay in `pin()`, nicht in `loadForTurn()`**: `load()`, `loadForTurn()` und `snapshot()` laufen alle
+  über `pin()`, also wirkt die Agent-Datei an einer Stelle für alle drei; `pin()` setzt vorher `configDir`,
+  das der Kern für `agents/<id>/AGENT.md` braucht (`LlmConfig.AGENT_DIRECTORY`, Dateiname „AGENT.md" ist im
+  Kern ein Literal — keine öffentliche Konstante).
+- **`Changes.clearing()` ist ein äquivalenter Mutant gegen „fünf leere Strings"** (Probe grün): `CONFIG_KEYS`
+  sind genau die fünf Felder, beide Formen löschen dieselbe Menge. Beweisbar ist die Entscheidung im Service
+  (`if (!overridden) → clearing()` statt „eingereichte Werte schreiben") — genau ein Test rot. Wie in 7a:
+  erst prüfen, ob die Probe etwas ändert, dann schließen.
+- **Slot-Liste und Slot-Tests trennen**: `AgentSlots.all()` ist eine Quelle (Q9), die Reihenfolge pinnt ein
+  Test; die übrigen lesen über `JsonPath`-Filter `$[?(@.id == 'dev')]` und hängen nicht an der Reihenfolge.
+  pro Settings-Klasse ein eigener `@SpringBootTest`-Kontext (eigenes `@TempDir` + `@DynamicPropertySource`) —
+  der Kontext-Key enthält die Dynamic-Properties, also startet jede Klasse ihren eigenen Server (~3 s).
+- **Neue Route im UI = neuer Stub-Zweig, sonst crashen fremde Tests** (wie 7a): `ConfigPage` hängt
+  `<Agents/>` unter dem Formular; der lokale Stub von `config.page.test.tsx` musste `/api/settings/agents`
+  beantworten (sonst `slots.map is not a function`), und im Harness muss der Zweig **vor**
+  `endsWith('/agents')` liegen — die Settings-Adresse endet genauso. Die angepinnte Leseliste von
+  `settingsShowsMaskedConfig` wächst damit auf drei GETs.
+- **Proben-Lehre, zweiter Fall**: ein Restore per `cp /tmp/x.orig Datei.java` nach einem früheren `cd` in
+  einen anderen Ordner legt die Sicherung **dort** ab (gemessen: zwei Dateien im Repo-Root, die Quellen
+  blieben mutiert und der Restore-`diff` verglich die Kopie). Restore nur mit absolutem Pfad, danach
+  `git status` und ein voller Testlauf.
+- **Nach Inc 7b: Backend 193** (174 + 19), **UI 110 Tests / 14 Dateien** (104/13), Doc-Lint **0 Findings**
+  bei UC 63/63 (UC-WP-44/45 sind belegt, UC-WP-46 durch die Agent-Datei + UI).
