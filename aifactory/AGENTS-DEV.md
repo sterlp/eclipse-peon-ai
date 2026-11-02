@@ -242,3 +242,38 @@
   Negativregel lesen — `declares('.chat-tile-open:hover')` wahr, `declares('.chat-tile-face:hover')`
   falsch, sonst ist „eine Kachel ohne Tür verspricht nichts" unbewiesen.
 
+## Inc 6 (Zyklus 2026-11-02) — Datei-Bereich als Slide-out mit Baum und Highlighting
+
+- **Ein rekursiver Baum merkt sich Aufgeklappt pro ZEILE, nicht pro Ebene**: `FilesLevel` darf
+  `expanded.includes(branchKey(root, path))` gegen **seinen eigenen** Pfad prüfen — dann bleibt jede
+  Kinderliste leer und `aria-expanded` steht für alle Zeiten auf `false` (gemessen: 8 von 12 Tests rot,
+  symptomlos im DOM). Schlüssel ist immer `root|childPath` der Zeile.
+- **react-shiki antwortet einen Tick später als der Klick** (gemessen): Die Box (`files-text`) existiert
+  sofort, ihr `textContent` ist aber noch leer — `findByTestId(...).toHaveTextContent(...)` fällt als
+  Fehlalarm. Abfragen mit `waitFor(() => expect(box.textContent).toContain(...))`.
+- **Was `shiki/bundle/web` wirklich enthält** (gemessen an `shiki@4.6.0` →
+  `node_modules/.pnpm/shiki@4.6.0/node_modules/shiki/dist/bundle-web.mjs`, Id-Liste per
+  `grep -o '"id": "[a-z0-9-]*"'`): u. a. c/cpp/css/html/java/javascript/json/jsx/markdown/python/scss/
+  shellscript/sql/tsx/typescript/xml/yaml — **kein** `toml`, **kein** `ini`, kein go/rust/kotlin/diff
+  (Inc 3b). `code.language.ts` bildet nur diese Liste ab, alles andere ⇒ `text`. Ein
+  `node -e "import('shiki/bundle/web')` funktioniert nicht: `shiki` ist bei pnpm strict nur Transitiv-Dep,
+  und der Default-`node` auf dem PATH ist 18.
+- **`.code-view` ist der gemeinsame Shiki-Hook** (Inc 6): `pre`/`.line` und der Dark-Switch hängen nicht
+  mehr an `.chat-code`. Ein neuer Viewer braucht nur `CodeView`; die Box-Klasse bleibt beim Aufrufer
+  (`.chat-code`, `.files-viewer-code`). Wer Shiki-Regeln an eine Box-Hängeklasse schreibt, verliert sie im
+  anderen Aufrufer still.
+- **Sheet-Beweise, zwei neue Formen**: (a) eine **verschachtelte** Regel ist nicht als
+  `declarations('.files-level .files-level')` lesbar — sie steht als NESTING im Sheet, also Regex über den
+  Sheet-Text; (b) „kein Overlay" beweist die **Abwesenheit** von `position:` in
+  `declarations('.files-panel')`, während `.files-tab` `position: fixed` trägt (Mutation: `position: fixed`
+  in den Panel-Block ⇒ genau `theChatStaysVisibleWhileTheViewerIsOpen` rot).
+- **Der Slide-out braucht die Reihe im Router**: `ChatPage` gibt ein Fragment (`section.view`, `files`,
+  `insight`); `.app-main` ist Spalten-Flex, ohne Wrapper `.chat-workspace { display: flex }` in
+  `app.routes.tsx` **stapelt** das Panel unter dem Chat statt daneben — der Split ist eine
+  Router-Entscheidung, keine Panel-Klasse.
+- **Doc-Lint-Baseline nach Inc 6: 5 Findings** (UC-WP-44/45/46/62/63, alles config → Inc 7).
+  Mutationsproben Inc 6, je genau ein Test rot: Tab-Icon fixiert → `theFilesTabOpensTheSlideOut`; Folding
+  entfernt → 3 Tests; `languageOf`-Hook umgangen → `theViewerHighlightsTheFile`; Close-Reset entfernt →
+  `closingThePanelForgetsThePositionInIt`; `position: fixed` am Panel → `theChatStaysVisibleWhileTheViewerIsOpen`.
+
+
