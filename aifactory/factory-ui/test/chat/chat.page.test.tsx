@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
 import { renderApp } from '../shared/app.harness'
-import { declarations, declares, tokenValues } from '../shared/sheets'
+import { baseDeclarations, declarations, declares, tokenValues } from '../shared/sheets'
 import { ChatPage } from '../../src/chat/chat.page'
 import { project } from '../shared/fixtures'
 import { content } from '../../src/shared/content'
@@ -902,11 +902,19 @@ test('waitingBarShowsTheLivePreview', async () => {
   expect(screen.getByTestId('chat-waiting')).toHaveTextContent('pom.xml')
   expect(screen.getByTestId('chat-waiting').textContent).not.toContain('Im Root liegen')
 
-  // and it is the plugin's line: sticky at the lower edge, mono, with a caret that blinks (R-WP-31)
+  // and it is the plugin's line: mono, with a caret that blinks (R-WP-31). Where the bar stands is the
+  // layout's call and not this rule's: the log scrolls in its own area, so the bar is a block directly
+  // above the field and hangs on nothing any more (R-WP-35) — the `position: sticky` clause measured the
+  // page scroll this increment took away, so it became its opposite.
   const painted = declarations('.chat-waiting')
-  expect(painted).toContain('position: sticky')
-  expect(painted).toContain('font-family: var(--mono)')
+  expect(painted, 'the wait keeps the plugin mono').toContain('font-family: var(--mono)')
+  expect(painted, 'nothing sticks to a scroll the chat no longer has').not.toContain('position:')
   expect(declarations('.chat-waiting-caret')).toContain('animation')
+  expect(declarations('.chat-log'), 'the log is the scroll area now').toContain('overflow-y: auto')
+  expect(
+    screen.getByTestId('chat-waiting').nextElementSibling?.className,
+    'the wait sits directly above the field',
+  ).toContain('chat-composer')
 })
 
 // UC-WP-58
@@ -1022,6 +1030,89 @@ test('failedTurnLeavesNoPendingFrame', async () => {
   expect(screen.getByTestId('chat-log')).toHaveTextContent('und die Ordner')
   expect(screen.getAllByTestId('chat-line-error')).toHaveLength(1)
 })
+// UC-WP-66
+test('theLogIsTheScrollArea', () => {
+  // jsdom lays out nothing, so "the chat scrolls in its own area" is read where it is written: the log owns
+  // the scroll, the row owns the position, and the shell is a frame that never scrolls as a whole (R-WP-35)
+  expect(declarations('.chat-log'), 'the log carries the scroll').toContain('overflow-y: auto')
+  expect(declarations('.chat-log'), 'and it is the flexible part of the column').toContain('flex: 1')
+  // without the zeroed floor a flex item keeps its content height and never scrolls — the line that looks
+  // like a leftover is the one that makes the scroll work
+  expect(declarations('.chat-log'), 'and may shrink below its own content').toContain('min-height: 0')
+  expect(declarations('.chat-workspace'), 'the row is the box the file tab hangs on').toContain(
+    'position: relative',
+  )
+  expect(declarations('.chat-workspace'), 'the row gives the chat its height, head to input').toContain(
+    'align-items: stretch',
+  )
+  expect(declarations('.chat-workspace > .view'), 'the chat is a column').toContain(
+    'flex-direction: column',
+  )
+  expect(declarations('.chat-workspace > .view'), 'and only its log scrolls').toContain(
+    'overflow: hidden',
+  )
+  expect(declarations('.view'), 'every view scrolls for itself, so none of them is clipped').toContain(
+    'overflow-y: auto',
+  )
+  expect(baseDeclarations('#root'), 'the shell is the fixed frame').toContain('height: 100dvh')
+  expect(baseDeclarations('#root'), 'and it never scrolls as a whole').toContain('overflow: hidden')
+})
+
+/**
+ * A scroll to measure: jsdom knows no layout, so the log gets its geometry from the test and keeps
+ * `scrollTop` writable — the page's numbers stay what the test states (R-WP-35).
+ */
+function mockScrollOf(area: HTMLElement, scrollHeight: number, clientHeight: number): void {
+  let scrollTop = 0
+  Object.defineProperty(area, 'scrollHeight', { configurable: true, value: scrollHeight })
+  Object.defineProperty(area, 'clientHeight', { configurable: true, value: clientHeight })
+  Object.defineProperty(area, 'scrollTop', {
+    configurable: true,
+    get: () => scrollTop,
+    set: (value: number) => {
+      scrollTop = value
+    },
+  })
+}
+
+// UC-WP-66
+test('newLinesScrollToTheEnd', async () => {
+  const chat = stubChat({ messages: [QUESTION, ANSWER] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  const log = screen.getByTestId('chat-log')
+  mockScrollOf(log, 1_000, 300)
+  expect(log.scrollTop, 'the test starts at the top of a long log').toBe(0)
+
+  // GIVEN he reads the newest line WHEN the stream adds one THEN the log follows it to its end
+  await chat.push(event('partial', { kind: 'answer', text: 'noch eine Zeile' }))
+  expect(log.scrollTop, 'a log at its end keeps following the stream').toBe(1_000)
+})
+
+// UC-WP-66
+test('readingUpIsNotRippedDown', async () => {
+  const chat = stubChat({ messages: [QUESTION, ANSWER] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  const log = screen.getByTestId('chat-log')
+  mockScrollOf(log, 1_000, 300)
+
+  // GIVEN he has read up WHEN the next line arrives THEN the log stays where he left it
+  log.scrollTop = 120
+  fireEvent.scroll(log)
+  await chat.push(event('partial', { kind: 'answer', text: 'noch eine Zeile' }))
+  expect(log.scrollTop, 'a line he reads above the end is his place, not the stream\'s').toBe(120)
+
+  // GIVEN he stands within the last few pixels of the end WHEN the stream adds THEN it follows again —
+  // those pixels still count as "reading the newest line", so the log does not stop a hair too early
+  log.scrollTop = 990
+  fireEvent.scroll(log)
+  await chat.push(event('partial', { kind: 'answer', text: 'und noch eine' }))
+  expect(log.scrollTop, 'the end of the log is where the stream keeps him').toBe(1_000)
+})
+
 
 
 

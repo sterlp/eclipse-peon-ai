@@ -1,3 +1,6 @@
+import type { Ref } from 'react'
+
+
 import type { ChatMessage } from './chat.client'
 import { ChatMarkdown } from './chat.markdown'
 import { ChatTools } from './chat.tools'
@@ -15,6 +18,10 @@ interface Props {
   live: LiveItem[]
   /** A turn this browser started is still open — the only thing that may paint a waiting frame (R-WP-31). */
   pending: boolean
+  /** The scroll area of the chat, handed to the page: it keeps the end of the log in view (R-WP-35). */
+  logRef?: Ref<HTMLUListElement>
+  /** The page learns from this where the user reads (R-WP-35, UC-WP-66). */
+  onScroll?: () => void
 }
 
 /**
@@ -55,7 +62,7 @@ type Entry =
  * Tool activity is not a voice: it keeps the grey of `chat.html`, takes no part in the rule between the
  * voices, and never carries a name.
  */
-export function ChatLog({ messages, outgoing, user, live, pending }: Props) {
+export function ChatLog({ messages, outgoing, user, live, pending, logRef, onScroll }: Props) {
   const rows: Row[] = [
     ...messages.map((message): Row => ({
       voice: voiceOf(message),
@@ -80,7 +87,13 @@ export function ChatLog({ messages, outgoing, user, live, pending }: Props) {
   const entries = entriesOf(rows, live)
 
   return (
-    <ul className="chat-log" data-testid="chat-log" aria-label={content.chat.history}>
+    <ul
+      className="chat-log"
+      data-testid="chat-log"
+      aria-label={content.chat.history}
+      ref={logRef}
+      onScroll={onScroll}
+    >
       {entries.map((entry, index) => {
         if (entry.type === 'tools') {
           return <ChatTools key={`tools-${index}`} lines={entry.lines} />

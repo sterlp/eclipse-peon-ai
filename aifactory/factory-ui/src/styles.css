@@ -2,6 +2,7 @@
 
 .app {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   padding: 0 1rem 2rem;
@@ -66,13 +67,18 @@
 
 .app-main {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
+/* A view scrolls in its own area, never the page (R-WP-35). The chat view replaces this with a column of
+   its own further down, because its scroll belongs to the log and not to the view. */
 .view {
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   min-width: 0;
 }
 
@@ -299,7 +305,12 @@ button {
   }
 }
 
+/* The log is the scroll area of the chat: the tiles above and the input below keep their place while the
+   conversation runs past them (R-WP-35, UC-WP-66). */
 .chat-log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   list-style: none;
   margin: 0 0 1rem;
   padding: 0;
@@ -472,6 +483,10 @@ button {
 .chat-composer {
   display: grid;
   gap: 0.5rem;
+  flex: none;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
 
   textarea {
     width: 100%;
@@ -491,13 +506,13 @@ button {
   gap: 0.5rem;
 }
 
-/* Die Warte-Leiste eines Turns (R-WP-31) — die Zeile des Plugins: sticky am unteren Rand, in beiden Themen
-   dunkel, Mono, mit dem Cursor, der während des Turns blinkt. Das Grün ist das Agenten-Grün von chat.html. */
+/* Die Warte-Leiste eines Turns (R-WP-31) — die Zeile des Plugins: in beiden Themen dunkel, Mono, mit dem
+   Cursor, der während des Turns blinkt. Das Grün ist das Agenten-Grün von chat.html. Sie steht als Block
+   über dem Feld: der Chat scrollt in seiner eigenen Fläche, also hängt nichts mehr am Seiten-Scroll
+   (R-WP-35). */
 .chat-waiting {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
   display: flex;
+  flex: none;
   align-items: center;
   gap: 0.4rem;
   margin: 0 0 0.6rem;
@@ -542,16 +557,27 @@ button {
 }
 
 /* The row a chat view sits in: the conversation and the file panel side by side, so an open file keeps
-   the chat on the screen instead of covering it (R-WP-33). */
+   the chat on the screen instead of covering it (R-WP-33). The row is the positioned box the file tab
+   hangs on, and it is the height the chat's own scroll measures against (R-WP-35). */
 .chat-workspace {
   --files-width: clamp(17rem, 28vw, 24rem);
   --files-wide: clamp(32rem, 56vw, 52rem);
 
+  position: relative;
   flex: 1;
+  min-height: 0;
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 0.75rem;
   min-width: 0;
+}
+
+/* The chat is a column whose middle scrolls: tiles and head keep their place on top, the input and the
+   wait below, and only the log runs past them (R-WP-35, UC-WP-66). */
+.chat-workspace > .view {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* The tab at the right edge, written sideways: the visible promise that this side opens (R-WP-33). Out

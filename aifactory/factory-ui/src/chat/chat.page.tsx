@@ -46,6 +46,9 @@ interface Props {
 /** How long the view waits before it asks again — long enough not to hammer a restarting server. */
 const RECONNECT_MS = 500
 
+/** How far from the end of the log still counts as "the user reads the newest line" (R-WP-35). */
+const SCROLL_END_SLOP = 24
+
 /**
  * The chat of one project (R-WP-4, R-WP-5): the history is the only truth for finished text, the
  * stream only adds live lines, and there is nothing here to switch — no agent picker, no second
@@ -110,11 +113,25 @@ export function ChatPage({ project, files, user }: Props) {
    * even when the history read of `done` replaces the lines around it (D-7, UC-WP-54).
    */
   const shownRows = useRef(0)
+  /**
+   * The scroll area of the chat and whether the user stands at its end (R-WP-35): a new line follows him
+   * while he does, and leaves him reading while he does not. A ref and not a state, because the answer to
+   * "where is he" must not decide whether the log re-renders.
+   */
+  const log = useRef<HTMLUListElement>(null)
+  const atBottom = useRef(true)
   const projectId = project?.id ?? null
 
   useEffect(() => {
     shownRows.current = messages.length + outgoing.length
   }, [messages, outgoing])
+
+  useEffect(() => {
+    const area = log.current
+    if (area !== null && atBottom.current) {
+      area.scrollTop = area.scrollHeight
+    }
+  }, [messages, live, outgoing])
 
   /**
    * The finished text arrives here, never as an event — so the live answer gives way to it (§3.3.3). What
@@ -340,6 +357,17 @@ export function ChatPage({ project, files, user }: Props) {
     void refresh()
   }
 
+  /**
+   * Where the user reads (R-WP-35): the slop keeps a line whose last pixels still touch the bottom from
+   * counting as "reading up" — a log that stops following a hair too early is the worse failure.
+   */
+  function onLogScroll() {
+    const area = log.current
+    if (area !== null) {
+      atBottom.current = area.scrollHeight - area.scrollTop - area.clientHeight < SCROLL_END_SLOP
+    }
+  }
+
   if (project === null) {
     return (
       <section className="view" aria-label={content.chat.title}>
@@ -361,6 +389,8 @@ export function ChatPage({ project, files, user }: Props) {
           user={user}
           live={live}
           pending={pending}
+          logRef={log}
+          onScroll={onLogScroll}
         />
         {/* this notice is the page's own trouble only — a request that failed here: a send refused, a
             refused stop, a tile action that did not run. A failed turn is not announced here: it is a

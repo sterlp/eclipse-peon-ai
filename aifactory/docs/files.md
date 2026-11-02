@@ -61,7 +61,7 @@ Standard ist der **Git-Checkout** des Projekts; umschaltbar dazu: das **temporä
   gewählten Wurzel liegt (`..`, absoluter Pfad, oder ein Symlink, der aus der Wurzel hinausführt)
   THEN antwortet der Server mit einem Fehler und liefert keinen Inhalt.
 
-### R-WP-33 — Datei-Bereich als Slide-out rechts ❌ (Paul 2026-11-02)
+### R-WP-33 — Datei-Bereich als Slide-out rechts ✅ (Paul 2026-11-02; Tab-Bündigkeit geschärft Runde 2, Inc 5)
 
 Der Datei-Bereich ist ein **Slide-out am rechten Rand** mit einem **vertikalen „Files"-Tab** am
 rechten Bildschirmrand — so ist sichtbar, dass hier aufklappbar ist. Auf- und Zuklappen steuern
@@ -72,12 +72,12 @@ Chats). Eine geöffnete Datei zeigt der Viewer mit **Syntax-Highlighting** (reac
 **nicht mittig zentriert** — der Chat bleibt daneben sichtbar, der Viewer kann immer geschlossen
 werden.
 
-#### UC-WP-60 — filesPanelSlideOutWithTree ❌
+#### UC-WP-60 — filesPanelSlideOutWithTree ✅
 - GIVEN der Chat-View WHEN der Nutzer den vertikalen „Files"-Tab nutzt THEN klappt das Slide-out auf
   (`>` / `<`), zeigt die zwei Wurzeln als Cards und eine Baum-Navigation; der Projektname steht im
   Panel nicht wiederholt.
 
-#### UC-WP-61 — fileViewerHighlightsSyntax ❌
+#### UC-WP-61 — fileViewerHighlightsSyntax ✅
 - GIVEN eine geöffnete Datei WHEN sie angezeigt wird THEN zeigt der Viewer sie mit
   Syntax-Highlighting, nicht zentriert, mit klarer Navigation zurück; der Chat bleibt daneben
   sichtbar.

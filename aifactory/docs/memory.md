@@ -6,11 +6,12 @@ Proposal mit WARUM** (2026-10-29) — gilt auch für Core-Tests.
 
 ## Zyklus 2026-11-02 LÄUFT — UI-Nacharbeiten nach Pauls Smoke-Test
 
-Branch `web-factory-mvp`, Spitze `c3123717` (= origin). Inc 5/6 + 7a/7b + Review-Followup abgeschlossen:
-Backend **195/0/0**, UI **112 Tests/14 Dateien**, oxlint 0/0, UC **63/63** (Dev-Slot: Modell/URL/Key
-gespeichert, wirken nicht — ⏳). Review 7b bestanden; Plan archiviert (`overview-done-2026-11-02-17-15.md`,
-danach gelöscht — Pauls Regel: alte Pläne löschen, sobald die Docs stehen). Config-Docs
-R-WP-16/23 + UC-WP-44/45/46/62/63 ✅.
+Branch `web-factory-mvp`, Spitze `6027bbe4` (= origin). Runde 1 (Inc 5/6 + 7a/7b + Review-Followup)
+abgeschlossen, Review bestanden; Plan-Archiv gelöscht (Pauls Regel). **Runde 2 läuft:** Inc 1 ✅
+(`321cb3ea`, gescheiterter Turn = Verlaufszeile, R-WP-34/UC-WP-64), Inc 2 ✅ (`6027bbe4`,
+Warte-Rahmen endet mit done/error/Stop, R-WP-31/UC-WP-65). Stand: Backend **202/0/0**, UI
+**118 Tests/15 Dateien**, oxlint 0/0, UC **65/65**, Doc-Lint 0 Findings. Dev-Slot-Lücke bleibt ⏳.
+Trailer-Regel: **kein Modellname** im Commit-Trailer (erfindet Fakten; bestehende Historie bleibt).
 
 **Pauls 10 Feedback-Punkte (2026-11-02, Runde 2) = Backlog dieses Zyklus:**
 

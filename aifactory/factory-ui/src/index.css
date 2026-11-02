@@ -112,9 +112,12 @@ body {
   color: var(--text-h);
 }
 
-/* The app fills the window: no centred column, no side borders (R-WP-1). */
+/* The app fills the window: no centred column, no side borders (R-WP-1). The shell is the fixed frame
+   and every view carries its own scroll area, so nothing here scrolls as a whole (R-WP-35). */
 #root {
-  min-height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
