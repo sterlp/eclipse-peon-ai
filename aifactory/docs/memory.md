@@ -6,13 +6,14 @@ Proposal mit WARUM** (2026-10-29) — gilt auch für Core-Tests.
 
 ## Zyklus 2026-11-02 LÄUFT — UI-Nacharbeiten nach Pauls Smoke-Test
 
-Branch `web-factory-mvp`, Spitze `6268a0ba` (= origin). Runde 1 (Inc 5/6 + 7a/7b + Review-Followup)
+Branch `web-factory-mvp`, Spitze `2f5eaea2` (= origin). Runde 1 (Inc 5/6 + 7a/7b + Review-Followup)
 abgeschlossen, Review bestanden; Plan-Archiv gelöscht (Pauls Regel). **Runde 2 läuft:** Inc 1 ✅
 (`321cb3ea`, gescheiterter Turn = Verlaufszeile, R-WP-34/UC-WP-64), Inc 2 ✅ (`6027bbe4`,
 Warte-Rahmen endet mit done/error/Stop, R-WP-31/UC-WP-65), Inc 3 ✅ (`72e97e6d`, Chat scrollt,
-Eingabe unten fixed, R-WP-35/UC-WP-66). Stand: Backend **202/0/0**, UI **121 Tests/15 Dateien**,
-oxlint 0/0, UC **66/66**, Doc-Lint 0 Findings. Dev-Slot-Lücke bleibt ⏳. Trailer-Regel: **kein
-Modellname** im Commit-Trailer.
+Eingabe unten fixed, R-WP-35/UC-WP-66), Inc 4 ✅ (`99560a9b`, Akzent links, ein hr, nichts
+rechtsbündig — R-WP-29 korrigiert, UC-WP-55 umformuliert). Stand: Backend **202/0/0**, UI
+**121 Tests/15 Dateien**, oxlint 0/0, UC **66/66**, Doc-Lint 0 Findings. Dev-Slot-Lücke bleibt ⏳.
+Trailer-Regel: **kein Modellname** im Commit-Trailer.
 
 **Pauls 10 Feedback-Punkte (2026-11-02, Runde 2) = Backlog dieses Zyklus:**
 

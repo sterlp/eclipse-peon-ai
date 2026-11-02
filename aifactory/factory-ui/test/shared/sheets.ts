@@ -27,6 +27,11 @@ function declarationsIn(sheet: string, selector: string): string {
   return body.slice(0, end === -1 ? body.length : end)
 }
 
+/** The app's own sheet as written — for a contract a flat selector cannot reach, such as a nested rule. */
+export function appSheet(): string {
+  return SHEETS[APP_SHEET]
+}
+
 /** The declarations a sheet gives one selector, up to a nested rule — a selector it does not name fails. */
 export function declarations(selector: string): string {
   return declarationsIn(APP_SHEET, selector)

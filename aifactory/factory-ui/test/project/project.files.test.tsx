@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-libra
 
 import { renderApp } from '../shared/app.harness'
 import { project } from '../shared/fixtures'
+import { appSheet, declarations } from '../shared/sheets'
 import { content } from '../../src/shared/content'
 import type { DirectoryResponse, FileResponse, FileEntry, FileRoot } from '../../src/project/files.client'
 
@@ -377,8 +378,8 @@ test('theTreeExpandsALevel', async () => {
   expect(await screen.findByRole('button', { name: 'test/' })).toBeInTheDocument()
   expect(factory.filesCalls, 'an answered level is not asked twice').toHaveLength(2)
 
-  // the depth is a rail, not a word about depth
-  expect(styles(), 'a level is indented against a rail').toMatch(
+  // a level is indented against a rail
+  expect(appSheet(), 'a level is indented against a rail').toMatch(
     /\.files-level\s*\{[\s\S]*?\.files-level\s*\{[^}]*border-left/,
   )
 })
@@ -455,7 +456,34 @@ test('theChatStaysVisibleWhileTheViewerIsOpen', async () => {
   // an overlay would leave the row; the sheet keeps the panel in it and only the tab out
   expect(declarations('.chat-workspace'), 'the row holds both').toContain('display: flex')
   expect(declarations('.files-panel'), 'the panel is no overlay').not.toMatch(/position:/)
-  expect(declarations('.files-tab')).toContain('position: fixed')
+  // out of the flow, yes — but hung on the row and not on the viewport, which is what `filesTabSitsOnThePanelTop` pins
+  expect(declarations('.files-tab'), 'the tab hangs on the row').toContain('position: absolute')
+})
+
+// UC-WP-60
+test('filesTabSitsOnThePanelTop', () => {
+  const tab = declarations('.files-tab')
+
+  // a fixed tab at a percentage height met the panel top by accident, at one window height only; hung on
+  // the row, whose top edge the panel is stretched to, the two meet always (R-WP-33)
+  expect(tab, 'the tab hangs on the row, not on the viewport').toContain('position: absolute')
+  expect(tab).not.toContain('position: fixed')
+  expect(tab, 'the tab shares the top edge of that row').toContain('top: 0')
+  expect(tab).not.toMatch(/top:\s*\d+%/)
+
+  // closed at the right edge of the chat area, open at the edge of the panel, wide along with the panel
+  expect(tab).toContain('right: 0')
+  expect(appSheet(), 'the open tab rides the edge of the panel').toMatch(
+    /&\[data-open='true'\]\s*\{\s*right:\s*var\(--files-width\)/,
+  )
+  expect(declarations(".files-tab[data-open='true'][data-wide='true']")).toContain('right: var(--files-wide)')
+
+  // the row is the box it hangs on, and the panel keeps the height the frame gives it — `100vh` would cut
+  // it below the frame, which is the other half of a top edge that has to stay shared
+  expect(declarations('.chat-workspace'), 'the row is the positioned box').toContain('position: relative')
+  expect(declarations('.files-panel'), 'the panel is capped by the frame, not the viewport').not.toContain(
+    'max-height',
+  )
 })
 
 // UC-WP-60
@@ -480,37 +508,13 @@ test('closingThePanelForgetsThePositionInIt', async () => {
   expect(screen.getByRole('button', { name: 'src/' })).toHaveAttribute('aria-expanded', 'false')
 })
 
-/**
- * The sheet the file area is painted with (R-WP-33). jsdom lays out nothing and resolves no custom
- * property, so a vertical tab, a column instead of an overlay and a left-aligned viewer are read where
- * they are written — the same rule as `chat.page.test.tsx` and `chat.tiles.test.tsx`.
- */
-const SHEETS = import.meta.glob('../../src/*.css', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-}) as Record<string, string>
-
-function styles(): string {
-  return SHEETS['../../src/styles.css']
-}
-
-/** The declarations a sheet gives one selector, up to a nested rule — a selector it does not name fails. */
-function declarations(selector: string): string {
-  const source = styles()
-  const at = source.indexOf(`${selector} {`)
-  expect(at, `${selector} is styled at all`).toBeGreaterThanOrEqual(0)
-  const body = source.slice(at + selector.length + 2)
-  const end = body.search(/[{}]/)
-  return body.slice(0, end === -1 ? body.length : end)
-}
-
 /** The file area's own run of the sheet: from the row that holds it to the line that refuses a path. */
 function filesBlock(): string {
-  const source = styles()
+  const source = appSheet()
   const start = source.indexOf('.chat-workspace {')
   const end = source.indexOf('.files-error {')
-  expect(start, 'the row opens the file area').toBeGreaterThanOrEqual(0)
-  expect(end, 'the refusal closes it').toBeGreaterThan(start)
+  if (start < 0 || end < start) {
+    throw new Error('the file area has its own run of the sheet: .chat-workspace { … .files-error {')
+  }
   return source.slice(start, end)
 }

@@ -421,9 +421,10 @@ button {
   background: none;
 }
 
-.code-view .line {
-  display: block;
-}
+/* No `.code-view .line` rule on purpose: shiki already separates its line spans with a literal `\n`
+   (@shikijs/core, classic structure), so `display: block` on a line adds an empty line box after every
+   line — the doubled line height Paul reported (R-WP-33). The `\n` is the line break; `white-space: pre`
+   of the `<pre>` keeps it one. */
 
 [data-theme='dark'] .code-view .shiki {
   color: var(--shiki-dark) !important;
@@ -581,10 +582,12 @@ button {
 }
 
 /* The tab at the right edge, written sideways: the visible promise that this side opens (R-WP-33). Out
-   of the flow, because a panel that slides in must not move the edge of the chat. */
+   of the flow, because a panel that slides in must not move the edge of the chat, and hung on the row
+   (`.chat-workspace` is the positioned box) instead of on the viewport — only so do tab and panel share
+   one top edge at every window height, and only so does the closed tab sit at the chat's edge. */
 .files-tab {
-  position: fixed;
-  top: 30%;
+  position: absolute;
+  top: 0;
   right: 0;
   z-index: 2;
   display: flex;
@@ -620,7 +623,8 @@ button {
 }
 
 /* The panel is a column of the row and not an overlay, and it reads from the left — code and a tree are
-   never centred (R-WP-33). */
+   never centred (R-WP-33). It keeps the height the row gives it: the shell is a fixed frame, so the panel
+   stretches with it and scrolls on its own (R-WP-35) — a viewport-based cap would cut it below the frame. */
 .files-panel {
   flex: 0 0 var(--files-width);
   max-width: var(--files-width);
@@ -628,7 +632,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  max-height: calc(100vh - 6rem);
+  min-height: 0;
   padding: 0.4rem 0 1rem 0.75rem;
   overflow-y: auto;
   border-left: 1px solid var(--border);
