@@ -18,50 +18,68 @@ export interface Settings {
   keySource: KeySource
 }
 
-/** The provider names the server accepts — the nine values of its own provider enum. */
-export const PROVIDERS = [
-  'OLLAMA',
-  'OPEN_AI',
-  'OPEN_AI_OFFICIAL',
-  'LM_STUDIO',
-  'GOOGLE_GEMINI',
-  'MISTRAL',
-  'ANTHROPIC',
-  'GITHUB_MODELS',
-  'GITHUB_COPILOT',
-] as const
+/**
+ * One provider as the core knows it (UC-WP-62): the base URL it falls back to and whether it can carry a
+ * think input. No model — the core knows no model default, so the page clears the field instead of
+ * offering a value that belongs to another provider (Q2).
+ */
+export interface Provider {
+  name: string
+  defaultUrl: string | null
+  thinkSupported: boolean
+}
 
 export async function getSettings(): Promise<Settings> {
   return request<Settings>('/api/settings')
 }
 
+/** The providers the page offers — the core's own list, so a new provider needs no change here (D-10). */
+export async function listProviders(): Promise<Provider[]> {
+  return request<Provider[]>('/api/settings/providers')
+}
+
 /**
- * A save. Every field is optional because an empty input means <em>unchanged</em> (R-WP-16
- * "leeres Feld = unverändert"): what the server never sees cannot be overwritten, so a value — the key
- * above all — can be set here and never cleared.
+ * A save. Every visible field is text because the wire carries *three* states (R-WP-16, UC-WP-46):
+ * absent leaves the file alone, empty *deletes* the value, a value sets it. A number or a boolean
+ * has no empty state, which is why token window, timeout and think are text here and parsed by the
+ * server — an unparsable value comes back as a 400 naming the field.
+ *
+ * The key is the documented exception: write-only and never prefilled, so empty means unchanged and
+ * only `removeApiKey` deletes it (UC-WP-24 GIVEN 2, UC-WP-63).
  */
 export interface SettingsPatch {
   provider?: string
   model?: string
   url?: string
   apiKey?: string
-  tokenWindow?: number
-  timeoutSeconds?: number
-  sendThinking?: boolean
+  tokenWindow?: string
+  timeoutSeconds?: string
+  sendThinking?: string
+  removeApiKey?: boolean
 }
 
 export async function updateSettings(patch: SettingsPatch): Promise<Settings> {
-  return request<Settings>('/api/settings', { method: 'PUT', body: JSON.stringify(withoutBlanks(patch)) })
+  return request<Settings>('/api/settings', {
+    method: 'PUT',
+    body: JSON.stringify(trimmedBody(patch)),
+  })
 }
 
-/** Only fields that carry a value travel — the trim mirrors the server, which stores trimmed too. */
-function withoutBlanks(patch: SettingsPatch): SettingsPatch {
+/**
+ * Trims what travels and throws nothing away: an empty string is a field the user cleared, so dropping
+ * blanks would make that state unreachable (UC-WP-46). Only the key field is left out when empty — for
+ * it, empty is not a value but a request to leave the stored key alone.
+ */
+function trimmedBody(patch: SettingsPatch): SettingsPatch {
   const sent: Record<string, unknown> = {}
   for (const [field, value] of Object.entries(patch)) {
-    const blank = value === undefined || value === null || (typeof value === 'string' && value.trim() === '')
-    if (!blank) {
-      sent[field] = typeof value === 'string' ? value.trim() : value
+    if (value === undefined || value === null) {
+      continue
     }
+    if (field === 'apiKey' && value === '') {
+      continue
+    }
+    sent[field] = typeof value === 'string' ? value.trim() : value
   }
   return sent as SettingsPatch
 }

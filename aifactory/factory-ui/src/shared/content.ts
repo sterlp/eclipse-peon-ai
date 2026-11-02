@@ -135,8 +135,16 @@ export const content = {
       ENV: 'environment variable',
       NONE: 'none',
     },
-    /** Said at every field that may stay empty (R-WP-16) — until Inc 7 narrows it to the key. */
+    /**
+     * The one field that may stay empty (R-WP-16): the key is write-only and never prefilled, so empty
+     * cannot mean "delete" here. Every other field says it by being empty — that state has no words.
+     */
     unchanged: 'empty = unchanged',
+    /** UC-WP-63: without this a key set once could never be removed through the page. */
+    removeKey: 'Remove key',
+    removeKeyQueued: 'the stored key is removed when you save',
+    /** Q3: the provider's own think form, said where the field can do nothing about it. */
+    thinkUnsupported: 'this provider has no thinking input',
     saving: 'Saving…',
     save: 'Save',
   },

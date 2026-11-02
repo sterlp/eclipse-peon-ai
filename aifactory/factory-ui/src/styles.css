@@ -76,7 +76,6 @@
   min-width: 0;
 }
 
-
 .add-project {
   display: flex;
   gap: 0.5rem;
@@ -178,7 +177,6 @@ button {
     font-size: 0.85rem;
   }
 }
-
 
 /* Head of the chat view: the project names it, there is no second "Chat" heading (R-WP-1). */
 .chat-head {
@@ -300,7 +298,6 @@ button {
     }
   }
 }
-
 
 .chat-log {
   list-style: none;
@@ -434,8 +431,6 @@ button {
   }
 }
 
-
-
 /* The name above a line, in the colour of its voice (chat.html: uppercase, letterspaced, smaller). */
 .chat-log .chat-role {
   display: block;
@@ -537,7 +532,6 @@ button {
   color: var(--problem);
   margin: 0 0 0.75rem;
 }
-
 
 /* The row a chat view sits in: the conversation and the file panel side by side, so an open file keeps
    the chat on the screen instead of covering it (R-WP-33). */
@@ -759,7 +753,6 @@ button {
   overflow-wrap: anywhere;
 }
 
-
 /* Blick in das Gespräch eines Agenten: dieselbe Geometrie wie der Datei-Bereich, eine Ebene darüber (R-WP-26). */
 .chat-insight {
   position: fixed;
@@ -842,4 +835,67 @@ button {
     opacity: 0.5;
     cursor: default;
   }
+}
+
+/* The config page (R-WP-16): one column of labeled fields, the key row carrying its own status. */
+.settings-form {
+  display: grid;
+  justify-items: start;
+  gap: 0.5rem;
+  max-width: 34rem;
+}
+
+.settings {
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+  margin: 0;
+
+  > div {
+    display: grid;
+    grid-template-columns: 8.5rem 1fr;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  dt {
+    color: var(--text);
+    font-size: 0.8rem;
+    text-align: right;
+  }
+
+  dd {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+  }
+
+  input,
+  select {
+    flex: 1 1 12rem;
+    min-width: 0;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    background: var(--bg);
+    color: var(--text-h);
+  }
+
+  /* A field the provider makes unusable stays readable and says so — it is not hidden (Q3). */
+  input:disabled,
+  select:disabled {
+    color: var(--tool);
+    background: var(--code-bg);
+    cursor: not-allowed;
+  }
+}
+
+.key-set {
+  color: var(--agent);
+}
+
+.key-missing {
+  color: var(--problem);
 }

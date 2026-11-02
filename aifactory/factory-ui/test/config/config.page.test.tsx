@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 
 import { ConfigPage } from '../../src/config/config.page'
 import { content } from '../../src/shared/content'
@@ -16,30 +16,68 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-type Script = { GET: unknown; PUT: unknown }
+type Script = { GET: unknown; PUT: unknown; PROVIDERS: unknown }
 type Call = { method: string; path: string; body?: string }
 
 /**
- * Mutable `fetch` stand-in: one answer per method, every call recorded with its body. Honest limit,
+ * The provider list as the core answers it (UC-WP-62): one provider with a URL default, one without a
+ * think input. The values are stubs on purpose — which URL the core really carries is pinned by
+ * `SettingsControllerTest`, the page only has to follow what the server says.
+ */
+const PROVIDER_ANSWER = [
+  { name: 'OPEN_AI', defaultUrl: null, thinkSupported: true },
+  {
+    name: 'OLLAMA',
+    defaultUrl: 'https://ollama.example',
+    thinkSupported: true,
+  },
+  { name: 'GOOGLE_GEMINI', defaultUrl: null, thinkSupported: false },
+]
+
+/**
+ * Mutable `fetch` stand-in: one answer per endpoint, every call recorded with its body. Honest limit,
  * same as the Projects tests — the answers are stubbed, so this view cannot go red from a backend
  * mutation; the wire contract itself is proven by `SettingsControllerTest`.
  */
-function stubServer(initial: Partial<Script>): { script: Script; calls: Call[] } {
+function stubServer(initial: Partial<Script>): {
+  script: Script
+  calls: Call[]
+} {
   const server: { script: Script; calls: Call[] } = {
-    script: { GET: undefined, PUT: undefined, ...initial },
+    script: {
+      GET: undefined,
+      PUT: undefined,
+      PROVIDERS: PROVIDER_ANSWER,
+      ...initial,
+    },
     calls: [],
   }
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const method = (init?.method ?? 'GET').toUpperCase()
-      server.calls.push({ method, path: String(input), body: init?.body as string | undefined })
-      const answer = server.script[method as keyof Script]
+      const path = String(input)
+      server.calls.push({
+        method,
+        path,
+        body: init?.body as string | undefined,
+      })
+      const answer = path.endsWith('/providers')
+        ? server.script.PROVIDERS
+        : server.script[method as keyof Script]
       if (answer instanceof Error) {
-        return response(400, { status: 400, error: 'Bad Request', message: answer.message })
+        return response(400, {
+          status: 400,
+          error: 'Bad Request',
+          message: answer.message,
+        })
       }
       if (answer === undefined) {
-        return response(404, { status: 404, error: 'Not Found', message: 'nope' })
+        return response(404, {
+          status: 404,
+          error: 'Not Found',
+          message: 'nope',
+        })
       }
       return response(200, answer)
     }),
@@ -88,7 +126,9 @@ async function valueOf(label: string): Promise<string> {
 
 /** What really sits in the form — text content cannot see the value of an input. */
 function controlValues(container: HTMLElement): string[] {
-  return Array.from(container.querySelectorAll('input, select')).map(el => (el as HTMLInputElement).value)
+  return Array.from(container.querySelectorAll('input, select')).map(
+    (el) => (el as HTMLInputElement).value,
+  )
 }
 
 // UC-WP-23
@@ -110,9 +150,13 @@ test('settingsShowsMaskedConfig', async () => {
   expect(screen.queryByText(/sk-/)).toBeNull()
   expect(container.textContent).not.toContain('sk-')
   expect(container.textContent).not.toContain(KEY)
-  expect(controlValues(container).some(value => value.includes('sk-'))).toBe(false)
-  // opening the settings reads the config, it never writes it
-  expect(server.calls).toEqual([{ method: 'GET', path: '/api/settings' }])
+  expect(controlValues(container).some((value) => value.includes('sk-'))).toBe(false)
+  // opening the settings reads the config and the provider defaults, it never writes either
+  expect(server.calls.map((call) => call.method)).toEqual(['GET', 'GET'])
+  expect(server.calls.map((call) => call.path).sort()).toEqual([
+    '/api/settings',
+    '/api/settings/providers',
+  ])
 
   // the source is named as what it is (R-WP-16 "Woher ein Wert kommt, zeigt der View")
   cleanup()
@@ -127,7 +171,14 @@ test('settingsShowsMaskedConfig', async () => {
 
 // UC-WP-23
 test('showsKeyStatusOfAnUnsetKey', async () => {
-  stubServer({ GET: settingsAnswer({ keySet: false, keySource: 'NONE', model: null, url: null }) })
+  stubServer({
+    GET: settingsAnswer({
+      keySet: false,
+      keySource: 'NONE',
+      model: null,
+      url: null,
+    }),
+  })
   const { container } = render(<ConfigPage />)
 
   // an unknown value is an empty field, never the word "null" — and empty means "unchanged"
@@ -143,21 +194,30 @@ test('showsKeyStatusOfAnUnsetKey', async () => {
 test('settingsOverrideNeverWritesSharedStore', async () => {
   const server = stubServer({
     GET: settingsAnswer({ keySet: false, keySource: 'NONE', url: null }),
-    PUT: settingsAnswer({ model: 'new-model', keySet: true, keySource: 'FILE' }),
+    PUT: settingsAnswer({
+      model: 'new-model',
+      keySet: true,
+      keySource: 'FILE',
+    }),
   })
   const { container } = render(<ConfigPage />)
   await screen.findByDisplayValue('gpt-demo')
 
-  fireEvent.change(screen.getByLabelText(content.config.model), { target: { value: 'new-model' } })
+  fireEvent.change(screen.getByLabelText(content.config.model), {
+    target: { value: 'new-model' },
+  })
   fireEvent.click(screen.getByRole('button', { name: content.config.save }))
 
-  const put = server.calls.find(call => call.method === 'PUT')
+  const put = server.calls.find((call) => call.method === 'PUT')
   expect(put?.path).toBe('/api/settings')
   const sent = JSON.parse(put?.body ?? '{}') as Record<string, unknown>
   expect(sent.model).toBe('new-model')
-  // R-WP-16 "leeres Feld = unverändert": an empty field is absent from the body, so its key is
-  // never even named — an empty key field therefore cannot delete a stored key
-  expect(Object.keys(sent)).not.toContain('url')
+  // R-WP-16 since Inc 7a: every named field travels, an emptied one as an empty string — that is how a
+  // cleared field is deleted from the file (UC-WP-46). The url was empty here, so it says "delete", which
+  // the file answers by keeping nothing.
+  expect(sent).toHaveProperty('url', '')
+  // only the key is never named when empty: its field is write-only, so empty means unchanged and an empty
+  // body cannot delete a stored key
   expect(Object.keys(sent)).not.toContain('apiKey')
 
   // the answer of the server is the stored state: the key row says "gesetzt" without ever holding one
@@ -166,15 +226,195 @@ test('settingsOverrideNeverWritesSharedStore', async () => {
     screen.getByText(`${content.config.keySource}: ${content.config.source.FILE}`),
   ).toBeInTheDocument()
   expect(screen.getByLabelText(content.config.key)).toHaveValue('')
-  expect(controlValues(container).some(value => value.includes('sk-'))).toBe(false)
+  expect(controlValues(container).some((value) => value.includes('sk-'))).toBe(false)
 
   // a rejected save names the field and keeps what was typed (nothing of the answer is a value)
   server.script.PUT = new Error('provider must name one of the supported providers')
-  fireEvent.change(screen.getByLabelText(content.config.model), { target: { value: 'kept-model' } })
+  fireEvent.change(screen.getByLabelText(content.config.model), {
+    target: { value: 'kept-model' },
+  })
   fireEvent.click(screen.getByRole('button', { name: content.config.save }))
 
   expect(await screen.findByRole('alert')).toHaveTextContent('provider')
   expect(screen.getByLabelText(content.config.model)).toHaveValue('kept-model')
+})
+
+// UC-WP-62
+test('changingTheProviderUpdatesTheUrl', async () => {
+  const server = stubServer({
+    GET: settingsAnswer({ url: 'https://old.example' }),
+  })
+  render(<ConfigPage />)
+  expect(await valueOf(content.config.url)).toBe('https://old.example')
+
+  fireEvent.change(screen.getByLabelText(content.config.provider), {
+    target: { value: 'OLLAMA' },
+  })
+
+  // the default the server named for that provider, at once and without a save in between (R-WP-16)
+  expect(screen.getByLabelText(content.config.url)).toHaveValue('https://ollama.example')
+  expect(server.calls.filter((call) => call.method === 'PUT')).toEqual([])
+
+  // a provider without a default leaves the field empty — the page invents nothing
+  fireEvent.change(screen.getByLabelText(content.config.provider), {
+    target: { value: 'GOOGLE_GEMINI' },
+  })
+  expect(screen.getByLabelText(content.config.url)).toHaveValue('')
+})
+
+// UC-WP-62
+test('theModelFieldIsClearedOnProviderChange', async () => {
+  stubServer({ GET: settingsAnswer({ model: 'gpt-demo' }) })
+  render(<ConfigPage />)
+  expect(await valueOf(content.config.model)).toBe('gpt-demo')
+
+  fireEvent.change(screen.getByLabelText(content.config.provider), {
+    target: { value: 'OLLAMA' },
+  })
+
+  // empty, not the old provider's model and not a guessed one: the core knows no model default (Q2)
+  expect(screen.getByLabelText(content.config.model)).toHaveValue('')
+})
+
+// UC-WP-62
+test('unsupportedThinkIsShownAndDisabled', async () => {
+  stubServer({ GET: settingsAnswer() })
+  render(<ConfigPage />)
+  await screen.findByText(content.config.provider)
+
+  // the stored provider can carry think, so the field works and nothing is claimed about it
+  expect(screen.getByLabelText(content.config.sendThinking)).toBeEnabled()
+  expect(screen.queryByText(content.config.thinkUnsupported)).toBeNull()
+
+  fireEvent.change(screen.getByLabelText(content.config.provider), {
+    target: { value: 'GOOGLE_GEMINI' },
+  })
+
+  // shown and disabled — not hidden: the row still says what the form is talking about (Q3)
+  expect(screen.getByLabelText(content.config.sendThinking)).toBeDisabled()
+  expect(screen.getByText(content.config.thinkUnsupported)).toBeInTheDocument()
+  // disabled is not cleared: the stored value stands until a save says otherwise (UC-WP-46)
+  expect(screen.getByLabelText(content.config.sendThinking)).toHaveValue('no')
+})
+
+// UC-WP-63
+test('removeKeyDeletesItAndRefreshesTheStatus', async () => {
+  const server = stubServer({
+    GET: settingsAnswer(),
+    PUT: settingsAnswer({ keySet: false, keySource: 'NONE' }),
+  })
+  render(<ConfigPage />)
+  await screen.findByText(content.config.keySet)
+  expect(
+    screen.getByText(`${content.config.keySource}: ${content.config.source.FILE}`),
+  ).toBeInTheDocument()
+  // nothing is sent by the click alone — removal is a save like any other, so it can still be undone
+  fireEvent.click(screen.getByRole('button', { name: content.config.removeKey }))
+
+  expect(screen.getByText(content.config.removeKeyQueued)).toBeInTheDocument()
+  expect(server.calls.filter((call) => call.method === 'PUT')).toEqual([])
+
+  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
+
+  const put = server.calls.find((call) => call.method === 'PUT')
+  const sent = JSON.parse(put?.body ?? '{}') as Record<string, unknown>
+  expect(sent).toHaveProperty('removeApiKey', true)
+  // the key field itself stays out of the body: the removal is said by its own flag, never by a blank
+  expect(Object.keys(sent)).not.toContain('apiKey')
+
+  // the status is the fresh answer of the server, not what the click implied (UC-WP-63 THEN "nicht gesetzt")
+  expect(await screen.findByText(content.config.keyMissing)).toBeInTheDocument()
+  expect(
+    screen.getByText(`${content.config.keySource}: ${content.config.source.NONE}`),
+  ).toBeInTheDocument()
+  // and the affordance is gone with the key: nothing left to remove, nothing queued
+  expect(screen.queryByText(content.config.removeKeyQueued)).toBeNull()
+  expect(screen.queryByRole('button', { name: content.config.removeKey })).toBeNull()
+
+  // the flag is spent: a later save of something else must not delete a key again, or a key set in the
+  // meantime would vanish with an unrelated change (R-WP-16 "nur was dort geändert wird, geändert")
+  fireEvent.change(screen.getByLabelText(content.config.model), { target: { value: 'gpt-next' } })
+  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
+
+  await waitFor(() => expect(server.calls.filter((call) => call.method === 'PUT')).toHaveLength(2))
+  const second = JSON.parse(
+    server.calls.filter((call) => call.method === 'PUT')[1].body ?? '{}',
+  ) as Record<string, unknown>
+  expect(second).toHaveProperty('model', 'gpt-next')
+  expect(second).not.toHaveProperty('removeApiKey')
+})
+
+// UC-WP-63
+test('aTypedKeyCancelsTheQueuedRemoval', async () => {
+  const server = stubServer({ GET: settingsAnswer() })
+  render(<ConfigPage />)
+  await screen.findByText(content.config.keySet)
+
+  fireEvent.click(screen.getByRole('button', { name: content.config.removeKey }))
+  expect(screen.getByText(content.config.removeKeyQueued)).toBeInTheDocument()
+  // two intents cannot travel together: the newer one is the only one the body may carry, or the server
+  // would write the new key and delete it again in the same save
+  fireEvent.change(screen.getByLabelText(content.config.key), { target: { value: 'sk-other' } })
+  expect(screen.queryByText(content.config.removeKeyQueued)).toBeNull()
+
+  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
+
+  await waitFor(() => expect(server.calls.filter((call) => call.method === 'PUT')).toHaveLength(1))
+  const sent = JSON.parse(
+    server.calls.find((call) => call.method === 'PUT')?.body ?? '{}',
+  ) as Record<string, unknown>
+  expect(sent).toHaveProperty('apiKey', 'sk-other')
+  expect(sent).not.toHaveProperty('removeApiKey')
+})
+
+// UC-WP-63
+test('anEnvKeyIsReportedButNotRemovable', async () => {
+  stubServer({ GET: settingsAnswer({ keySource: 'ENV' }) })
+  render(<ConfigPage />)
+
+  expect(await screen.findByText(content.config.keySet)).toBeInTheDocument()
+  expect(
+    screen.getByText(`${content.config.keySource}: ${content.config.source.ENV}`),
+  ).toBeInTheDocument()
+  // the page may report the start value, never delete it (R-WP-16)
+  expect(screen.queryByRole('button', { name: content.config.removeKey })).toBeNull()
+})
+
+// UC-WP-46
+test('theUnchangedHintIsGoneFromVisibleFields', async () => {
+  const server = stubServer({ GET: settingsAnswer(), PUT: settingsAnswer() })
+  render(<ConfigPage />)
+  await screen.findByText(content.config.provider)
+
+  // "empty = unchanged" is the key's sentence only; for a visible field empty means the opposite
+  for (const label of [
+    content.config.model,
+    content.config.url,
+    content.config.tokenWindow,
+    content.config.timeout,
+  ]) {
+    expect(screen.getByLabelText(label)).not.toHaveAttribute(
+      'placeholder',
+      content.config.unchanged,
+    )
+  }
+  expect(screen.getByLabelText(content.config.key)).toHaveAttribute(
+    'placeholder',
+    content.config.unchanged,
+  )
+  // and the sentence is nowhere painted as a hint either
+  expect(document.body.textContent).not.toContain(content.config.unchanged)
+
+  // the third state is reachable: an emptied field is sent empty, so the file can delete the value
+  fireEvent.change(screen.getByLabelText(content.config.model), {
+    target: { value: '' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
+
+  const put = server.calls.find((call) => call.method === 'PUT')
+  const sent = JSON.parse(put?.body ?? '{}') as Record<string, unknown>
+  expect(sent).toHaveProperty('model', '')
+  expect(Object.keys(sent)).not.toContain('apiKey')
 })
 
 test('showsErrorMessageWhenSettingsCannotLoad', async () => {

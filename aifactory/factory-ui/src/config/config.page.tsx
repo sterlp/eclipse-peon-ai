@@ -4,9 +4,10 @@ import { errorMessage } from '../shared/api.client'
 import { content } from '../shared/content'
 import {
   getSettings,
-  PROVIDERS,
+  listProviders,
   updateSettings,
   type KeySource,
+  type Provider,
   type Settings,
   type SettingsPatch,
 } from './config.client'
@@ -21,9 +22,14 @@ const SOURCE_LABEL: Record<KeySource, string> = {
 const YES = 'yes'
 const NO = 'no'
 
+/** The same decision on the wire: the file holds text, the core reads it back as a boolean. */
+const TRUE = 'true'
+const FALSE = 'false'
+
 /**
- * The form holds every editable value as text, so "empty" is one concept across text and number
- * fields: an empty input is not a value and is never sent (R-WP-16: an empty field stays unchanged).
+ * The form holds every editable value as text, so "empty" is one concept across text and number fields —
+ * and empty is a value of its own: it says the user cleared the field, which deletes it (R-WP-16
+ * "geleert = gelöscht", UC-WP-46). The key field is the exception: write-only, never prefilled.
  */
 interface Draft {
   provider: string
@@ -48,49 +54,78 @@ function draftOf(settings: Settings): Draft {
   }
 }
 
-function patchOf(draft: Draft): SettingsPatch {
+/** Every field travels, cleared ones as empty text — that is how a deletion reaches the file. */
+function patchOf(draft: Draft, removeKey: boolean): SettingsPatch {
   return {
     provider: draft.provider,
     model: draft.model,
     url: draft.url,
+    // an empty key field is dropped by the client: unchanged is the only thing it can say
     apiKey: draft.apiKey,
-    tokenWindow: numberOf(draft.tokenWindow),
-    timeoutSeconds: numberOf(draft.timeoutSeconds),
-    sendThinking: draft.sendThinking === YES,
+    tokenWindow: draft.tokenWindow,
+    timeoutSeconds: draft.timeoutSeconds,
+    sendThinking: draft.sendThinking === YES ? TRUE : FALSE,
+    ...(removeKey ? { removeApiKey: true } : {}),
   }
-}
-
-/** A number field is sent as a number or not at all — `type="number"` already reports '' on garbage. */
-function numberOf(text: string): number | undefined {
-  const trimmed = text.trim()
-  return trimmed === '' || !Number.isFinite(Number(trimmed)) ? undefined : Number(trimmed)
 }
 
 /**
  * The factory's config (R-WP-16): the six values, the key <em>status</em> and where a value came from.
- * The key row shows a status because the server sends no field that could carry one — its input is
- * write-only, so a saved key stays stored and an empty input leaves it alone.
+ * The form behaves like the provider dialog of the plugin (UC-WP-62) — a provider change updates the
+ * fields that depend on it at once — and it can remove a key (UC-WP-63).
  */
 export function ConfigPage() {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
+  const [providers, setProviders] = useState<Provider[]>([])
+  const [removeKey, setRemoveKey] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    // mount = read the config, an external system; the update lands after the await
+    // mount = read the config and the provider defaults, two reads of external systems. The form does
+    // not wait for the list: a page that cannot list providers still shows what the file holds.
     getSettings()
-      .then(loaded => {
+      .then((loaded) => {
         setSettings(loaded)
         setDraft(draftOf(loaded))
       })
-      .catch(error => setMessage(errorMessage(error)))
+      .catch((error) => setMessage(errorMessage(error)))
+    listProviders()
+      .then(setProviders)
+      .catch((error) => setMessage(errorMessage(error)))
   }, [])
 
   function edit(field: keyof Draft) {
-    return (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-      setDraft(current => (current ? { ...current, [field]: event.target.value } : current))
+    return (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const value = event.target.value
+      setDraft((current) => (current ? { ...current, [field]: value } : current))
+      // typing a key while one is queued for removal is two intents — the newer one wins
+      if (field === 'apiKey' && value !== '') {
+        setRemoveKey(false)
+      }
+    }
+  }
+
+  /**
+   * R-WP-16 "Dynamische Felder wie im Plugin", without a save in between: the URL becomes the core's
+   * default for the chosen provider, and the model is *cleared* rather than carried over — a model
+   * belongs to a provider, and inventing a default for it is not the page's (Q2).
+   */
+  function editProvider(event: React.ChangeEvent<HTMLSelectElement>) {
+    const name = event.target.value
+    const chosen = providers.find((entry) => entry.name === name)
+    setDraft((current) =>
+      current
+        ? {
+            ...current,
+            provider: name,
+            url: chosen ? (chosen.defaultUrl ?? '') : current.url,
+            model: '',
+          }
+        : current,
+    )
   }
 
   async function save(event: React.FormEvent) {
@@ -101,10 +136,12 @@ export function ConfigPage() {
     setBusy(true)
     setSaveMessage(null)
     try {
-      // the answer is the stored state, read back masked — the form is refilled from it, not from the input
-      const saved = await updateSettings(patchOf(draft))
+      // the answer is the stored state, read back masked — the form is refilled from it, not from the
+      // input, which is also what makes the key status fresh after every save (UC-WP-63)
+      const saved = await updateSettings(patchOf(draft, removeKey))
       setSettings(saved)
       setDraft(draftOf(saved))
+      setRemoveKey(false)
     } catch (error) {
       // the typed values stay: the message names the field to fix, nothing the user wrote is lost
       setSaveMessage(errorMessage(error))
@@ -112,6 +149,11 @@ export function ConfigPage() {
       setBusy(false)
     }
   }
+
+  // the provider the form currently names — the source of both dynamic answers below
+  const chosen = draft ? providers.find((entry) => entry.name === draft.provider) : undefined
+  // Q3: the think value stays a boolean; a provider that cannot carry it says so and gets no field to try
+  const thinkUnsupported = chosen !== undefined && !chosen.thinkSupported
 
   return (
     <section className="view" aria-label={content.config.title}>
@@ -122,15 +164,23 @@ export function ConfigPage() {
         </p>
       )}
       {settings && draft && (
-        <form className="settings-form" onSubmit={event => void save(event)}>
+        <form className="settings-form" onSubmit={(event) => void save(event)}>
           <dl className="settings">
             <div>
               <dt>{content.config.provider}</dt>
               <dd>
-                <select aria-label={content.config.provider} value={draft.provider} onChange={edit('provider')}>
-                  {PROVIDERS.map(provider => (
-                    <option key={provider} value={provider}>
-                      {provider}
+                <select
+                  aria-label={content.config.provider}
+                  value={draft.provider}
+                  onChange={editProvider}
+                >
+                  {/* a stored provider the core list does not offer still has to show what the file holds */}
+                  {!providers.some((entry) => entry.name === draft.provider) && (
+                    <option value={draft.provider}>{draft.provider}</option>
+                  )}
+                  {providers.map((entry) => (
+                    <option key={entry.name} value={entry.name}>
+                      {entry.name}
                     </option>
                   ))}
                 </select>
@@ -147,7 +197,6 @@ export function ConfigPage() {
               <dd>
                 <input
                   aria-label={content.config.model}
-                  placeholder={content.config.unchanged}
                   value={draft.model}
                   onChange={edit('model')}
                 />
@@ -156,22 +205,20 @@ export function ConfigPage() {
             <div>
               <dt>{content.config.url}</dt>
               <dd>
-                <input
-                  type="url"
-                  aria-label={content.config.url}
-                  placeholder={content.config.unchanged}
-                  value={draft.url}
-                  onChange={edit('url')}
-                />
+                <input aria-label={content.config.url} value={draft.url} onChange={edit('url')} />
               </dd>
             </div>
+            {/*
+              Text fields, not `type="number"`: a number input reports its own garbage as empty, and empty
+              now means "delete" — the browser would turn a typo into a deletion. As text the value reaches
+              the server, which refuses it and names the field.
+            */}
             <div>
               <dt>{content.config.tokenWindow}</dt>
               <dd>
                 <input
-                  type="number"
+                  inputMode="numeric"
                   aria-label={content.config.tokenWindow}
-                  placeholder={content.config.unchanged}
                   value={draft.tokenWindow}
                   onChange={edit('tokenWindow')}
                 />
@@ -181,9 +228,8 @@ export function ConfigPage() {
               <dt>{content.config.timeout}</dt>
               <dd>
                 <input
-                  type="number"
+                  inputMode="numeric"
                   aria-label={content.config.timeout}
-                  placeholder={content.config.unchanged}
                   value={draft.timeoutSeconds}
                   onChange={edit('timeoutSeconds')}
                 />
@@ -193,10 +239,18 @@ export function ConfigPage() {
             <div>
               <dt>{content.config.sendThinking}</dt>
               <dd>
-                <select aria-label={content.config.sendThinking} value={draft.sendThinking} onChange={edit('sendThinking')}>
+                <select
+                  aria-label={content.config.sendThinking}
+                  value={draft.sendThinking}
+                  onChange={edit('sendThinking')}
+                  disabled={thinkUnsupported}
+                >
                   <option value={YES}>{content.config.yes}</option>
                   <option value={NO}>{content.config.no}</option>
                 </select>
+                {thinkUnsupported && (
+                  <span className="hint">{content.config.thinkUnsupported}</span>
+                )}
               </dd>
             </div>
             <div>
@@ -216,6 +270,13 @@ export function ConfigPage() {
                 <span className="hint">
                   {content.config.keySource}: {SOURCE_LABEL[settings.keySource]}
                 </span>
+                {/* a key from the environment can be reported but never removed here (UC-WP-63 GIVEN 2) */}
+                {settings.keySource === 'FILE' && (
+                  <button type="button" disabled={removeKey} onClick={() => setRemoveKey(true)}>
+                    {content.config.removeKey}
+                  </button>
+                )}
+                {removeKey && <span className="hint">{content.config.removeKeyQueued}</span>}
               </dd>
             </div>
           </dl>

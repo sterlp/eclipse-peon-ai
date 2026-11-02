@@ -31,10 +31,16 @@ const SETTINGS = {
   keySource: 'NONE',
 }
 
+/** The provider list the settings page reads — one entry, the one SETTINGS names (UC-WP-62). */
+const PROVIDERS = [{ name: 'OPEN_AI', defaultUrl: null, thinkSupported: true }]
+
 let stream: ReadableStreamDefaultController<Uint8Array> | undefined
 
 function json(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'content-type': 'application/json' },
+  })
 }
 
 /**
@@ -60,6 +66,9 @@ export function stubAppServer(projects: unknown[] = [project()]): void {
       if (path === '/api/settings') {
         return json(200, SETTINGS)
       }
+      if (path === '/api/settings/providers') {
+        return json(200, PROVIDERS)
+      }
       if (path.endsWith('/agents')) {
         return json(200, [DEV])
       }
@@ -73,7 +82,7 @@ export async function closeAppStream(): Promise<void> {
   await act(async () => {
     stream?.close()
     stream = undefined
-    await new Promise(resolve => setTimeout(resolve, 0))
+    await new Promise((resolve) => setTimeout(resolve, 0))
   })
 }
 

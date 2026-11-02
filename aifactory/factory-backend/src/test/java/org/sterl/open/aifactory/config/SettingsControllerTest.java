@@ -8,6 +8,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -32,8 +33,11 @@ import org.springframework.web.client.RestTemplate;
 
 import com.jayway.jsonpath.JsonPath;
 
+import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.FileLlmConfigStore;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
+import org.sterl.llmpeon.provider.LlmProviders;
+import org.sterl.open.aifactory.config.dto.ProviderDefaultsDto;
 import org.sterl.open.aifactory.config.dto.SettingsDto;
 import org.sterl.open.aifactory.config.dto.SettingsUpdateRequest;
 import org.sterl.open.aifactory.shared.FactoryHome;
@@ -222,14 +226,21 @@ class SettingsControllerTest {
         assertThat(Files.getPosixFilePermissions(config())).isEqualTo(
                 EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
 
-        // GIVEN 2: an empty field is no value — the file keeps every byte it had
+        // GIVEN 2: an empty key field is no value — the file keeps every byte it had. The key is the one
+        // field for which the page still cannot clear anything by leaving it empty (R-WP-16).
         byte[] unchanged = Files.readAllBytes(config());
-        ResponseEntity<String> emptied = put("{\"model\":\"\"}");
+        ResponseEntity<String> emptied = put("{\"apiKey\":\"\"}");
         assertThat(emptied.getStatusCode()).isEqualTo(HttpStatus.OK);
         // an empty field did not clear the stored value — the answer re-read it instead of echoing
         assertThat(field(emptied.getBody(), "$.model")).isEqualTo("put-model");
         assertThat(Files.readAllBytes(config())).containsExactly(unchanged);
         assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.API_KEY, null)).isEqualTo(KEY);
+
+        // a cleared visible field is the opposite: an empty string is the value "delete" (UC-WP-46), so
+        // the same request shape on the model field does remove it
+        ResponseEntity<String> cleared = put("{\"model\":\"\"}");
+        assertThat(field(cleared.getBody(), "$.model")).isNull();
+        assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.MODEL, null)).isNull();
 
         // a wire field the request model does not know stays unreachable, whatever it is called
         assertThat(put("""
@@ -242,7 +253,7 @@ class SettingsControllerTest {
 
         // the request model has no component for the two pinned values either
         assertThat(componentNamesOf(SettingsUpdateRequest.class)).containsExactly("provider", "model", "url",
-                "apiKey", "tokenWindow", "timeoutSeconds", "sendThinking");
+                "apiKey", "tokenWindow", "timeoutSeconds", "sendThinking", "removeApiKey");
 
         // and the home still holds exactly the one file — no temp file survived the atomic move
         assertThat(fileNames()).isEqualTo(filesBefore);
@@ -265,6 +276,110 @@ class SettingsControllerTest {
         assertThat(Files.readAllBytes(config())).containsExactly(untouched);
         assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.API_KEY, null)).isNull();
         assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.PROVIDER_TYPE, null)).isEqualTo("OLLAMA");
+    }
+
+    /**
+     * UC-WP-62 over HTTP: the list the page follows is the core's own, so the page needs no second list
+     * and no invented model default (D-10, Q2). Reading it never writes the config file.
+     */
+    @Test
+    // UC-WP-62
+    @SuppressWarnings("unchecked")
+    void providerDefaultsAnswerAsTheCoreKnowsThem() {
+        assertThat(config()).doesNotExist();
+
+        ResponseEntity<String> response = http.getForEntity(url("/api/settings/providers"), String.class);
+        String body = response.getBody();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<String> names = (List<String>) field(body, "$[*].name");
+        assertThat(names).containsExactly(
+                Arrays.stream(AiProvider.values()).map(Enum::name).toArray(String[]::new));
+
+        // the URL is the core's own value — the factory maintains no list of its own
+        assertThat(field(body, "$[" + names.indexOf("OLLAMA") + "].defaultUrl"))
+                .isEqualTo(LlmProviders.of(AiProvider.OLLAMA).defaultBaseUrl());
+        // a provider that requires a URL gets none: the page leaves the field empty instead of guessing
+        assertThat(field(body, "$[" + names.indexOf("OPEN_AI") + "].defaultUrl")).isNull();
+        // the providers without a think input are answered as such — that is what disables the field
+        assertThat(field(body, "$[" + names.indexOf("GOOGLE_GEMINI") + "].thinkSupported")).isEqualTo(false);
+        assertThat(field(body, "$[" + names.indexOf("MISTRAL") + "].thinkSupported")).isEqualTo(false);
+        assertThat(field(body, "$[" + names.indexOf("OLLAMA") + "].thinkSupported")).isEqualTo(true);
+
+        // a model default would be an invention, so there is no field that could hold one
+        assertThat(componentNamesOf(ProviderDefaultsDto.class)).containsExactly("name", "defaultUrl",
+                "thinkSupported");
+        assertThat(config()).doesNotExist();
+    }
+
+    /**
+     * UC-WP-63 over HTTP: "Remove key" empties the file and the answer says so. A key the environment
+     * still supplies stays effective and is named as ENV — removing it is not the page's to do.
+     */
+    @Test
+    // UC-WP-63
+    void removeKeyDeletesItAndRefreshesTheStatus() throws IOException {
+        writeConfig("%s=OPEN_AI%n%s=gpt-demo%n%s=%s%n".formatted(
+                LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.MODEL, LlmConfigKeys.API_KEY, KEY));
+
+        ResponseEntity<String> saved = put("{\"removeApiKey\":true}");
+        String body = saved.getBody();
+
+        assertThat(saved.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(field(body, "$.keySet")).isEqualTo(false);
+        assertThat(field(body, "$.keySource")).isEqualTo("NONE");
+        // the answer is the stored state: what the request never named is still there
+        assertThat(field(body, "$.model")).isEqualTo("gpt-demo");
+        assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.API_KEY, null)).isNull();
+
+        // GIVEN the environment supplies a key — the file is empty of it, the source says ENV, and no
+        // character of the key leaves the server (R-WP-16)
+        useStartValues("OPEN_AI", "env-model", "https://env.example", ENV_KEY);
+        writeConfig("%s=%s%n".formatted(LlmConfigKeys.API_KEY, KEY));
+
+        String withStartValue = put("{\"removeApiKey\":true}").getBody();
+        assertThat(field(withStartValue, "$.keySource")).isEqualTo("ENV");
+        assertThat(withStartValue).doesNotContain(ENV_KEY, "sk-");
+        assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.API_KEY, null)).isNull();
+
+        // and asking again for a key that is already gone changes not one byte
+        byte[] untouched = Files.readAllBytes(config());
+        put("{\"removeApiKey\":true}");
+        assertThat(Files.readAllBytes(config())).containsExactly(untouched);
+    }
+
+    /**
+     * UC-WP-46 GIVEN 1 over HTTP: an empty string is the value "delete" — the file loses the field and
+     * the answer shows what applies without it, while a field named with a value survives the same body.
+     */
+    @Test
+    // UC-WP-46
+    void aClearedFieldIsAnsweredWithWhatAppliesWithoutIt() {
+        writeConfig("""
+                %s=OLLAMA
+                %s=gpt-demo
+                %s=64000
+                %s=45
+                """.formatted(LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.MODEL, LlmConfigKeys.TOKEN_WINDOW,
+                        LlmConfigKeys.TIMEOUT));
+
+        ResponseEntity<String> saved = put("""
+                {"provider":"OLLAMA","model":"","url":"","tokenWindow":"64000","timeoutSeconds":"45","sendThinking":""}
+                """.trim());
+        String body = saved.getBody();
+
+        assertThat(saved.getStatusCode()).isEqualTo(HttpStatus.OK);
+        FileLlmConfigStore stored = new FileLlmConfigStore(config());
+        assertThat(stored.get(LlmConfigKeys.MODEL, null)).isNull();
+        assertThat(stored.get(LlmConfigKeys.URL, null)).isNull();
+        assertThat(stored.get(LlmConfigKeys.SEND_THINKING_ENABLED, null)).isNull();
+        assertThat(stored.get(LlmConfigKeys.TOKEN_WINDOW, null)).isEqualTo("64000");
+        assertThat(stored.get(LlmConfigKeys.TIMEOUT, null)).isEqualTo("45");
+
+        assertThat(field(body, "$.model")).isNull();
+        assertThat(field(body, "$.tokenWindow")).isEqualTo(64000);
+        // the think line is gone from the file, so the core default applies again — R-WP-16 "was ohne ihn gilt"
+        assertThat(field(body, "$.sendThinking")).isEqualTo(true);
     }
 
     /** The raw wire is the point: the body is sent exactly as written here, unknown fields included. */
