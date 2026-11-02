@@ -14,6 +14,8 @@ public record ChatLine(String role, String text, String origin) {
 
     public static final String ROLE_USER = "user";
     public static final String ROLE_JON = "jon";
+    /** A turn that failed (R-WP-34) — a line of the conversation that is nobody's speech. */
+    public static final String ROLE_ERROR = "error";
 
     /**
      * The person who typed it, named as his message named him — {@code null} when the line carries no
@@ -26,5 +28,14 @@ public record ChatLine(String role, String text, String origin) {
     /** A line of the conversation, from the agent the caller names — Jon or the member that answered. */
     public static ChatLine jon(String text, String origin) {
         return new ChatLine(ROLE_JON, text, origin);
+    }
+
+    /**
+     * The line a failed turn leaves behind (R-WP-34). {@code origin} is {@code null} because <em>nobody</em>
+     * spoke it: the model was never reached, so there is no agent to name — guessing one here would be the
+     * one thing R-WP-4 forbids.
+     */
+    public static ChatLine error(String text) {
+        return new ChatLine(ROLE_ERROR, text, null);
     }
 }

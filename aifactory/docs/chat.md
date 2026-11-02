@@ -115,8 +115,9 @@ Projekt-Registry, Clone und **genau ein** Chat je Projekt sind persistent, solan
 bleibt. Auf einem **frischen Node** kommen die Projekte aus dem Config-Repo
 ([R-CR-8](config-repo.md)), die Chats beginnen leer. Ein Projekt hat genau ein
 Gespräch — es gibt keine Chat-Auswahl und kein zweites Gespräch neben dem einen. Nach dem Neustart
-zeigt der Chat die **Texte von Nutzer und Jon** und die **finalen Antworten des Teams** (Ergebnisse
-der Delegations-Werkzeuge, R-WP-4) aus dem History-Bestand; alle übrigen Werkzeug- und Statuszeilen
+zeigt der Chat die **Texte von Nutzer und Jon**, die **finalen Antworten des Teams** (Ergebnisse
+der Delegations-Werkzeuge, R-WP-4) und die **Fehlerzeile eines gescheiterten Turns**
+([R-WP-34](chat.md)) aus dem History-Bestand; alle übrigen Werkzeug- und Statuszeilen
 sind live-only — die Factory führt dafür **keinen** zweiten Speicher. Nach dem Neustart
 ist Jons Gespräch wieder da; **sein Team beginnt leer** (RAM-only-Parität zum Plugin, globales
 ADR-0024) — ⏳ Rückversicherung in [Open Points](open-points.md).
@@ -253,3 +254,26 @@ erst ein separater Link.
   den Actions darunter.
 - GIVEN eine Kachel WHEN der Nutzer sie klickt THEN öffnet sich der Blick ([R-WP-26](chat.md)), mit
   sichtbarem Hover-Zustand.
+
+
+### R-WP-34 — Ein gescheiterter Turn ist eine Verlaufszeile ❌ (Paul 2026-11-02, Runde 2)
+
+Scheitert ein Turn, bleiben **beides** im Verlauf: der Text, den der Nutzer gesendet hat, und
+**genau eine** Fehlerzeile („Turn failed: <Grund>"). Die Fehlerzeile trägt **keinen** Autor, ist
+**kein** Jon-Text und **kein** Werkzeug- oder Status-Zeile — sie ist deshalb gerade **nicht**
+live-only, sondern Teil dessen, was der Verlauf nach Neustart und Reload zeigt (Abgrenzung zu
+[R-WP-11](chat.md)). Sie liegt im **Core-Memory** des Projekts, wird über `GET …/messages` gelesen
+und ist damit dem **Modell im nächsten Turn sichtbar** (Verwandtschaft zu R-AEM-1: das Modell weiß,
+dass sein Turn gescheitert ist). Zwei Fehlschläge sind **zwei** Fehlerzeilen — keine Dedup, kein
+Überschreiben. Ein **Stop** ist kein Fehler und erzeugt keine Fehlerzeile ([UC-WP-50](chat.md)).
+
+#### UC-WP-64 — failedTurnIsAVisibleHistoryLine ❌
+- GIVEN ein Turn scheitert **vor** dem Modellaufruf (die Config trägt kein Modell) WHEN der Verlauf
+  gelesen wird THEN steht die gesendete Nachricht und danach **genau eine** Fehlerzeile — ohne
+  Autors, ohne Jon-Name.
+- GIVEN ein Turn scheitert **im** Modellaufruf WHEN der Verlauf gelesen wird THEN steht dieselbe
+  Paarung aus Nachricht und Fehlerzeile.
+- GIVEN ein Turn wird vom Nutzer gestoppt WHEN der Verlauf gelesen wird THEN steht **keine**
+  Fehlerzeile.
+- GIVEN ein gescheiterter Turn WHEN die Seite neu geladen wird THEN sind Nachricht und Fehlerzeile
+  weiterhin im Verlauf (derselbe Bestand wie vor dem Reload).

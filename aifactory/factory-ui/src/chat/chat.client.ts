@@ -6,9 +6,12 @@ import type { AgentTile } from './chat.agents.client'
  * a team member's final answer, the person for a user's line (R-WP-25). A user's line without a name
  * carries none and the screen shows its role label; an agent's line without one stays unnamed, because
  * the server never guesses and the UI invents nothing (R-WP-4).
+ *
+ * `error` is the third role (R-WP-34): the line a failed turn left in the conversation. It carries no
+ * origin by construction and its text is the server's reason — the UI knows no wording of its own for it.
  */
 export interface ChatMessage {
-  role: 'user' | 'jon'
+  role: 'user' | 'jon' | 'error'
   text: string
   origin?: string | null
 }

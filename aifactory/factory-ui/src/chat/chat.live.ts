@@ -7,7 +7,7 @@
  * the log, and the tool lines of that turn stay where they happened (UC-WP-54).
  */
 export interface LiveItem {
-  kind: 'text' | 'tool'
+  kind: 'text' | 'tool' | 'error'
   text: string
   /** Rows of the log (history plus the own, unconfirmed inputs) at the moment this item arrived. */
   afterLines: number
@@ -28,6 +28,15 @@ export function appendLiveText(items: LiveItem[], text: string, afterLines: numb
 /** Every tool line is its own item; the log merges the ones that stand in a row (R-WP-28). */
 export function appendLiveTool(items: LiveItem[], text: string, afterLines: number): LiveItem[] {
   return [...items, { kind: 'tool', text, afterLines }]
+}
+
+/**
+ * The failure of the running turn, shown where it happened — the log, not a paragraph beside it. It is its
+ * own item and never joined to an answer, and `liveLinesAfterHistory` drops it on purpose: the history read
+ * that follows the event brings the same line as a line of the conversation (R-WP-34, UC-WP-64).
+ */
+export function appendLiveError(items: LiveItem[], text: string, afterLines: number): LiveItem[] {
+  return [...items, { kind: 'error', text, afterLines }]
 }
 
 /**

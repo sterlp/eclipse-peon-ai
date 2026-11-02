@@ -327,6 +327,14 @@ button {
   text-align: right;
 }
 
+/* A failed turn is a line of the conversation and nobody's speech: the problem colour, no name above it,
+   no surface of its own — the lesson of UC-WP-55 is that a grey block reads as a card, not as a line. */
+.chat-log .chat-line.error {
+  border-left-color: var(--problem);
+  color: var(--problem);
+}
+
+
 /* Tool activity is not a voice of the conversation: the grey italic of chat.html, small, no name of its
    own; the lines of one run share this one box (R-WP-28). */
 .chat-log .chat-line.tool {

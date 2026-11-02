@@ -13,6 +13,7 @@ import { ChatComposer } from './chat.composer'
 import { ChatInsight } from './chat.insight'
 import { ChatLog } from './chat.log'
 import {
+  appendLiveError,
   appendLiveText,
   appendLiveTool,
   liveLinesAfterHistory,
@@ -170,9 +171,13 @@ export function ChatPage({ project, files, user }: Props) {
           setRunningTurn(null)
           break
         case 'error':
-          // the reason is a line in the chat, the composer stays usable (Q1)
-          setError(event.message)
+          // shown where it happened — a line of the log, not a notice beside it — and the composer stays
+          // usable (Q1). The read that follows brings the same line as a line of the conversation, so it
+          // survives a reload and every other browser (R-WP-34, UC-WP-64)
+          setLive(previous => appendLiveError(previous, event.message, shownRows.current))
           setRunningTurn(null)
+          setError(null)
+          void refresh()
           break
         case 'agents':
           // replace, never merge — a snapshot that accumulated would become a second history (R-WP-7)
@@ -341,6 +346,9 @@ export function ChatPage({ project, files, user }: Props) {
         </header>
         <ChatTiles tiles={tiles} onAction={act} onInspect={setInsight} />
         <ChatLog messages={messages} outgoing={outgoing} user={user} live={live} />
+        {/* this notice is the page's own trouble only — a request that failed here: a send refused, a
+            refused stop, a tile action that did not run. A failed turn is not announced here: it is a
+            line of the log, read from the conversation like every other line (R-WP-34, UC-WP-64) */}
         {error !== null && (
           <p className="chat-error" data-testid="chat-error" role="alert">
             {error}

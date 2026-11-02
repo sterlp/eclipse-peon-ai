@@ -18,6 +18,7 @@ import org.sterl.llmpeon.agent.AiReviewAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.context.ContextItem;
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.poagent.AiPoAgent;
 import org.sterl.llmpeon.poagent.tools.PoDelegateTool;
@@ -334,7 +335,6 @@ final class ProjectRuntime {
             status.publish(workState());
             long startedAt = System.nanoTime();
             boolean ranTurn = opensTurn;
-            boolean askedCore = false;
             try {
                 if (opensTurn) {
                     // a turn starts with a clean cancel flag — the monitor outlives the turn, so the stop of
@@ -350,7 +350,6 @@ final class ProjectRuntime {
                 // leaves the display with this line instead of lingering until the first tool line
                 streams.publish(projectId, new ChatEvent.Agents(tiles()));
                 model.updateConfig(configForTurn.get());
-                askedCore = true;
                 ChatResponse answer = jon.call(message, monitor);
                 ranTurn = ranTurn || answer != null;
                 if (answer != null) {
@@ -360,27 +359,29 @@ final class ProjectRuntime {
             } catch (TimeoutException neverReleased) {
                 // the wait gave up: the project is handed back with a word about it instead of standing in
                 // the wait forever — only the send that opened the turn owns that end (see finally)
+                ranTurn = opensTurn;
                 failedAgent = jon.getName();
                 LOG.error("turn of project {} never got the project back from a claimed action", projectId,
                         neverReleased);
-                streams.publish(projectId, new ChatEvent.Failed(
-                        "the project is still held by an action — this turn ended, the server log names the reason"));
+                fail(message, "the project is still held by an action — this turn ended, "
+                        + "the server log names the reason");
             } catch (TurnNotConfiguredException notConfigured) {
-                ranTurn = ranTurn || askedCore;
+                // the turn never started, the input was real: both lines belong to the conversation (R-WP-34)
+                ranTurn = opensTurn;
                 failedAgent = jon.getName();
-                streams.publish(projectId, new ChatEvent.Failed(notConfigured.getMessage()));
+                fail(message, notConfigured.getMessage());
             } catch (RuntimeException failure) {
-                ranTurn = ranTurn || askedCore;
+                ranTurn = opensTurn;
                 if (TurnOutcome.of(failure) == TurnOutcome.CANCELED) {
                     // the user ended this turn himself: done, no error, no failed tile — and the lines he
-                    // already saw stay, because nothing here is re-read (UC-WP-50, D-16)
+                    // already saw stay, because nothing here is re-read (UC-WP-50, D-16). A stop is no
+                    // failure, so the memory gains no line of its own (R-WP-34)
                     streams.publish(projectId,
                             new ChatEvent.Done(Duration.ofNanos(System.nanoTime() - startedAt).toMillis()));
                 } else {
                     failedAgent = jon.getName();
                     LOG.error("chat turn of project {} failed", projectId, failure);
-                    streams.publish(projectId,
-                            new ChatEvent.Failed("the turn failed — the server log names the reason"));
+                    fail(message, "the turn failed — the server log names the reason");
                 }
             } finally {
                 // the number of this submit is the last thing it owes: with the last one the row goes
@@ -396,6 +397,28 @@ final class ProjectRuntime {
                 }
             }
         });
+    }
+
+    /**
+     * The one way a turn says it failed: the two lines go into the memory <b>before</b> the event, because a
+     * browser answers the event by reading the history — by then the failure has to be in it (R-WP-34).
+     */
+    private void fail(String message, String reason) {
+        recordFailure(message, reason);
+        streams.publish(projectId, new ChatEvent.Failed(reason));
+    }
+
+    /**
+     * A failed turn is a line of the conversation, so it is written where the conversation is kept — the
+     * core's memory, no second store (R-WP-34). The input is added only when the core has not already
+     * written it itself, which makes this idempotent for a turn that failed after its input landed.
+     */
+    private void recordFailure(String message, String reason) {
+        ThreadSafeMemory memory = jon.getMemory();
+        if (!memory.containsUserMessage(message)) {
+            memory.add(UserMessage.from(message));
+        }
+        memory.add(AiMessage.from(TurnFailure.line(reason)));
     }
 
     /**
@@ -432,16 +455,17 @@ final class ProjectRuntime {
     }
 
     /**
-     * The chat as the memory has it: user text, Jon's answers, and the final answer of a team member —
-     * everything else skipped, so a system prompt, a tool call, an ordinary tool result and an empty
-     * message are not chat lines (D4). A queued input keeps the core's {@code [Queued Message]} marker,
-     * it is reality and not the factory's to hide (Q6).
+     * The chat as the memory has it: user text, Jon's answers, the final answer of a team member, and the
+     * failure line of a turn that did not run — everything else skipped, so a system prompt, a tool call,
+     * an ordinary tool result and an empty message are not chat lines (D4). A queued input keeps the core's
+     * {@code [Queued Message]} marker, it is reality and not the factory's to hide (Q6).
      *
      * <p>Every line states its author (R-WP-4, UC-WP-39): Jon by name, the member by name, the typed
      * input by the name his message carries (R-WP-25). So the team's answer is read back out of the one
      * history file the core already keeps — no second store, and nothing read out of a text that is not
      * the factory's own: the single thing parsed here is the prefix this component wrote in front of a
-     * send, by {@link UserName}, at the two positions that one writes it at (D-6-3).</p>
+     * send, by {@link UserName}, at the two positions that one writes it at (D-6-3). The failure line is
+     * the one line that names no one — nothing in the team spoke it (R-WP-34).</p>
      */
     List<ChatLine> history() {
         List<ChatLine> lines = new ArrayList<>();
@@ -456,6 +480,9 @@ final class ProjectRuntime {
                 if (memberAnswer != null) {
                     lines.add(memberAnswer);
                 }
+            } else if (message instanceof AiMessage answer && TurnFailure.isFailure(answer.text())) {
+                // ahead of the Jon-branch: a failure is an AiMessage as well, and it is not his answer
+                lines.add(ChatLine.error(TurnFailure.reason(answer.text())));
             } else if (message instanceof AiMessage answer && !answer.hasToolExecutionRequests()
                     && answer.text() != null && !answer.text().isBlank()) {
                 lines.add(ChatLine.jon(answer.text(), jon.getName()));

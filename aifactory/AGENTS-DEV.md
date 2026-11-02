@@ -391,3 +391,28 @@
 - **`eclipseInsertLines` kann Importe verdoppeln** (Insert nach Zeile 10 + anschließendes Replace der-
   selben Zeile ⇒ `import java.util.List;` zweimal): duplizierte Single-Type-Imports sind **legal**, javac
   meckert nicht — nach Insert+Replace-Combos die Import-Region lesen.
+
+
+## Inc 1 (Zyklus 2026-11-02, Runde 2) — Fehlerzeile im Core-Memory
+
+- **Ein Stop während eines laufenden Werkzeugs wirft nicht** (gemessen): `AbstractAgent.call` verlässt seine
+  Schleife über `!monitor.isCanceled()` und **gibt die letzte Antwort zurück** — der
+  `CancellationException`-Pfad (`TurnOutcome.CANCELED`, `ProjectRuntime`) entsteht nur mitten im
+  Modell-Stream, und `AgentStopTest` dokumentiert schon, dass der nicht auf Abruf erzeugbar ist. Der
+  entscheidende Mutant für „Stop ist kein Fehler" ist deshalb **nicht** der CANCELED-Zweig, sondern
+  „Fehlerzeile am Turn-Ende" (`fail(...)` im Erfolgszweig) ⇒ genau `stopIsNoFailure` rot.
+- **`eclipseInsertLines` zerlegt ein Bullet, wenn man nach seiner ersten Zeile einfügt** (gemessen): der Rest
+  des Bullets wandert an das Dateiende. Ans Dateiende nur mit `diskInsertLines` ohne `afterLine` anhängen, und
+  vorher prüfen, ob die Datei überhaupt mit einem Umbruch endet.
+- **Auf eine Live-Werkzeugzeile warten statt schlafen**: eigener `SseEmitter`-Double, `send(SseEventBuilder)`
+  sammelt `event.build()` → `piece.getData()` (**nicht** `.data` — das Feld ist private); `contains("Running:")`
+  unterscheidet ein laufendes Shell-Tool von einem Turn, der nie dort war. Ohne dieses Warten landete der Stop
+  vor dem Tool und der Test wurde grün durch Nichtstun (0,5 s statt 3,7 s).
+- **`ThreadSafeMemory.containsUserMessage(text)` ist der Idempotenz-Schutz** für „der Core hat die Nutzerzeile
+  schon geschrieben" — `AbstractAgent.doCall` schreibt sie vor dem Modellaufruf (`:420-421`), `updateConfig`
+  läuft vorher. Zwei gleiche Eingaben ergeben eine Nutzerzeile und zwei Fehlerzeilen; der Core verschmilzt
+  zwei aufeinanderfolgende `UserMessage`s ohnehin (`ThreadSafeMemory.java:117-121`).
+- **Reihenfolge Memory → Event**: ein Browser antwortet auf das `error`-Event mit einem History-Read. Steht die
+  Zeile dann noch nicht im Memory, verschwindet sie sofort wieder — genau das war F7/F8. `ProjectRuntime.fail`
+  hält beide Schritte an einer Stelle; `liveLinesAfterHistory` behält bewusst nur `tool`, damit die
+  Live-Fehlerzeile beim Read aufgibt statt sich zu duplizieren.

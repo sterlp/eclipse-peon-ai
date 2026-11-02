@@ -1,8 +1,9 @@
 package org.sterl.open.aifactory.chat.dto;
 
 /**
- * One line of the stored conversation. Roles are the two of the document — {@code user} and
- * {@code jon}; a tool or status line is live-only and therefore never appears here (R-WP-11).
+ * One line of the stored conversation. Roles are the three of the document — {@code user}, {@code jon}
+ * and the {@code error} line of a failed turn (R-WP-34); a tool or status line is live-only and therefore
+ * never appears here (R-WP-11).
  *
  * @param origin the author of the line by name — Jon, the team member whose final answer this is, or the
  *               person who typed it when his message carried his name (R-WP-25) — and {@code null} when

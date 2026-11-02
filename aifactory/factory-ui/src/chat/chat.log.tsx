@@ -20,8 +20,8 @@ interface Props {
  * author, and whether the history has confirmed it yet.
  */
 interface Row {
-  /** The voice of the row, and with it its colour: the person's blue at the right edge, the agent's green. */
-  voice: 'user' | 'agent'
+  /** The voice of the row, and with it its colour: the person's blue, the agent's green, a failure's red. */
+  voice: 'user' | 'agent' | 'error'
   /** The handle of the row on the wire: a team answer arrives as `jon` with an author, never as a third role. */
   handle: string
   author: string | null
@@ -56,7 +56,7 @@ type Entry =
 export function ChatLog({ messages, outgoing, user, live }: Props) {
   const rows: Row[] = [
     ...messages.map((message): Row => ({
-      voice: message.role === 'user' ? 'user' : 'agent',
+      voice: voiceOf(message),
       handle: `chat-line-${message.role}`,
       author: authorOf(message),
       text: message.text,
@@ -81,10 +81,21 @@ export function ChatLog({ messages, outgoing, user, live }: Props) {
           return <ChatTools key={`tools-${index}`} lines={entry.lines} />
         }
         if (entry.type === 'live') {
+          // a live failure is already over, so it carries no waiting frame; its text is the server's
+          // reason and never an answer to read as Markdown (R-WP-34)
+          const failure = entry.item.kind === 'error'
           return (
-            <li key={`live-${index}`} className="chat-line agent pending" data-testid="chat-live">
+            <li
+              key={`live-${index}`}
+              className={failure ? 'chat-line error' : 'chat-line agent pending'}
+              data-testid={failure ? 'chat-line-error' : 'chat-live'}
+            >
               {entry.rule && <hr className="chat-rule" />}
-              <ChatMarkdown text={entry.item.text} final={false} />
+              {failure ? (
+                <span className="chat-text">{entry.item.text}</span>
+              ) : (
+                <ChatMarkdown text={entry.item.text} final={false} />
+              )}
             </li>
           )
         }
@@ -119,7 +130,7 @@ export function ChatLog({ messages, outgoing, user, live }: Props) {
 function entriesOf(rows: Row[], live: LiveItem[]): Entry[] {
   const entries: Entry[] = []
   let shown = 0
-  let voice: 'user' | 'agent' | null = null
+  let voice: Row['voice'] | null = null
 
   const pushRow = (row: Row) => {
     const rule = voice !== null && voice !== row.voice
@@ -142,8 +153,10 @@ function entriesOf(rows: Row[], live: LiveItem[]): Entry[] {
         entries.push({ type: 'tools', lines: tools })
         tools = []
       }
-      entries.push({ type: 'live', item, rule: voice !== null && voice !== 'agent' })
-      voice = 'agent'
+      // a failure is a voice of its own for the rule: it separates what was said from what failed
+      const spoken: Row['voice'] = item.kind === 'error' ? 'error' : 'agent'
+      entries.push({ type: 'live', item, rule: voice !== null && voice !== spoken })
+      voice = spoken
     }
     if (tools.length > 0) {
       entries.push({ type: 'tools', lines: tools })
@@ -156,8 +169,20 @@ function entriesOf(rows: Row[], live: LiveItem[]): Entry[] {
   return entries
 }
 
+/** The voice a stored line speaks with — a failure speaks for nobody (R-WP-34). */
+function voiceOf(message: ChatMessage): Row['voice'] {
+  if (message.role === 'user') {
+    return 'user'
+  }
+  return message.role === 'error' ? 'error' : 'agent'
+}
+
 /** A user's author is the person the server named, or the doc's role label; an agent's is only ever what the server named. */
 function authorOf(message: ChatMessage): string | null {
+  if (message.role === 'error') {
+    // no author, and none to fall back to: the model was never reached, so nobody spoke (R-WP-4, R-WP-34)
+    return null
+  }
   return message.role === 'user' ? (message.origin ?? content.chat.you) : (message.origin ?? null)
 }
 

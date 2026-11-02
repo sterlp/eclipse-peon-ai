@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
 import { renderApp } from '../shared/app.harness'
+import { declarations, declares, tokenValues } from '../shared/sheets'
 import { ChatPage } from '../../src/chat/chat.page'
 import { project } from '../shared/fixtures'
 import { content } from '../../src/shared/content'
@@ -300,19 +301,48 @@ test('streamingUpdatesChatWithoutReload', async () => {
   expect(screen.getAllByTestId('chat-line-user')).toHaveLength(2)
 })
 
-test('turnFailureIsALineAndTheComposerStaysUsable', async () => {
+// UC-WP-64
+test('failedTurnIsALineInTheHistory', async () => {
   const chat = stubChat({ messages: [QUESTION] })
   render(<ChatPage project={project()} />)
   await flush()
 
-  await chat.push(event('error', { message: 'Es fehlt ein Modellschlüssel für OPEN_AI' }))
+  const reason = 'Es fehlt ein Modellschlüssel für OPEN_AI'
+  // the server writes the failure into the conversation before it reports it, so the read that answers the
+  // event is what makes the line outlive a reload and every other browser (R-WP-34)
+  chat.setMessages([QUESTION, { role: 'error', text: reason }])
 
-  expect(screen.getByTestId('chat-error')).toHaveTextContent('Es fehlt ein Modellschlüssel für OPEN_AI')
+  await chat.push(event('error', { message: reason }))
+  await flush()
+
+  // the line stands in the log — once, never twice: the live notice gives way to the history that carries it
+  const failures = screen.getAllByTestId('chat-line-error')
+  expect(failures).toHaveLength(1)
+  expect(screen.getByTestId('chat-log')).toContainElement(failures[0])
+  expect(failures[0]).toHaveTextContent(reason)
+  // no notice beside the log: a failed turn is a line of the conversation, not a message about it
+  expect(screen.queryByTestId('chat-error')).toBeNull()
   // no alarm dialog, no dead input: the next turn is one line away (Q1)
   expect(screen.getByTestId('chat-input')).toBeEnabled()
   expect(screen.getByTestId('chat-send')).toBeDisabled()
   fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'und jetzt mit Schlüssel' } })
   expect(screen.getByTestId('chat-send')).toBeEnabled()
+})
+
+// UC-WP-64
+test('turnErrorFromTheHistoryIsRenderedWithoutAnAuthor', async () => {
+  // the wire text of the server, marker and all it makes of it: the UI knows no wording of its own for a
+  // failure and adds none (R-WP-27)
+  const reason = 'turn needs a model — set model in the factory config'
+  stubChat({ messages: [QUESTION, { role: 'error', text: reason }] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  const failure = screen.getByTestId('chat-line-error')
+  expect(failure.className).toContain('error')
+  expect(failure.textContent).toBe(reason)
+  // nobody spoke this line, so no name stands above it (R-WP-4)
+  expect(within(failure).queryByTestId('chat-line-author')).toBeNull()
 })
 
 test('droppedStreamReopensAndReadsHistory', async () => {
@@ -834,8 +864,10 @@ test('resendWorksAfterAnError', async () => {
   fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
   fireEvent.click(screen.getByTestId('chat-send'))
   await flush()
+  // the server already wrote the failure into the conversation when it reports it (R-WP-34)
+  chat.setMessages([{ role: 'error', text: 'Es fehlt ein Modellschlüssel für OPEN_AI' }])
   await chat.push(event('error', { message: 'Es fehlt ein Modellschlüssel für OPEN_AI' }))
-  expect(screen.getByTestId('chat-error')).toHaveTextContent('Es fehlt ein Modellschlüssel')
+  expect(screen.getByTestId('chat-line-error')).toHaveTextContent('Es fehlt ein Modellschlüssel')
 
   // the answer to a failed turn needs no new typing, and what he writes in the meantime stays (R-WP-30)
   fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'und jetzt mit Schlüssel' } })
@@ -908,10 +940,13 @@ test('waitingBarEndsWithAFailedTurn', async () => {
   await flush()
   expect(screen.getByTestId('chat-waiting')).toBeInTheDocument()
 
-  // a failed turn is an ended turn: no wait line left standing above the reason (UC-WP-58)
+  // a failed turn is an ended turn: no wait line left standing above the reason (UC-WP-58), and the reason
+  // is a line of the conversation, not a notice beside it (R-WP-34)
+  chat.setMessages([{ role: 'error', text: 'Es fehlt ein Modellschlüssel für OPEN_AI' }])
   await chat.push(event('error', { message: 'Es fehlt ein Modellschlüssel für OPEN_AI' }))
 
-  expect(screen.getByTestId('chat-error')).toHaveTextContent('Es fehlt ein Modellschlüssel')
+  expect(screen.getByTestId('chat-line-error')).toHaveTextContent('Es fehlt ein Modellschlüssel')
+  expect(screen.queryByTestId('chat-error')).toBeNull()
   expect(screen.queryByTestId('chat-waiting')).toBeNull()
 })
 
@@ -946,39 +981,4 @@ function authorsOfLines(lineTestId: string): (string | null)[] {
   return screen
     .getAllByTestId(lineTestId)
     .flatMap(line => within(line).queryAllByTestId('chat-line-author').map(label => label.textContent))
-}
-
-
-/**
- * The sheets the screen is painted with, as written. jsdom lays out nothing and resolves no custom
- * property, so the colour contract of R-WP-29 cannot be read off a computed style — it is read where it
- * is written: the class a row carries has to be the class the sheet paints, and the token it paints has
- * to be the colour of `chat.html`. `test.css` in `vite.config.ts` keeps these two sheets readable.
- */
-const SHEETS = import.meta.glob('../../src/*.css', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-}) as Record<string, string>
-
-/** The declarations a sheet gives one selector, up to a nested rule — a selector it does not name fails. */
-function declarations(selector: string): string {
-  const source = SHEETS['../../src/styles.css']
-  const at = source.indexOf(`${selector} {`)
-  expect(at, `${selector} is styled at all`).toBeGreaterThanOrEqual(0)
-  const body = source.slice(at + selector.length + 2)
-  const end = body.search(/[{}]/)
-  return body.slice(0, end === -1 ? body.length : end)
-}
-
-/** Whether a sheet names a rule for this selector at all — the question behind "that block is gone". */
-function declares(selector: string): boolean {
-  return SHEETS['../../src/styles.css'].includes(`${selector} {`)
-}
-
-/** The values a token is given, in the order the theme states them: light first (R-WP-27). */
-function tokenValues(name: string): string[] {
-  return [...SHEETS['../../src/index.css'].matchAll(new RegExp(`${name}:\\s*([^;]+);`, 'g'))].map(
-    match => match[1].trim(),
-  )
 }

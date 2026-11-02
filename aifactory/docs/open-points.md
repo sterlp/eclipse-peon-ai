@@ -19,6 +19,14 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
 * **⏳ Provider-Wechsel setzt Modell/URL auf die Defaults des Providers** (2026-11-02) — wie der
   Provider-Dialog im Plugin ([R-WP-16/UC-WP-62](config.md)). *Andersfall:* Felder nur leeren statt
   Defaults einzutragen.
+* **⏳ Die Fehlerzeile eines gescheiterten Turns liegt im Core-Memory** (2026-11-02, Runde 2, aus
+  [R-WP-34/UC-WP-64](chat.md)) — die Fabrik schreibt bei einem Fehlschlag den Nutzer-Text und
+  „`[Turn failed]: <Grund>`" in Jons Memory (`ThreadSafeMemory.add`, Core-API, kein Core-Eingriff):
+  **kein** zweiter Speicher, und das Modell liest die Zeile im nächsten Turn (Verwandtschaft zu
+  R-AEM-1). Eine in der Core-Queue wartende Eingabe ist bis zu ihrem Turnstart **nicht** persistiert —
+  sie taucht im Verlauf erst mit diesem Turn auf. *Andersfall:* soll eine wartende Eingabe schon vor
+  dem Turn reload-fest sichtbar sein, braucht es einen eigenen Speicher (widerspricht R-WP-11) oder
+  einen Core-Mechanismus.
 
 * **⏳ Fehler-Ergebnis einer Delegation erscheint wörtlich als Mitglieder-Zeile** (2026-10-30,
   Da-Dok-Befund B4) — [UC-WP-40](chat.md) hat den Fall jetzt ausdrücklich; abgeleitet aus „wie es ist"
