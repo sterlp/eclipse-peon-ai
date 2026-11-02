@@ -899,3 +899,88 @@ button {
 .key-missing {
   color: var(--problem);
 }
+
+/*
+ * The agent section under the default form (R-WP-23): one row per slot, the checkbox above the fields it
+ * unlocks. Deliberately no card and no second column — the default form above is the only form shape.
+ */
+.config-agents {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  max-width: 34rem;
+}
+
+.config-agents-slot {
+  display: grid;
+  justify-items: start;
+  gap: 0.35rem;
+  width: 100%;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.config-agents-name {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.config-agents-override {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+}
+
+.config-agents-fields {
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.config-agents-field {
+  display: grid;
+  grid-template-columns: 8.5rem 1fr;
+  align-items: baseline;
+  gap: 0.5rem;
+
+  label {
+    color: var(--text);
+    font-size: 0.8rem;
+    text-align: right;
+  }
+
+  input {
+    min-width: 0;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    background: var(--bg);
+    color: var(--text-h);
+  }
+}
+
+/* the key row keeps the status and its removal beside the field, as the default level does */
+.config-agents-key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+
+  label {
+    width: 8.5rem;
+    color: var(--text);
+    font-size: 0.8rem;
+    text-align: right;
+  }
+
+  input {
+    flex: 1 1 8rem;
+    min-width: 0;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    background: var(--bg);
+    color: var(--text-h);
+  }
+}

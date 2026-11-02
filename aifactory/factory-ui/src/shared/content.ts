@@ -148,4 +148,20 @@ export const content = {
     saving: 'Saving…',
     save: 'Save',
   },
+  /**
+   * R-WP-23: the agents the factory runs, one row each. The key words of the key field are the default
+   * level's (`config.keySet`, `config.unchanged`, `config.removeKey`) — one rule, one set of words.
+   */
+  agents: {
+    title: 'Agents',
+    /** The checkbox is no stored value: it says the slot's own file carries something. */
+    override: 'Override',
+    model: 'Model',
+    url: 'URL',
+    think: 'Think',
+    temperature: 'Temperature',
+    save: 'Save',
+    /** UC-WP-44 "ein leeres Feld erbt den Default-Feld für Feld" — the empty state of these fields. */
+    inherits: 'empty = inherits the default',
+  },
 } as const

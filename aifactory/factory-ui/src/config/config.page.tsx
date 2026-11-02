@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { errorMessage } from '../shared/api.client'
 import { content } from '../shared/content'
+import { Agents } from './config.agents'
 import {
   getSettings,
   listProviders,
@@ -285,6 +286,8 @@ export function ConfigPage() {
           </button>
         </form>
       )}
+      {/* R-WP-23: the agent overrides below the default — their own read, their own save per slot */}
+      <Agents />
     </section>
   )
 }

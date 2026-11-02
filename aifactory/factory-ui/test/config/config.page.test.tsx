@@ -16,7 +16,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-type Script = { GET: unknown; PUT: unknown; PROVIDERS: unknown }
+type Script = { GET: unknown; PUT: unknown; PROVIDERS: unknown; AGENTS: unknown }
 type Call = { method: string; path: string; body?: string }
 
 /**
@@ -48,6 +48,8 @@ function stubServer(initial: Partial<Script>): {
       GET: undefined,
       PUT: undefined,
       PROVIDERS: PROVIDER_ANSWER,
+      // the page mounts the agent section too (R-WP-23); its own tests are in config.agents.test.tsx
+      AGENTS: [],
       ...initial,
     },
     calls: [],
@@ -64,7 +66,9 @@ function stubServer(initial: Partial<Script>): {
       })
       const answer = path.endsWith('/providers')
         ? server.script.PROVIDERS
-        : server.script[method as keyof Script]
+        : path === '/api/settings/agents'
+          ? server.script.AGENTS
+          : server.script[method as keyof Script]
       if (answer instanceof Error) {
         return response(400, {
           status: 400,
@@ -151,10 +155,12 @@ test('settingsShowsMaskedConfig', async () => {
   expect(container.textContent).not.toContain('sk-')
   expect(container.textContent).not.toContain(KEY)
   expect(controlValues(container).some((value) => value.includes('sk-'))).toBe(false)
-  // opening the settings reads the config and the provider defaults, it never writes either
-  expect(server.calls.map((call) => call.method)).toEqual(['GET', 'GET'])
+  // opening the settings reads the config, the provider defaults and the agent slots, and writes none of
+  // them — the third read is Inc 7b's: a slot's state lives in its own file, not in the config
+  expect(server.calls.map((call) => call.method)).toEqual(['GET', 'GET', 'GET'])
   expect(server.calls.map((call) => call.path).sort()).toEqual([
     '/api/settings',
+    '/api/settings/agents',
     '/api/settings/providers',
   ])
 

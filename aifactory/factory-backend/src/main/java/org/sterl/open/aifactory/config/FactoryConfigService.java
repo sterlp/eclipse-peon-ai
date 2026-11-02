@@ -8,6 +8,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
+import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.FileLlmConfigStore;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -17,6 +18,8 @@ import org.sterl.llmpeon.ai.LlmConfigStore;
 import org.sterl.llmpeon.provider.LlmProvider;
 import org.sterl.llmpeon.provider.LlmProviders;
 import org.sterl.llmpeon.provider.ThinkSupport;
+import org.sterl.open.aifactory.config.agent.AgentConfigFile;
+import org.sterl.open.aifactory.config.agent.AgentSlots;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
@@ -39,9 +42,10 @@ public class FactoryConfigService {
     private static final String SEND_THINKING_HINT = "sendThinking must be true or false";
     /**
      * Both at once is no answer at all: the write order would silently delete the key the same request
-     * just set, so the request is refused instead of guessed.
+     * just set, so the request is refused instead of guessed. The agent level reads the same rule
+     * ({@link AgentSettingsService}) — one sentence, one source.
      */
-    private static final String KEY_INTENT_HINT = "apiKey and removeApiKey are two answers — send one";
+    static final String KEY_INTENT_HINT = "apiKey and removeApiKey are two answers — send one";
     /** Value-free for the same reason — a turn's failure reaches the browser as a live line (Q1). */
     private static final String TURN_MODEL_HINT = "turn needs a model — set model in the factory config";
 
@@ -269,10 +273,46 @@ public class FactoryConfigService {
     }
 
     private LlmConfig pin(LlmConfig loaded) {
-        return loaded.toBuilder()
+        return withAgentOverrides(loaded.toBuilder()
                 .configDir(home.root())
                 .diskToolsEnabled(true)
-                .build();
+                .build());
+    }
+
+    /**
+     * R-WP-23 (D-11): what an agent's own file says wins over the loaded config — one record per slot, no
+     * second store, and the file read again with every load, so a save needs no restart and no runtime
+     * cache. A slot whose file carries nothing is never put on the config at all, which keeps "empty
+     * means unset" the core's resolution instead of an empty record of ours.
+     *
+     * <p>The record is built the way {@link LlmConfigLoader} builds one, so the factory adds no semantics
+     * of its own: the dev slot carries no model, url or key because dev <em>is</em> the base slot
+     * (ADR-0062; {@code devAgentConfig()} forces the base model whatever the file says).</p>
+     */
+    private LlmConfig withAgentOverrides(LlmConfig loaded) {
+        LlmConfig config = loaded;
+        for (AgentSlots.AgentSlot slot : AgentSlots.all()) {
+            AgentConfigFile.Values values = AgentConfigFile.forSlot(home, slot.id()).read();
+            if (values.overridden()) {
+                config = config.withModelConfig(slot.id(), recordFor(slot.id(), values));
+            }
+        }
+        return config;
+    }
+
+    /** The file's five values as the core's record — blanks unset, {@code extra_body} unused (D-13). */
+    private static AgentModelConfig recordFor(String id, AgentConfigFile.Values values) {
+        boolean dev = AgentModelConfig.DEV.equals(id);
+        return new AgentModelConfig(dev ? null : blankToNull(values.url()),
+                dev ? null : blankToNull(values.apiKey()),
+                dev ? null : blankToNull(values.model()),
+                blankToNull(values.think()),
+                null,
+                blankToNull(values.temperature()));
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     /**

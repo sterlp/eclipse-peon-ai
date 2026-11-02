@@ -34,6 +34,13 @@ const SETTINGS = {
 /** The provider list the settings page reads — one entry, the one SETTINGS names (UC-WP-62). */
 const PROVIDERS = [{ name: 'OPEN_AI', defaultUrl: null, thinkSupported: true }]
 
+/**
+ * The agent slots as the settings page reads them (R-WP-23): none overridden, which is the state of a
+ * home nobody has configured. The section itself is tested in `config.agents.test.tsx`; here it only has
+ * to answer, and it must do so before the chat roster below — both paths end in `/agents`.
+ */
+const AGENTS: unknown[] = []
+
 let stream: ReadableStreamDefaultController<Uint8Array> | undefined
 
 function json(status: number, body: unknown): Response {
@@ -68,6 +75,9 @@ export function stubAppServer(projects: unknown[] = [project()]): void {
       }
       if (path === '/api/settings/providers') {
         return json(200, PROVIDERS)
+      }
+      if (path === '/api/settings/agents') {
+        return json(200, AGENTS)
       }
       if (path.endsWith('/agents')) {
         return json(200, [DEV])

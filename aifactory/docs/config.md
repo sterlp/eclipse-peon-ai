@@ -66,7 +66,9 @@ ihn gilt (beim Default: Umgebungsvariable oder nichts, „Empty means unset"; be
 R-WP-23). Die Datei trägt danach nur, was wirklich gesetzt ist. Ein **Key** ist maskiert und nie
 vorbefüllt, sein leeres Feld heißt deshalb **unverändert**; ein Key lässt sich über die Seite **setzen und — via „Remove key" — entfernen**
 (geschärft Paul 2026-11-02: sonst war ein gesetzter Key über das UI nie wieder löschbar); eine
-ENV-Quelle kann die Seite nur melden, nicht löschen. Der Fehler „turn needs an api key"
+ENV-Quelle kann die Seite nur melden, nicht löschen. Key setzen und entfernen in einem Zug gibt es
+  nicht: trägt eine Anfrage beides, lehnt die Factory sie als Ganzes ab (400) und speichert nichts;
+  im UI hebt Tippen ins Key-Feld eine vorgemerkte Entfernung auf (2026-11-02, aus dem Bau). Der Fehler „turn needs an api key"
 ([UC-WP-20](#configreadfromfactoryownstore)) nennt die Settings-Seite als Ort der Lösung. Eine Datei, die neu geschrieben
 wird, behält ihre Rechte `600` (R-WP-9). Das ist dasselbe Verhalten wie im Plugin — nur speichert die
 Factory direkt in ihre Datei.
@@ -127,8 +129,8 @@ Plugins unberührt, den die Factory weder liest noch schreibt (R-WP-9).
 
 ### R-WP-23 — Agenten auf der Config-Seite: Default für alle, „überschreiben" je Agent ❌
 
-Die Config-Seite listet **alle Agenten** (Jon, Plan, Dev, Review, Search, Paco, Custom Agents) und den
-Config-Slot **Compact** (kein Agent, gleiche Bedienung) unter dem Default. Je Agent gibt es genau eine
+Die Config-Seite listet die **sechs Slots, die die Factory fährt** — die Agenten Jon, Plan, Dev,
+Review, Search und den Config-Slot **Compact** (kein Agent, gleiche Bedienung) unter dem Default. Je Agent gibt es genau eine
 Checkbox **„überschreiben"** — reine Bedienhilfe; nur bei gesetztem Haken werden die
 Config-Felder dieses Agenten eingeblendet. Der Haken ist **kein gespeicherter Wert**: er ist gesetzt,
 sobald die Agent-Datei mindestens ein Config-Feld trägt (Provider, Modell, URL, Key, Think, Temperatur …

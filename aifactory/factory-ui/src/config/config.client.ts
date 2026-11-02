@@ -61,16 +61,17 @@ export interface SettingsPatch {
 export async function updateSettings(patch: SettingsPatch): Promise<Settings> {
   return request<Settings>('/api/settings', {
     method: 'PUT',
-    body: JSON.stringify(trimmedBody(patch)),
+    body: JSON.stringify(trimBody(patch)),
   })
 }
 
 /**
  * Trims what travels and throws nothing away: an empty string is a field the user cleared, so dropping
  * blanks would make that state unreachable (UC-WP-46). Only the key field is left out when empty — for
- * it, empty is not a value but a request to leave the stored key alone.
+ * it, empty is not a value but a request to leave the stored key alone. The agent section saves by the
+ * same rule, which is why this is the one body-shaper of the component (R-WP-16).
  */
-function trimmedBody(patch: SettingsPatch): SettingsPatch {
+export function trimBody(patch: object): Record<string, unknown> {
   const sent: Record<string, unknown> = {}
   for (const [field, value] of Object.entries(patch)) {
     if (value === undefined || value === null) {
@@ -81,5 +82,5 @@ function trimmedBody(patch: SettingsPatch): SettingsPatch {
     }
     sent[field] = typeof value === 'string' ? value.trim() : value
   }
-  return sent as SettingsPatch
+  return sent
 }
