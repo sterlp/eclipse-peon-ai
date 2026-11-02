@@ -437,3 +437,9 @@
   Deadline-Fehler nach 20 s). Ein grüner Lauf belegt also nicht, dass die alte Warte in Ordnung war.
 - **Nach Inc 2: Backend 202** (unverändert — nur Warte-Bedingungen), **UI 118 Tests / 15 Dateien** (115/15),
   Doc-Lint **0 Findings** bei UC **65/65**, 230 Test-Ids. UC-WP-65 bleibt ❌ (flippt Jon).
+
+- **Sicherungs-Reihenfolge ist eine Fallgrube** (gemessen, Inc 2): eine `cp`-Sicherung, die **vor** der
+  Funktionsänderung entstand, macht beim Restore nach der Mutationsprobe die Funktionsänderung **mit**
+  kaputt — der folgende Testlauf war grün, weil er den Rückbau gemessen hat. Sicherung erst vom finalen Stand
+  (`<datei>.hard`), und nach jedem Restore `git status --short <datei>` und Diff gegen HEAD, bevor etwas als
+  „grün" gilt.
