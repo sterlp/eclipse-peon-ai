@@ -84,3 +84,29 @@ Base: `AGENTS.md`. System prompt: `developer.md`.
 - **Nach Inc 3: Backend 202/0/0** (unverändert — reines UI-Inkrement), **UI 121 Tests / 15 Dateien**
   (118/15), `tsc -b` 0, oxlint 0/0 (57 Dateien), Doc-Lint **0 Findings** bei UC **66/66**, 233
   Test-Ids. UC-WP-66 bleibt ❌ (flippt Jon).
+
+
+## Inc 4 (Zyklus 2026-11-02, Runde 2) — Akzent links, ein hr, keine Rechtsbündigkeit
+
+- **Die Doc-Zeile war der Defekt, nicht der Code** (F2): R-WP-29 forderte „rechtsbündig am Chat-Rand",
+  `chat.html` setzt den Akzent beider Stimmen **links**. Korrigiert in `chat.md` (R-WP-29 + UC-WP-55)
+  und `ui.md` (Look-Absatz: „Akzent beider Stimmen links"). Lehrregel: **Referenz vor der Regel** —
+  stimmt die Regel nicht mit der Vorlage, ist die Regel die Fehlerquelle, solange die Vorlage gilt.
+- **Der Farbakzent hat einen einzigen Besitzer der Breite**: `.chat-log .chat-line` setzt
+  `border-left: 3px solid transparent`, die Stimme setzt nur `border-left-color`. Die
+  `border-right: 3px solid var(--user)` der alten Nutzer-Zeile war deshalb doppelt gemalt (Kante +
+  `padding-right` + `text-align: right`) — alles drei fiel, der Test prüft jetzt beide Seiten.
+- **`hr` war nie zu viel**: `entriesOf` zeichnet die Trennlinie schon „nur beim Wechsel der Stimme"
+  (`voice !== null && voice !== row.voice`) — kein Code-Fix für „genau ein hr" nötig. Probe
+  (`&& voice !== row.voice` raus) ⇒ **genau** `roleChangeDrawsARule` rot; die Regel ist also bewiesen,
+  nicht nur behauptet.
+- **Negativ-Assertions brauchen eine Positiv-Seite im selben Test**: `not.toContain('border-right')`
+  wäre durch „gar kein Akzent" grün geworden, deshalb prüft der umbenannte Test
+  `userLineCarriesTheBlueAccentOnTheLeft` zusätzlich `border-left`, die 3px der Basisregel und den
+  Token-Wert `#0969da`. Proben: `text-align: right` zurück ⇒ rot; `border-right: 3px solid` statt
+  `border-left-color` ⇒ rot; 3px → 1px ⇒ rot; `background` an der user-Zeile ⇒
+  `agentLineHasNoGrayBlock` rot; `text-align: center` an der Linien-Regel ⇒ ebenda rot.
+- **Nach Inc 4: Backend 202/0/0** (unverändert — reines UI-/Doc-Inkrement), **UI 121 Tests / 15
+  Dateien** (unverändert: ein Test umbenannt, Assertions ersetzt), `tsc -b` 0, oxlint 0/0 (57 Dateien),
+  Doc-Lint **0 Findings** bei UC **66/66**, 233 Test-Ids. Marker bleiben bei Jon (R-WP-29/UC-WP-55 sind
+  von ihm zu flippen).
