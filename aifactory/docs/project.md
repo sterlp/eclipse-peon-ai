@@ -95,7 +95,7 @@ einer festen Frist mit Fehler, und git wird so aufgerufen, dass es gar nicht ers
 - GIVEN ein git-Kommando WHEN es ausgeführt wird THEN ist der Aufruf so konfiguriert, dass git
   niemals nach Benutzer, Passwort oder Host-Bestätigung fragt, sondern sofort fehlschlägt.
 
-### R-WP-24 — Die Projektliste zeigt live, woran gearbeitet wird ❌
+### R-WP-24 — Die Projektliste zeigt live, woran gearbeitet wird ✅
 
 Jede Zeile der Projektliste trägt **arbeitet** (Jons Turn läuft, dazu die Zahl wartender Eingaben aus
 der Queue, [R-WP-10](chat.md)) oder **frei**. Einen eigenen Zustand „wartet" gibt es nicht: Eingaben
@@ -103,7 +103,7 @@ warten nur, solange ein Turn läuft. Quelle ist der Laufzeit-Zustand im Speicher
 (`ProjectRuntime`), verteilt als SSE an die Übersicht — kein eigener Speicher, nichts Persistiertes.
 Nach einem Neustart ist jedes Projekt **frei**.
 
-#### UC-WP-47 — projectListShowsLiveWorkState ❌
+#### UC-WP-47 — projectListShowsLiveWorkState ✅
 - GIVEN in Projekt A läuft ein Turn WHEN ein zweiter Nutzer die Projektliste öffnet THEN zeigt A
   „arbeitet"; nach dem Turn wechselt die Anzeige ohne Neuladen auf „frei".
 - GIVEN in A läuft ein Turn und eine weitere Eingabe liegt in der Queue WHEN die Liste angezeigt wird THEN

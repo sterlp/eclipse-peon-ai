@@ -276,38 +276,65 @@ button {
   padding: 0;
   display: grid;
   gap: 0.4rem;
+}
 
-  .chat-line {
-    border: 1px solid var(--border);
-    border-radius: 0.4rem;
-    padding: 0.45rem 0.6rem;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
+/* A row is speech, not a card: the accent line names the voice, the surface stays the app's one (R-WP-29). */
+.chat-log .chat-line {
+  border-left: 3px solid transparent;
+  padding: 0.15rem 0 0.35rem 0.6rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 
-    &.jon {
-      background: var(--code-bg);
-    }
+/* Jon's and the team's answer carry the green of chat.html, and nothing else. */
+.chat-log .chat-line.agent {
+  border-left-color: var(--agent);
+}
 
-    &.pending,
-    &.live {
-      color: var(--text);
-      border-style: dashed;
-    }
-  }
+/* The person's line reads from the right edge of the flow, blue, with its accent on the outer side. */
+.chat-log .chat-line.user {
+  border-right: 3px solid var(--user);
+  padding-right: 0.6rem;
+  text-align: right;
+}
 
-  .chat-line-author {
-    display: block;
-    font-size: 0.75rem;
-    color: var(--text);
-  }
+/* A tool line is not a voice of the conversation: the grey of chat.html, small, no name of its own. */
+.chat-log .chat-line.tool {
+  border-left-color: var(--tool-line);
+  padding-top: 0.1rem;
+  padding-bottom: 0.2rem;
+  color: var(--tool);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-style: italic;
+}
 
-  .chat-tool-line {
-    font-family: var(--mono);
-    font-size: 0.78rem;
-    color: var(--text);
-    padding-left: 0.6rem;
-    overflow-wrap: anywhere;
-  }
+/* The name above a line, in the colour of its voice (chat.html: uppercase, letterspaced, smaller). */
+.chat-log .chat-role {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--agent);
+}
+
+.chat-log .chat-line.user .chat-role {
+  color: var(--user);
+}
+
+/* One rule where the voice changes, and nowhere else (R-WP-29). */
+.chat-log .chat-rule {
+  border: 0;
+  border-top: 1px solid var(--tool-line);
+  margin: 0 0 0.45rem;
+}
+
+/* An own line the history has not confirmed yet: the accent is not a fact yet — last, so it outvotes
+   the voice's own line on the border it shares with it. */
+.chat-log .chat-line.pending {
+  border-style: dashed;
+  color: var(--text);
 }
 
 .chat-composer {

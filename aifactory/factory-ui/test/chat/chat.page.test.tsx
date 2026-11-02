@@ -621,6 +621,87 @@ test('aCompactingTileOffersNoStop', async () => {
   expect(screen.getByTestId('chat-stop')).toBeDisabled()
 })
 
+// UC-WP-55
+test('userLineIsBlueAndRightAligned', async () => {
+  stubChat({ messages: [QUESTION, ANSWER] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  const line = screen.getByTestId('chat-line-user')
+  expect(line.className).toContain('user')
+  expect(line.className).not.toContain('agent')
+
+  // what colour a line has is no fact of the DOM: the sheet paints it. The class the row carries has to be
+  // the class the sheet paints, and the token it paints has to be the blue of chat.html (R-WP-29).
+  const painted = declarations('.chat-log .chat-line.user')
+  expect(painted, 'the accent of the person is the user token').toContain('var(--user)')
+  expect(painted, 'the line reads from the right edge of the flow').toContain('border-right')
+  expect(painted).toContain('text-align: right')
+  expect(tokenValues('--user')[0], 'the blue of chat.html, not a lookalike').toBe('#0969da')
+})
+
+// UC-WP-55
+test('agentLineIsGreenAndNamedByItsAgent', async () => {
+  stubChat({ messages: [QUESTION, TEAM_ANSWER, JONS_ANSWER] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  const lines = screen.getAllByTestId('chat-line-jon')
+  expect(lines).toHaveLength(2)
+  for (const line of lines) {
+    expect(line.className).toContain('agent')
+    expect(line.className).not.toContain('user')
+    // the label of an agent line is the agent that spoke, and it is the label the sheet colours (R-WP-4)
+    expect(line.querySelector('.chat-role')).not.toBeNull()
+  }
+  expect(lines.map(line => within(line).getByTestId('chat-line-author').textContent)).toEqual(['Dev', 'Jon'])
+
+  expect(declarations('.chat-log .chat-line.agent'), 'the accent of an answer is the agent token')
+    .toContain('var(--agent)')
+  expect(declarations('.chat-log .chat-role'), 'the name above the line is set in caps like chat.html')
+    .toContain('text-transform: uppercase')
+  expect(declarations('.chat-log .chat-line.user .chat-role'), 'and the name of a person in their blue')
+    .toContain('var(--user)')
+  expect(tokenValues('--agent')[0], 'the green of chat.html, not a lookalike').toBe('#1a7f37')
+})
+
+// UC-WP-55
+test('roleChangeDrawsARule', async () => {
+  stubChat({ messages: [QUESTION, TEAM_ANSWER, JONS_ANSWER, { role: 'user', text: 'und im Root?' }] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  // user, agent, agent, user: one rule where the voice changes and none within a voice, and the rule is
+  // the plain hr of the doc — carried by the line that begins the new voice, so the list stays a list
+  const shape = screen.getAllByTestId(/chat-line-(user|jon)/).map(line => {
+    const ruled = [...line.children].some(child => child.tagName === 'HR')
+    return `${ruled ? 'rule ' : ''}${line.classList.contains('user') ? 'user' : 'agent'}`
+  })
+  expect(shape).toEqual(['user', 'rule agent', 'agent', 'rule user'])
+})
+
+// UC-WP-55
+test('agentLineHasNoGrayBlock', async () => {
+  stubChat({ messages: [QUESTION, ANSWER] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  expect(screen.getByTestId('chat-line-jon').className).toContain('agent')
+
+  // an answer is a line in the flow: no surface of its own, no card, no code-background block (R-WP-29)
+  for (const selector of [
+    '.chat-log .chat-line',
+    '.chat-log .chat-line.user',
+    '.chat-log .chat-line.agent',
+    '.chat-log .chat-line.tool',
+    '.chat-log .chat-line.pending',
+  ]) {
+    expect(declarations(selector), `${selector} paints no surface`).not.toMatch(/background|--code-bg/)
+  }
+  expect(declares('.chat-line.jon'), 'the gray block of the jon line is gone').toBe(false)
+})
+
+
 /** The author labels of the agent lines, in reading order — the shape of R-WP-4's claim. */
 function agentAuthorsOnScreen(): (string | null)[] {
   return authorsOfLines('chat-line-jon')
@@ -635,4 +716,39 @@ function authorsOfLines(lineTestId: string): (string | null)[] {
   return screen
     .getAllByTestId(lineTestId)
     .flatMap(line => within(line).queryAllByTestId('chat-line-author').map(label => label.textContent))
+}
+
+
+/**
+ * The sheets the screen is painted with, as written. jsdom lays out nothing and resolves no custom
+ * property, so the colour contract of R-WP-29 cannot be read off a computed style — it is read where it
+ * is written: the class a row carries has to be the class the sheet paints, and the token it paints has
+ * to be the colour of `chat.html`. `test.css` in `vite.config.ts` keeps these two sheets readable.
+ */
+const SHEETS = import.meta.glob('../../src/*.css', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+}) as Record<string, string>
+
+/** The declarations a sheet gives one selector, up to a nested rule — a selector it does not name fails. */
+function declarations(selector: string): string {
+  const source = SHEETS['../../src/styles.css']
+  const at = source.indexOf(`${selector} {`)
+  expect(at, `${selector} is styled at all`).toBeGreaterThanOrEqual(0)
+  const body = source.slice(at + selector.length + 2)
+  const end = body.search(/[{}]/)
+  return body.slice(0, end === -1 ? body.length : end)
+}
+
+/** Whether a sheet names a rule for this selector at all — the question behind "that block is gone". */
+function declares(selector: string): boolean {
+  return SHEETS['../../src/styles.css'].includes(`${selector} {`)
+}
+
+/** The values a token is given, in the order the theme states them: light first (R-WP-27). */
+function tokenValues(name: string): string[] {
+  return [...SHEETS['../../src/index.css'].matchAll(new RegExp(`${name}:\\s*([^;]+);`, 'g'))].map(
+    match => match[1].trim(),
+  )
 }
