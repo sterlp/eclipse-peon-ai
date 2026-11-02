@@ -59,6 +59,9 @@ const RECONNECT_MS = 500
  * stopped turn, and there is no second store to read them back from (R-WP-11).
  *
  * The page holds the state; {@link ChatLog} and {@link ChatComposer} only draw it.
+ *
+ * The head of the view names the project and nothing else: a second "Chat" heading would repeat the tab
+ * the chat already sits in (R-WP-1).
  */
 export function ChatPage({ project, files, user }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -264,7 +267,6 @@ export function ChatPage({ project, files, user }: Props) {
   if (project === null) {
     return (
       <section className="view" aria-label="Chat">
-        <h1>Chat</h1>
         <p className="empty-state">Kein Projekt geöffnet</p>
       </section>
     )
@@ -273,8 +275,9 @@ export function ChatPage({ project, files, user }: Props) {
   return (
     <>
       <section className="view" aria-label="Chat">
-        <h1>Chat</h1>
-        <p className="hint">Projekt: {project.name}</p>
+        <header className="chat-head">
+          <h1 className="chat-title">{project.name}</h1>
+        </header>
         <ChatTiles tiles={tiles} onAction={act} onInspect={setInsight} />
         <ChatLog messages={messages} outgoing={outgoing} user={user} live={live} toolLines={toolLines} />
         {error !== null && (

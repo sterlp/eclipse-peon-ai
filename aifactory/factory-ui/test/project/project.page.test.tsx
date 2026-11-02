@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
 import AppShell from '../../src/app/app.shell'
 import { ProjectPage } from '../../src/project/project.page'
@@ -58,9 +58,10 @@ test('showsExactlyThreeViews', async () => {
   stubServer({ GET: [] })
   render(<AppShell />)
 
-  const tabs = screen.getAllByRole('tab')
-  expect(tabs.map(tab => tab.textContent)).toEqual(['Projekte', 'Chat', 'Einstellungen'])
-  expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
+  // the frame is a menu (R-WP-1): exactly the three views, the showing one marked with aria-current
+  const entries = within(screen.getByRole('navigation', { name: 'Ansichten' })).getAllByRole('button')
+  expect(entries.map(entry => entry.textContent)).toEqual(['Projekte', 'Chat', 'Einstellungen'])
+  expect(entries[0]).toHaveAttribute('aria-current', 'page')
   await screen.findByText('Kein Projekt')
 })
 

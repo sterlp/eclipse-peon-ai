@@ -205,6 +205,19 @@ test('openProjectBindsWorkDir', async () => {
   expect(reads.map(call => call.path)).toEqual(['/api/projects/demo-1a2b3c4/messages'])
 })
 
+test('theChatHeaderNamesTheProjectOnly', async () => {
+  stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  const chat = await screen.findByRole('region', { name: 'Chat' })
+  await flush()
+
+  // the view IS the chat of a project, so its head names the project and nothing else — a second "Chat"
+  // heading would only repeat the menu entry the user just clicked (R-WP-1)
+  expect(within(chat).getByRole('heading', { name: 'demo' })).toBeInTheDocument()
+  expect(within(chat).queryByRole('heading', { name: 'Chat' })).toBeNull()
+  expect(within(chat).queryByText(/^Projekt:/)).toBeNull()
+})
+
 // UC-WP-6
 test('chatAlwaysGoesToJon', async () => {
   const chat = stubChat({ messages: [] })
@@ -340,7 +353,9 @@ test('oneChatPerProject', async () => {
     .map(control => control.textContent?.trim() ?? '')
   expect([...new Set(tileControls)].sort()).toEqual(['Blick', 'Clear', 'Compact'])
 
-  fireEvent.click(screen.getByRole('tab', { name: 'Projekte' }))
+  fireEvent.click(
+    within(screen.getByRole('navigation', { name: 'Ansichten' })).getByRole('button', { name: 'Projekte' }),
+  )
   expect(screen.queryByTestId('chat-log')).toBeNull()
 
   // the list re-reads itself on mount, so the project has to be found again before it can be opened

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { AppTabs, type ViewName } from './app.tabs'
+import { AppNav, type ViewName } from './app.nav'
 import { AppUser } from './app.user'
 import { ChatPage } from '../chat/chat.page'
 import { ConfigPage } from '../config/config.page'
@@ -21,13 +21,13 @@ export default function AppShell() {
     <div className="app">
       <header className="app-header">
         <span className="app-title">Open AI Factory</span>
-        <AppTabs active={view} onSelect={setView} />
+        <AppNav active={view} onSelect={setView} />
         <AppUser user={user} onChange={setUser} />
       </header>
-      <main>
+      <main className="app-main">
         {view === 'projects' && (
           <ProjectPage
-            // opening a project opens its chat — the conversation is the project's, not the tab's
+            // opening a project opens its chat — the conversation is the project's, not the view's
             onOpen={opened => {
               setSelected(opened)
               setView('chat')

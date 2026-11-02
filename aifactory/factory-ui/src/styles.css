@@ -1,63 +1,81 @@
-/* Prototype styling — plain and narrow on purpose (see the "Look" note in the docs). */
+/* The app's own layer over Bootstrap: full width, one small gutter, compact top bar (R-WP-1, R-WP-27). */
 
 .app {
-  max-width: 52rem;
-  margin: 0 auto;
-  padding: 1.5rem 1rem 3rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0 1rem 2rem;
 }
 
 .app-header {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 1rem;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 -1rem 1rem;
+  padding: 0.4rem 1rem;
   border-bottom: 1px solid var(--border);
-  padding-bottom: 0.75rem;
-  margin-bottom: 1.25rem;
+  background: var(--bg);
 }
 
 .app-title {
   font-weight: 650;
   color: var(--text-h);
+  white-space: nowrap;
 }
 
 /* The browser's own name, at the end of the header — small, because it is a label and not a workspace. */
 .app-user {
   margin-left: auto;
   width: 9rem;
-  padding: 0.3rem 0.6rem;
+  padding: 0.25rem 0.5rem;
   border: 1px solid var(--border);
   border-radius: 0.4rem;
   background: var(--bg);
   color: var(--text-h);
 }
 
-
-.tabs {
-  display: flex;
-  gap: 0.25rem;
+/* Top navigation (R-WP-1): three entries, the active one marked — it is a menu, not a tab strip. */
+.app-nav {
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.tab {
-  background: none;
+.app-nav .nav-link {
   border: 1px solid transparent;
   border-radius: 0.4rem;
-  padding: 0.3rem 0.7rem;
+  padding: 0.2rem 0.6rem;
+  font: inherit;
   color: var(--text);
   cursor: pointer;
+
+  &:hover {
+    color: var(--text-h);
+    background: var(--code-bg);
+  }
 
   &.active {
     border-color: var(--border);
     background: var(--code-bg);
     color: var(--text-h);
+    font-weight: 600;
   }
 }
 
-.view h1 {
-  font-size: 1.25rem;
-  margin: 0 0 0.75rem;
-  color: var(--text-h);
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
+
+.view {
+  flex: 1;
+  min-width: 0;
+}
+
 
 .add-project {
   display: flex;
@@ -83,7 +101,7 @@ button {
 }
 
 .form-error {
-  color: #b3261e;
+  color: var(--problem);
   border: 1px solid currentColor;
   border-radius: 0.4rem;
   padding: 0.4rem 0.6rem;
@@ -139,6 +157,22 @@ button {
 }
 
 
+/* Head of the chat view: the project names it, there is no second "Chat" heading (R-WP-1). */
+.chat-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0 0 0.6rem;
+}
+
+.chat-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+  color: var(--text-h);
+  overflow-wrap: anywhere;
+}
+
 /* Kacheln: eine je Agent, Kopf des Chat-Views — Zahl, Status und Knöpfe kommen vom Server (R-WP-7). */
 .chat-tiles {
   list-style: none;
@@ -188,11 +222,11 @@ button {
     }
 
     &.compacting::before {
-      background: #d4a017;
+      background: var(--question);
     }
 
     &.error::before {
-      background: #b3261e;
+      background: var(--problem);
     }
   }
 
@@ -268,7 +302,7 @@ button {
 }
 
 .chat-error {
-  color: #b3261e;
+  color: var(--problem);
   margin: 0 0 0.75rem;
 }
 
@@ -361,7 +395,7 @@ button {
   }
 
   .chat-files-error {
-    color: #b3261e;
+    color: var(--problem);
     margin: 0 0 0.75rem;
     overflow-wrap: anywhere;
   }
@@ -438,7 +472,7 @@ button {
   }
 
   .chat-insight-error {
-    color: #b3261e;
+    color: var(--problem);
     margin: 0 0 0.75rem;
     overflow-wrap: anywhere;
   }
