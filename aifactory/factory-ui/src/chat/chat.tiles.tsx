@@ -1,4 +1,5 @@
-import type { AgentAction, AgentTile, AgentTileState } from './chat.agents.client'
+import type { AgentAction, AgentTile } from './chat.agents.client'
+import { content } from '../shared/content'
 
 interface Props {
   /** The current roster snapshot — from the read on mount or from an `agents` event, never merged. */
@@ -9,13 +10,6 @@ interface Props {
   onInspect: (name: string) => void
 }
 
-const STATE_LABEL: Record<AgentTileState, string> = {
-  IDLE: 'bereit',
-  WORKING: 'arbeitet',
-  COMPACTING: 'kompaktiert',
-  ERROR: 'Fehler',
-}
-
 /**
  * The head of the chat view (R-WP-7, UC-WP-11): one tile per agent of this project's team, with the
  * context number the core reports, the agent's own state, and Clear and Compact where the tile offers them.
@@ -24,7 +18,7 @@ const STATE_LABEL: Record<AgentTileState, string> = {
  * a Search sub-loop without affordances and a member with an insight need no branch (D-14). A number the
  * server does not send is shown as a dash and never as a computed guess.
  *
- * A tile offering TRANSCRIPT also offers <em>Blick</em>: the read-only insight into that agent's own
+ * A tile offering TRANSCRIPT also offers <em>Insight</em>: the read-only look into that agent's own
  * conversation (UC-WP-49). It is a control beside the others rather than a click on the whole tile,
  * because the tile already carries buttons and a button may not hold a button.
  */
@@ -33,7 +27,7 @@ export function ChatTiles({ tiles, onAction, onInspect }: Props) {
     return null
   }
   return (
-    <ul className="chat-tiles" data-testid="chat-tiles" aria-label="Team">
+    <ul className="chat-tiles" data-testid="chat-tiles" aria-label={content.tiles.team}>
       {tiles.map(tile => {
         // only a state that holds the agent blocks an action — a failure is over, and the server takes a
         // Clear on an idle agent at once, so disabling on ERROR would strand the tile until the next turn
@@ -46,8 +40,8 @@ export function ChatTiles({ tiles, onAction, onInspect }: Props) {
               data-testid={`tile-context-${tile.name}`}
               title={
                 tile.context === null
-                  ? 'kein eigener Kontext'
-                  : `${tile.contextPercent}% von Budget ${tile.budget}`
+                  ? content.tiles.noContext
+                  : content.tiles.budget(tile.contextPercent, tile.budget)
               }
             >
               {tile.context ?? '—'}
@@ -57,7 +51,7 @@ export function ChatTiles({ tiles, onAction, onInspect }: Props) {
               data-state={tile.state}
               data-testid={`tile-state-${tile.name}`}
             >
-              {STATE_LABEL[tile.state]}
+              {content.tiles.state[tile.state]}
             </span>
             {tile.capabilities.includes('TRANSCRIPT') && (
               <button
@@ -66,7 +60,7 @@ export function ChatTiles({ tiles, onAction, onInspect }: Props) {
                 data-testid={`tile-open-${tile.name}`}
                 onClick={() => onInspect(tile.name)}
               >
-                Blick
+                {content.tiles.insight}
               </button>
             )}
             {tile.capabilities.includes('CLEAR') && (
@@ -76,7 +70,7 @@ export function ChatTiles({ tiles, onAction, onInspect }: Props) {
                 disabled={busy}
                 onClick={() => onAction(tile.name, 'clear')}
               >
-                Clear
+                {content.tiles.clear}
               </button>
             )}
             {tile.capabilities.includes('COMPACT') && (
@@ -86,7 +80,7 @@ export function ChatTiles({ tiles, onAction, onInspect }: Props) {
                 disabled={busy}
                 onClick={() => onAction(tile.name, 'compact')}
               >
-                Compact
+                {content.tiles.compact}
               </button>
             )}
           </li>

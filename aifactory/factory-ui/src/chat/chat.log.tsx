@@ -1,7 +1,5 @@
 import type { ChatMessage } from './chat.client'
-
-/** The label of R-WP-25 for a user line without a name — a role, not an invented author. */
-const USER_ROLE_LABEL = 'YOU'
+import { content } from '../shared/content'
 
 interface Props {
   /** The finished lines — the only truth for text a turn has written (R-WP-11). */
@@ -26,7 +24,7 @@ interface Props {
 export function ChatLog({ messages, outgoing, user, live, toolLines }: Props) {
   const empty = messages.length === 0 && outgoing.length === 0 && live === ''
   return (
-    <ul className="chat-log" data-testid="chat-log" aria-label="Verlauf">
+    <ul className="chat-log" data-testid="chat-log" aria-label={content.chat.history}>
       {messages.map((message, index) => (
         <li key={`history-${index}`} className={`chat-line ${message.role}`} data-testid={`chat-line-${message.role}`}>
           <ChatAuthor origin={authorOf(message)} />
@@ -36,7 +34,7 @@ export function ChatLog({ messages, outgoing, user, live, toolLines }: Props) {
       {outgoing.map((text, index) => (
         <li key={`outgoing-${index}`} className="chat-line user pending" data-testid="chat-line-user">
           {/* his own name, so the line does not jump when the history brings the server's author back */}
-          <ChatAuthor origin={user ?? USER_ROLE_LABEL} />
+          <ChatAuthor origin={user ?? content.chat.you} />
           <span className="chat-text">{text}</span>
         </li>
       ))}
@@ -50,14 +48,14 @@ export function ChatLog({ messages, outgoing, user, live, toolLines }: Props) {
           {line}
         </li>
       ))}
-      {empty && <li className="empty-state">Noch keine Nachrichten</li>}
+      {empty && <li className="empty-state">{content.chat.noMessages}</li>}
     </ul>
   )
 }
 
 /** A user's author is the person the server named, or the doc's role label; an agent's is only ever what the server named. */
 function authorOf(message: ChatMessage): string | null | undefined {
-  return message.role === 'user' ? (message.origin ?? USER_ROLE_LABEL) : message.origin
+  return message.role === 'user' ? (message.origin ?? content.chat.you) : message.origin
 }
 
 /** The author of one line — drawn only where one exists, because an invented label would be a lie. */

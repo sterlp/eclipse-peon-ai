@@ -194,7 +194,13 @@ test('fileAreaOpensOnCheckoutAndReadsItsWayDown', async () => {
   const controls = within(panel)
     .queryAllByRole('button')
     .map(button => button.textContent ?? '')
-  expect(controls.filter(label => /neu|anlegen|upload|schreiben|bearbeiten|löschen|loeschen|entfernen/i.test(label))).toEqual([])
+  expect(
+    controls.filter(label =>
+      /\b(new|create|upload|write|edit|delete|remove)\b|neu|anlegen|upload|schreiben|bearbeiten|löschen|loeschen|entfernen/i.test(
+        label,
+      ),
+    ),
+  ).toEqual([])
   expect(within(panel).queryByRole('textbox')).toBeNull()
   expect(factory.nonGetCalls).toEqual([])
 })

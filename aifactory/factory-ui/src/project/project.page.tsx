@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { addProject, listProjects, removeProject } from './project.client'
 import { errorMessage } from '../shared/api.client'
+import { content } from '../shared/content'
 import type { Project } from '../shared/dto'
 
 interface Props {
@@ -49,7 +50,7 @@ export function ProjectPage({ onOpen }: Props) {
   }
 
   async function remove(project: Project) {
-    if (!window.confirm(`${project.name} entfernen? Der Clone-Ordner wird gelöscht.`)) {
+    if (!window.confirm(content.projects.removeQuestion(project.name))) {
       return
     }
     setMessage(null)
@@ -62,18 +63,18 @@ export function ProjectPage({ onOpen }: Props) {
   }
 
   return (
-    <section className="view" aria-label="Projekte">
-      <h1>Projekte</h1>
+    <section className="view" aria-label={content.projects.title}>
+      <h1>{content.projects.title}</h1>
       <form className="add-project" onSubmit={event => void submit(event)}>
         <input
           type="url"
-          placeholder="https://git.example.com/org/repo.git"
-          aria-label="Git-URL"
+          placeholder={content.projects.gitUrlSample}
+          aria-label={content.projects.gitUrl}
           value={gitUrl}
           onChange={event => setGitUrl(event.target.value)}
         />
         <button type="submit" disabled={busy}>
-          {busy ? 'Klone…' : 'Hinzufügen'}
+          {busy ? content.projects.cloning : content.projects.add}
         </button>
       </form>
       {message && (
@@ -82,7 +83,7 @@ export function ProjectPage({ onOpen }: Props) {
         </p>
       )}
       {projects.length === 0 ? (
-        <p className="empty-state">Kein Projekt</p>
+        <p className="empty-state">{content.projects.empty}</p>
       ) : (
         <ul className="project-list">
           {projects.map(project => (
@@ -92,7 +93,7 @@ export function ProjectPage({ onOpen }: Props) {
               </button>
               <span className="project-url">{project.gitUrl}</span>
               <button type="button" className="remove" onClick={() => void remove(project)}>
-                Entfernen
+                {content.projects.remove}
               </button>
             </li>
           ))}

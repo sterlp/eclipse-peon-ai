@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 
 import { ChatPage } from '../../src/chat/chat.page'
 import { project } from '../shared/fixtures'
+import { content } from '../../src/shared/content'
 import type {
   AgentTile,
   AgentTranscript,
@@ -140,7 +141,7 @@ test('insightShowsTheMembersOwnConversation', async () => {
   // exactly the one read of the tile that was clicked, and no second way to a conversation
   expect(transcriptReads(wire)).toEqual(['/api/projects/demo-1a2b3c4/agents/Dev'])
   expect(within(panel).getByTestId('insight-agent')).toHaveTextContent('Dev')
-  expect(within(panel).getByText('schreibgeschützt')).toBeInTheDocument()
+  expect(within(panel).getByText(content.insight.readOnly)).toBeInTheDocument()
 
   await waitFor(() => expect(within(panel).getAllByTestId('insight-line')).toHaveLength(3))
   const lines = within(panel).getAllByTestId('insight-line')
@@ -149,7 +150,7 @@ test('insightShowsTheMembersOwnConversation', async () => {
   expect(within(panel).getByText('shellRunCommand({"command":"ls"})')).toBeInTheDocument()
   expect(within(panel).getByText('Zwei Dateien.')).toBeInTheDocument()
   // the member's own step is named as one — it is the reason the Blick exists (UC-WP-40 stays sharp)
-  expect(within(panel).getAllByText('Werkzeug')).toHaveLength(1)
+  expect(within(panel).getAllByText(content.insight.kind.tool)).toHaveLength(1)
 })
 
 // UC-WP-49
@@ -168,7 +169,9 @@ test('insightHasNoWriteControl', async () => {
   await waitFor(() => expect(within(panel).getAllByTestId('insight-line')).toHaveLength(2))
 
   // the only control in the Blick closes it: anything else would write, send or choose
-  expect(within(panel).queryAllByRole('button').map(b => b.textContent?.trim())).toEqual(['Schließen'])
+  expect(within(panel).queryAllByRole('button').map(b => b.textContent?.trim())).toEqual([
+    content.common.close,
+  ])
   expect(panel.querySelector('input, textarea, select')).toBeNull()
 })
 

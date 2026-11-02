@@ -2,6 +2,7 @@ import { expect, test, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 
 import { ChatTiles } from '../../src/chat/chat.tiles'
+import { content } from '../../src/shared/content'
 import type { AgentAction, AgentTile, AgentTileState } from '../../src/chat/chat.agents.client'
 
 /**
@@ -48,8 +49,8 @@ test('teamTilesShowContextAndStatus', () => {
   expect(screen.getAllByRole('listitem')).toHaveLength(TEAM.length)
   expect(screen.getByTestId('tile-Jon')).toHaveTextContent('Jon')
   expect(screen.getByTestId('tile-context-Jon')).toHaveTextContent('12k')
-  expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent('bereit')
-  expect(screen.getByTestId('tile-state-Dev')).toHaveTextContent('arbeitet')
+  expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.IDLE)
+  expect(screen.getByTestId('tile-state-Dev')).toHaveTextContent(content.tiles.state.WORKING)
   expect(screen.getByTestId('tile-context-Plan')).toHaveTextContent('4k')
   // the dash is the server's `null`, never a computed 0 — a number nobody reported would be a lie
   expect(screen.getByTestId('tile-context-Review')).toHaveTextContent('—')
@@ -61,7 +62,7 @@ test('searchTileShowsNoContextAndNoButtons', () => {
 
   const search = screen.getByTestId('tile-Search')
   expect(search).toHaveTextContent('Search')
-  expect(search).toHaveTextContent('bereit')
+  expect(search).toHaveTextContent(content.tiles.state.IDLE)
   expect(screen.getByTestId('tile-context-Search')).toHaveTextContent('—')
   // a sub-loop owns no memory between calls: the row carries neither action (R-WP-7)
   expect(screen.queryByTestId('tile-clear-Search')).toBeNull()
@@ -78,7 +79,7 @@ test('compactShowsItsOwnState', () => {
     />,
   )
 
-  expect(screen.getByTestId('tile-state-Dev')).toHaveTextContent('kompaktiert')
+  expect(screen.getByTestId('tile-state-Dev')).toHaveTextContent(content.tiles.state.COMPACTING)
   // an agent that works or compacts offers nothing — a second action would write over the running one
   expect(screen.getByTestId('tile-clear-Dev')).toBeDisabled()
   expect(screen.getByTestId('tile-compact-Dev')).toBeDisabled()
@@ -97,7 +98,7 @@ test('clearStaysOfferedAfterAFailure', () => {
     />,
   )
 
-  expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent('Fehler')
+  expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.ERROR)
   // a failure is over: UC-WP-12 names no state condition and the server takes a Clear on an idle agent,
   // so a tile that stayed shut here would strand the only way out of the failed conversation
   expect(screen.getByTestId('tile-clear-Jon')).toBeEnabled()

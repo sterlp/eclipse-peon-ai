@@ -15,6 +15,7 @@ import { ChatLog } from './chat.log'
 import { ChatTiles } from './chat.tiles'
 import { openChatStream } from './chat.stream'
 import { ApiRequestError, errorMessage } from '../shared/api.client'
+import { content } from '../shared/content'
 import type { Project } from '../shared/dto'
 
 interface Props {
@@ -266,15 +267,15 @@ export function ChatPage({ project, files, user }: Props) {
 
   if (project === null) {
     return (
-      <section className="view" aria-label="Chat">
-        <p className="empty-state">Kein Projekt geöffnet</p>
+      <section className="view" aria-label={content.chat.title}>
+        <p className="empty-state">{content.chat.noProject}</p>
       </section>
     )
   }
 
   return (
     <>
-      <section className="view" aria-label="Chat">
+      <section className="view" aria-label={content.chat.title}>
         <header className="chat-head">
           <h1 className="chat-title">{project.name}</h1>
         </header>

@@ -1,4 +1,5 @@
 import { writeUserName } from '../shared/user.name'
+import { content } from '../shared/content'
 
 interface Props {
   /** The name of this browser, or null — null is the honest empty state, not a missing value (R-WP-17). */
@@ -20,9 +21,9 @@ export function AppUser({ user, onChange }: Props) {
     <input
       className="app-user"
       type="text"
-      aria-label="Dein Name"
+      aria-label={content.user.name}
       data-testid="user-name"
-      placeholder="Dein Name"
+      placeholder={content.user.name}
       value={user ?? ''}
       onChange={event => {
         writeUserName(event.target.value)

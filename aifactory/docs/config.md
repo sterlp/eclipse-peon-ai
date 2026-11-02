@@ -64,14 +64,23 @@ für jeden Betrachter lesbar; ein Key-Auszug ist kein Anzeigefehler, sondern der
 Feld; leert der Nutzer eines und speichert, wird der Wert **aus der Datei gelöscht** — es gilt, was ohne
 ihn gilt (beim Default: Umgebungsvariable oder nichts, „Empty means unset"; beim Agenten: der Default,
 R-WP-23). Die Datei trägt danach nur, was wirklich gesetzt ist. Ein **Key** ist maskiert und nie
-vorbefüllt, sein leeres Feld heißt deshalb **unverändert**; ein Key lässt sich über die Seite nur setzen,
-nicht löschen (Löschen = „überschreiben" abwählen oder Datei von Hand). Eine Datei, die neu geschrieben
+vorbefüllt, sein leeres Feld heißt deshalb **unverändert**; ein Key lässt sich über die Seite **setzen und — via „Remove key" — entfernen**
+(geschärft Paul 2026-11-02: sonst war ein gesetzter Key über das UI nie wieder löschbar); eine
+ENV-Quelle kann die Seite nur melden, nicht löschen. Der Fehler „turn needs an api key"
+([UC-WP-20](#configreadfromfactoryownstore)) nennt die Settings-Seite als Ort der Lösung. Eine Datei, die neu geschrieben
 wird, behält ihre Rechte `600` (R-WP-9). Das ist dasselbe Verhalten wie im Plugin — nur speichert die
 Factory direkt in ihre Datei.
 
 **Reihenfolge der Werte:** was in der Datei steht, gewinnt gegen die Umgebungsvariable — die Variable
 ist der Startwert für den ersten Start, die Datei ist der vom Menschen gepflegte Stand. Woher ein
 Wert kommt, zeigt die Seite.
+
+**Dynamische Felder wie im Plugin (Paul 2026-11-02):** der Provider-Wechsel aktualisiert **sofort**
+die abhängigen Felder — die **URL** wird auf den Default des gewählten Providers gesetzt (der Core trägt sie), das
+**Modell-Feld wird geleert** (das Modell gilt pro Provider; ein übernommener Wert des alten Providers
+wäre falsch) und **Think** folgt der Vorgabe des Providers: bei Providern ohne Think-Unterstützung
+zeigt die Form das an. Ohne erneutes Speichern; die Form verhält sich wie der
+Provider-Dialog im Eclipse-Plugin, nicht wie eine statische Form.
 
 **WEIL** (User 2026-10-25): „der Rest kann aus der config kommen von den files — aber ich mag die im
 UI später auch bearbeiten können". Eine eigene Datei statt Rückschreiben hält den Bestand des
@@ -104,6 +113,17 @@ Plugins unberührt, den die Factory weder liest noch schreibt (R-WP-9).
   THEN steht in der Datei kein `think` mehr und es wird kein Think-Parameter gesendet.
 - GIVEN Compact mit Haken und `model: gpt-5`, `think: medium` WHEN der Nutzer das Modell-Feld leert und
   speichert THEN trägt Compacts Eintrag nur noch `think: medium`; das Modell erbt Compact vom Default.
+
+#### UC-WP-62 — providerChangeUpdatesDependentFields ❌
+- GIVEN die Config-Seite WHEN der Nutzer den Provider wechselt THEN aktualisieren sich Modell und URL
+  sofort auf die Defaults des gewählten Providers (URL), geleert (Modell) bzw. auf dessen Vorgabe
+  (Think) — ohne erneutes Speichern.
+
+#### UC-WP-63 — keyCanBeRemovedAndStatusRefreshes ❌
+- GIVEN ein gesetzter Key aus der Datei WHEN der Nutzer „Remove key" wählt und speichert THEN steht
+  in der Datei kein Key mehr, und der Status zeigt „nicht gesetzt".
+- GIVEN ein Key aus einer Umgebungsvariable WHEN die Seite geladen wird THEN meldet sie die Quelle
+  ENV — entfernen über die Seite ist dann nicht möglich.
 
 ### R-WP-23 — Agenten auf der Config-Seite: Default für alle, „überschreiben" je Agent ❌
 

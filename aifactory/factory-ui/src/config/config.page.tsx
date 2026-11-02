@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { errorMessage } from '../shared/api.client'
+import { content } from '../shared/content'
 import {
   getSettings,
   PROVIDERS,
@@ -11,17 +12,18 @@ import {
 } from './config.client'
 
 const SOURCE_LABEL: Record<KeySource, string> = {
-  FILE: 'Datei',
-  ENV: 'Umgebungsvariable',
-  NONE: 'keine',
+  FILE: content.config.source.FILE,
+  ENV: content.config.source.ENV,
+  NONE: content.config.source.NONE,
 }
 
-/** Said out loud at every field that may stay empty — R-WP-16 "leeres Feld = unverändert". */
-const UNCHANGED_HINT = 'leer = unverändert'
+/** The values of the think field — internal, never on the screen: the labels come from the catalog. */
+const YES = 'yes'
+const NO = 'no'
 
 /**
  * The form holds every editable value as text, so "empty" is one concept across text and number
- * fields: an empty input is not a value and is never sent.
+ * fields: an empty input is not a value and is never sent (R-WP-16: an empty field stays unchanged).
  */
 interface Draft {
   provider: string
@@ -42,7 +44,7 @@ function draftOf(settings: Settings): Draft {
     apiKey: '',
     tokenWindow: String(settings.tokenWindow),
     timeoutSeconds: String(settings.timeoutSeconds),
-    sendThinking: settings.sendThinking ? 'ja' : 'nein',
+    sendThinking: settings.sendThinking ? YES : NO,
   }
 }
 
@@ -54,7 +56,7 @@ function patchOf(draft: Draft): SettingsPatch {
     apiKey: draft.apiKey,
     tokenWindow: numberOf(draft.tokenWindow),
     timeoutSeconds: numberOf(draft.timeoutSeconds),
-    sendThinking: draft.sendThinking === 'ja',
+    sendThinking: draft.sendThinking === YES,
   }
 }
 
@@ -112,8 +114,8 @@ export function ConfigPage() {
   }
 
   return (
-    <section className="view" aria-label="Einstellungen">
-      <h1>Einstellungen</h1>
+    <section className="view" aria-label={content.config.title}>
+      <h1>{content.config.title}</h1>
       {message && (
         <p className="form-error" role="alert">
           {message}
@@ -123,9 +125,9 @@ export function ConfigPage() {
         <form className="settings-form" onSubmit={event => void save(event)}>
           <dl className="settings">
             <div>
-              <dt>Provider</dt>
+              <dt>{content.config.provider}</dt>
               <dd>
-                <select aria-label="Provider" value={draft.provider} onChange={edit('provider')}>
+                <select aria-label={content.config.provider} value={draft.provider} onChange={edit('provider')}>
                   {PROVIDERS.map(provider => (
                     <option key={provider} value={provider}>
                       {provider}
@@ -141,71 +143,84 @@ export function ConfigPage() {
               </p>
             )}
             <div>
-              <dt>Modell</dt>
+              <dt>{content.config.model}</dt>
               <dd>
-                <input aria-label="Modell" placeholder={UNCHANGED_HINT} value={draft.model} onChange={edit('model')} />
+                <input
+                  aria-label={content.config.model}
+                  placeholder={content.config.unchanged}
+                  value={draft.model}
+                  onChange={edit('model')}
+                />
               </dd>
             </div>
             <div>
-              <dt>URL</dt>
+              <dt>{content.config.url}</dt>
               <dd>
-                <input type="url" aria-label="URL" placeholder={UNCHANGED_HINT} value={draft.url} onChange={edit('url')} />
+                <input
+                  type="url"
+                  aria-label={content.config.url}
+                  placeholder={content.config.unchanged}
+                  value={draft.url}
+                  onChange={edit('url')}
+                />
               </dd>
             </div>
             <div>
-              <dt>Token-Fenster</dt>
+              <dt>{content.config.tokenWindow}</dt>
               <dd>
                 <input
                   type="number"
-                  aria-label="Token-Fenster"
-                  placeholder={UNCHANGED_HINT}
+                  aria-label={content.config.tokenWindow}
+                  placeholder={content.config.unchanged}
                   value={draft.tokenWindow}
                   onChange={edit('tokenWindow')}
                 />
               </dd>
             </div>
             <div>
-              <dt>Timeout</dt>
+              <dt>{content.config.timeout}</dt>
               <dd>
                 <input
                   type="number"
-                  aria-label="Timeout"
-                  placeholder={UNCHANGED_HINT}
+                  aria-label={content.config.timeout}
+                  placeholder={content.config.unchanged}
                   value={draft.timeoutSeconds}
                   onChange={edit('timeoutSeconds')}
                 />
-                <span className="hint">Sekunden</span>
+                <span className="hint">{content.common.seconds}</span>
               </dd>
             </div>
             <div>
-              <dt>Think senden</dt>
+              <dt>{content.config.sendThinking}</dt>
               <dd>
-                <select aria-label="Think senden" value={draft.sendThinking} onChange={edit('sendThinking')}>
-                  <option value="ja">ja</option>
-                  <option value="nein">nein</option>
+                <select aria-label={content.config.sendThinking} value={draft.sendThinking} onChange={edit('sendThinking')}>
+                  <option value={YES}>{content.config.yes}</option>
+                  <option value={NO}>{content.config.no}</option>
                 </select>
               </dd>
             </div>
             <div>
-              <dt>Key</dt>
+              <dt>{content.config.key}</dt>
               <dd>
                 <input
                   type="password"
-                  aria-label="Key"
+                  aria-label={content.config.key}
                   autoComplete="off"
-                  placeholder={UNCHANGED_HINT}
+                  placeholder={content.config.unchanged}
                   value={draft.apiKey}
                   onChange={edit('apiKey')}
                 />
                 <span className={settings.keySet ? 'key-set' : 'key-missing'}>
-                  {settings.keySet ? 'gesetzt' : 'nicht gesetzt'}
+                  {settings.keySet ? content.config.keySet : content.config.keyMissing}
                 </span>
-                <span className="hint">Quelle: {SOURCE_LABEL[settings.keySource]}</span>
+                <span className="hint">
+                  {content.config.keySource}: {SOURCE_LABEL[settings.keySource]}
+                </span>
               </dd>
             </div>
           </dl>
           <button type="submit" disabled={busy}>
-            {busy ? 'Speichert…' : 'Speichern'}
+            {busy ? content.config.saving : content.config.save}
           </button>
         </form>
       )}

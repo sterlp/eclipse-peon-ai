@@ -2,12 +2,14 @@ import Nav from 'react-bootstrap/Nav'
 import NavItem from 'react-bootstrap/NavItem'
 import NavLink from 'react-bootstrap/NavLink'
 
+import { content } from '../shared/content'
+
 export type ViewName = 'projects' | 'chat' | 'settings'
 
 const ENTRIES: { id: ViewName; label: string }[] = [
-  { id: 'projects', label: 'Projekte' },
-  { id: 'chat', label: 'Chat' },
-  { id: 'settings', label: 'Einstellungen' },
+  { id: 'projects', label: content.nav.projects },
+  { id: 'chat', label: content.nav.chat },
+  { id: 'settings', label: content.nav.settings },
 ]
 
 interface Props {
@@ -22,7 +24,7 @@ interface Props {
  */
 export function AppNav({ active, onSelect }: Props) {
   return (
-    <nav className="app-nav-bar" aria-label="Ansichten">
+    <nav className="app-nav-bar" aria-label={content.nav.views}>
       <Nav as="ul" className="app-nav">
         {ENTRIES.map(entry => (
           <NavItem key={entry.id} as="li">

@@ -5,6 +5,14 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
 
 ## ⏳ selbst entschieden (2026-10-25/26) — bitte überfliegen
 
+* **⏳ „Chat" öffnet das zuletzt aktive Projekt** (2026-11-02, meine Empfehlung, Rückversicherung
+  ausstehend) — [R-WP-1](ui.md): Top-Menü „Chat" ohne aktives Projekt → Projekte; mit aktivem Projekt
+  → dessen Chat. *Andersfall:* „Chat" führt immer auf die Projektliste (keine Abkürzung) oder es
+  braucht eine Chat-Auswahl.
+* **⏳ Provider-Wechsel setzt Modell/URL auf die Defaults des Providers** (2026-11-02) — wie der
+  Provider-Dialog im Plugin ([R-WP-16/UC-WP-62](config.md)). *Andersfall:* Felder nur leeren statt
+  Defaults einzutragen.
+
 * **⏳ Fehler-Ergebnis einer Delegation erscheint wörtlich als Mitglieder-Zeile** (2026-10-30,
   Da-Dok-Befund B4) — [UC-WP-40](chat.md) hat den Fall jetzt ausdrücklich; abgeleitet aus „wie es ist"
   (AF-ADR-002): ein Java-Stacktrace im Web-Chat ist hässlich, aber ehrlich, und Parsen/Kürzen ist
@@ -90,9 +98,11 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
   Startwert für den ersten Start, die Datei der gepflegte Stand (sonst könnte die UI nie etwas ändern).
   *Andersfall:* Deployment-Diktat („was der Operator setzt, gilt") ⇒ Reihenfolge umdrehen und das Feld
   im View sperren.
-* **⏳ Leeres Feld löscht nichts, Key löschen geht im MVP nicht** ([R-WP-16](config.md)) —
-  abgeleitet: ein leeres Formularfeld ist kein Löschbefehl, und ein versehentlich gelöschter Key wäre
-  für alle Nutzer weg. *Andersfall:* eigener „Key löschen"-Knopf mit Rückfrage.
+* **⏳ Key über die UI entfernen** (2026-11-02, Paul-Szenario: erster Request lieferte „turn needs an
+  api key", ein gesetzter Key war im UI nicht erkennbar und nicht löschbar) — Decision: R-WP-16
+  geschärft — „Remove key" schreibt den Key aus der Datei, ENV-Quelle wird nur gemeldet, der Status
+  wird nach jedem Speichern frisch geliefert. *Andersfall:* soll das UI den Key nicht entfernen
+  können, gilt wieder nur die Datei von Hand — dann aber mit sauberer Anzeige des Status.
 * **⏳ kein globales Temperatur-Feld** ([R-WP-16](config.md)) — im geteilten Bestand existiert
   Temperatur **nur je Agent**; ein globales Feld wäre erfunden. Der View zeigt, was es gibt.
   *Andersfall:* „je Agent" mit ins MVP ⇒ eigener View-Bereich plus Core-Schreibpfad pro Agent.
@@ -127,12 +137,13 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
   Flag, das auch der Plugin-Stop setzt. UC-WP-50 bleibt deshalb ❌, und der Test benennt die Lücke.
   *Fix:* Core-Story — den zuletzt gepollten Eintrag beim Cancel zurücklegen (oder vor dem Verlassen
   drainen); danach UC-WP-50 ✅.
-* **❓ `AGENTS.md`-Language-Block („UI: English") widerspricht der gebauten UI** (2026-11-01) — die
-  Fabrik-UI ist deutsch (`Senden`, `Stop`, `bereit`, `Schließen`, Kachel-Labels), Plan §9 hat das als
-  Regel geführt, Kommentare sind dagegen englisch; Folge ist auch der deutsche Draht-Wert
-  `"[kein Text]"` in `AgentTranscriptDto`. Paul entscheidet: UI auf Englisch (eigene Story — alle
-  sichtbaren Texte + UI-Tests) **oder** `AGENTS.md` sagt „UI: deutsch" (eine Zeile; Draht-Werte
-  bleiben deutsch). Bis dahin bleibt alles wie gebaut.
+* **🔒 UI-Sprache = Englisch** (2026-11-02, Paul bestätigt; löst den „AGENTS.md-Language-Block"-
+  Konflikt von 2026-11-01) — AGENTS.md („UI: English") gilt, [R-WP-27](ui.md) formalisiert: Strings
+  im Catalog (`content.ts`/Locale), keine deutschen Draht-Werte. Umsetzung als eigene Story dieses
+  Zyklus.
+* **❓ Chats-Übersicht links (Vision, Paul 2026-11-02):** jedes Projekt ein „Tree"/Accordion in der
+  linken Navigation, mehrere Paco-Chats je Projekt (**+**), Überblick über alle Chats; Main-Chat
+  immer Jon. Gehört zu [Paco](paco.md) — erst mit der Paco-Story, kein MVP-Mechanismus.
 
 ### Docs-Review gegen Pauls Produktvision (2026-10-27) — eine Frage nach der anderen
 

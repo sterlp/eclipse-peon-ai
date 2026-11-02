@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import AppShell from '../../src/app/app.shell'
 import { ChatPage } from '../../src/chat/chat.page'
 import { project } from '../shared/fixtures'
+import { content } from '../../src/shared/content'
 import type { ChatMessage } from '../../src/chat/chat.client'
 import type { AgentTile, AgentTileState } from '../../src/chat/chat.agents.client'
 
@@ -183,7 +184,7 @@ afterEach(async () => {
 test('chatAsksForAProjectWhenNoneIsOpen', () => {
   render(<ChatPage project={null} />)
 
-  expect(screen.getByText('Kein Projekt geöffnet')).toBeInTheDocument()
+  expect(screen.getByText(content.chat.noProject)).toBeInTheDocument()
   expect(screen.queryByTestId('chat-input')).toBeNull()
 })
 
@@ -191,7 +192,7 @@ test('chatAsksForAProjectWhenNoneIsOpen', () => {
 test('openProjectBindsWorkDir', async () => {
   const chat = stubChat({ messages: [QUESTION], projects: [project()] })
   render(<AppShell />)
-  expect(await screen.findByLabelText('Git-URL')).toBeInTheDocument()
+  expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
 
   fireEvent.click(await screen.findByRole('button', { name: 'demo' }))
 
@@ -200,7 +201,7 @@ test('openProjectBindsWorkDir', async () => {
   expect(screen.getByText('wo liegen die Dateien?')).toBeInTheDocument()
   expect(screen.getByTestId('chat-input')).toHaveFocus()
   // the project list is gone — opening a project opens its chat, it does not only remember it
-  expect(screen.queryByLabelText('Git-URL')).toBeNull()
+  expect(screen.queryByLabelText(content.projects.gitUrl)).toBeNull()
   const reads = chat.calls.filter(call => call.path.endsWith('/messages'))
   expect(reads.map(call => call.path)).toEqual(['/api/projects/demo-1a2b3c4/messages'])
 })
@@ -208,13 +209,13 @@ test('openProjectBindsWorkDir', async () => {
 test('theChatHeaderNamesTheProjectOnly', async () => {
   stubChat({ messages: [QUESTION] })
   render(<ChatPage project={project()} />)
-  const chat = await screen.findByRole('region', { name: 'Chat' })
+  const chat = await screen.findByRole('region', { name: content.chat.title })
   await flush()
 
   // the view IS the chat of a project, so its head names the project and nothing else — a second "Chat"
   // heading would only repeat the menu entry the user just clicked (R-WP-1)
   expect(within(chat).getByRole('heading', { name: 'demo' })).toBeInTheDocument()
-  expect(within(chat).queryByRole('heading', { name: 'Chat' })).toBeNull()
+  expect(within(chat).queryByRole('heading', { name: content.chat.title })).toBeNull()
   expect(within(chat).queryByText(/^Projekt:/)).toBeNull()
 })
 
@@ -327,10 +328,10 @@ test('oneChatPerProject', async () => {
     ],
   })
   render(<AppShell />)
-  expect(await screen.findByLabelText('Git-URL')).toBeInTheDocument()
+  expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
 
   fireEvent.click(await screen.findByRole('button', { name: 'demo' }))
-  const opened = await screen.findByRole('region', { name: 'Chat' })
+  const opened = await screen.findByRole('region', { name: content.chat.title })
   await screen.findByText(ANSWER.text)
 
   // the controls the chat has: one writes into THIS conversation, one ends its running turn (UC-WP-50) —
@@ -340,10 +341,14 @@ test('oneChatPerProject', async () => {
     .queryAllByRole('button')
     .filter(control => control.closest('.chat-tiles') === null)
     .map(control => control.textContent?.trim() ?? '')
-  expect(controls).toEqual(['Senden', 'Stop'])
-  expect(controls.filter(label => /neue|gespräch|dialog|verlauf|wechseln|öffnen|clear|lösch/i.test(label))).toEqual(
-    [],
-  )
+  expect(controls).toEqual([content.chat.send, content.chat.stop])
+  expect(
+    controls.filter(label =>
+      /neue|gespräch|dialog|verlauf|wechseln|öffnen|lösch|new|conversation|history|switch|open|delete|remove|clear/i.test(
+        label,
+      ),
+    ),
+  ).toEqual([])
   // the positive replacement: what the tiles add is exactly the two actions plus, for the one tile that
   // offers it, the read-only Blick — and nothing that selects a conversation: the roster is the only
   // thing a tile can address (UC-WP-49 adds a read, not a second conversation)
@@ -351,16 +356,22 @@ test('oneChatPerProject', async () => {
     .queryAllByRole('button')
     .filter(control => control.closest('.chat-tiles') !== null)
     .map(control => control.textContent?.trim() ?? '')
-  expect([...new Set(tileControls)].sort()).toEqual(['Blick', 'Clear', 'Compact'])
+  expect([...new Set(tileControls)].sort()).toEqual([
+    content.tiles.clear,
+    content.tiles.compact,
+    content.tiles.insight,
+  ])
 
   fireEvent.click(
-    within(screen.getByRole('navigation', { name: 'Ansichten' })).getByRole('button', { name: 'Projekte' }),
+    within(screen.getByRole('navigation', { name: content.nav.views })).getByRole('button', {
+      name: content.nav.projects,
+    }),
   )
   expect(screen.queryByTestId('chat-log')).toBeNull()
 
   // the list re-reads itself on mount, so the project has to be found again before it can be opened
   fireEvent.click(await screen.findByRole('button', { name: 'demo' }))
-  const again = await screen.findByRole('region', { name: 'Chat' })
+  const again = await screen.findByRole('region', { name: content.chat.title })
   await screen.findByText(ANSWER.text)
 
   // the same conversation, not a second one: one log, both lines once, one single read path
@@ -386,7 +397,7 @@ test('everyLineCarriesItsAuthor', async () => {
 
   // the own input has no agent relationship, so it names no agent — what it names is the role label the
   // doc gives a nameless user line (R-WP-25); the named case is UC-WP-48 below
-  expect(userAuthorsOnScreen()).toEqual(['YOU'])
+  expect(userAuthorsOnScreen()).toEqual([content.chat.you])
   expect(screen.queryByText(/System|Peon|Unbekannt/i)).toBeNull()
 })
 
@@ -411,7 +422,7 @@ test('withoutANameTheLineSaysYOU', async () => {
   await flush()
 
   // GIVEN no name set THEN the line says YOU — the doc's role label, not a guessed author
-  expect(userAuthorsOnScreen()).toEqual(['YOU'])
+  expect(userAuthorsOnScreen()).toEqual([content.chat.you])
   // a line the server left without an agent stays nameless (R-WP-4)
   const jonsLine = screen.getByTestId('chat-line-jon')
   expect(within(jonsLine).queryAllByTestId('chat-line-author')).toHaveLength(0)
@@ -421,7 +432,7 @@ test('withoutANameTheLineSaysYOU', async () => {
   fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'und ohne Namen' } })
   fireEvent.click(screen.getByTestId('chat-send'))
   expect(chat.countOf('/messages', 'POST')).toBe(1)
-  expect(userAuthorsOnScreen()).toEqual(['YOU', 'YOU'])
+  expect(userAuthorsOnScreen()).toEqual([content.chat.you, content.chat.you])
 })
 
 // UC-WP-48
@@ -506,15 +517,15 @@ test('tileStateFollowsTheStream', async () => {
   render(<ChatPage project={project()} />)
   await flush()
 
-  expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent('bereit')
+  expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.IDLE)
   const historyReads = chat.countOf('/messages', 'GET')
   const rosterReads = chat.countOf('/agents', 'GET')
 
   // the snapshot arrives on the wire and replaces the list — no second read of anything (R-WP-7)
   await chat.push(event('agents', { tiles: [tile('Jon', 'WORKING'), tile('Dev', 'COMPACTING')] }))
 
-  expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent('arbeitet')
-  expect(screen.getByTestId('tile-state-Dev')).toHaveTextContent('kompaktiert')
+  expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.WORKING)
+  expect(screen.getByTestId('tile-state-Dev')).toHaveTextContent(content.tiles.state.COMPACTING)
   expect(chat.countOf('/messages', 'GET')).toBe(historyReads)
   expect(chat.countOf('/agents', 'GET')).toBe(rosterReads)
   // and a tile that is not idle offers nothing any more (UC-WP-12's guard, seen from the screen)
@@ -605,7 +616,7 @@ test('aCompactingTileOffersNoStop', async () => {
   render(<ChatPage project={project()} />)
   await flush()
 
-  expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent('kompaktiert')
+  expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.COMPACTING)
   expect(screen.getByTestId('chat-stop')).toBeDisabled()
 })
 

@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import AppShell from '../../src/app/app.shell'
 import { ProjectPage } from '../../src/project/project.page'
 import { project } from '../shared/fixtures'
+import { content } from '../../src/shared/content'
 
 beforeEach(() => {
   cleanup()
@@ -59,17 +60,21 @@ test('showsExactlyThreeViews', async () => {
   render(<AppShell />)
 
   // the frame is a menu (R-WP-1): exactly the three views, the showing one marked with aria-current
-  const entries = within(screen.getByRole('navigation', { name: 'Ansichten' })).getAllByRole('button')
-  expect(entries.map(entry => entry.textContent)).toEqual(['Projekte', 'Chat', 'Einstellungen'])
+  const entries = within(screen.getByRole('navigation', { name: content.nav.views })).getAllByRole('button')
+  expect(entries.map(entry => entry.textContent)).toEqual([
+    content.nav.projects,
+    content.nav.chat,
+    content.nav.settings,
+  ])
   expect(entries[0]).toHaveAttribute('aria-current', 'page')
-  await screen.findByText('Kein Projekt')
+  await screen.findByText(content.projects.empty)
 })
 
 test('showsEmptyStateWhenRegistryIsEmpty', async () => {
   stubServer({ GET: [] })
   render(<ProjectPage onOpen={() => undefined} />)
 
-  expect(await screen.findByText('Kein Projekt')).toBeInTheDocument()
+  expect(await screen.findByText(content.projects.empty)).toBeInTheDocument()
 })
 
 // UC-WP-2
@@ -77,16 +82,16 @@ test('listsProjectAfterSuccessfulAdd', async () => {
   const added = project()
   const server = stubServer({ GET: [] })
   render(<ProjectPage onOpen={() => undefined} />)
-  await screen.findByText('Kein Projekt')
+  await screen.findByText(content.projects.empty)
 
   server.script = { GET: [added], POST: added, DELETE: undefined }
-  fireEvent.change(screen.getByLabelText('Git-URL'), {
+  fireEvent.change(screen.getByLabelText(content.projects.gitUrl), {
     target: { value: 'https://git.example.com/acme/demo.git' },
   })
-  fireEvent.click(screen.getByRole('button', { name: 'Hinzufügen' }))
+  fireEvent.click(screen.getByRole('button', { name: content.projects.add }))
 
   expect(await screen.findByText('demo')).toBeInTheDocument()
-  expect(screen.queryByText('Kein Projekt')).not.toBeInTheDocument()
+  expect(screen.queryByText(content.projects.empty)).not.toBeInTheDocument()
   const post = server.calls.filter(call => call.method === 'POST')
   expect(post).toHaveLength(1)
   expect(post[0].body).toContain('https://git.example.com/acme/demo.git')
@@ -99,15 +104,15 @@ test('showsGitErrorAtInputAndKeepsList', async () => {
     POST: new Error('fatal: repository not found'),
   })
   render(<ProjectPage onOpen={() => undefined} />)
-  await screen.findByText('Kein Projekt')
+  await screen.findByText(content.projects.empty)
 
-  fireEvent.change(screen.getByLabelText('Git-URL'), {
+  fireEvent.change(screen.getByLabelText(content.projects.gitUrl), {
     target: { value: 'https://git.example.com/acme/gone.git' },
   })
-  fireEvent.click(screen.getByRole('button', { name: 'Hinzufügen' }))
+  fireEvent.click(screen.getByRole('button', { name: content.projects.add }))
 
   expect(await screen.findByRole('alert')).toHaveTextContent('fatal: repository not found')
-  expect(screen.getByText('Kein Projekt')).toBeInTheDocument()
+  expect(screen.getByText(content.projects.empty)).toBeInTheDocument()
   expect(screen.queryByText('gone')).not.toBeInTheDocument()
 })
 
@@ -118,15 +123,15 @@ test('sameUrlReusesExistingClone', async () => {
   render(<ProjectPage onOpen={() => undefined} />)
   await screen.findByText('demo')
 
-  fireEvent.change(screen.getByLabelText('Git-URL'), {
+  fireEvent.change(screen.getByLabelText(content.projects.gitUrl), {
     target: { value: 'https://git.example.com/acme/demo/' },
   })
-  fireEvent.click(screen.getByRole('button', { name: 'Hinzufügen' }))
+  fireEvent.click(screen.getByRole('button', { name: content.projects.add }))
 
   await waitFor(() => expect(server.calls.filter(call => call.method === 'POST')).toHaveLength(1))
   expect(screen.queryByRole('alert')).toBeNull() // reuse is not an error (R-WP-2)
   expect(screen.getAllByText('demo')).toHaveLength(1)
-  expect(screen.getByLabelText('Git-URL')).toHaveValue('')
+  expect(screen.getByLabelText(content.projects.gitUrl)).toHaveValue('')
 })
 
 // UC-WP-30
@@ -136,18 +141,18 @@ test('credentialUrlRejectedAndNothingStored', async () => {
     POST: new Error('git urls must not carry credentials — public https repositories only'),
   })
   render(<ProjectPage onOpen={() => undefined} />)
-  await screen.findByText('Kein Projekt')
+  await screen.findByText(content.projects.empty)
 
-  fireEvent.change(screen.getByLabelText('Git-URL'), {
+  fireEvent.change(screen.getByLabelText(content.projects.gitUrl), {
     target: { value: 'https://user:token@git.example.com/acme/demo.git' },
   })
-  fireEvent.click(screen.getByRole('button', { name: 'Hinzufügen' }))
+  fireEvent.click(screen.getByRole('button', { name: content.projects.add }))
 
   const alert = await screen.findByRole('alert')
   expect(alert).toHaveTextContent('credentials')
   expect(alert.textContent).not.toContain('user')
   expect(alert.textContent).not.toContain('token')
-  expect(screen.getByText('Kein Projekt')).toBeInTheDocument()
+  expect(screen.getByText(content.projects.empty)).toBeInTheDocument()
 })
 
 // UC-WP-28
@@ -157,7 +162,7 @@ test('asksForConfirmationBeforeDelete', async () => {
   render(<ProjectPage onOpen={() => undefined} />)
   await screen.findByText('demo')
 
-  fireEvent.click(screen.getByRole('button', { name: 'Entfernen' }))
+  fireEvent.click(screen.getByRole('button', { name: content.projects.remove }))
 
   expect(confirmed).toHaveBeenCalledTimes(1)
   expect(screen.getByText('demo')).toBeInTheDocument()
@@ -170,9 +175,9 @@ test('removesProjectAfterConfirmation', async () => {
   await screen.findByText('demo')
 
   server.script = { GET: [], POST: undefined, DELETE: undefined }
-  fireEvent.click(screen.getByRole('button', { name: 'Entfernen' }))
+  fireEvent.click(screen.getByRole('button', { name: content.projects.remove }))
 
-  expect(await screen.findByText('Kein Projekt')).toBeInTheDocument()
+  expect(await screen.findByText(content.projects.empty)).toBeInTheDocument()
   expect(
     server.calls.some(call => call.method === 'DELETE' && call.path.includes('demo-1a2b3c4')),
   ).toBe(true)

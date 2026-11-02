@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { readFiles, type FileEntry, type FileRoot, type FilesResponse } from './files.client'
 import { errorMessage } from '../shared/api.client'
+import { content } from '../shared/content'
 import type { Project } from '../shared/dto'
 
 interface Props {
@@ -14,8 +15,8 @@ interface Props {
 }
 
 const ROOTS: { value: FileRoot; label: string }[] = [
-  { value: 'checkout', label: 'Checkout' },
-  { value: 'tmp', label: 'TMP' },
+  { value: 'checkout', label: content.files.roots.checkout },
+  { value: 'tmp', label: content.files.roots.tmp },
 ]
 
 /**
@@ -26,7 +27,7 @@ function suffixOf(entry: FileEntry): string {
   if (entry.directory) {
     return '/'
   }
-  return entry.symlink ? ' (link)' : ` (${entry.size} B)`
+  return entry.symlink ? content.files.linkSuffix : ` (${entry.size} B)`
 }
 
 /**
@@ -41,7 +42,8 @@ export function ProjectFiles({ project }: Props) {
   const [open, setOpen] = useState(false)
   const [root, setRoot] = useState<FileRoot>('checkout')
   const [path, setPath] = useState('')
-  const [content, setContent] = useState<FilesResponse | null>(null)
+  /** The one read of `root` + `path`: a directory listing or a file, never both. */
+  const [listing, setListing] = useState<FilesResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -52,14 +54,14 @@ export function ProjectFiles({ project }: Props) {
     readFiles(project.id, root, path)
       .then(loaded => {
         if (mounted) {
-          setContent(loaded)
+          setListing(loaded)
           setError(null)
         }
       })
       // a rejected path is a line of text where the content would have stood — no dialog, no retry
       .catch(reason => {
         if (mounted) {
-          setContent(null)
+          setListing(null)
           setError(errorMessage(reason))
         }
       })
@@ -85,13 +87,13 @@ export function ProjectFiles({ project }: Props) {
   return (
     <>
       <button type="button" className="chat-files-open" data-testid="files-open" onClick={() => setOpen(true)}>
-        Dateien
+        {content.files.open}
       </button>
       {open && (
-        <aside className="chat-files" aria-label="Dateien" data-testid="files-panel">
+        <aside className="chat-files" aria-label={content.files.title} data-testid="files-panel">
           <header className="chat-files-head">
             <span className="chat-files-project">{project.name}</span>
-            <div className="chat-files-roots" role="group" aria-label="Wurzel">
+            <div className="chat-files-roots" role="group" aria-label={content.files.root}>
               {ROOTS.map(option => (
                 <button
                   key={option.value}
@@ -106,7 +108,7 @@ export function ProjectFiles({ project }: Props) {
               ))}
             </div>
             <button type="button" data-testid="files-close" onClick={() => setOpen(false)}>
-              Schließen
+              {content.common.close}
             </button>
           </header>
           <p className="chat-files-path" data-testid="files-path">
@@ -117,10 +119,10 @@ export function ProjectFiles({ project }: Props) {
               {error}
             </p>
           )}
-          {content === null && error === null && <p className="hint">Lädt…</p>}
-          {content?.kind === 'directory' && (
+          {listing === null && error === null && <p className="hint">{content.common.loading}</p>}
+          {listing?.kind === 'directory' && (
             <ul className="chat-files-list" data-testid="files-list">
-              {content.entries.map(entry => (
+              {listing.entries.map(entry => (
                 <li key={entry.name}>
                   <button
                     type="button"
@@ -133,27 +135,27 @@ export function ProjectFiles({ project }: Props) {
                   </button>
                 </li>
               ))}
-              {content.entries.length === 0 && <li className="empty-state">Leerer Ordner</li>}
+              {listing.entries.length === 0 && <li className="empty-state">{content.files.emptyFolder}</li>}
             </ul>
           )}
-          {content?.kind === 'file' &&
-            (content.binary ? (
+          {listing?.kind === 'file' &&
+            (listing.binary ? (
               <p className="hint" data-testid="files-binary">
-                Binäre Datei ({content.size} B) — Inhalt wird nicht angezeigt.
+                {content.files.binary(listing.size)}
               </p>
             ) : (
               <pre className="chat-files-text" data-testid="files-text">
-                {content.text}
+                {listing.text}
               </pre>
             ))}
-          {content?.truncated && (
+          {listing?.truncated && (
             <p className="hint" data-testid="files-truncated">
-              Abgeschnitten — die Wurzel ist größer als diese Kante liefert.
+              {content.files.truncated}
             </p>
           )}
           {path !== '' && (
             <button type="button" data-testid="files-back" onClick={back}>
-              Zurück
+              {content.common.back}
             </button>
           )}
         </aside>

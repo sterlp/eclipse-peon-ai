@@ -188,3 +188,68 @@ leer. **WEIL** „warum hat Dev das gebaut?" sonst nur über die finale Antwort 
   Bedienelement zum Schreiben; Stop stoppt den laufenden Turn (Jon und Team) vollständig.
 - GIVEN ein Neustart WHEN der Blick geöffnet wird THEN ist er leer (R-WP-11) — kein zweiter
   Speicher und kein Mitschnitt im Jon-Chat.
+
+### R-WP-28 — Markdown-Streaming: markstream-react, Code mit react-shiki ❌ (Paul 2026-11-02)
+
+Antworten rendern als Markdown mit **Streaming-Unterstützung** (`markstream-react`): unvollständiges
+Markdown wird beim Streaming sauber gerendert, Code-Blöcke mit **react-shiki**; Fallback, falls
+markstream im Prototypen nicht hält: `react-markdown`. **Tool-Zeilen bleiben sichtbar** und stehen
+**inline im Verlauf** an der Stelle, wo sie passieren — nicht als separate Liste hinter dem Verlauf;
+kompakt (klein, grau, Tool-Zeilen gemerged wie in `chat.html`).
+
+#### UC-WP-54 — streamingMarkdownWithInlineToolLines ❌
+- GIVEN ein laufender Turn WHEN die Antwort streamt THEN wächst das Markdown sichtbar und bleibt
+  während des Streams lesbar — unvollständige Syntax-Bruchstücke erzeugen kein kaputtes Markup.
+- GIVEN Tool-Aktivität WHEN Zeilen erscheinen THEN stehen sie im Verlauf an ihrer Stelle, kompakt,
+  und bleiben nach dem Turn sichtbar.
+
+### R-WP-29 — Farben und Fließtext der Chat-Zeilen ❌ (Paul 2026-11-02)
+
+Die Zeile des Nutzers ist **blau** und **rechtsbündig** am Chat-Rand (wie `chat.html`: Label „You",
+blauer Linien-Akzent), Jons und die Antworten des Teams sind **grün** (Label = Agent-Name). Jons
+Antworten haben **keinen grauen Hintergrund-Block**, keine eingestreten Markierungen oder Cards im
+Fließtext; wo die Rolle wechselt, trennt eine **einfache Trennlinie** (`<hr>`). Antworten und Dateien
+sind **nicht mittig zentriert**.
+
+#### UC-WP-55 — colorsFollowChatHtmlBaseline ❌
+- GIVEN eine Nutzer- und eine Agent-Antwort WHEN beide im Verlauf stehen THEN trägt die Nutzer-Zeile
+  den blauen Akzent rechtsbündig, die Agent-Zeile den grünen — ohne grauen Hintergrund-Block; der
+  Rollenwechsel trennt per Trennlinie.
+
+### R-WP-30 — Eingabe: Enter ist Zeilenumbruch, Cmd/Ctrl+Enter sendet ❌ (Paul 2026-11-02)
+
+Im Eingabefeld (Textarea) macht **Enter eine neue Zeile**; **Cmd/Ctrl+Enter** sendet — so bleiben
+Mehrzeiler möglich. Der Send-Knopf bleibt die klickbare Alternative. Zusätzlich kann der Nutzer die
+**letzte gesendete Nachricht erneut senden**, ohne sie neu zu tippen — etwa nach einem Fehler
+(„Resend"); sie läuft wie jede Eingabe in die Queue ([R-WP-10](chat.md)), wenn ein Turn läuft.
+
+#### UC-WP-56 — enterNewlinesCtrlEnterSends ❌
+- GIVEN das Eingabefeld WHEN der Nutzer Enter drückt THEN entsteht eine neue Zeile; WHEN er
+  Cmd/Ctrl+Enter drückt THEN sendet die Eingabe.
+
+#### UC-WP-57 — resendWithoutNewInput ❌
+- GIVEN der Nutzer hat eine Nachricht gesendet WHEN er „Resend" wählt THEN geht dieselbe Nachricht
+  erneut in die Queue (auch nach einem Fehler), ohne dass er sie neu tippt.
+
+### R-WP-31 — Warte-Indikator während des Turns ❌ (Paul 2026-11-02)
+
+Während ein Turn läuft, zeigt der Chat eine kompakte **Warte-Leiste** („Waiting for AI…" wie im
+Plugin: sticky am unteren Rand, dunkel, Mono, blinkender Cursor) mit dem Live-Preview des Streams;
+der Idle-Zustand endet mit dem Turn.
+
+#### UC-WP-58 — waitingIndicatorShowsLiveState ❌
+- GIVEN ein laufender Turn WHEN er noch nichts geliefert hat THEN zeigt die Warte-Leiste „Waiting for
+  AI…"; WHEN der Stream liefert THEN wechselt sie auf das Live-Preview und endet mit dem Turn.
+
+### R-WP-32 — Kacheln als Reihe oben, Klick öffnet den Blick ❌ (Paul 2026-11-02)
+
+Die Agenten-Kacheln ([R-WP-7](chat.md)) stehen **oben nebeneinander in einer Reihe** — der
+Agenten-Name als Titel, Kontext, Status und Clear-/Compact darunter. Sie haben einen **Hover-Zustand**,
+und ein **Klick auf die Kachel** öffnet den schreibgeschützten Blick ([R-WP-26](chat.md)) — nicht
+erst ein separater Link.
+
+#### UC-WP-59 — tilesRowLayoutClickOpensInsight ❌
+- GIVEN der Chat-View WHEN er geöffnet wird THEN stehen die Kacheln als Reihe mit Name als Titel und
+  den Actions darunter.
+- GIVEN eine Kachel WHEN der Nutzer sie klickt THEN öffnet sich der Blick ([R-WP-26](chat.md)), mit
+  sichtbarem Hover-Zustand.

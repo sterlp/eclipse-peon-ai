@@ -1,5 +1,7 @@
 import type { FormEvent, RefObject } from 'react'
 
+import { content } from '../shared/content'
+
 interface Props {
   draft: string
   /** The page focuses the field when the project opens — so the ref stays with the page's effect. */
@@ -22,14 +24,14 @@ export function ChatComposer({ draft, inputRef, busy, onDraftChange, onSubmit, o
       <input
         ref={inputRef}
         type="text"
-        aria-label="Nachricht"
+        aria-label={content.chat.message}
         data-testid="chat-input"
-        placeholder="Nachricht an Jon"
+        placeholder={content.chat.messageToJon}
         value={draft}
         onChange={event => onDraftChange(event.target.value)}
       />
       <button type="submit" data-testid="chat-send" disabled={draft.trim() === ''}>
-        Senden
+        {content.chat.send}
       </button>
       <button
         type="button"
@@ -38,7 +40,7 @@ export function ChatComposer({ draft, inputRef, busy, onDraftChange, onSubmit, o
         disabled={!busy}
         onClick={() => void onStop()}
       >
-        Stop
+        {content.chat.stop}
       </button>
     </form>
   )

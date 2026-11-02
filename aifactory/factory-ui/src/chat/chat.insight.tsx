@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 
-import { readTranscript, type AgentTranscript, type TranscriptKind } from './chat.agents.client'
+import { readTranscript, type AgentTranscript } from './chat.agents.client'
 import { errorMessage } from '../shared/api.client'
+import { content } from '../shared/content'
 
 interface Props {
   /** The project whose runtime holds this agent — the read is addressed by project and tile name. */
@@ -9,12 +10,6 @@ interface Props {
   /** The tile's name as the roster sends it: the server resolves it, this component never maps a name. */
   name: string
   onClose: () => void
-}
-
-const KIND_LABEL: Record<TranscriptKind, string> = {
-  user: 'Eingang',
-  agent: 'Antwort',
-  tool: 'Werkzeug',
 }
 
 /**
@@ -54,14 +49,14 @@ export function ChatInsight({ projectId, name, onClose }: Props) {
   }, [projectId, name])
 
   return (
-    <aside className="chat-insight" aria-label={`Blick in ${name}`} data-testid="insight-panel">
+    <aside className="chat-insight" aria-label={content.insight.title(name)} data-testid="insight-panel">
       <header className="chat-insight-head">
         <span className="chat-insight-agent" data-testid="insight-agent">
           {name}
         </span>
-        <span className="chat-insight-readonly">schreibgeschützt</span>
+        <span className="chat-insight-readonly">{content.insight.readOnly}</span>
         <button type="button" data-testid="insight-close" onClick={onClose}>
-          Schließen
+          {content.common.close}
         </button>
       </header>
       {error !== null && (
@@ -69,12 +64,12 @@ export function ChatInsight({ projectId, name, onClose }: Props) {
           {error}
         </p>
       )}
-      {transcript === null && error === null && <p className="hint">Lädt…</p>}
+      {transcript === null && error === null && <p className="hint">{content.common.loading}</p>}
       {transcript !== null && (
         <>
           {transcript.lines.length === 0 ? (
             <p className="empty-state" data-testid="insight-empty">
-              Kein Gespräch — dieser Agent hat in diesem Lauf noch keines.
+              {content.insight.empty}
             </p>
           ) : (
             <ul className="chat-insight-list" data-testid="insight-list">
@@ -85,7 +80,7 @@ export function ChatInsight({ projectId, name, onClose }: Props) {
                   data-kind={line.kind}
                   data-testid="insight-line"
                 >
-                  <span className="chat-insight-kind">{KIND_LABEL[line.kind]}</span>
+                  <span className="chat-insight-kind">{content.insight.kind[line.kind]}</span>
                   <span className="chat-insight-text">{line.text}</span>
                 </li>
               ))}
@@ -93,7 +88,7 @@ export function ChatInsight({ projectId, name, onClose }: Props) {
           )}
           {transcript.truncated && (
             <p className="hint" data-testid="insight-truncated">
-              Ältere Zeilen fallen weg — die Kante liefert nur die letzten.
+              {content.insight.truncated}
             </p>
           )}
         </>

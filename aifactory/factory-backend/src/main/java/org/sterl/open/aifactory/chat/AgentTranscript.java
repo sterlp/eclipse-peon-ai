@@ -104,6 +104,6 @@ final class AgentTranscript {
 
     /** {@code text()} throws on a result that is not one text — this edge never fails on a tool's payload. */
     private static String resultTextOf(ToolExecutionResultMessage result) {
-        return result.hasSingleText() ? result.text() : "[kein Text]";
+        return result.hasSingleText() ? result.text() : "[no text]";
     }
 }

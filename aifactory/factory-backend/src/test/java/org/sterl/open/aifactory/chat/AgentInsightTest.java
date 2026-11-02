@@ -34,7 +34,10 @@ import org.springframework.web.client.RestTemplate;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 
 import org.sterl.llmpeon.agent.AiAgent;
@@ -293,6 +296,29 @@ class AgentInsightTest {
         assertThat(planLines.get(planLines.size() - 1))
                 .as("and the newest is there")
                 .isEqualTo("PLAN-ZEILE-501");
+    }
+
+    @Test
+    void anEmptyLineIsNamedInEnglish() {
+        // a tool result the core cannot read as one text — the placeholder is the only word the browser
+        // gets for it, so it is a UI text riding the wire (R-WP-27)
+        ToolExecutionResultMessage multiPart = ToolExecutionResultMessage.builder()
+                .id("call_multi")
+                .toolName("shellRunCommand")
+                .contents(List.of(TextContent.from("first part"), TextContent.from("second part")))
+                .build();
+        assertThat(multiPart.hasSingleText())
+                .as("the seeded payload is the one case that needs a placeholder")
+                .isFalse();
+
+        AgentTranscriptDto insight = AgentTranscript.of(AiDevAgent.NAME, List.<ChatMessage>of(multiPart));
+
+        assertThat(insight.lines())
+                .as("the line stays a line — the reader learns there was a result")
+                .hasSize(1);
+        assertThat(insight.lines().get(0).text())
+                .as("and it is named in English, like every other text of this product")
+                .isEqualTo("shellRunCommand: [no text]");
     }
 
     // ------------------------------------------------------------------ the scripted delegation

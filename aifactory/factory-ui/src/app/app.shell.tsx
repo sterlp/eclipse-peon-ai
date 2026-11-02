@@ -7,6 +7,7 @@ import { ConfigPage } from '../config/config.page'
 import { ProjectFiles } from '../project/project.files'
 import { ProjectPage } from '../project/project.page'
 import type { Project } from '../shared/dto'
+import { content } from '../shared/content'
 import { readUserName } from '../shared/user.name'
 import '../styles.css'
 
@@ -20,7 +21,7 @@ export default function AppShell() {
   return (
     <div className="app">
       <header className="app-header">
-        <span className="app-title">Open AI Factory</span>
+        <span className="app-title">{content.brand}</span>
         <AppNav active={view} onSelect={setView} />
         <AppUser user={user} onChange={setUser} />
       </header>

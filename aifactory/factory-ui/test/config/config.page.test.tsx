@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import { ConfigPage } from '../../src/config/config.page'
+import { content } from '../../src/shared/content'
 import type { Settings } from '../../src/config/config.client'
 
 const KEY = 'sk-file-secret-0123456789'
@@ -95,14 +96,16 @@ test('settingsShowsMaskedConfig', async () => {
   const server = stubServer({ GET: settingsAnswer() })
   const { container } = render(<ConfigPage />)
 
-  expect(await valueOf('Provider')).toBe('OPEN_AI')
-  expect(await valueOf('Modell')).toBe('gpt-demo')
-  expect(await valueOf('URL')).toBe('https://api.example.com/v1')
-  expect(await valueOf('Token-Fenster')).toBe('64000')
-  expect(await valueOf('Timeout')).toBe('45')
-  expect(await valueOf('Think senden')).toBe('nein')
-  expect(screen.getByText('gesetzt')).toBeInTheDocument()
-  expect(screen.getByText('Quelle: Datei')).toBeInTheDocument()
+  expect(await valueOf(content.config.provider)).toBe('OPEN_AI')
+  expect(await valueOf(content.config.model)).toBe('gpt-demo')
+  expect(await valueOf(content.config.url)).toBe('https://api.example.com/v1')
+  expect(await valueOf(content.config.tokenWindow)).toBe('64000')
+  expect(await valueOf(content.config.timeout)).toBe('45')
+  expect(await valueOf(content.config.sendThinking)).toBe('no')
+  expect(screen.getByText(content.config.keySet)).toBeInTheDocument()
+  expect(
+    screen.getByText(`${content.config.keySource}: ${content.config.source.FILE}`),
+  ).toBeInTheDocument()
 
   expect(screen.queryByText(/sk-/)).toBeNull()
   expect(container.textContent).not.toContain('sk-')
@@ -116,8 +119,10 @@ test('settingsShowsMaskedConfig', async () => {
   stubServer({ GET: settingsAnswer({ keySource: 'ENV', model: 'env-model' }) })
   render(<ConfigPage />)
 
-  expect(await valueOf('Modell')).toBe('env-model')
-  expect(screen.getByText('Quelle: Umgebungsvariable')).toBeInTheDocument()
+  expect(await valueOf(content.config.model)).toBe('env-model')
+  expect(
+    screen.getByText(`${content.config.keySource}: ${content.config.source.ENV}`),
+  ).toBeInTheDocument()
 })
 
 // UC-WP-23
@@ -126,10 +131,12 @@ test('showsKeyStatusOfAnUnsetKey', async () => {
   const { container } = render(<ConfigPage />)
 
   // an unknown value is an empty field, never the word "null" — and empty means "unchanged"
-  expect(await valueOf('Modell')).toBe('')
+  expect(await valueOf(content.config.model)).toBe('')
   expect(container.textContent).not.toContain('null')
-  expect(screen.getByText('nicht gesetzt')).toBeInTheDocument()
-  expect(screen.getByText('Quelle: keine')).toBeInTheDocument()
+  expect(screen.getByText(content.config.keyMissing)).toBeInTheDocument()
+  expect(
+    screen.getByText(`${content.config.keySource}: ${content.config.source.NONE}`),
+  ).toBeInTheDocument()
 })
 
 // UC-WP-24
@@ -141,8 +148,8 @@ test('settingsOverrideNeverWritesSharedStore', async () => {
   const { container } = render(<ConfigPage />)
   await screen.findByDisplayValue('gpt-demo')
 
-  fireEvent.change(screen.getByLabelText('Modell'), { target: { value: 'new-model' } })
-  fireEvent.click(screen.getByRole('button', { name: 'Speichern' }))
+  fireEvent.change(screen.getByLabelText(content.config.model), { target: { value: 'new-model' } })
+  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
 
   const put = server.calls.find(call => call.method === 'PUT')
   expect(put?.path).toBe('/api/settings')
@@ -154,18 +161,20 @@ test('settingsOverrideNeverWritesSharedStore', async () => {
   expect(Object.keys(sent)).not.toContain('apiKey')
 
   // the answer of the server is the stored state: the key row says "gesetzt" without ever holding one
-  expect(await screen.findByText('gesetzt')).toBeInTheDocument()
-  expect(screen.getByText('Quelle: Datei')).toBeInTheDocument()
-  expect(screen.getByLabelText('Key')).toHaveValue('')
+  expect(await screen.findByText(content.config.keySet)).toBeInTheDocument()
+  expect(
+    screen.getByText(`${content.config.keySource}: ${content.config.source.FILE}`),
+  ).toBeInTheDocument()
+  expect(screen.getByLabelText(content.config.key)).toHaveValue('')
   expect(controlValues(container).some(value => value.includes('sk-'))).toBe(false)
 
   // a rejected save names the field and keeps what was typed (nothing of the answer is a value)
   server.script.PUT = new Error('provider must name one of the supported providers')
-  fireEvent.change(screen.getByLabelText('Modell'), { target: { value: 'kept-model' } })
-  fireEvent.click(screen.getByRole('button', { name: 'Speichern' }))
+  fireEvent.change(screen.getByLabelText(content.config.model), { target: { value: 'kept-model' } })
+  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
 
   expect(await screen.findByRole('alert')).toHaveTextContent('provider')
-  expect(screen.getByLabelText('Modell')).toHaveValue('kept-model')
+  expect(screen.getByLabelText(content.config.model)).toHaveValue('kept-model')
 })
 
 test('showsErrorMessageWhenSettingsCannotLoad', async () => {
