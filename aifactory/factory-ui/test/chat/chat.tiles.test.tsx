@@ -6,10 +6,11 @@ import { content } from '../../src/shared/content'
 import type { AgentAction, AgentTile, AgentTileState } from '../../src/chat/chat.agents.client'
 
 /**
- * The tile row as the screen shows it (R-WP-7). Drawn from a fixture roster, because what these tests
- * guard is the <em>reading</em> of the server's answer: the number is shown as the core formatted it, a
- * missing number becomes a dash, and the capability set alone decides which buttons exist — no agent name
- * is written anywhere in this file, and a rule that moved into the UI would show up here as a red test.
+ * The tile row as the screen shows it (R-WP-7, R-WP-32). Drawn from a fixture roster, because what these
+ * tests guard is the <em>reading</em> of the server's answer: the number is shown as the core formatted it,
+ * a missing number becomes a dash, and the capability set alone decides which buttons exist and which tile
+ * is a door — no agent name is written anywhere in this file, and a rule that moved into the UI would show
+ * up here as a red test.
  */
 function tile(
   name: string,
@@ -126,3 +127,140 @@ test('actionNamesTheTileItWasClickedOn', () => {
     ['Jon', 'compact'],
   ])
 })
+
+// UC-WP-59
+test('tilesAreARowWithTheNameAsTitle', () => {
+  renderTeam()
+
+  // the order the eye reads: name, then number and status, then the actions — one under the other
+  const dev = screen.getByTestId('tile-Dev')
+  const parts = Array.from(dev.querySelectorAll('.chat-tile-face > *')).map(part => part.className)
+  expect(parts).toEqual(['chat-tile-name', 'chat-tile-meta', 'chat-tile-actions'])
+  // number and status share the line under the title, the actions the line under that
+  expect(dev.querySelector('.chat-tile-meta [data-testid="tile-context-Dev"]')).not.toBeNull()
+  expect(dev.querySelector('.chat-tile-meta [data-testid="tile-state-Dev"]')).not.toBeNull()
+  expect(dev.querySelector('.chat-tile-actions [data-testid="tile-clear-Dev"]')).not.toBeNull()
+  // the row itself is a row, and the title stands out of it (jsdom lays out nothing, the sheet does)
+  expect(declarations('.chat-tiles'), 'the tiles stand side by side').toContain('display: flex')
+  expect(declarations('.chat-tile-face'), 'name, state and actions read one under the other')
+    .toContain('flex-direction: column')
+  expect(declarations('.chat-tile-name'), 'the name is the title of the tile').toContain('font-weight')
+})
+
+// UC-WP-59
+test('clickingATileOpensTheInsight', () => {
+  const inspections = vi.fn()
+  render(
+    <ChatTiles
+      tiles={[tile('Dev', 'IDLE', { capabilities: ['CONTEXT', 'CLEAR', 'COMPACT', 'TRANSCRIPT'] })]}
+      onAction={vi.fn()}
+      onInspect={inspections}
+    />,
+  )
+
+  // the tile is the door — no separate link has to be hit first (R-WP-32)
+  const face = screen.getByTestId('tile-open-Dev')
+  expect(face).toHaveAttribute('role', 'button')
+  expect(face).toHaveAttribute('tabindex', '0')
+  expect(screen.getByRole('button', { name: content.tiles.open('Dev') })).toBe(face)
+
+  fireEvent.click(face)
+  expect(inspections).toHaveBeenCalledTimes(1)
+  expect(inspections).toHaveBeenCalledWith('Dev')
+
+  // the keyboard opens the same door: a rule that only worked for a mouse would exclude half the users
+  fireEvent.keyDown(face, { key: 'Enter' })
+  fireEvent.keyDown(face, { key: ' ' })
+  expect(inspections).toHaveBeenCalledTimes(3)
+  // a key that means something else stays the browser's — Space must not scroll away under the tile
+  fireEvent.keyDown(face, { key: 'Tab' })
+  expect(inspections).toHaveBeenCalledTimes(3)
+
+  // the hover is the visible promise of the click, and it is only drawn for a tile that opens something
+  expect(declarations('.chat-tile-open'), 'a clickable tile reads as clickable').toContain('cursor: pointer')
+  expect(declares('.chat-tile-open:hover'), 'the tile answers the pointer before it is clicked').toBe(true)
+  expect(declares('.chat-tile-face:hover'), 'a tile with no door promises nothing').toBe(false)
+})
+
+// UC-WP-59
+test('clearDoesNotOpenTheInsight', () => {
+  const inspections = vi.fn()
+  const actions = vi.fn()
+  render(
+    <ChatTiles
+      tiles={[tile('Dev', 'IDLE', { capabilities: ['CONTEXT', 'CLEAR', 'COMPACT', 'TRANSCRIPT'] })]}
+      onAction={actions}
+      onInspect={inspections}
+    />,
+  )
+
+  fireEvent.click(screen.getByTestId('tile-clear-Dev'))
+  fireEvent.click(screen.getByTestId('tile-compact-Dev'))
+
+  expect(actions.mock.calls).toEqual([
+    ['Dev', 'clear'],
+    ['Dev', 'compact'],
+  ])
+  // the action is the one thing the click must never become: Clear is not the Blick
+  expect(inspections).not.toHaveBeenCalled()
+
+  // the same for a key held on a focused action, which would otherwise reach the tile's own handler
+  fireEvent.keyDown(screen.getByTestId('tile-clear-Dev'), { key: 'Enter' })
+  expect(inspections).not.toHaveBeenCalled()
+})
+
+// UC-WP-59
+test('tilesWithoutTranscriptAreNotClickable', () => {
+  const inspections = vi.fn()
+  render(
+    <ChatTiles
+      tiles={[tile('Jon', 'IDLE'), tile('Search', 'IDLE', { capabilities: [], context: null })]}
+      onAction={vi.fn()}
+      onInspect={inspections}
+    />,
+  )
+
+  // neither a door nor the look of one — the capability set is the whole rule (D-14, R-WP-26)
+  for (const name of ['Jon', 'Search']) {
+    const tileElement = screen.getByTestId(`tile-${name}`)
+    const faces = tileElement.querySelectorAll('.chat-tile-face')
+    expect(faces, `${name} has a tile to read`).toHaveLength(1)
+    expect(faces[0], `${name} opens nothing`).not.toHaveClass('chat-tile-open')
+    expect(faces[0], `${name} opens nothing`).not.toHaveAttribute('role')
+    expect(faces[0], `${name} opens nothing`).not.toHaveAttribute('tabindex')
+    expect(tileElement.querySelector('[role="button"]'), `${name} is no door`).toBeNull()
+
+    fireEvent.click(tileElement)
+    fireEvent.keyDown(tileElement, { key: 'Enter' })
+  }
+  expect(inspections).not.toHaveBeenCalled()
+})
+
+/**
+ * The sheet the tiles are painted with (R-WP-32). jsdom lays out nothing and resolves no custom property,
+ * so a row and a hover are read where they are written — same rule as `chat.page.test.tsx`.
+ */
+const SHEETS = import.meta.glob('../../src/*.css', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+}) as Record<string, string>
+
+function styles(): string {
+  return SHEETS['../../src/styles.css']
+}
+
+/** The declarations a sheet gives one selector, up to a nested rule — a selector it does not name fails. */
+function declarations(selector: string): string {
+  const source = styles()
+  const at = source.indexOf(`${selector} {`)
+  expect(at, `${selector} is styled at all`).toBeGreaterThanOrEqual(0)
+  const body = source.slice(at + selector.length + 2)
+  const end = body.search(/[{}]/)
+  return body.slice(0, end === -1 ? body.length : end)
+}
+
+/** Whether a sheet names a rule for this selector at all — the question behind "that look is absent". */
+function declares(selector: string): boolean {
+  return styles().includes(`${selector} {`)
+}

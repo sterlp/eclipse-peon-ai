@@ -365,17 +365,19 @@ test('oneChatPerProject', async () => {
       ),
     ),
   ).toEqual([])
-  // the positive replacement: what the tiles add is exactly the two actions plus, for the one tile that
+  // the positive replacement: what the tiles add is exactly the two actions and, for the one tile that
   // offers it, the read-only Blick — and nothing that selects a conversation: the roster is the only
-  // thing a tile can address (UC-WP-49 adds a read, not a second conversation)
-  const tileControls = within(opened)
-    .queryAllByRole('button')
-    .filter(control => control.closest('.chat-tiles') !== null)
+  // thing a tile can address (UC-WP-49 adds a read, not a second conversation). R-WP-32 moved that Blick
+  // onto the tile itself, so the door is the tile and no longer a button beside it.
+  const tileActions = [...opened.querySelectorAll('.chat-tile-actions button')]
     .map(control => control.textContent?.trim() ?? '')
-  expect([...new Set(tileControls)].sort()).toEqual([
-    content.tiles.clear,
-    content.tiles.compact,
-    content.tiles.insight,
+    .filter(label => label !== '')
+  expect([...new Set(tileActions)].sort()).toEqual([content.tiles.clear, content.tiles.compact])
+  const tileDoors = [...opened.querySelectorAll('.chat-tile-face[role="button"]')].map(
+    door => door.getAttribute('aria-label') ?? '',
+  )
+  expect(tileDoors, 'only the tile with TRANSCRIPT opens a conversation').toEqual([
+    content.tiles.open('Plan'),
   ])
 
   fireEvent.click(

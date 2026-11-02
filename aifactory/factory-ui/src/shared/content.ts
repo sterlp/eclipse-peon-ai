@@ -78,7 +78,8 @@ export const content = {
     },
     noContext: 'no own context',
     budget: (percent: number, budget: number): string => `${percent}% of budget ${budget}`,
-    insight: 'Insight',
+    /** The tile's own door — the accessible name of a tile that opens its agent's conversation. */
+    open: (name: string): string => `Open ${name}'s conversation`,
     clear: 'Clear',
     compact: 'Compact',
   },

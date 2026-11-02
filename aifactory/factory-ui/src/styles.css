@@ -196,7 +196,8 @@ button {
   overflow-wrap: anywhere;
 }
 
-/* Kacheln: eine je Agent, Kopf des Chat-Views — Zahl, Status und Knöpfe kommen vom Server (R-WP-7). */
+/* Tiles: eine je Agent, in einer Reihe am Kopf des Chat-Views — Name als Titel, Zahl, Status und Knöpfe
+   darunter (R-WP-7, R-WP-32). Das Listenelement bleibt die Liste, die Fläche darin ist die Kachel. */
 .chat-tiles {
   list-style: none;
   margin: 0 0 1rem;
@@ -207,12 +208,43 @@ button {
 
   .chat-tile {
     display: flex;
-    align-items: center;
-    gap: 0.35rem;
+  }
+
+  .chat-tile-face {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
     border: 1px solid var(--border);
     border-radius: 0.4rem;
-    padding: 0.25rem 0.45rem;
+    padding: 0.3rem 0.5rem;
     font-size: 0.82rem;
+  }
+
+  /* nur eine Kachel, die etwas öffnen kann, darf auch so aussehen — der Hover ist das Versprechen */
+  .chat-tile-open {
+    cursor: pointer;
+  }
+
+  .chat-tile-open:hover {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+  }
+
+  .chat-tile-open:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .chat-tile-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .chat-tile-actions {
+    display: flex;
+    gap: 0.3rem;
   }
 
   .chat-tile-name {
