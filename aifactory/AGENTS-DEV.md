@@ -353,3 +353,41 @@
   `git status` und ein voller Testlauf.
 - **Nach Inc 7b: Backend 193** (174 + 19), **UI 110 Tests / 14 Dateien** (104/13), Doc-Lint **0 Findings**
   bei UC 63/63 (UC-WP-44/45 sind belegt, UC-WP-46 durch die Agent-Datei + UI).
+
+
+## Inc 7b-Followup (Zyklus 2026-11-02) — Sperre, Doku-Kommentar, fehlende UI-Fälle
+
+- **Der Overlay ist der einzige Leser der Agent-Datei** — die Factory bindet `agents/` **nie** in den Kern
+  ein (`new AgentService(` gibt es nur im Plugin/Core-Tests). Kommentar in `AgentConfigFile` sagt jetzt
+  genau das. Nebenbefund, festgehalten: dieselbe Dir ist die Custom-Agent-Dir des Kerns
+  (`AgentService.reloadAgentConfig` → `new CustomAgent(...)`), ein Einhängen der Dir würde sechs
+  Slot-„Agenten" erzeugen; heute wirkungslos, die sechs Slots sind über `AgentSlots` gepinnt (Q9).
+- **Read-modify-write braucht eine Sperre, und der Beweis dafür ist die Lese-Seite**: `AgentConfigFile`
+  hält ein `ReadWriteLock` pro Datei (`ConcurrentHashMap`-Key = normalisierter Pfad, also eine Sperre je
+  Slot). `save()` = `Files.writeString` (trunkiert, nicht atomar) → ein Leser mitten im Schreiben sieht
+  einen **leeren Kopf** und meldet „kein Override". Mutation (write-Lock raus) macht **beide** neuen Tests
+  rot — auch `aSlotBeingWrittenAlwaysReadsAsAWholeHead`, obwohl der Leser sein Read-Lock behält: eine
+  Lese-Sperre allein beweist nichts gegen einen nicht sperrenden Schreiber.
+- **`AgentConfigFile.Changes` sind fünf gleich typisierte String-Positionen** (`model, url, apiKey, think,
+  temperature`): `"high"` an der apiKey-Position kompiliert still und fällt erst in der Assertion
+  („round 0 kept the think level"). Bei Datei-Tests immer gegen `CustomAgent`-Schlüssel gegenprüfen, nicht
+  gegen das Gefühl.
+- **Race-Test-Mechanik**: `CyclicBarrier(n)` + `Executors.newFixedThreadPool(n)` pro Runde, 24 Runden
+  (eine Runde kann das Fenster by luck verfehlen), Ergebnis-Latch als `AtomicBoolean` (nur `set(true)`,
+  nie `set(!…)` — sonst überschreibt die letzte Runde den Fund). `List<Future<?>> running =
+  stream.map(t -> pool.submit(runnable))` kompiliert **nicht** (capture#1) → `var`. `try (ExecutorService)`
+  ab Java 19 möglich, Repo fährt 21.
+- **Der 400-Fall „Key + Remove key" ist im UI real erreichbar** — Reihenfolge zählt: erst ins Key-Feld
+  tippen, **dann** „Remove key" ⇒ beide Intent reisen, der Server lehnt ab (der umgekehrte Weg wird durch
+  die UI-Regel annulliert). Test also ohne Double: echter Klickpfad + `rejectWith`-Stub, assertions auf
+  Meldung (`role="alert"`), auf den Body (`apiKey` **und** `removeApiKey`) und darauf, dass das Feld den
+  Tipp behält. „Tippen hebt die Entfernung auf" ist erst bewiesen, wenn der **Body** des folgenden PUT kein
+  `removeApiKey` trägt (Probe: Guard raus ⇒ genau dieser eine Test rot).
+- **`trimBody` ist auf `ConfigPatch` typisiert** (gemeinsame Feldnamen beider Ebenen; `SettingsPatch` und
+  `AgentPatch` extenden sie). Probe: `temperture:` in `patchOf` ⇒ `TS2561` bei `npx tsc -b` — `object` als
+  Parametertyp war der Grund, warum der Tippfehler durchgelaufen wäre.
+- **Nach dem Followup: Backend 195** (193 + 2), **UI 112 Tests / 14 Dateien** (110/14), Doc-Lint **0
+  Findings**, UC 63/63, 218 Test-Ids. **Kein Marker geflippt** (UC-WP-44/45/46 bleiben ❌ — flippt Jon).
+- **`eclipseInsertLines` kann Importe verdoppeln** (Insert nach Zeile 10 + anschließendes Replace der-
+  selben Zeile ⇒ `import java.util.List;` zweimal): duplizierte Single-Type-Imports sind **legal**, javac
+  meckert nicht — nach Insert+Replace-Combos die Import-Region lesen.
