@@ -331,11 +331,11 @@ button {
   border-left-color: var(--agent);
 }
 
-/* The person's line reads from the right edge of the flow, blue, with its accent on the outer side. */
+/* The person's line is blue the way the agent's is green: the same accent, the same side, in the flow of
+   the text — no right edge and no second line of its own (R-WP-29). The 3px it paints come from the line
+   rule above, so the base rule stays the one owner of the accent's width. */
 .chat-log .chat-line.user {
-  border-right: 3px solid var(--user);
-  padding-right: 0.6rem;
-  text-align: right;
+  border-left-color: var(--user);
 }
 
 /* A failed turn is a line of the conversation and nobody's speech: the problem colour, no name above it,

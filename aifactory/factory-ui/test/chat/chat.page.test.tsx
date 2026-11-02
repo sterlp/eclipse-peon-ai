@@ -669,7 +669,7 @@ test('aCompactingTileOffersNoStop', async () => {
 })
 
 // UC-WP-55
-test('userLineIsBlueAndRightAligned', async () => {
+test('userLineCarriesTheBlueAccentOnTheLeft', async () => {
   stubChat({ messages: [QUESTION, ANSWER] })
   render(<ChatPage project={project()} />)
   await flush()
@@ -679,11 +679,16 @@ test('userLineIsBlueAndRightAligned', async () => {
   expect(line.className).not.toContain('agent')
 
   // what colour a line has is no fact of the DOM: the sheet paints it. The class the row carries has to be
-  // the class the sheet paints, and the token it paints has to be the blue of chat.html (R-WP-29).
+  // the class the sheet paints, and the token it paints has to be the blue of chat.html (R-WP-29). The doc
+  // line that asked for the right edge was the source of F2 — the two assertions that pinned it now pin
+  // its opposite, so the old contract is inverted here and not dropped.
   const painted = declarations('.chat-log .chat-line.user')
   expect(painted, 'the accent of the person is the user token').toContain('var(--user)')
-  expect(painted, 'the line reads from the right edge of the flow').toContain('border-right')
-  expect(painted).toContain('text-align: right')
+  expect(painted, 'the accent sits on the left, like the agent accent').toContain('border-left')
+  expect(painted, 'no second accent on the right edge').not.toContain('border-right')
+  expect(painted, 'the line reads in the flow, not against it').not.toContain('text-align: right')
+  expect(declarations('.chat-log .chat-line'), 'and the width of the accent stays with the line rule')
+    .toContain('border-left: 3px solid transparent')
   expect(tokenValues('--user')[0], 'the blue of chat.html, not a lookalike').toBe('#0969da')
 })
 
@@ -746,6 +751,14 @@ test('agentLineHasNoGrayBlock', async () => {
     expect(declarations(selector), `${selector} paints no surface`).not.toMatch(/background|--code-bg/)
   }
   expect(declares('.chat-line.jon'), 'the gray block of the jon line is gone').toBe(false)
+  // and the same rule keeps the chat in the flow: the log is no centred column, a line is no centred card
+  // (R-WP-29, UC-WP-55 — Paul: nothing centred, nothing framed)
+  expect(declarations('.chat-log'), 'the log centres nothing').not.toMatch(
+    /justify-content: center|place-items: center/,
+  )
+  expect(declarations('.chat-log .chat-line'), 'a line centres nothing of itself').not.toMatch(
+    /text-align: center|margin: 0 auto/,
+  )
 })
 
 // UC-WP-54

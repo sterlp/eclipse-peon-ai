@@ -206,16 +206,18 @@ kompakt (klein, grau, Tool-Zeilen gemerged wie in `chat.html`).
 
 ### R-WP-29 — Farben und Fließtext der Chat-Zeilen ✅ (Paul 2026-11-02; Korrektur auf Akzent-links in Runde 2, Inc 4)
 
-Die Zeile des Nutzers ist **blau** und **rechtsbündig** am Chat-Rand (wie `chat.html`: Label „You",
-blauer Linien-Akzent), Jons und die Antworten des Teams sind **grün** (Label = Agent-Name). Jons
-Antworten haben **keinen grauen Hintergrund-Block**, keine eingestreten Markierungen oder Cards im
-Fließtext; wo die Rolle wechselt, trennt eine **einfache Trennlinie** (`<hr>`). Antworten und Dateien
-sind **nicht mittig zentriert**.
+Beide Stimmen stehen **im Fluss** und tragen ihre Farbkante **links** — die Kante ist der **Akzent der
+Zeile**, kein Rahmen um den Chat (wie `chat.html`: Label „You" blau, Agent-Label grün). Keine Zeile ist
+**rechtsbündig**, nichts ist **mittig zentriert**. Jons Antworten haben **keinen grauen
+Hintergrund-Block** und keine eingestreuten Markierungen oder Cards im Fließtext; wo die Rolle wechselt,
+trennt **eine** einfache Trennlinie (`<hr>`) — nie zwei.
 
 #### UC-WP-55 — colorsFollowChatHtmlBaseline ✅
 - GIVEN eine Nutzer- und eine Agent-Antwort WHEN beide im Verlauf stehen THEN trägt die Nutzer-Zeile
-  den blauen Akzent rechtsbündig, die Agent-Zeile den grünen — ohne grauen Hintergrund-Block; der
-  Rollenwechsel trennt per Trennlinie.
+  den blauen Akzent **links** (nicht rechtsbündig), die Agent-Zeile den grünen — ohne grauen
+  Hintergrund-Block.
+- GIVEN dieselben beiden Zeilen WHEN zwischen ihnen die Rolle wechselt THEN trennt **genau eine**
+  Trennlinie, und keine der beiden Zeilen ist mittig zentriert.
 
 ### R-WP-30 — Eingabe: Enter ist Zeilenumbruch, Cmd/Ctrl+Enter sendet ✅ (Paul 2026-11-02)
 
@@ -293,7 +295,7 @@ dass sein Turn gescheitert ist). Zwei Fehlschläge sind **zwei** Fehlerzeilen �
   weiterhin im Verlauf (derselbe Bestand wie vor dem Reload).
 
 
-### R-WP-35 — Der Chat scrollt, die Eingabe steht unten ❌ (Runde 2, Inc 3)
+### R-WP-35 — Der Chat scrollt, die Eingabe steht unten ✅ (Runde 2, Inc 3)
 
 Der Chat ist eine **Fläche mit eigenem Scroll**: der Verlauf scrollt in seiner **eigenen** Fläche,
 während die **Kachel-Reihe oben** und die **Eingabe unten** stehen bleiben — die Warte-Leiste
@@ -301,7 +303,7 @@ während die **Kachel-Reihe oben** und die **Eingabe unten** stehen bleiben — 
 wenn der Nutzer **unten** steht; wer oben nachliest, wird nicht nach unten gerissen. Die Fläche behält
 ihre volle Breite ([R-WP-1](ui.md)) — der Scroll gehört dem Verlauf, nicht der Seite.
 
-#### UC-WP-66 — chatScrollsWithFixedComposer ❌
+#### UC-WP-66 — chatScrollsWithFixedComposer ✅
 - GIVEN ein Chat mit langem Verlauf WHEN die Seite geöffnet wird THEN scrollt der Verlauf in seiner
   eigenen Fläche, und Kachel-Reihe wie Eingabe bleiben sichtbar.
 - GIVEN der Nutzer steht am Ende des Verlaufs WHEN eine neue Zeile erscheint THEN scrollt der Verlauf

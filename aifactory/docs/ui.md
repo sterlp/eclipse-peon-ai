@@ -12,8 +12,9 @@ Eine schlanke Browser-App mit Top-Navigation, die unter `/ui/` ausgeliefert wird
 
 **Look — Bootstrap + eigenes Theme (Paul 2026-11-02):** Basis ist **Bootstrap** mit eigenem Theme; die
 Farben und die kompakte Optik kommen aus der alten `chat.html` des Plugins — Nutzer-Zeile blau
-(`#0969da`, dunkel `#58a6ff`), Agent-Zeile grün (`#1a7f37`, dunkel `#7ee787`), flache kompakte Zeilen
-statt Bubbles, Tool-/Think-Zeilen klein und grau, Komponenten als `react-bootstrap`-Einzelimporte,
+(`#0969da`, dunkel `#58a6ff`), Agent-Zeile grün (`#1a7f37`, dunkel `#7ee787`), **Akzent beider Stimmen
+links** (keine Rechtsbündigkeit, kein Rahmen um den Chat — die Kante gehört der Zeile), flache kompakte
+Zeilen statt Bubbles, Tool-/Think-Zeilen klein und grau, Komponenten als `react-bootstrap`-Einzelimporte,
 Icons als `bootstrap-icons`. Der Chat nutzt die **volle Fensterbreite abzüglich eines kleinen Randes**
 — kein zentrierter Container, keine statischen Seitenränder (Befund Paul: genau das wollte er nicht).
 `stara-web` bleibt Referenz für Wirkung (Abstände, Motion), **kein Abhängigkeitsziel** — nichts wird
