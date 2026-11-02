@@ -277,3 +277,39 @@
   `closingThePanelForgetsThePositionInIt`; `position: fixed` am Panel → `theChatStaysVisibleWhileTheViewerIsOpen`.
 
 
+
+
+## Inc 7a (Zyklus 2026-11-02) — Config: Dreizustands-Draht, Remove key, Provider-Defaults
+
+- **`-Dtest='A+B'` läuft ohne Tests durch** (gemessen, surefire 3.6): `+` ist kein Separator, und
+  zusammen mit `-Dsurefire.failIfNoSpecifiedTests=false` endet der Lauf mit `BUILD SUCCESS` und **null**
+  Tests — ohne `Tests run:`-Zeile. Trenner ist das Komma, und die `Tests run:`-Zeile ist die Assertion,
+  dass überhaupt etwas lief (sonst beweist ein grüner Subset-Lauf nichts).
+- **`FileLlmConfigStore.put(key, blank)` löscht bereits** — die explizite `blank → remove`-Zeile in
+  `FactoryConfigService.apply` ist deshalb ein **äquivalenter Mutant**: sie wegzulassen lässt alle Tests
+  grün. UC-WP-46s Löschung ist über den Store bewiesen; die Zeile bleibt als Intention, nicht als Schutz.
+- **Dreizustands-Draht erzwingt Text im Request**: `tokenWindow`, `timeoutSeconds`, `sendThinking` sind im
+  Schreibmodell `String` (das dritte Zustandsmerkmal `""` muss darstellbar sein); Parsing und Bereichs-
+  grenzen sitzen in `FactoryConfigService.validate` (`Integer.MAX_VALUE` für tokenWindow, weil der Core
+  `parseInt` liest; Timeout `Long`). Nicht behaupten, Jackson konvertiert Zahlen — die Seite ist der einzige
+  Client (Zahlen-Felder sind bewusst `type="text"` + `inputMode="numeric"`: ein `type="number"` meldet
+  eigenen Müll als leer, und leer löscht jetzt den Wert).
+- **`apiKey` und `removeApiKey` gleichzeitig abgelehnt** (400, `KEY_INTENT_HINT`): der Schreibreihenfolge
+  nach würde ein einziger Body den Key setzen und sofort wieder löschen. UI-Seite: Tippen in das
+  Key-Feld löscht die vorgemerkte Entfernung (beide Regeln sind gepinnt; vorher war keine davon bewiesen).
+- **Provider-Defaults kommen aus dem Core, mit einem dritten Feld**: `ProviderDefaults(name, defaultUrl,
+  thinkSupported)` — UC-WP-62 braucht die Think-Fähigkeit, und eine zweite Provider-Liste im UI verbietet
+  D-10. `ThinkSupport` ist sealed; **nur `GOOGLE_GEMINI` und `MISTRAL`** antworten `ThinkSupport.None`
+  (`Unknown` zählt als unterstützt). `defaultBaseUrl()` ist nur für OLLAMA/LM_STUDIO/GITHUB_MODELS/
+  GITHUB_COPILOT nicht null — die GithubModels-URL trägt das Wort "models", also niemals
+  `doesNotContain("model")` asserten.
+- **Proben-Lehren**: (a) eine `perl -0pi`-Mutation erst mit `diff` gegen die Sicherung prüfen — ein
+  nicht passender Anker beweist still nichts (drei Proben waren so); (b) bleibt eine Probe grün, kann es
+  ein äquivalenter Mutant sein (siehe Store-`put`), nicht zwingend eine Testlücke; (c) "Reset nach dem
+  Speichern" ist erst bewiesen, wenn ein **zweiter** Save folgt, und "Tippen hebt die Entfernung auf" erst
+  mit einer Assertion auf den Body des darauffolgenden PUT.
+- **Das Repo hat keine Prettier-Konfiguration** (`lint` = nur oxlint): `npx prettier` nach Default
+  schreibt die ganze Datei um (Double Quotes, Semikolons). Entweder weglassen oder
+  `--no-semi --single-quote --print-width 100` plus `git diff --stat`-Prüfung.
+- **Nach Inc 7a: Backend 174** (config-Klassen 13→19 und 4→7), **UI 104 Tests / 13 Dateien**, Doc-Lint
+  2 Findings (UC-WP-44/45 = Inc 7b).
