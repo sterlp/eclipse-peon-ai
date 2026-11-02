@@ -443,3 +443,39 @@
   kaputt — der folgende Testlauf war grün, weil er den Rückbau gemessen hat. Sicherung erst vom finalen Stand
   (`<datei>.hard`), und nach jedem Restore `git status --short <datei>` und Diff gegen HEAD, bevor etwas als
   „grün" gilt.
+
+
+
+## Inc 5 (Zyklus 2026-11-02, Runde 2) — Datei-Tab am Panel, Viewer-Zeilen einfach
+
+- **Shikis Zeilen-Umbruch ist ein Textknoten, kein Box-Modell** (gemessen an `@shikijs/core@4.6.0`,
+  `dist/index.mjs:898-906`): bei `structure === "classic"` liegt **zwischen** jeder
+  `<span class="line">` ein Textknoten `"\n"` im `<code>`. In einem `<pre>` (`white-space: pre`) ist
+  dieses `\n` der Zeilenumbruch — eine Regel `.code-view .line { display: block }` setzt die Box **nach**
+  dem Umbruch, also entsteht pro Zeile eine **zweite, leere Zeile** (F6). Code-Viewer-Regeln deshalb nie
+  an `.line` schreiben; die Zeilenhöhe steht auf `.code-view pre`.
+- **Ein `position: fixed`-Tab mit Prozent-`top` kann nie bündig sein** (F5): er hängt am Viewport, das
+  Panel an einer Flex-Zeile. Der Tab hängt an `.chat-workspace` (`position: absolute; top: 0`), dessen
+  `position: relative` aus **Inc 3** kommt — Reihenfolge der Inkremente ist hier Abhängigkeit. Der
+  geschlossene Tab sitzt damit am rechten Rand der **Chat-Fläche**, der offene an der Panelkante
+  (`right: var(--files-width)` / `--files-wide`) und wandert mit der Breite mit.
+- **`max-height: calc(100vh - …)` ist seit der festen Shell (Inc 3) falsch**: es schneidet das Panel
+  unterhalb des Rahmens ab. Korrekte Form: `min-height: 0` + `overflow-y: auto` (Zeilen scrorren im Panel,
+  die Höhe kommt aus der Zeile).
+- **`perl -0pi` als Mutations-Probe ist eine Fallgrube** (gemessen, Inc 5): `{`/`}` in
+  `s{…}{…}`-Delimits sprengen die One-Liner, die Fehlermeldung geht nach **stderr** — und ein
+  nachgeschaltetes `| grep` verbirgt sie. Der Lauf war grün, weil die Mutation **nie** angewendet wurde.
+  Proben jetzt mit `python3` + `assert s.count(old) == 1` (Abbruch bei verfehltem Anker) und **`diff`
+  vor** dem Testlauf; erst dann zählt ein Grün.
+- **Blatt-Beweis für zwei Zeilenhöhe in jsdom**: DOM-Form + Sheet-Vertrag zusammen — drei `.line`-Knoten,
+  genau zwei `\n`-Textknoten dazwischen (`childNodes`-Filter), und `declares('.code-view .line') === false`.
+  Layout misst jsdom nicht.
+- **Proben Inc 5** (je genau die erwarteten Tests rot): `display: block` wieder rein →
+  `codeLinesAreNotDoubled`; `position: fixed` am Tab → `filesTabSitsOnThePanelTop` +
+  `theChatStaysVisibleWhileTheViewerIsOpen`; `top: 30%` → `filesTabSitsOnThePanelTop`; offener Tab
+  `right: 0` → `filesTabSitsOnThePanelTop`; `max-height` am Panel → `filesTabSitsOnThePanelTop`;
+  `position: relative` an `.chat-workspace` raus → `filesTabSitsOnThePanelTop` + `theLogIsTheScrollArea`.
+- **Nach Inc 5: Backend 202** (unverändert — kein Backend-Code), **UI 123 Tests / 16 Dateien** (121/15),
+  `tsc` + oxlint 0/0, Doc-Lint **66/66 UCs, 235 Test-Ids, 0 Findings**. Sheet-Helfer sind jetzt
+  **eine** Datei: `test/shared/sheets.ts` exportiert zusätzlich `appSheet()` (Rohtext für verschachtelte
+  Regeln); die lokale Kopie in `project.files.test.tsx` ist entfallen.
