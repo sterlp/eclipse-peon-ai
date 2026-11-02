@@ -39,6 +39,17 @@ export async function listProviders(): Promise<Provider[]> {
 }
 
 /**
+ * The field names both config levels may send. `trimBody` is typed on this rather than on `object`: a
+ * field the server does not know must fail the build, not travel as a typo that silently changes nothing.
+ */
+export interface ConfigPatch {
+  model?: string
+  url?: string
+  apiKey?: string
+  removeApiKey?: boolean
+}
+
+/**
  * A save. Every visible field is text because the wire carries *three* states (R-WP-16, UC-WP-46):
  * absent leaves the file alone, empty *deletes* the value, a value sets it. A number or a boolean
  * has no empty state, which is why token window, timeout and think are text here and parsed by the
@@ -47,15 +58,11 @@ export async function listProviders(): Promise<Provider[]> {
  * The key is the documented exception: write-only and never prefilled, so empty means unchanged and
  * only `removeApiKey` deletes it (UC-WP-24 GIVEN 2, UC-WP-63).
  */
-export interface SettingsPatch {
+export interface SettingsPatch extends ConfigPatch {
   provider?: string
-  model?: string
-  url?: string
-  apiKey?: string
   tokenWindow?: string
   timeoutSeconds?: string
   sendThinking?: string
-  removeApiKey?: boolean
 }
 
 export async function updateSettings(patch: SettingsPatch): Promise<Settings> {
@@ -71,7 +78,7 @@ export async function updateSettings(patch: SettingsPatch): Promise<Settings> {
  * it, empty is not a value but a request to leave the stored key alone. The agent section saves by the
  * same rule, which is why this is the one body-shaper of the component (R-WP-16).
  */
-export function trimBody(patch: object): Record<string, unknown> {
+export function trimBody(patch: ConfigPatch): Record<string, unknown> {
   const sent: Record<string, unknown> = {}
   for (const [field, value] of Object.entries(patch)) {
     if (value === undefined || value === null) {

@@ -5,12 +5,13 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
 
 ## ⏳ selbst entschieden (2026-10-25/26) — bitte überfliegen
 
-* **⏳ Dev-Modell wird gespeichert, aber vom Core nicht angewandt** (2026-11-02, aus dem 7a-Bau) —
-  [R-WP-23](config.md) zeigt je Agent ein Modell-Feld; für den Slot `dev` erzwingt der Core
-  (`devAgentConfig()`) aber das Basismodell — die gespeicherte Überschreibung wirkt nicht. Decision:
-  Feld bleibt und speichert doc-konform (`agents/dev/AGENT.md`); kein UI-Hinweis, kein
-  Core-Workaround. *Andersfall:* soll Devs Modell wirklich wirken, ist das eine Core-Story (Proposal
-  mit WARUM) — dann UC in config.md nachziehen.
+* **⏳ Dev-Modell/URL/Key werden gespeichert, aber vom Core nicht angewandt** (2026-11-02, aus dem
+  7a/7b-Bau) — [R-WP-23](config.md) zeigt je Agent Modell, URL und Key; für den Slot `dev` liest der
+  Core nur das Basismodell (`devAgentConfig()`) — gespeicherte Überschreibungen von Modell, URL und
+  Key wirken nicht (der UI-Status `keySet` für Dev ist also nur Anzeige). Decision: Felder bleiben und
+  speichern doc-konform (`agents/dev/AGENT.md`); kein UI-Hinweis, kein Core-Workaround. *Andersfall:*
+  sollen Devs Werte wirklich wirken, ist das eine Core-Story (Proposal mit WARUM) — dann UC in
+  config.md nachziehen.
 * **⏳ „Chat" öffnet das zuletzt aktive Projekt** (2026-11-02, meine Empfehlung, Rückversicherung
   ausstehend) — [R-WP-1](ui.md): Top-Menü „Chat" ohne aktives Projekt → Projekte; mit aktivem Projekt
   → dessen Chat. *Andersfall:* „Chat" führt immer auf die Projektliste (keine Abkürzung) oder es

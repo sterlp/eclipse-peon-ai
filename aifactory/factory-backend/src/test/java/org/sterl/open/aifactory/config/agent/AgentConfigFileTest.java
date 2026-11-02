@@ -7,7 +7,14 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
+import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +37,9 @@ class AgentConfigFileTest {
             This is the slot's own prompt.
             Never rewrite it.
             """;
+
+    /** A single round can miss the race window by luck; the per-file lock has to hold in every one. */
+    private static final int ROUNDS = 24;
 
     @TempDir
     Path home;
@@ -181,8 +191,76 @@ class AgentConfigFileTest {
                 .isEqualTo(EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
     }
 
+    /**
+     * A save reads, mutates and rewrites the whole head, so two saves of one slot may not interleave —
+     * both fields are in the file afterwards, in every round. Without the per-file lock the second writer
+     * parses before the first has written, and one of the two fields is simply lost.
+     */
+    @Test
+    // UC-WP-44
+    void twoConcurrentSavesBothLeaveTheirField() throws Exception {
+        for (int round = 0; round < ROUNDS; round++) {
+            race(
+                    () -> file("dev").write(new Changes(false, "gpt-5", null, null, null, null)),
+                    () -> file("dev").write(new Changes(false, null, null, null, "high", null)));
+
+            Values values = file("dev").read();
+            assertThat(values.model()).as("round " + round + " kept the model").isEqualTo("gpt-5");
+            assertThat(values.think()).as("round " + round + " kept the think level").isEqualTo("high");
+        }
+    }
+
+    /**
+     * The other half of the same lock: a read arriving while the slot is written must never land in the
+     * moment the file is truncated. An empty head answers "no override", and the turn of whoever loaded
+     * it would run on the default config while the file says otherwise.
+     */
+    @Test
+    // UC-WP-44
+    void aSlotBeingWrittenAlwaysReadsAsAWholeHead() throws Exception {
+        write("dev", "---\nmodel: gpt-5\n---\n");
+        AtomicBoolean sawAnEmptyHead = new AtomicBoolean();
+
+        for (int round = 0; round < ROUNDS; round++) {
+            race(
+                    () -> file("dev").write(new Changes(false, "gpt-4", null, null, null, null)),
+                    () -> file("dev").write(new Changes(false, null, null, null, "high", null)),
+                    () -> {
+                        if (!file("dev").read().overridden()) {
+                            sawAnEmptyHead.set(true);
+                        }
+                    });
+        }
+
+        assertThat(sawAnEmptyHead).isFalse();
+    }
+
     private AgentConfigFile file(String slot) {
         return AgentConfigFile.forSlot(factoryHome, slot);
+    }
+
+    /**
+     * Runs the tasks against one slot as close together as the machine allows — the interleaving is the
+     * point, so they start on a barrier and the first failure surfaces as the test's own failure.
+     */
+    private static void race(Runnable... tasks) throws Exception {
+        CyclicBarrier together = new CyclicBarrier(tasks.length);
+        try (ExecutorService threads = Executors.newFixedThreadPool(tasks.length)) {
+            var running = Arrays.stream(tasks).map(task -> threads.submit(() -> {
+                try {
+                    together.await();
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(interrupted);
+                } catch (BrokenBarrierException unstarted) {
+                    throw new IllegalStateException(unstarted);
+                }
+                task.run();
+            })).toList();
+            for (var done : running) {
+                done.get(30, TimeUnit.SECONDS);
+            }
+        }
     }
 
     private String text(String slot) {

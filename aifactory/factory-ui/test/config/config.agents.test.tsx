@@ -38,7 +38,12 @@ type Call = { method: string; path: string; body?: string }
  * its body. Honest limit, as in `config.page.test.tsx` — the answers are stubbed, so this view cannot go
  * red from a backend mutation; the file itself is proven by `AgentConfigFileTest`.
  */
-function stubServer(initial: { slots: AgentSettings[]; saved?: AgentSettings }): {
+function stubServer(initial: {
+  slots: AgentSettings[]
+  saved?: AgentSettings
+  /** set to make every PUT answer as the server refuses it — the 400 path of R-WP-16 */
+  rejectWith?: string
+}): {
   calls: Call[]
   body: (method: string) => Record<string, unknown>
 } {
@@ -49,6 +54,9 @@ function stubServer(initial: { slots: AgentSettings[]; saved?: AgentSettings }):
       const method = (init?.method ?? 'GET').toUpperCase()
       calls.push({ method, path: String(input), body: init?.body as string | undefined })
       if (method === 'PUT') {
+        if (initial.rejectWith) {
+          return response(400, { status: 400, error: 'Bad Request', message: initial.rejectWith })
+        }
         return response(200, initial.saved ?? initial.slots[0])
       }
       return response(200, initial.slots)
@@ -205,4 +213,63 @@ test('anAgentKeyIsNeverPrefilledAndOnlyTheButtonRemovesIt', async () => {
   const written = server.body('PUT')
   expect(written).toMatchObject({ overridden: true, removeApiKey: true })
   expect(JSON.stringify(written)).not.toContain('apiKey')
+})
+
+/**
+ * R-WP-16 as config.md writes it: „im UI hebt Tippen ins Key-Feld eine vorgemerkte Entfernung auf". The
+ * proof is the body of the save that follows — the row can look right while still sending the deletion.
+ */
+// R-WP-16
+test('typingAKeyCancelsTheQueuedRemoval', async () => {
+  const server = stubServer({
+    slots: [agent({ overridden: true, keySet: true })],
+    saved: agent({ overridden: true, keySet: true }),
+  })
+
+  render(<Agents />)
+
+  const slot = await waitFor(() => row())
+  fireEvent.click(within(slot).getByRole('button', { name: content.config.removeKey }))
+  expect(within(slot).getByText(content.config.removeKeyQueued)).toBeTruthy()
+
+  fireEvent.change(within(slot).getByLabelText(content.config.key), { target: { value: KEY } })
+  // the row stops promising a deletion it will not send
+  expect(within(slot).queryByText(content.config.removeKeyQueued)).toBeNull()
+
+  fireEvent.click(within(slot).getByRole('button', { name: content.agents.save }))
+  await waitFor(() => expect(server.calls.some((call) => call.method === 'PUT')).toBe(true))
+  const written = server.body('PUT')
+  expect(written).toMatchObject({ overridden: true, apiKey: KEY })
+  expect(JSON.stringify(written)).not.toContain('removeApiKey')
+})
+
+/**
+ * The two intents really can be typed — a key first, „Remove key" second — and the page shows the refusal
+ * it earns: the server's message on the screen, what was typed still in the field, the slot not rewritten
+ * from an answer that never came. (That the file stayed untouched is `AgentSettingsTest`'s proof.)
+ */
+// R-WP-16
+test('aRefusedSaveSaysWhyAndKeepsWhatWasTyped', async () => {
+  const refused = 'apiKey and removeApiKey are two answers — send one'
+  const server = stubServer({
+    slots: [agent({ overridden: true, keySet: true })],
+    rejectWith: refused,
+  })
+
+  render(<Agents />)
+
+  const slot = await waitFor(() => row())
+  fireEvent.change(within(slot).getByLabelText(content.config.key), { target: { value: KEY } })
+  fireEvent.click(within(slot).getByRole('button', { name: content.config.removeKey }))
+  fireEvent.click(within(slot).getByRole('button', { name: content.agents.save }))
+
+  // both intents travelled — the refusal answers this body, it is not a guard of the UI
+  await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('two answers'))
+  expect(server.body('PUT')).toMatchObject({ apiKey: KEY, removeApiKey: true })
+
+  // the draft survives the failure: the message names the field to fix, nothing has to be retyped
+  expect((within(row()).getByLabelText(content.config.key) as HTMLInputElement).value).toBe(KEY)
+  await waitFor(() =>
+    expect(within(row()).getByRole('button', { name: content.agents.save })).toBeTruthy(),
+  )
 })

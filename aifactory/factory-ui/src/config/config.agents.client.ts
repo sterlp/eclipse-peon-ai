@@ -1,5 +1,5 @@
 import { request } from '../shared/api.client'
-import { trimBody } from './config.client'
+import { trimBody, type ConfigPatch } from './config.client'
 
 /**
  * One agent slot as the server reads it from its file (R-WP-23). `overridden` is no stored flag but the
@@ -23,14 +23,10 @@ export interface AgentSettings {
  * page never intends for a visible field. `overridden: false` is the clear of the whole slot and needs no
  * field at all (UC-WP-45).
  */
-export interface AgentPatch {
+export interface AgentPatch extends ConfigPatch {
   overridden: boolean
-  model?: string
-  url?: string
   think?: string
   temperature?: string
-  apiKey?: string
-  removeApiKey?: boolean
 }
 
 export async function listAgents(): Promise<AgentSettings[]> {

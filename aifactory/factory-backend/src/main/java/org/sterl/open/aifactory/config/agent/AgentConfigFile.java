@@ -9,6 +9,9 @@ import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.sterl.llmpeon.agent.CustomAgent;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -17,11 +20,17 @@ import org.sterl.llmpeon.prompt.model.SimplePromptFile;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
- * The config file of one agent slot: {@code <home>/agents/<id>/AGENT.md} — the directory the core
- * resolves below its config dir for an agent, and the file {@code AgentService} picks up, so the
- * factory writes where the core reads and defines no format of its own (D-11). Read and write run
- * through the core's {@link PromptYmlParser} and {@link SimplePromptFile}: the five canonical
- * {@link CustomAgent} keys in the frontmatter, the prompt body never touched.
+ * The config file of one agent slot: {@code <home>/agents/<id>/AGENT.md}. Only the factory reads it —
+ * {@code FactoryConfigService} lays the file over the loaded config (D-11); the factory never hands this
+ * directory to the core, so "the core reads this file" is <em>not</em> true and nothing may depend on it.
+ * What comes from the core is the format: read and write run through {@link PromptYmlParser} and
+ * {@link SimplePromptFile}, the five canonical {@link CustomAgent} keys in the frontmatter, the prompt
+ * body never touched.
+ *
+ * <p>One consequence to know before the directory is ever wired into the core: it <em>is</em> the core's
+ * custom-agent directory, and {@code AgentService} turns every entry in it into a custom agent named
+ * after its folder — six agents the factory does not run. Harmless today, and {@code AgentSlots} pins the
+ * six slots (Q9), so keeping the file where R-WP-23 puts it costs nothing.</p>
  *
  * <p>Reading creates nothing — a factory that never overrode anything has no {@code agents} folder at
  * all, and the config page is opened far more often than an override is saved. Writing creates the
@@ -41,6 +50,16 @@ public class AgentConfigFile {
     public static final List<String> CONFIG_KEYS = List.of(
             CustomAgent.MODEL, CustomAgent.URL, CustomAgent.API_KEY, CustomAgent.THINK,
             CustomAgent.TEMPERATURE);
+
+    /**
+     * Serialises the read-modify-write per file, for the same reason {@code FactoryConfigService} locks
+     * its own: a save parses, mutates and rewrites the whole head, so two interleaved saves lose one
+     * writer's field, and a reader that arrives between the truncate and the write of {@code save()} sees
+     * an empty head and reports an un-overridden slot. Shared for readers because the config page and
+     * every turn read all six slots; keyed by file so one slot's save never waits for another's and the
+     * map holds one entry per slot.
+     */
+    private static final Map<Path, ReadWriteLock> LOCKS = new ConcurrentHashMap<>();
 
     private final Path file;
 
@@ -100,15 +119,21 @@ public class AgentConfigFile {
 
     /** The stored values, or all-null for a file that is not there. Never writes, never creates. */
     public Values read() {
-        SimplePromptFile parsed = parse();
-        if (parsed == null) {
-            return new Values(null, null, null, null, null);
+        ReadWriteLock lock = lock();
+        lock.readLock().lock();
+        try {
+            SimplePromptFile parsed = parse();
+            if (parsed == null) {
+                return new Values(null, null, null, null, null);
+            }
+            return new Values(parsed.firstOrDefault(CustomAgent.MODEL, null),
+                    parsed.firstOrDefault(CustomAgent.URL, null),
+                    parsed.firstOrDefault(CustomAgent.API_KEY, null),
+                    parsed.firstOrDefault(CustomAgent.THINK, null),
+                    parsed.firstOrDefault(CustomAgent.TEMPERATURE, null));
+        } finally {
+            lock.readLock().unlock();
         }
-        return new Values(parsed.firstOrDefault(CustomAgent.MODEL, null),
-                parsed.firstOrDefault(CustomAgent.URL, null),
-                parsed.firstOrDefault(CustomAgent.API_KEY, null),
-                parsed.firstOrDefault(CustomAgent.THINK, null),
-                parsed.firstOrDefault(CustomAgent.TEMPERATURE, null));
     }
 
     /**
@@ -118,6 +143,17 @@ public class AgentConfigFile {
      * when it actually carried something).
      */
     public void write(Changes changes) {
+        ReadWriteLock lock = lock();
+        lock.writeLock().lock();
+        try {
+            apply(changes);
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    /** The save itself — only ever called under the write lock, which is what makes it atomic. */
+    private void apply(Changes changes) {
         SimplePromptFile parsed = parse();
         boolean existed = parsed != null;
         SimplePromptFile target = existed ? parsed
@@ -149,6 +185,12 @@ public class AgentConfigFile {
             return;
         }
         save(target);
+    }
+
+    /** One lock per file — the readers of the six slots share it, a writer holds it alone. */
+    private ReadWriteLock lock() {
+        return LOCKS.computeIfAbsent(file.toAbsolutePath().normalize(),
+                path -> new ReentrantReadWriteLock());
     }
 
     private SimplePromptFile parse() {

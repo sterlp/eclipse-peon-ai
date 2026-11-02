@@ -133,8 +133,8 @@ Die Config-Seite listet die **sechs Slots, die die Factory fährt** — die Agen
 Review, Search und den Config-Slot **Compact** (kein Agent, gleiche Bedienung) unter dem Default. Je Agent gibt es genau eine
 Checkbox **„überschreiben"** — reine Bedienhilfe; nur bei gesetztem Haken werden die
 Config-Felder dieses Agenten eingeblendet. Der Haken ist **kein gespeicherter Wert**: er ist gesetzt,
-sobald die Agent-Datei mindestens ein Config-Feld trägt (Provider, Modell, URL, Key, Think, Temperatur …
-— nicht id/name/description) ([Agent-Dateien](../../org.sterl.llmpeon.core/docs/builtin-agent-prompt-tracked.md), V2).
+sobald die Agent-Datei mindestens ein Config-Feld trägt (Modell, URL, Key, Think, Temperatur …
+— nicht id/name/description; der Provider ist kein Agent-Feld) ([Agent-Dateien](../../org.sterl.llmpeon.core/docs/builtin-agent-prompt-tracked.md), V2).
 
 - Haken gesetzt: ein leeres Feld erbt den Default (Feld für Feld, wie R-DEF-1/2 im Plugin); Keys bleiben
   maskiert wie in R-WP-16.
