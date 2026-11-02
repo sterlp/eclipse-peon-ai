@@ -75,3 +75,22 @@
 * `eclipseEditFile`/`eclipseReplaceLines` mit einer Teilzeile als `oldString` haben schon Nachbarzeilen
   beschädigt — nach jedem Edit die Region neu lesen.
 
+
+
+## UI-Inkremente (Zyklus 2026-11-02, Inc 1a)
+
+- **Bootstrap liegt als npm-Paket bei** (bootstrap 5.3.8, react-bootstrap 2.10.10, bootstrap-icons
+  1.13.2 — laufen ohne Peer-Fehler gegen React 19). `vite.config.ts` setzt `css: false`, also sind
+  CSS-Importe in Vitest gestubbet: kein Bootstrap-Einfluss auf Tests. Im Produktions-Build landet
+  Bootstrap **zuerst**, dann `index.css`-Tokens, dann `styles.css` (geprüft am dist-CSS:
+  `.app-nav` bei Offset 309 k von 315 k) — deshalb gewinnt das eigene Theme ohne `!important`.
+- **`Nav.Link as="button"`** rendert `<button class="nav-link">` und setzt bei `active` nur die Klasse,
+  **nicht** `aria-current`; die Markierung muss die Komponente selbst setzen, sonst ist „welcher
+  Eintrag zeigt" nicht testbar.
+- **Doc-Lint-Baseline ist nicht 0 Findings:** Jons Docs-first Stand (uncommitted) definiert 18 UCs mit
+  ❌, die erst spätere Inkremente abdecken ⇒ `lintDocsAndTests` meldet 18 UNBELEGT bei UC 63/63. Ein
+  Inkrement ist findings-frei, wenn es **keine neuen** Findings erzeugt und seine eigenen UCs aus der
+  Liste nimmt — nicht bei 0.
+- **`[ERROR] Surefire is going to kill self fork JVM … 30 s after System.exit(0)`** im Backend-Lauf ist
+  bestehendes Teardown-Rauschen: `mvn -o clean test` endet trotzdem mit `BUILD SUCCESS`, exit 0,
+  `Tests run: 156, Failures: 0, Errors: 0`.
