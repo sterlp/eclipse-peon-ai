@@ -280,7 +280,9 @@ test('streamingUpdatesChatWithoutReload', async () => {
   expect(screen.getByTestId('chat-line-jon')).toHaveTextContent(ANSWER.text)
   expect(chat.countOf('/messages', 'GET')).toBe(readsBefore + 1)
   expect(screen.queryByTestId('chat-live')).toBeNull()
-  expect(screen.queryByTestId('chat-tool-line')).toBeNull()
+  // the trace of the turn is not lost by the read: it stays where it happened, while the streaming text
+  // gives way to the history that carries it now (R-WP-28, UC-WP-54)
+  expect(screen.getByTestId('chat-tool-line')).toHaveTextContent('Running: `ls`')
   // the own input lives in the history only now — the pending copy is gone, no line twice
   expect(screen.getAllByTestId('chat-line-user')).toHaveLength(2)
 })
@@ -333,7 +335,7 @@ test('oneChatPerProject', async () => {
 
   fireEvent.click(await screen.findByRole('button', { name: 'demo' }))
   const opened = await screen.findByRole('region', { name: content.chat.title })
-  await screen.findByText(ANSWER.text)
+  await waitFor(() => expect(agentLinesSaying(ANSWER.text)).toHaveLength(1))
 
   // the controls the chat has: one writes into THIS conversation, one ends its running turn (UC-WP-50) —
   // it names no addressee and starts nothing. The tile actions of Inc 5b sit beside them and are asserted
@@ -373,7 +375,7 @@ test('oneChatPerProject', async () => {
   // the list re-reads itself on mount, so the project has to be found again before it can be opened
   fireEvent.click(await screen.findByRole('button', { name: 'demo' }))
   const again = await screen.findByRole('region', { name: content.chat.title })
-  await screen.findByText(ANSWER.text)
+  await waitFor(() => expect(agentLinesSaying(ANSWER.text)).toHaveLength(1))
 
   // the same conversation, not a second one: one log, both lines once, one single read path
   expect(screen.getAllByTestId('chat-log')).toHaveLength(1)
@@ -701,10 +703,87 @@ test('agentLineHasNoGrayBlock', async () => {
   expect(declares('.chat-line.jon'), 'the gray block of the jon line is gone').toBe(false)
 })
 
+// UC-WP-54
+test('toolLinesStayInlineInOrder', async () => {
+  const chat = stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  // the answer is interrupted twice: what the screen shows is the order it arrived in, not one text
+  // plus a list of everything the turn reported (R-WP-28)
+  await chat.push(event('partial', { kind: 'answer', text: 'Der Anfang. ' }))
+  await chat.push(event('tool', { text: 'step 1' }))
+  await chat.push(event('partial', { kind: 'answer', text: 'Der Schluss.' }))
+  await chat.push(event('tool', { text: 'step 2' }))
+
+  const shape = screen.getAllByTestId(/chat-(live|tool-line)/).map(entry =>
+    entry.getAttribute('data-testid') === 'chat-live'
+      ? `text ${entry.textContent?.trim() ?? ''}`
+      : `tool ${[...entry.querySelectorAll('.chat-tool-line')].map(line => line.textContent).join('|')}`,
+  )
+  expect(shape).toEqual(['text Der Anfang.', 'tool step 1', 'text Der Schluss.', 'tool step 2'])
+})
+
+// UC-WP-54
+test('toolLinesSurviveTheDoneRefresh', async () => {
+  const chat = stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await chat.push(event('tool', { text: 'ls in the checkout' }))
+  expect(screen.getByTestId('chat-tool-line')).toHaveTextContent('ls in the checkout')
+
+  // the turn ends and the history is read: the trace exists on the wire only, so this read is the moment
+  // it would be lost — it is not (UC-WP-54)
+  chat.setMessages([QUESTION, { role: 'user', text: 'zähl die Dateien' }, ANSWER])
+  await chat.push(event('done', { millis: 7 }))
+
+  const entries = [...screen.getByTestId('chat-log').children]
+  const tool = screen.getByTestId('chat-tool-line')
+  expect(tool).toHaveTextContent('ls in the checkout')
+  // and it stands where it happened: after the input it belongs to, before the answer that followed it
+  const answerAt = entries.findIndex(entry => entry.getAttribute('data-testid') === 'chat-line-jon')
+  expect(entries.indexOf(tool)).toBeGreaterThanOrEqual(0)
+  expect(answerAt).toBeGreaterThan(entries.indexOf(tool))
+  // the streaming text gave way to the history and is not shown twice
+  expect(screen.queryByTestId('chat-live')).toBeNull()
+  expect(agentLinesSaying(ANSWER.text)).toHaveLength(1)
+})
+
+test('consecutiveToolLinesAreMerged', async () => {
+  const chat = stubChat({ messages: [] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  for (const step of Array.from({ length: 12 }, (_, index) => index + 1)) {
+    await chat.push(event('tool', { text: `step ${step}` }))
+  }
+
+  // one box for a run of tool activity, and only its tail — what a turn reports is a trace beside the
+  // answer and never a list that pushes the answer away (chat.html keeps ten lines)
+  const boxes = screen.getAllByTestId('chat-tool-line')
+  expect(boxes).toHaveLength(1)
+  const lines = [...boxes[0].querySelectorAll('.chat-tool-line')].map(line => line.textContent)
+  expect(lines).toHaveLength(10)
+  expect(lines[0]).toBe('step 3')
+  expect(lines[9]).toBe('step 12')
+})
+
+
 
 /** The author labels of the agent lines, in reading order — the shape of R-WP-4's claim. */
 function agentAuthorsOnScreen(): (string | null)[] {
   return authorsOfLines('chat-line-jon')
+}
+
+/**
+ * The agent lines that say exactly this. An answer reads as Markdown (R-WP-28) and the renderer paints a
+ * sentence in its own tokens, so the row is the unit a test asks for — never one span of it.
+ */
+function agentLinesSaying(text: string): HTMLElement[] {
+  return screen.getAllByTestId('chat-line-jon').filter(line => line.textContent === text)
 }
 
 /** The author labels of the user lines, in reading order — what every viewer reads (R-WP-25, UC-WP-48). */

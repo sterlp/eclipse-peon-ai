@@ -12,6 +12,7 @@ import { agentAction, listAgents, type AgentAction, type AgentTile } from './cha
 import { ChatComposer } from './chat.composer'
 import { ChatInsight } from './chat.insight'
 import { ChatLog } from './chat.log'
+import { appendLiveText, appendLiveTool, liveLinesAfterHistory, type LiveItem } from './chat.live'
 import { ChatTiles } from './chat.tiles'
 import { openChatStream } from './chat.stream'
 import { ApiRequestError, errorMessage } from '../shared/api.client'
@@ -46,6 +47,11 @@ const RECONNECT_MS = 500
  * append</em>. So a dropped stream and a browser reload lose exactly the live lines and nothing else
  * (R-WP-11), and the reconnect path needs no second buffer and no event memory.
  *
+ * What the turn reports while it runs lives in one list — the answer's text and the tool lines in the
+ * order they arrived, each anchored at the rows already shown (D-7). The anchor is what lets the tool
+ * lines of a finished turn survive the history read of {@code done}: the answer gives way to the history,
+ * the trace has no place there and keeps its place on the screen (R-WP-28, UC-WP-54).
+ *
  * The team's tiles ({@link ChatTiles}) follow the same rule in their own family: read on mount, replaced
  * by every `agents` snapshot, never merged — and re-read after an action, because 202 only said
  * <em>taken</em>. This component holds the state of both, and it knows no agent name: a tile says what it
@@ -68,8 +74,7 @@ export function ChatPage({ project, files, user }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [tiles, setTiles] = useState<AgentTile[]>([])
   const [outgoing, setOutgoing] = useState<string[]>([])
-  const [live, setLive] = useState('')
-  const [toolLines, setToolLines] = useState<string[]>([])
+  const [live, setLive] = useState<LiveItem[]>([])
   const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
   /** The tile whose insight is open — a name, not a conversation: there is still exactly one of those. */
@@ -82,13 +87,25 @@ export function ChatPage({ project, files, user }: Props) {
   /** The project whose turn the user asked to end, so its `done` must not read over his lines (D-16). */
   const stoppedTurn = useRef<string | null>(null)
   const input = useRef<HTMLInputElement>(null)
+  /**
+   * The rows the log shows — a live line is anchored at this count, so it keeps the place it happened at
+   * even when the history read of `done` replaces the lines around it (D-7, UC-WP-54).
+   */
+  const shownRows = useRef(0)
   const projectId = project?.id ?? null
 
-  /** The finished text arrives here, never as an event — so live lines give way to it (§3.3.3). */
+  useEffect(() => {
+    shownRows.current = messages.length + outgoing.length
+  }, [messages, outgoing])
+
+  /**
+   * The finished text arrives here, never as an event — so the live answer gives way to it (§3.3.3). What
+   * gives way is nothing else: the tool lines of the turn exist on the wire only and stay where they were
+   * placed, because a finished turn without its trace is not what UC-WP-54 asks for.
+   */
   const applyHistory = useCallback((loaded: ChatMessage[]) => {
     setMessages(loaded)
-    setLive('')
-    setToolLines([])
+    setLive(liveLinesAfterHistory)
     setOutgoing(previous => withoutSent(previous, loaded))
   }, [])
 
@@ -115,11 +132,11 @@ export function ChatPage({ project, files, user }: Props) {
         case 'partial':
           // thinking deltas stay invisible: the chat shows the answer, and R-WP-5 promises that text
           if (!event.thinking) {
-            setLive(previous => previous + event.text)
+            setLive(previous => appendLiveText(previous, event.text, shownRows.current))
           }
           break
         case 'tool':
-          setToolLines(previous => [...previous, event.text])
+          setLive(previous => appendLiveTool(previous, event.text, shownRows.current))
           break
         case 'done':
           // one reload per turn — the turn that drained a queued input closes that input too, and the
@@ -166,6 +183,9 @@ export function ChatPage({ project, files, user }: Props) {
             if (!mounted || !retry) {
               return
             }
+            // a dropped stream loses the live lines and nothing else (R-WP-11): the history that follows
+            // is read again, and what the wire will not send back is dropped from the screen
+            setLive([])
             void refresh()
             reconnect = setTimeout(connect, RECONNECT_MS)
           },
@@ -280,7 +300,7 @@ export function ChatPage({ project, files, user }: Props) {
           <h1 className="chat-title">{project.name}</h1>
         </header>
         <ChatTiles tiles={tiles} onAction={act} onInspect={setInsight} />
-        <ChatLog messages={messages} outgoing={outgoing} user={user} live={live} toolLines={toolLines} />
+        <ChatLog messages={messages} outgoing={outgoing} user={user} live={live} />
         {error !== null && (
           <p className="chat-error" data-testid="chat-error" role="alert">
             {error}

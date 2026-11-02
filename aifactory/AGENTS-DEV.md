@@ -175,3 +175,32 @@
 - **Die Draht-Handle der Chat-Zeilen nicht umbenennen**: `chat-line-jon` / `chat-live` /
   `chat-line-author` sind die Griffe von 20 bestehenden Tests. Die Stimme (user/agent) ist die **Klasse**,
   der Draht (jon/user) der `data-testid`.
+
+## Inc 3b (Zyklus 2026-11-02) — Markdown-Streaming und Tool-Zeilen inline
+
+- **`markstream-react` hat kein 1.x im npm-Registry** (gemessen 2026-11-02: 0.0.x → 0.1.0-beta →
+  2.0.x). Der React-Einstieg von 2.0.23 ist der **Default-Export** (`MarkdownRender` existiert nicht als
+  Export, auch nicht als Alias). Code-Block ersetzt man über `setCustomComponents(id, { code_block: Cmp })`
+  in **Modul-Scope** + `customId={id}` an der Komponente — nicht über das `components`-Prop.
+- **markstream liefert keine CSS-Klassen-Auflösung mit** (Klassen wie `font-semibold`,
+  `whitespace-pre-wrap` bleiben ungestyled) und aktualisiert async (Timer/rAF) ⇒ "not wrapped in act" ist
+  Bibliotheks-Rauschen, kein Fehler im Test. `vitest` stubbt Fremd-CSS ohnehin (`test.css.include` lässt
+  nur die eigenen Sheets durch). Der Fallback `react-markdown` war nicht nötig.
+- **Pin-Korrektur von Jon abgenommen (2026-11-02):** Plan D-8 „markstream-react 1.x pinnen" ist faktisch
+  falsch — gepinnt sind **2.0.23** + **react-shiki 0.11.2**, Shiki bleibt über den Override wirksam.
+- **`react-shiki`: `/web` statt Haupteinstieg** (gemessen am `pnpm build`): identischer Main-Chunk
+  (Grammatiken sind Lazy-Chunks), aber 131 statt 316 Chunks und 6,7 MB statt 11,7 MB `dist`.
+  `engine="javascript"` läuft in jsdom (kein WASM), unbekannte Sprache ⇒ stiller Plain-Text-Fallback.
+  `shiki` ist bei pnpm strict **nicht** direkt importierbar (nur Transitiv-Dep).
+- **`/web`-Preis:** Grammatiken außerhalb des Web-Sets (`go`, `rust`, `kotlin`, `diff`, `dockerfile`)
+  rendern als Plain-Text; zurück auf den Voll-Bau ist **ein Importpfad** in `chat.markdown.tsx`.
+- **Markdown zerteilt den Text** in Token-Spans: `getByText`/`findByText` trifft den Agenten-Satz nicht
+  mehr. Abzufragen ist die **Zeile** (`chat-line-jon`) über ihre `textContent` — Helper
+  `agentLinesSaying()` in `test/chat/chat.page.test.tsx`.
+- **Projektwechsel remountet die Chat-Seite über `key={project.id}`** (`app.routes.tsx`, wie
+  `ProjectFiles`): ein `setLive([])` im Effect-Body verstößt gegen oxlint `react(set-state-in-effect)`
+  (React-Compiler-Lint) und ist mit Key überflüssig. Der Live-Anker ist eine **Zeilenzahl**, kein
+  Textvergleich — deshalb überlebt er den `done`-Refresh.
+- **"Could not parse CSS stylesheet" in jsdom ist vorbestehend**, wenn der vite-Cache kalt ist: es kommt
+  aus dem nativen CSS-Nesting in `styles.css` (seit Inc 1a), die HEAD-Version zeigt dasselbe. Erst
+  `rm -rf node_modules/.vite` auf HEAD vergleichen, bevor ein Inkrement beschuldigt wird.

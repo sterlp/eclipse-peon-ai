@@ -298,7 +298,8 @@ button {
   text-align: right;
 }
 
-/* A tool line is not a voice of the conversation: the grey of chat.html, small, no name of its own. */
+/* Tool activity is not a voice of the conversation: the grey italic of chat.html, small, no name of its
+   own; the lines of one run share this one box (R-WP-28). */
 .chat-log .chat-line.tool {
   border-left-color: var(--tool-line);
   padding-top: 0.1rem;
@@ -308,6 +309,99 @@ button {
   font-size: 0.78rem;
   font-style: italic;
 }
+
+/* The word above the trace, as chat.html sets it — upright, so the italic stays with the reports. */
+.chat-log .chat-line.tool .chat-tools-label {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-style: normal;
+}
+
+.chat-log .chat-line.tool .chat-tool-line {
+  display: block;
+}
+
+/* An answer is Markdown (R-WP-28): the renderer's own type classes carry no sheet here, the app's
+   compact measure does — and the line's pre-wrap ends where a rendered block begins. */
+.chat-log .chat-markdown {
+  white-space: normal;
+  color: var(--text-h);
+}
+
+.chat-log .chat-markdown p,
+.chat-log .chat-markdown ul,
+.chat-log .chat-markdown ol,
+.chat-log .chat-markdown blockquote {
+  margin: 0 0 0.35rem;
+}
+
+.chat-log .chat-markdown ul,
+.chat-log .chat-markdown ol {
+  padding-left: 1.2rem;
+}
+
+/* A heading of an answer is part of a line, not the head of a page (R-WP-29 keeps the chat flat). */
+.chat-log .chat-markdown h1,
+.chat-log .chat-markdown h2,
+.chat-log .chat-markdown h3,
+.chat-log .chat-markdown h4 {
+  font-size: 0.95rem;
+  margin: 0.15rem 0 0.3rem;
+}
+
+/* react-shiki paints the colours and states both themes inline; which one shows is the theme layer's
+   call, so the switch reads the same `data-theme` the tokens of index.css read. The values sit in the
+   style attribute, so only !important can outvote them. */
+.chat-code {
+  margin: 0.35rem 0;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background: var(--code-bg);
+  overflow-x: auto;
+}
+
+.chat-code pre {
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  background: none;
+}
+
+.chat-code .line {
+  display: block;
+}
+
+[data-theme='dark'] .chat-code .shiki {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+}
+
+[data-theme='dark'] .chat-code .shiki span,
+[data-theme='dark'] .chat-code .shiki code {
+  color: var(--shiki-dark) !important;
+  background-color: transparent !important;
+}
+
+/* … and the same switch the colour tokens make on the OS preference (index.css states both). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .chat-code .shiki {
+    color: var(--shiki-dark) !important;
+    background-color: var(--shiki-dark-bg) !important;
+  }
+
+  :root:not([data-theme='light']) .chat-code .shiki span,
+  :root:not([data-theme='light']) .chat-code .shiki code {
+    color: var(--shiki-dark) !important;
+    background-color: transparent !important;
+  }
+}
+
+
 
 /* The name above a line, in the colour of its voice (chat.html: uppercase, letterspaced, smaller). */
 .chat-log .chat-role {

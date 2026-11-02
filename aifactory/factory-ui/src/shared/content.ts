@@ -54,6 +54,8 @@ export const content = {
     noMessages: 'No messages yet',
     /** The label of a user line the server left unnamed (R-WP-25) — a role, never an invented author. */
     you: 'YOU',
+    /** The label of a merged tool box — the word `chat.html` paints above the trace (R-WP-28). */
+    toolActivity: 'Tool',
     message: 'Message',
     messageToJon: 'Message to Jon',
     send: 'Send',

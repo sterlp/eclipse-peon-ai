@@ -114,6 +114,9 @@ function ChatRoute() {
 
   return (
     <ChatPage
+      // keyed like the file area: another project is another conversation, so nothing of the previous one
+      // — not its history, not its live lines — is carried into the chat that opens (R-WP-11)
+      key={project.id}
       project={project}
       user={user}
       // keyed: another project is another checkout, so the file area starts closed at its own root
