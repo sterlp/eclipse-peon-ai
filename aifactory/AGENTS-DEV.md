@@ -416,3 +416,6 @@
   Zeile dann noch nicht im Memory, verschwindet sie sofort wieder — genau das war F7/F8. `ProjectRuntime.fail`
   hält beide Schritte an einer Stelle; `liveLinesAfterHistory` behält bewusst nur `tool`, damit die
   Live-Fehlerzeile beim Read aufgibt statt sich zu duplizieren.
+
+- **Nach Inc 1: Backend 202** (195 + 7), **UI 115 Tests / 15 Dateien** (112/14), Doc-Lint **0 Findings** bei
+  UC **64/64**, 227 Test-Ids. Marker UC-WP-64 bleibt ❌ (flippt Jon).
