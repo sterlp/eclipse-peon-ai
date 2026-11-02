@@ -62,8 +62,8 @@ UC 50/50.
   events), Kachel-Familie `agents(+/{name})`, `SendMessageRequest(text, user)`.
 * Port 8080 = IDE → Nachweise auf 8099; `~/.peon` vor/nach vergleichen; `@TempDir` liegt auf macOS unter
   TMP → Test-Homes nach `target/`.
-* `lintDocsAndTests`: `root=/Users/sterlp/dev/workset/peon-ai`, `docRoots:["aifactory/docs"]` (NICHT
-  „docs"), `testRoots` Fabrik+UI, `idPattern UC-WP-\\d+`.
+* `lintDocsAndTests`/`nextIds`: Pfade relativ zum Session-cwd (aifactory) — `docRoots:["docs"]` reicht
+  (kein Präfix `aifactory/`, kein `root`-Parameter); `testRoots` ebenso relativ (Fabrik + UI).
 * eclipseEditFile verliert `oldString` bei langen Blöcken → `diskEditFile` (kurz ankern); sonst
   `eclipseWriteFile`/`eclipseReplaceLines`.
 * `TurnClaim`-Tests: Kachel-Handshake (COMPACTING⇒IDLE) statt Core-Flags als Warte-Bedingung.

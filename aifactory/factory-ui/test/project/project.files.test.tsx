@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, within } from '@testing-library/react'
 
-import AppShell from '../../src/app/app.shell'
+import { renderApp } from '../shared/app.harness'
 import { project } from '../shared/fixtures'
 import type { DirectoryResponse, FileResponse, FileEntry, FileRoot } from '../../src/project/files.client'
 
@@ -138,7 +138,7 @@ function json(status: number, body: unknown): Response {
 
 /** Renders the shell, opens the project, and lands in its chat — the way Jon reaches the file area. */
 async function openProjectChat(): Promise<void> {
-  render(<AppShell />)
+  renderApp()
   fireEvent.click(await screen.findByRole('button', { name: 'demo' }))
   await screen.findByTestId('chat-log')
 }

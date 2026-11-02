@@ -3,8 +3,7 @@ import NavItem from 'react-bootstrap/NavItem'
 import NavLink from 'react-bootstrap/NavLink'
 
 import { content } from '../shared/content'
-
-export type ViewName = 'projects' | 'chat' | 'settings'
+import type { ViewName } from './app.paths'
 
 const ENTRIES: { id: ViewName; label: string }[] = [
   { id: 'projects', label: content.nav.projects },

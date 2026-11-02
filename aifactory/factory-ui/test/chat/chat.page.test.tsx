@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
-import AppShell from '../../src/app/app.shell'
+import { renderApp } from '../shared/app.harness'
 import { ChatPage } from '../../src/chat/chat.page'
 import { project } from '../shared/fixtures'
 import { content } from '../../src/shared/content'
@@ -191,12 +191,13 @@ test('chatAsksForAProjectWhenNoneIsOpen', () => {
 // UC-WP-5
 test('openProjectBindsWorkDir', async () => {
   const chat = stubChat({ messages: [QUESTION], projects: [project()] })
-  render(<AppShell />)
+  renderApp()
   expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
 
   fireEvent.click(await screen.findByRole('button', { name: 'demo' }))
 
-  expect(screen.getByTestId('chat-log')).toBeInTheDocument()
+  // the address names the project now, so the chat appears with the read that resolves that address
+  expect(await screen.findByTestId('chat-log')).toBeInTheDocument()
   await flush()
   expect(screen.getByText('wo liegen die Dateien?')).toBeInTheDocument()
   expect(screen.getByTestId('chat-input')).toHaveFocus()
@@ -327,7 +328,7 @@ test('oneChatPerProject', async () => {
       { ...tile('Plan', 'IDLE'), capabilities: ['CONTEXT', 'CLEAR', 'COMPACT', 'TRANSCRIPT'] },
     ],
   })
-  render(<AppShell />)
+  renderApp()
   expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
 
   fireEvent.click(await screen.findByRole('button', { name: 'demo' }))

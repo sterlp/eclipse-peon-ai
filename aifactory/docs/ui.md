@@ -75,12 +75,12 @@ und keine Weiterleitung: kein Request darf in einer Schleife aus Weiterleitungen
   `/ui/assets/<name>.css` THEN kommt `200` mit dem Dateiinhalt und dem passenden `Content-Type`
   (`text/javascript` bzw. `text/css`) — nie JSON, nie `text/plain`, kein `500`.
 
-### R-WP-27 — Englische UI, Strings im Catalog ❌
+### R-WP-27 — Englische UI, Strings im Catalog ✅
 
 Die UI ist **englischsprachig**, und sichtbare UI-Texte stehen **nicht** im Komponenten-Code — sie
 kommen aus einem String-Catalog (`content.ts` bzw. Locale-Dateien), damit Tests und spätere i18n sie
 adressieren können (Befund Paul 2026-11-02; [AGENTS.md](../AGENTS.md): „UI: English").
 
-#### UC-WP-53 — uiTextsComeFromTheCatalog ❌
+#### UC-WP-53 — uiTextsComeFromTheCatalog ✅
 - GIVEN die App WHEN sie gerendert wird THEN ist die Oberfläche englisch und kein sichtbarer UI-Text
   ist im Komponenten-Code hart verdrahtet — er kommt aus dem String-Catalog.

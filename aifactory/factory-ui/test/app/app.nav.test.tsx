@@ -2,6 +2,7 @@ import { beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 
 import { AppNav } from '../../src/app/app.nav'
+import { viewOfPathname } from '../../src/app/app.paths'
 import { content } from '../../src/shared/content'
 
 beforeEach(() => {
@@ -32,4 +33,13 @@ test('clickingANavEntrySelectsThatView', () => {
   fireEvent.click(within(nav).getByRole('button', { name: content.nav.chat }))
 
   expect(onSelect).toHaveBeenCalledWith('chat')
+})
+
+
+// UC-WP-52
+test('theAddressNamesTheEntryThatShows', () => {
+  // the frame holds no view of its own: which entry shows is a reading of the address and nothing else
+  expect(viewOfPathname('/projects')).toBe('projects')
+  expect(viewOfPathname('/chat/demo-1a2b3c4')).toBe('chat')
+  expect(viewOfPathname('/settings')).toBe('settings')
 })

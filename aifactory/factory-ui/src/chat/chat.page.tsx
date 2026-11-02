@@ -53,7 +53,7 @@ const RECONNECT_MS = 500
  *
  * A tile offering TRANSCRIPT opens {@link ChatInsight}, the read-only look into that agent's own
  * conversation (UC-WP-49). It is drawn after the {@link files} slot and so lies above the file area, and
- * it stays a region of this view — no fourth tab, no router (R-WP-1).
+ * it stays a region of this view — no fourth tab and no route of its own, whatever the address shows (R-WP-1).
  *
  * The composer's second control ends the running turn (UC-WP-50). After an accepted stop this view does
  * <em>not</em> re-read the history: the live lines the user was already shown are all that exists of the

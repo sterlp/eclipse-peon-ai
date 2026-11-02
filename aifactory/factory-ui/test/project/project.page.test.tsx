@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
-import AppShell from '../../src/app/app.shell'
+import { renderApp } from '../shared/app.harness'
 import { ProjectPage } from '../../src/project/project.page'
 import { project } from '../shared/fixtures'
 import { content } from '../../src/shared/content'
@@ -57,7 +57,7 @@ function response(status: number, body: unknown): Response {
 // UC-WP-1
 test('showsExactlyThreeViews', async () => {
   stubServer({ GET: [] })
-  render(<AppShell />)
+  renderApp()
 
   // the frame is a menu (R-WP-1): exactly the three views, the showing one marked with aria-current
   const entries = within(screen.getByRole('navigation', { name: content.nav.views })).getAllByRole('button')

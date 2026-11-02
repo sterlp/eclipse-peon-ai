@@ -15,7 +15,8 @@
     "bootstrap-icons": "^1.13.2",
     "react": "^19.3.1",
     "react-bootstrap": "^2.10.10",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.5"
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",
