@@ -43,7 +43,7 @@ Inhalt erscheint **nirgends** unmaskiert (R-WP-16) — weder in einer Antwort no
   lädt THEN ist das Konfigurationsverzeichnis trotzdem das Verzeichnis der Factory, und es wird nichts
   aus einem anderen Verzeichnis gelesen oder geschrieben.
 
-### R-WP-16 — Config-Seite ❌ (geschärft 2026-10-28: UC-WP-46 offen, Rest gebaut)
+### R-WP-16 — Config-Seite ✅ (geschärft 2026-10-28 + 2026-11-02: Key-Entfernen, dynamische Felder gebaut)
 
 Die globale Seite **Config** ([R-WP-1](ui.md)) zeigt **Provider, Modell, URL, Token-Fenster, Timeout,
 Think senden** und den **Key-Status** aus der Config der Factory (R-WP-9) und darf diese Werte
@@ -110,24 +110,24 @@ Plugins unberührt, den die Factory weder liest noch schreibt (R-WP-9).
 - GIVEN die Datei trägt keinen Wert WHEN die Umgebungsvariable gesetzt ist THEN gilt der Wert aus der
   Umgebungsvariable und die Quelle wird als solche angezeigt.
 
-#### UC-WP-46 — clearedFieldIsRemovedFromFile ❌
+#### UC-WP-46 — clearedFieldIsRemovedFromFile ✅
 - GIVEN die Datei trägt beim Default `think: high` WHEN der Nutzer das Think-Feld leert und speichert
   THEN steht in der Datei kein `think` mehr und es wird kein Think-Parameter gesendet.
 - GIVEN Compact mit Haken und `model: gpt-5`, `think: medium` WHEN der Nutzer das Modell-Feld leert und
   speichert THEN trägt Compacts Eintrag nur noch `think: medium`; das Modell erbt Compact vom Default.
 
-#### UC-WP-62 — providerChangeUpdatesDependentFields ❌
+#### UC-WP-62 — providerChangeUpdatesDependentFields ✅
 - GIVEN die Config-Seite WHEN der Nutzer den Provider wechselt THEN aktualisieren sich Modell und URL
   sofort auf die Defaults des gewählten Providers (URL), geleert (Modell) bzw. auf dessen Vorgabe
   (Think) — ohne erneutes Speichern.
 
-#### UC-WP-63 — keyCanBeRemovedAndStatusRefreshes ❌
+#### UC-WP-63 — keyCanBeRemovedAndStatusRefreshes ✅
 - GIVEN ein gesetzter Key aus der Datei WHEN der Nutzer „Remove key" wählt und speichert THEN steht
   in der Datei kein Key mehr, und der Status zeigt „nicht gesetzt".
 - GIVEN ein Key aus einer Umgebungsvariable WHEN die Seite geladen wird THEN meldet sie die Quelle
   ENV — entfernen über die Seite ist dann nicht möglich.
 
-### R-WP-23 — Agenten auf der Config-Seite: Default für alle, „überschreiben" je Agent ❌
+### R-WP-23 — Agenten auf der Config-Seite: Default für alle, „überschreiben" je Agent ✅ (Dev-Slot-Lücke: ⏳ in [Open Points](open-points.md))
 
 Die Config-Seite listet die **sechs Slots, die die Factory fährt** — die Agenten Jon, Plan, Dev,
 Review, Search und den Config-Slot **Compact** (kein Agent, gleiche Bedienung) unter dem Default. Je Agent gibt es genau eine
@@ -146,14 +146,14 @@ sobald die Agent-Datei mindestens ein Config-Feld trägt (Modell, URL, Key, Thin
 alle Agenten. Die Seite zeigt nur die Agenten, die man wirklich anders will, statt aller Felder aller
 Agenten; was nicht sichtbar ist, wirkt auch nicht.
 
-#### UC-WP-44 — overrideCheckboxShowsAgentFields ❌
+#### UC-WP-44 — overrideCheckboxShowsAgentFields ✅
 - GIVEN die Config-Seite und Dev ohne Config-Felder in seiner Datei WHEN sie geöffnet wird THEN ist
   Devs Haken „überschreiben" leer und keine Dev-Felder sind sichtbar; Dev nutzt den Default.
 - GIVEN Dev WHEN der Nutzer den Haken setzt, nur das Modell `gpt-5` einträgt und speichert THEN trägt
   Devs Datei nur `model: gpt-5`, alle übrigen Werte erbt Dev vom Default, und beim nächsten Öffnen ist
   der Haken gesetzt.
 
-#### UC-WP-45 — uncheckOverrideDeletesAgentValues ❌
+#### UC-WP-45 — uncheckOverrideDeletesAgentValues ✅
 - GIVEN Devs Datei trägt `model: gpt-5` und einen Prompt-Rumpf WHEN der Nutzer den Haken entfernt und
   speichert THEN trägt die Datei kein Config-Feld mehr, der Rumpf ist unverändert, Dev nutzt den Default
   und der Haken ist beim nächsten Öffnen leer.

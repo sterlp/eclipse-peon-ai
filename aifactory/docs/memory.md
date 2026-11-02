@@ -6,9 +6,12 @@ Proposal mit WARUM** (2026-10-29) — gilt auch für Core-Tests.
 
 ## Zyklus 2026-11-02 LÄUFT — UI-Nacharbeiten nach Pauls Smoke-Test
 
-Branch `web-factory-mvp`, Spitze `3957defc` (= origin). Plan: `peon-plan/overview.md` (Inc-4-Plan
-archiviert). MVP-Zyklus Inc 5/6 abgeschlossen: Backend 156/0/0, UI 47 Tests/7 Dateien, lint 0/0,
-UC 50/50.
+Branch `web-factory-mvp`, Spitze `e740694b` (= origin). Plan: `peon-plan/overview.md` (Inc-4-Plan
+archiviert). Inc 5/6 + 7a/7b abgeschlossen: Backend **195/0/0**, UI **112 Tests/14 Dateien**,
+oxlint 0/0, UC **63/63** (Dev-Slot: Modell/URL/Key gespeichert, wirken nicht — ⏳). Review 7b
+**bestanden** (2026-11-02): 11 Fundstellen verarbeitet — Sperre am RMW, Kommentar-Fix, UI-Tests
+(Tippen hebt Remove auf, 400-Fall), `ConfigPatch`-Typisierung, `@Timeout`; Followup `47a24445`.
+Config-Docs R-WP-16/23 + UC-WP-44/45/46/62/63 ✅.
 
 **Pauls 19 Smoke-Test-Befunde (2026-11-02) = Backlog dieses Zyklus:**
 
