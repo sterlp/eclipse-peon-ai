@@ -222,3 +222,23 @@
 - **Der Steuerungs-Beweis aus Inc 5 (`oneChatPerProject`) friert die Knopf-Liste ein**: Wer dem Chat einen
   Knopf hinzufügt, muss diese Liste mitziehen (R-WP-30 nennt Resend) — die Liste ist der Ort, an dem ein
   vierter, gesprächswechselnder Knopf auffällt.
+
+## Inc 5 (Zyklus 2026-11-02) — Kacheln als Reihe, Klick öffnet den Blick
+
+- **`git checkout -- <datei>` ist kein Mutations-Restore**, solange die Datei uncommitted geändert ist: es
+  holt die HEAD-Fassung und wirft den ganzen Inkrement-Stand weg (gemessen: die Neu-Schreib von
+  `chat.tiles.tsx` war damit verloren). Mutationsproben mit `cp $file /tmp/x.orig` und zurück, nie mit git.
+- **Ein `role="button"`-Container mit echten Knöpfen darin braucht im Keydown die
+  `event.target === event.currentTarget`-Prüfung**: `stopPropagation` an den Actions trifft nur den
+  Click-Zweig, ein Enter auf der fokussierten Action bubbert sonst an die Kachel und öffnet die Tür
+  (Mutation: Guard raus ⇒ genau `clearDoesNotOpenTheInsight` rot).
+- **Draht-Handle erhalten, auch wenn der Knopf fällt**: die Kachel-Tür trägt weiter
+  `data-testid="tile-open-<name>"`, obwohl der eigene „Insight"-Knopf weg ist — dadurch blieben alle vier
+  UC-WP-49-Tests unbearbeitet (Regel aus Inc 3a: Griffe nicht umbenennen).
+- **Die eingefrorene Knopf-Liste hat sich verschoben**: `oneChatPerProject` zählt die Kachel-Actions über
+  `.chat-tile-actions button` (jetzt nur Clear/Compact) und die Tür über `.chat-tile-face[role="button"]`
+  mit ihrem `aria-label` — wer einer Kachel eine weitere Affordanz gibt, zieht diese zwei Listen mit.
+- **Hover und Reihe sind Sheet-Beweise, keine DOM-Beweise** (Fortsetzung Inc 3a): Positiv- *und*
+  Negativregel lesen — `declares('.chat-tile-open:hover')` wahr, `declares('.chat-tile-face:hover')`
+  falsch, sonst ist „eine Kachel ohne Tür verspricht nichts" unbewiesen.
+
