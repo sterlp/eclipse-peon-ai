@@ -55,3 +55,19 @@ Base: `AGENTS.md`. System prompt: `developer.md`.
   Evidenz lebt im Commit und ggf. in den memory-Tools, nie in `docs/**`.
 - Elegant, expressive modern Java (records, pattern matching, switch expressions, Lombok).
 - Skill-Footer beantworten; falschen Skill im selben Turn fixen.
+
+## UI-Inkremente (Zyklus 2026-11-02, Inc 1b)
+
+- **Vitest kennt kein `.as(…)`** (gemessen 2026-11-02, Inc 1b): `expect(x).as('msg')` wirft
+  `Invalid Chai property: as`. Die Assertion-Nachricht ist das **zweite Argument** — `expect(offenders, 'why')
+  .toEqual([])`. `.as(…)` ist AssertJ und damit nur im Backend-Lauf gültig.
+- **Quellen-Scan in UI-Tests ohne Node-Typen**: `tsconfig.app.json` setzt `types: ["vite/client", …]`, also sind
+  `node:fs`, `node:path` und `process` in `src`+`test` **nicht** typisiert (`@types/node` liegt bei, gilt aber nur
+  für `tsconfig.node.json` → `vite.config.ts`). Ein Scan über `src/**` läuft trotzdem durch Vitest **und** `tsc -b`,
+  wenn er die Dateien als Text vom Bundler holt:
+  `import.meta.glob('../../src/**/*.{ts,tsx}', { query: '?raw', import: 'default', eager: true })`.
+  `import.meta.url` ist in Vitest **kein** `file:`-URL → `fileURLToPath(import.meta.url)` bringt
+  `TypeError: The URL must be of scheme file`.
+- **Catalog-Wert ≠ Feldwert** (UC-WP-53): ein `<select>` zeigt das Label aus `content.ts`, trägt aber den
+  **Draht-Wert** als `value` (`sendThinking`: Label `Yes`/`No`, value `yes`/`no`). Ein Test, der `element.value`
+  liest, darf den Catalog-Wert nicht erwarten — sonst fällt er, obwohl die Oberfläche richtig ist.
