@@ -402,8 +402,10 @@
   entscheidende Mutant für „Stop ist kein Fehler" ist deshalb **nicht** der CANCELED-Zweig, sondern
   „Fehlerzeile am Turn-Ende" (`fail(...)` im Erfolgszweig) ⇒ genau `stopIsNoFailure` rot.
 - **`eclipseInsertLines` zerlegt ein Bullet, wenn man nach seiner ersten Zeile einfügt** (gemessen): der Rest
-  des Bullets wandert an das Dateiende. Ans Dateiende nur mit `diskInsertLines` ohne `afterLine` anhängen, und
-  vorher prüfen, ob die Datei überhaupt mit einem Umbruch endet.
+  des Bullets wandert an das Dateiende. Ans Dateiende anhängen: `diskInsertLines` **mit**
+  `afterLine=<letzte Zeile>` — ohne `afterLine` bricht der Aufruf mit
+  `newContent required and can not be null` (korrigiert 2026-11-03, Runde 2 Inc 6; `eclipseInsertLines`
+  mit `afterLine=<letzte Zeile>` funktioniert ebenfalls). Vorher prüfen, ob die Datei mit Umbruch endet.
 - **Auf eine Live-Werkzeugzeile warten statt schlafen**: eigener `SseEmitter`-Double, `send(SseEventBuilder)`
   sammelt `event.build()` → `piece.getData()` (**nicht** `.data` — das Feld ist private); `contains("Running:")`
   unterscheidet ein laufendes Shell-Tool von einem Turn, der nie dort war. Ohne dieses Warten landete der Stop
@@ -479,3 +481,43 @@
   `tsc` + oxlint 0/0, Doc-Lint **66/66 UCs, 235 Test-Ids, 0 Findings**. Sheet-Helfer sind jetzt
   **eine** Datei: `test/shared/sheets.ts` exportiert zusätzlich `appSheet()` (Rohtext für verschachtelte
   Regeln); die lokale Kopie in `project.files.test.tsx` ist entfallen.
+
+
+## Inc 6 (Zyklus 2026-11-02, Runde 2) — Think je Agent in der Form des Providers
+
+- **Die Think-Form des Basis-Providers liegt jetzt auf dem Draht** (`ProviderDefaults` +
+  `ProviderDefaultsDto`: `thinkForm`, `thinkValues` **neben** `thinkSupported`, additiv). Welche Form der
+  Core je Provider antwortet (gemessen an `ThinkSupport`): `OPEN_AI`/`OPEN_AI_OFFICIAL`/`GITHUB_COPILOT`/
+  `GITHUB_MODELS` → `Values` (ReasoningEffort, lowercase), `OLLAMA` → `Toggle`, `LM_STUDIO` →
+  `FreeString`, `GOOGLE_GEMINI` + `MISTRAL` → `None`, `ANTHROPIC` → `Values(adaptive, enabled)`.
+  **Kein Core-Provider antwortet `Unknown`** ⇒ `UNKNOWN` ist über HTTP nicht prüfbar — dafür steht
+  `ThinkFormTest` (Mapping + „kein Provider heißt UNKNOWN").
+- **Ein zweiter Provider-Read im Agent- Bereich wäre eine zweite Antwort auf eine Frage**: die Form kommt
+  als Prop von `ConfigPage` (`<Agents think={thinkInputOf(chosen)} />`). Probe: Prop auf ein festes
+  `UNKNOWN` gesetzt ⇒ **nur** `agentThinkFollowsTheProviderOfTheForm` rot — die Agents-Tests beweisen die
+  Kopplung nicht, nur die Seite.
+- **`NONE` ist ein Früh-Rückgabe-Zweig — jede Mutation dahinter ist ein äquivalenter Mutant** (gemessen):
+  `form === 'VALUES' || … || form === 'NONE'` ließ alle 24 Config-Tests grün, weil der Hinweis-Zweig
+  **vor** dem Select steht. Die Probe muss den Früh-Rückgabe-Test selbst treffen
+  (`if (form === 'NONE' && props.value === '')`) ⇒ dann genau die zwei NONE-Verbraucher rot.
+- **Das Dev-Label hat fünf Abnehmer**: `FIELDS` in `config.agents.test.tsx` liest die **Dev**-Zeile, trägt
+  deshalb seit A4 `content.agents.thinkDefault` statt `content.agents.think`. Probe „Label immer `think`"
+  macht fünf Tests rot (drei davon sind die positiven Begleiter) — das ist die Kostenseite eines Labels,
+  das eine Semantik trägt (R-THINK-10).
+- **Ein `<select>` braucht denselben Handler wie ein `<input>`**: `Field.onChange` und
+  `edit(id, field)` sind auf `(value: string) => void` umgestellt (vorher
+  `React.ChangeEvent<HTMLInputElement>`), sonst zwingt die Form zwei Handler-Paare.
+- **`eclipseReplaceLines` ersetzt genau EINE Zeile** (zweimal gemessen, Inc 6): `newContent` über mehrere
+  Zeilen lässt den alten Rest der Methode stehen — in `FactoryConfigService` und in
+  `SettingsControllerTest` jeweils ein doppelter Methodenrumpf, den erst das Nachlesen zeigte. Nach
+  jeder Replace die Region neu lesen, nie auf Erfolgsmeldung bauen.
+- **Proben Inc 6** (je genau die erwarteten Tests rot): TOGGLE aus der Auswahl genommen →
+  `thinkFieldFollowsTheProviderForm`; NONE-Früh-Rückgabe entschärft → `thinkFieldIsHiddenForNone` +
+  Page-Test; gespeicherter Listen-Fremdwert weg → `storedThinkStaysVerbatim`; Dev-Label raus → 5 Tests;
+  Prop fest auf UNKNOWN → nur Page-Test; `Values→FREE` im Mapping → `ThinkFormTest` +
+  `FactoryConfigServiceTest` + `providerDefaultsCarryTheThinkForm`; `Toggle→UNKNOWN` → dieselben plus
+  `noCoreProviderIsAnsweredWithTheUnknownForm`; „langer Think-Wert ⇒ high" im Datei-Schreiber → genau
+  `thinkValueIsStoredVerbatim`.
+- **Nach Inc 6: Backend 206** (202 + 4), **UI 128 Tests / 16 Dateien** (123/16), `tsc` + oxlint 0/0,
+  Doc-Lint **67/67 UCs, 243 Test-Ids, 0 Findings**. UC-WP-67 bleibt ❌ (flippt Jon).
+
