@@ -48,7 +48,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * <p>The runtime is reached through the package-private seam of the registry, which is the whole point:
  * a caller over HTTP cannot see a runtime, only the 404 of a project that is gone.</p>
  */
-@Timeout(90)
+@Timeout(60)
 class ProjectRemovalTest extends FactorySpringTest {
 
     private static final String GIT_URL = "https://git.example.com/acme/removed-runtime.git";

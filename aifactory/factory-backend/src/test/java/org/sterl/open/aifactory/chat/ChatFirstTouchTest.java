@@ -51,7 +51,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * project" (R-WP-11, UC-WP-16) therefore has to hold <b>at the same time</b>, not only one after the
  * other — which is what no sequential test of {@link OneChatPerProjectTest} can show.
  */
-@Timeout(120)
+@Timeout(60)
 class ChatFirstTouchTest extends FactorySpringTest {
 
     private static final MockLlmServer MODEL = new MockLlmServer(0);

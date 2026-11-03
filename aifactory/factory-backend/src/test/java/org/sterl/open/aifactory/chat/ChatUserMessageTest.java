@@ -54,7 +54,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * fire-and-forget, so a red assertion would otherwise leave a turn running on a server the next test has
  * already replaced.</p>
  */
-@Timeout(120)
+@Timeout(90)
 class ChatUserMessageTest extends FactorySpringTest {
 
     /** Holds a turn open until the test releases it, so a second send has to queue (see {@code ChatQueueTest}). */
@@ -224,7 +224,7 @@ class ChatUserMessageTest extends FactorySpringTest {
     }
 
     @Test
-    @Timeout(90)
+    @Timeout(60)
     // UC-WP-48
     void aQueuedInputKeepsItsName() throws Exception {
         writeFactoryConfig();

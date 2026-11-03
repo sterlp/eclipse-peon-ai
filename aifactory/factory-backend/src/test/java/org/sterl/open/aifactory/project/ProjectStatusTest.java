@@ -72,7 +72,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * of project that makes "free after a restart" say something. Reading that project from the tests before
  * it would tie the case to a class order and to whatever those tests left behind.</p>
  */
-@Timeout(180)
+@Timeout(120)
 class ProjectStatusTest extends FactorySpringTest {
 
     /** Holds one turn inside a running tool until the test releases it — long enough to be watched. */

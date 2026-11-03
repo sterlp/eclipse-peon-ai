@@ -49,7 +49,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * the shared executor, and that orphan must point at its own stopped server instead of draining the next
  * test's scripted answers (the lesson of {@code ChatQueueTest}).</p>
  */
-@Timeout(90)
+@Timeout(60)
 class SharedProjectChatTest extends FactorySpringTest {
 
     private static final String QUESTION_A = "Frage von A";

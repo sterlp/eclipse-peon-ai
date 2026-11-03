@@ -61,7 +61,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * <p>Waits are deadlines on an end state, never a fixed sleep: the anchor is the member's own memory
  * holding what his turn wrote, which is also what the assertion below needs.</p>
  */
-@Timeout(120)
+@Timeout(90)
 class AgentInsightTest extends FactorySpringTest {
 
     /** The task Jon hands over — a member's {@code user} line, spoken by nobody else. */

@@ -68,7 +68,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * the text would prove that somebody guessed (R-WP-4 "niemand rät die Herkunft"). The reading half over a
  * real restart is {@link DelegatedAnswerRestartTest}.</p>
  */
-@Timeout(120)
+@Timeout(90)
 class DelegatedAnswerTest extends FactorySpringTest {
 
     /** The prompt Jon hands over — visible on his own delegation line. */

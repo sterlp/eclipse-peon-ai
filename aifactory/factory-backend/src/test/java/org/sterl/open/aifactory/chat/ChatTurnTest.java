@@ -68,7 +68,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * <p>Every test works on its own project, so none of them can inherit another one's runtime or
  * history — that sharing is the subject of UC-WP-16, not a fixture here.</p>
  */
-@Timeout(120)
+@Timeout(60)
 class ChatTurnTest extends FactorySpringTest {
 
     /** Longer than the mock's 10-char chunk width, so a streamed answer is provable. */

@@ -206,7 +206,7 @@ AGENTS-DEV.md:284).
 | **3** | MOCK-Klassen + G4 (`AifactoryApplicationTests`, `OneChatPerProjectTest`, `ProjectWorkStateTest`, `UiDeliveryTest`, `AgentSettingsTest`, `SettingsControllerTest`) auf die Basis; `SettingsControllerTest` auf System-Properties (D-6) | Suite grün, `missCount` = 5 | 8 → 2 Kontexte |
 | **4** ✅ | `ProjectControllerTest` MockMvc → echter HTTP-Client (D-5) | Suite grün, `missCount` = 5 → 1 (real 2 → **1**) | 1 Kontext — erreicht |
 | **5** ✅ | Guard-Test (D-7) + Messzahlen/Regel in `AGENTS-DEV.md` | Guard grün, Gegenproben: `@ActiveProfiles`/`@SpringBootTest` an einer Unterklasse ⇒ Guard rot; Eintrag ohne Boot ⇒ rot | Regel hält mechanisch |
-| **6** *(optional)* | `@Timeout`-Obergrenzen auf testwürdige Werte (180 → 60 s) | Suite grün | nur Fehlerfall schneller |
+| **6** ✅ | `@Timeout`-Obergrenzen auf testwürdige Werte (Formel statt Accumulation, s. §10 Inc 6) | Suite grün, Gegenlauf grün, Probe: Obergrenze an einer Methode beißt | nur Fehlerfall schneller (grün unverändert 42,8 s) |
 
 **Reihenfolge-Begründung:** 1 zuerst — reine Testmechanik, keine Strukturänderung, sofort messbar.
 2/3/4 bauen aufeinander auf; 4 ist der teuerste Schritt und bringt am wenigsten (ein Kontext), daher
@@ -303,16 +303,24 @@ entfernt oder verschoben.
   Klassen) → **melden**; dann ist D-3 nicht tragfähig und der Reset braucht eine andere Form.
 * Wenn `ProjectControllerTest` über HTTP einen Fall nicht 1:1 abbildet (z. B. MockMvc-spezifische
   405/415-Antwort) → Fall benennen, Test **nicht** stillschweigend löschen.
+* **Offen nach Inc 6 (Jons Entscheidung, Beweismaß):**
+  `ProjectStatusTest#afterARestartEveryProjectIsFree` trägt eine 90-s-Deadline **und** eine
+  90-s-Methoden-Obergrenze — ein langsamer, korrekter Lauf stürbe an der eigenen Grenze. Entweder Deadline
+  auf 60 s oder Obergrenze auf 120 s. In Inc 6 bewusst nicht entschieden (§6: Beweismaß gehört nicht in
+  einen Obergrenzen-Zyklus).
+* **Vorschlag, nicht gebaut:** `junit.jupiter.execution.timeout.lifecycle.method.default` als Netz für
+  hängende `@BeforeAll`/`@BeforeEach` (Home-Reset der Basis, Context-Start) — `@Timeout` an Klassen erreicht
+  Lifecycle-Methoden nachweislich nicht.
 
 ## 10 Status der Messung
 
-| Kennzahl | Baseline (2026-11-03) | nach Inc 1 | nach Inc 2a | nach Inc 2b | nach Inc 3 | nach Inc 4 (Ziel) |
-|---|---|---|---|---|---|---|
-| `missCount` (Kontexte) | **23** | 23 — Inc 1 öffnet keine Kontexte | **20** (−3, wie vorhergesagt) | **9** (−11) | **2** (−7) | **1** (erreicht — Regel erfüllt) |
-| Boot-Zeilen | **23** | 23 | **20** | **9** | **2** | **1** (`Started UiDeliveryTest` = der geteilte) |
-| Surefire-Summe | **80,3 s** (42 Reports, Lauf 16:36) | **35,7 s** (43 Reports) | **35,2 s** (44 Reports) | **33,5 s** (44 Reports) | **32,7 s** (44 Reports) | **32,1 s** (44 Reports) |
-| Wanduhr `clean test` | **118 s** | **73 s** | **72,8 s** (Maven 01:11 min) | **51,1 s** (Maven 50,1 s) | **41,9 s** (Maven 41,2 s) | **41,5 s** — Ziel < 60 s **erreicht** |
-| Tests | **208** / 0 Fehler | **210** / 0 Fehler (`TurnGateTest` +2) | **212** / 0 Fehler (`FactorySpringTestResetTest` +2) | **212** / 0 Fehler | **212** / 0 Fehler | **212** / 0 Fehler |
+| Kennzahl | Baseline (2026-11-03) | nach Inc 1 | nach Inc 2a | nach Inc 2b | nach Inc 3 | nach Inc 4 | nach Inc 5 | nach Inc 6 |
+|---|---|---|---|---|---|---|---|---|
+| `missCount` (Kontexte) | **23** | 23 — Inc 1 öffnet keine Kontexte | **20** (−3, wie vorhergesagt) | **9** (−11) | **2** (−7) | **1** (erreicht — Regel erfüllt) | **1** | **1** |
+| Boot-Zeilen | **23** | 23 | **20** | **9** | **2** | **1** (`Started UiDeliveryTest` = der geteilte) | **1** | **1** |
+| Surefire-Summe | **80,3 s** (42 Reports, Lauf 16:36) | **35,7 s** (43 Reports) | **35,2 s** (44 Reports) | **33,5 s** (44 Reports) | **32,7 s** (44 Reports) | **32,1 s** (44 Reports) | **33,7 s** (45 Klassen, Guard +1,4 s) | **33,2 s** (45 Klassen; XML 33,1 s) |
+| Wanduhr `clean test` | **118 s** | **73 s** | **72,8 s** (Maven 01:11 min) | **51,1 s** (Maven 50,1 s) | **41,9 s** (Maven 41,2 s) | **41,5 s** — Ziel < 60 s **erreicht** | **43,4 s** | **42,8 s** (Gegenlauf 42,8 s) |
+| Tests | **208** / 0 Fehler | **210** / 0 Fehler (`TurnGateTest` +2) | **212** / 0 Fehler (`FactorySpringTestResetTest` +2) | **212** / 0 Fehler | **212** / 0 Fehler | **212** / 0 Fehler | **216** / 0 Fehler (`SingleContextGuardTest` +4) | **216** / 0 Fehler |
 
 **Nach Inc 2b gemessen (2026-11-03):** Die Wanduhr ist von 72,8 s auf **51,1 s** gefallen — die Kontexte
 kosteten also deutlich mehr als die Summe ihrer Boot-Zeilen (6,1 s): die Boot-Zeile misst nur die
@@ -512,4 +520,31 @@ Benannte Abweichungen Inc 5:
    dort stehen sie.
 4. **„bootet außerhalb" wird über `SpringApplicationBuilder` gemessen**, nicht über Annotationen: ein
    Neustart-Beweis trägt bewusst keine Spring-Test-Annotation, ein Annotationsscan sähe ihn nicht.
+
+**Inc 6 — erledigt (2026-11-03):** `@Timeout`-Obergrenzen auf **eine Formel** gebracht (17 Klassen,
+26 Zeilen; **keine** Deadline und keine Assertion geändert): klassenweit = größte methodenweite Obergrenze
+der Klasse + 30 s; methodenweit 60 s, wo die größte Await-Deadline ≤ 30 s; Klassen ohne methodenweite
+Obergrenze 60 s; die beiden Restart-Klassen 90 s (zweite App ≈ 2,5 s); `ProjectStatusTest` 120 s (Deadline
+90 s). Wirksam: 180 → 90/120, 120 → 90/60, 90 → 60. Beweis: volle Suite **216 / 0 Fehler, `missCount` 1,
+1 Boot, 42,8 s** (`/tmp/inc6-cert.log`), Gegenlauf `reversealphabetical` 216 / 0 Fehler, `missCount` 1,
+42,8 s (`/tmp/inc6-rev.log`). Die grüne Wanduhr ändert sich nicht — wie §8 sagt: Obergrenzen kosten im
+grünen Lauf nichts, die Wirkung liegt im Fehlerfall.
+
+Benannte Abweichungen Inc 6:
+
+1. **`@Timeout` auf der Klasse ist eine Methoden-Obergrenze, keine Container-Grenze** (JUnit-Javadoc:
+   „the same effect as applying it to all testable methods … **but not to its lifecycle methods**").
+   Gegenprobe 1 — `@Timeout(1)` an `DelegatedAnswerRestartTest`: **grün**, 7,5 s Klassenlauf. Gegenprobe 2 —
+   dieselbe Obergrenze an `ProjectStatusTest#afterARestartEveryProjectIsFree`:
+   `TimeoutException: … timed out after 1 second` (`/tmp/inc6-probe-timeout.log`). Beide Proben
+   zurückgenommen. Folgen: (a) kein Wert ist toter Schmuck, jede Klassen-Obergrenze gilt pro Methode;
+   (b) **Lifecycle-Methoden sind unbegrenzt** — `@BeforeAll`/`@BeforeEach`, also auch der Home-Reset der
+   Basis und der Context-Start. Ein hängender Reset wäre nur über
+   `junit.jupiter.execution.timeout.lifecycle.method.default` zu fassen — **Vorschlag, nicht gebaut**.
+2. **§4 schrieb „180 → 60 s"** — bei korrekter Semantik wäre 60 s für die Restart-Klassen und für die
+   Klasse mit 90-s-Deadline falsch. Gebaut ist die Formel oben (180 → 90 bzw. 120), nicht die Zahl.
+3. **Offen gemeldet (§9):** `afterARestartEveryProjectIsFree` trägt eine 90-s-Deadline **und** eine
+   90-s-Obergrenze — ein langsamer, korrekter Lauf stürbe an der eigenen Grenze. Vorbestehend, hier nicht
+   geändert: eine der beiden Zahlen zu verschieben ist eine Beweismaß-Entscheidung, keine
+   Obergrenzen-Härtung.
 

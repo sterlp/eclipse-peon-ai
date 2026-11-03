@@ -42,7 +42,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * is incomplete from the first read on, so nothing has to be taken away mid-test and no provider double is
  * needed: the turn never reaches a model, which is exactly the case that used to leave no trace.</p>
  */
-@Timeout(120)
+@Timeout(60)
 class ChatTurnFailureTest extends FactorySpringTest {
 
     private static final String INPUT = "BAUE: Wo legt die Fabrik ihren Plan ab?";

@@ -176,7 +176,7 @@ class TurnFailureTest {
     }
 
     @Test
-    @Timeout(90)
+    @Timeout(60)
     // UC-WP-14, UC-WP-50
     void aQueuedSubmitThatFailsOwnsNothingOfTheRunningTurn() {
         MockLlmServer model = new MockLlmServer(0);

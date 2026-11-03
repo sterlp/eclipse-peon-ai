@@ -84,7 +84,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * produced on demand by an endpoint that accepts and never answers, so the turn's wait is observed instead
  * of hoped for.</p>
  */
-@Timeout(120)
+@Timeout(90)
 class AgentActionTest extends FactorySpringTest {
 
     /** Holds one turn inside a running tool until the test releases it — long enough for an action. */
@@ -275,7 +275,7 @@ class AgentActionTest extends FactorySpringTest {
      * hoped for.
      */
     @Test
-    @Timeout(90)
+    @Timeout(60)
     void sendDuringAnActionIsAnsweredNotLost() throws IOException {
         try (HeldModel held = new HeldModel()) {
             writeFactoryConfig("inc5e-held", held.url());
@@ -320,7 +320,7 @@ class AgentActionTest extends FactorySpringTest {
      * because the runtime reads its model once per turn and an action never re-reads it.
      */
     @Test
-    @Timeout(90)
+    @Timeout(60)
     // UC-WP-13
     void compactAfterAStopStillRuns() throws IOException {
         // 2500 ms > the core's 1500 ms wait-step, < the 20 s timeout of this config

@@ -49,7 +49,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * two contexts of different lifetime cannot share a temp dir, and the whole point is that the second one
  * finds the first one's files.</p>
  */
-@Timeout(180)
+@Timeout(90)
 class ChatRestartTest {
 
     private static final Path HOME = Path.of("target", "inc3d-home").toAbsolutePath().normalize();

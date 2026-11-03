@@ -57,7 +57,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * {@code updateConfig} against the value it holds, so the file is written by hand <b>first</b> (that is
  * the state the runtime is built in) and the change goes through the settings route afterwards.</p>
  */
-@Timeout(120)
+@Timeout(60)
 class ChatConfigTurnTest extends FactorySpringTest {
 
     private static final String FIRST_MODEL = "inc3e-first";

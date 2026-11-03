@@ -68,7 +68,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * cancel-is-no-error rule is pinned purely in {@code TurnOutcomeTest} and its use in the turn is proven by
  * the missing {@code error} event below.</p>
  */
-@Timeout(180)
+@Timeout(90)
 class AgentStopTest extends FactorySpringTest {
 
     /** Holds the turn inside a running tool until the test releases it — the stop has to land in there. */
@@ -121,7 +121,7 @@ class AgentStopTest extends FactorySpringTest {
     }
 
     @Test
-    @Timeout(90)
+    @Timeout(60)
     // UC-WP-50
     void stopEndsTheTurnAndEndsItAsAnEnd() {
         Project project = projects.add("https://git.example.com/acme/stop-turn.git").project();
@@ -176,7 +176,7 @@ class AgentStopTest extends FactorySpringTest {
      * ends the turn on a plain answer and never reaches that branch.
      */
     @Test
-    @Timeout(90)
+    @Timeout(60)
     // UC-WP-50
     void stopInsideTheRetryWaitEndsTheTurnAsAnEnd() {
         Project project = projects.add("https://git.example.com/acme/stop-retry.git").project();
@@ -217,7 +217,7 @@ class AgentStopTest extends FactorySpringTest {
 
 
     @Test
-    @Timeout(90)
+    @Timeout(60)
     // UC-WP-50
     void stopEndsJonAndTheRunningDelegation() {
         Project project = projects.add("https://git.example.com/acme/stop-delegation.git").project();
@@ -255,7 +255,7 @@ class AgentStopTest extends FactorySpringTest {
     }
 
     @Test
-    @Timeout(90)
+    @Timeout(60)
     // UC-WP-50
     void turnAfterAStopStartsFresh() {
         Project project = projects.add("https://git.example.com/acme/stop-then-turn.git").project();
@@ -283,7 +283,7 @@ class AgentStopTest extends FactorySpringTest {
     }
 
     @Test
-    @Timeout(90)
+    @Timeout(60)
     // UC-WP-50
     void stopWithoutATurnIsRefused() {
         Project project = projects.add("https://git.example.com/acme/stop-idle.git").project();
@@ -316,7 +316,7 @@ class AgentStopTest extends FactorySpringTest {
      * bleiben in der Queue" is open until the core answers it (Paul's decision).</p>
      */
     @Test
-    @Timeout(90)
+    @Timeout(60)
     // UC-WP-50
     void stopWithAQueuedInputStillStopsTheOneTurn() {
         Project project = projects.add("https://git.example.com/acme/stop-queue.git").project();

@@ -68,7 +68,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * nobody looked at is red here, and the same turn's history is asserted positively, so a member line that
  * quietly disappeared is red too.</p>
  */
-@Timeout(120)
+@Timeout(90)
 class TeamInternalsTest extends FactorySpringTest {
 
     /** The prompt Jon hands over — it has to stay visible, it names the delegation on his own line. */

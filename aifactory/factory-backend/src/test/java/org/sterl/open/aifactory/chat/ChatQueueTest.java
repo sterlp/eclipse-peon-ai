@@ -85,7 +85,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * gibt. Die Fabrik misst den Turn deshalb um den einen {@code call()}-Aufruf herum
  * ({@code ProjectRuntime#submit}), nicht im Monitor.</p>
  */
-@Timeout(120)
+@Timeout(90)
 class ChatQueueTest extends FactorySpringTest {
 
     /** Holds one turn inside a running tool until the test releases it — long enough for a second POST. */

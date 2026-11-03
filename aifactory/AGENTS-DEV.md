@@ -647,3 +647,18 @@
   `@LocalServerPort` (`RestTemplate` kann kein PATCH, s. oben). Die 405-Methoden-Matrix bleibt
   `ProjectFilesTest`; `jsonPath("$").isArray()` gibt es über HTTP nicht — die Array-Form am Body beweisen.
 
+
+- **`@Timeout` auf der Klasse ist eine Methodengrenze, keine Containergrenze** (JUnit 5.14-Javadoc:
+  „the same effect as applying it to all testable methods … **but not to its lifecycle methods**"). Probe:
+  `@Timeout(1)` an einer Klasse, die 7,5 s brauchte ⇒ **grün**; dieselbe Grenze an einer einzelnen Methode
+  (`ProjectStatusTest#afterARestartEveryProjectIsFree`) ⇒ `TimeoutException`. Also: klassenweite `@Timeout`
+  wirkt **pro Testmethode**, und
+  `@BeforeAll`/`@BeforeEach` sind **unbegrenzt** — der Home-Reset der Basis und der Context-Start sowieso.
+  Eine Grenze dagegen wäre `junit.jupiter.execution.timeout.lifecycle.method.default` (nicht gesetzt).
+- **Obergrenzen-Formel statt Accumulation** (Ink 6): klassenweit = größte methodenweite Grenze + 30 s;
+  methodenweit 60 s, wo die größte Await-Deadline ≤ 30 s; ohne methodenweite Grenze 60 s; Restart-Klassen
+  90 s (zweite App ≈ 2,5 s); `ProjectStatusTest` 120 s (Deadline 90 s). **Deadlines selbst bleiben**
+  (15–40 s Warten auf den Kern) — sie sind der Grund, warum Obergrenzen im grünen Lauf nichts kosten:
+  42,8 s vor und nach der Umstellung. Eine Methode, deren Deadline gleich ihrer Obergrenze ist
+  (`afterARestartEveryProjectIsFree`: 90 s / 90 s), ist ein offener Punkt, kein Erfolg.
+
