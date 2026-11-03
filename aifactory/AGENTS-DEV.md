@@ -402,8 +402,10 @@
 - **`eclipseInsertLines` zerlegt ein Bullet, wenn man nach seiner ersten Zeile einfügt** (gemessen): der Rest
   des Bullets wandert an das Dateiende. Ans Dateiende anhängen: `diskInsertLines` **mit**
   `afterLine=<letzte Zeile>` — ohne `afterLine` bricht der Aufruf mit
-  `newContent required and can not be null` (korrigiert 2026-11-03, Runde 2 Inc 6; `eclipseInsertLines`
-  mit `afterLine=<letzte Zeile>` funktioniert ebenfalls). Vorher prüfen, ob die Datei mit Umbruch endet.
+  `newContent required and can not be null` (korrigiert 2026-11-03, Runde 2 Inc 6; **nachgemessen Inc 7**:
+  beide Insert-Tools brechen mit genau dieser Meldung, wenn `afterLine` die letzte Zeile einer Datei ist,
+  die mit Leerzeile endet — anhängen dann über `eclipseEditFile` auf die letzte Inhaltszeile). Vorher prüfen,
+  ob die Datei mit Umbruch endet.
 - **Auf eine Live-Werkzeugzeile warten statt schlafen**: eigener `SseEmitter`-Double, `send(SseEventBuilder)`
   sammelt `event.build()` → `piece.getData()` (**nicht** `.data` — das Feld ist private); `contains("Running:")`
   unterscheidet ein laufendes Shell-Tool von einem Turn, der nie dort war. Ohne dieses Warten landete der Stop
@@ -648,17 +650,29 @@
   `ProjectFilesTest`; `jsonPath("$").isArray()` gibt es über HTTP nicht — die Array-Form am Body beweisen.
 
 
-- **`@Timeout` auf der Klasse ist eine Methodengrenze, keine Containergrenze** (JUnit 5.14-Javadoc:
+- **`@Timeout` auf der Klasse ist eine Methodengrenze, keine Containergrenze** (JUnit 6.0.3-Javadoc:
   „the same effect as applying it to all testable methods … **but not to its lifecycle methods**"). Probe:
   `@Timeout(1)` an einer Klasse, die 7,5 s brauchte ⇒ **grün**; dieselbe Grenze an einer einzelnen Methode
   (`ProjectStatusTest#afterARestartEveryProjectIsFree`) ⇒ `TimeoutException`. Also: klassenweite `@Timeout`
   wirkt **pro Testmethode**, und
   `@BeforeAll`/`@BeforeEach` sind **unbegrenzt** — der Home-Reset der Basis und der Context-Start sowieso.
-  Eine Grenze dagegen wäre `junit.jupiter.execution.timeout.lifecycle.method.default` (nicht gesetzt).
+  Eine Grenze dagegen ist `junit.jupiter.execution.timeout.lifecycle.method.default` — seit Inc 7 auf
+  **120 s** gesetzt (eigener Bullet unten).
 - **Obergrenzen-Formel statt Accumulation** (Ink 6): klassenweit = größte methodenweite Grenze + 30 s;
   methodenweit 60 s, wo die größte Await-Deadline ≤ 30 s; ohne methodenweite Grenze 60 s; Restart-Klassen
   90 s (zweite App ≈ 2,5 s); `ProjectStatusTest` 120 s (Deadline 90 s). **Deadlines selbst bleiben**
   (15–40 s Warten auf den Kern) — sie sind der Grund, warum Obergrenzen im grünen Lauf nichts kosten:
-  42,8 s vor und nach der Umstellung. Eine Methode, deren Deadline gleich ihrer Obergrenze ist
-  (`afterARestartEveryProjectIsFree`: 90 s / 90 s), ist ein offener Punkt, kein Erfolg.
+  42,8 s vor und nach der Umstellung. Eine Methode, deren Deadline gleich ihrer Obergrenze ist, ist ein
+  offener Punkt, kein Erfolg: das war `ProjectStatusTest#aQueuedInputIsCounted` (90 s Deadline bei
+  `@Timeout(90)`) — Inc 7 hat die Deadline auf 60 s gesenkt, die Grenze ist damit wieder ein Netz. Der Name
+  `afterARestartEveryProjectIsFree` stand hier früher falsch: deren Wartepunkte sind 15/15/60 s bei Grenze 90 s.
+- **Lifecycle-Methoden brauchen ein Konfig-Netz, kein `@Timeout`** (Inc 7):
+  `factory-backend/src/test/resources/junit-platform.properties` (neu, erste Test-Ressource des Moduls) setzt
+  `junit.jupiter.execution.timeout.lifecycle.method.default=120s` — es trifft `@BeforeAll`/`@BeforeEach`/
+  `@AfterEach`/`@AfterAll` und damit den Context-Start (`SpringExtension.beforeAll`) so gut wie den
+  Home-Reset der Basis. Name am Jar belegt: `org.junit.jupiter.engine.Constants` (JUnit 6.0.3). **Probe:**
+  provisorische Klasse mit `@BeforeAll` + 5-s-Schlaf bei Netz **2 s** ⇒
+  `Timeout holdsTheLifecycleMethod() timed out after 2 seconds`; Nebenbefund: der Schlaf wurde
+  **unterbrochen** (`InterruptedException` als unterdrückte Exception) — die Grenze wirkt also auch im
+  Default-`thread.mode`; ein Blocker, der Interrupts ignoriert, liefe dagegen weiter.
 

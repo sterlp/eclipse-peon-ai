@@ -183,7 +183,7 @@ class ProjectStatusTest extends FactorySpringTest {
 
             // working and waited are both on the wire, so the tool may end and both inputs be answered
             TurnGate.release(created.localPath());
-            states.await(free(), 90_000, "die Zeile sagt frei");
+            states.await(free(), 60_000, "die Zeile sagt frei");
             assertThat(messages(projectId))
                     .as("frei heißt: auch die gewartete Eingabe ist abgearbeitet, sonst wäre die Zeile zu früh frei")
                     .extracting(ChatMessageDto::text)

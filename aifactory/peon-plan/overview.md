@@ -207,6 +207,7 @@ AGENTS-DEV.md:284).
 | **4** ✅ | `ProjectControllerTest` MockMvc → echter HTTP-Client (D-5) | Suite grün, `missCount` = 5 → 1 (real 2 → **1**) | 1 Kontext — erreicht |
 | **5** ✅ | Guard-Test (D-7) + Messzahlen/Regel in `AGENTS-DEV.md` | Guard grün, Gegenproben: `@ActiveProfiles`/`@SpringBootTest` an einer Unterklasse ⇒ Guard rot; Eintrag ohne Boot ⇒ rot | Regel hält mechanisch |
 | **6** ✅ | `@Timeout`-Obergrenzen auf testwürdige Werte (Formel statt Accumulation, s. §10 Inc 6) | Suite grün, Gegenlauf grün, Probe: Obergrenze an einer Methode beißt | nur Fehlerfall schneller (grün unverändert 42,8 s) |
+| **7** ✅ | Freigabe-Nachtrag §9: Deadline des 90/90-Falls auf 60 s + Lifecycle-Netz `junit-platform.properties` (120 s) | Suite grün, Gegenlauf grün, Probe: `@BeforeAll` mit 5 s Schlaf bei Netz 2 s ⇒ `TimeoutException` | nur Fehlerfall schneller (grün 43,1 s) |
 
 **Reihenfolge-Begründung:** 1 zuerst — reine Testmechanik, keine Strukturänderung, sofort messbar.
 2/3/4 bauen aufeinander auf; 4 ist der teuerste Schritt und bringt am wenigsten (ein Kontext), daher
@@ -303,24 +304,24 @@ entfernt oder verschoben.
   Klassen) → **melden**; dann ist D-3 nicht tragfähig und der Reset braucht eine andere Form.
 * Wenn `ProjectControllerTest` über HTTP einen Fall nicht 1:1 abbildet (z. B. MockMvc-spezifische
   405/415-Antwort) → Fall benennen, Test **nicht** stillschweigend löschen.
-* **Offen nach Inc 6 (Jons Entscheidung, Beweismaß):**
-  `ProjectStatusTest#afterARestartEveryProjectIsFree` trägt eine 90-s-Deadline **und** eine
-  90-s-Methoden-Obergrenze — ein langsamer, korrekter Lauf stürbe an der eigenen Grenze. Entweder Deadline
-  auf 60 s oder Obergrenze auf 120 s. In Inc 6 bewusst nicht entschieden (§6: Beweismaß gehört nicht in
-  einen Obergrenzen-Zyklus).
-* **Vorschlag, nicht gebaut:** `junit.jupiter.execution.timeout.lifecycle.method.default` als Netz für
-  hängende `@BeforeAll`/`@BeforeEach` (Home-Reset der Basis, Context-Start) — `@Timeout` an Klassen erreicht
-  Lifecycle-Methoden nachweislich nicht.
+* **Erledigt (Inc 7, Jons Entscheidung 2026-11-03):** die 90/90-Kollision trug `aQueuedInputIsCounted`
+  (der Name `afterARestartEveryProjectIsFree` in diesem Punkt war falsch, §10 Inc 6/3 berichtigt): Deadline
+  auf **60 s** gesenkt, `@Timeout(90)` bleibt das Netz darüber (+30 s) — nach der Senkung ist eine Obergrenze
+  von 120 s nicht nötig und wäre eine Lockerung ohne Grund.
+* **Erbaut (Inc 7):** `junit.jupiter.execution.timeout.lifecycle.method.default=120s` in
+  `factory-backend/src/test/resources/junit-platform.properties` — begrenzt jetzt auch
+  `@BeforeAll`/`@BeforeEach` (Context-Start, Home-Reset der Basis). Probe: `@BeforeAll` mit 5 s Schlaf bei
+  Netz 2 s ⇒ `Timeout … timed out after 2 seconds`.
 
 ## 10 Status der Messung
 
-| Kennzahl | Baseline (2026-11-03) | nach Inc 1 | nach Inc 2a | nach Inc 2b | nach Inc 3 | nach Inc 4 | nach Inc 5 | nach Inc 6 |
-|---|---|---|---|---|---|---|---|---|
-| `missCount` (Kontexte) | **23** | 23 — Inc 1 öffnet keine Kontexte | **20** (−3, wie vorhergesagt) | **9** (−11) | **2** (−7) | **1** (erreicht — Regel erfüllt) | **1** | **1** |
-| Boot-Zeilen | **23** | 23 | **20** | **9** | **2** | **1** (`Started UiDeliveryTest` = der geteilte) | **1** | **1** |
-| Surefire-Summe | **80,3 s** (42 Reports, Lauf 16:36) | **35,7 s** (43 Reports) | **35,2 s** (44 Reports) | **33,5 s** (44 Reports) | **32,7 s** (44 Reports) | **32,1 s** (44 Reports) | **33,7 s** (45 Klassen, Guard +1,4 s) | **33,2 s** (45 Klassen; XML 33,1 s) |
-| Wanduhr `clean test` | **118 s** | **73 s** | **72,8 s** (Maven 01:11 min) | **51,1 s** (Maven 50,1 s) | **41,9 s** (Maven 41,2 s) | **41,5 s** — Ziel < 60 s **erreicht** | **43,4 s** | **42,8 s** (Gegenlauf 42,8 s) |
-| Tests | **208** / 0 Fehler | **210** / 0 Fehler (`TurnGateTest` +2) | **212** / 0 Fehler (`FactorySpringTestResetTest` +2) | **212** / 0 Fehler | **212** / 0 Fehler | **212** / 0 Fehler | **216** / 0 Fehler (`SingleContextGuardTest` +4) | **216** / 0 Fehler |
+| Kennzahl | Baseline (2026-11-03) | nach Inc 1 | nach Inc 2a | nach Inc 2b | nach Inc 3 | nach Inc 4 | nach Inc 5 | nach Inc 6 | nach Inc 7 |
+|---|---|---|---|---|---|---|---|---|---|
+| `missCount` (Kontexte) | **23** | 23 — Inc 1 öffnet keine Kontexte | **20** (−3, wie vorhergesagt) | **9** (−11) | **2** (−7) | **1** (erreicht — Regel erfüllt) | **1** | **1** | **1** |
+| Boot-Zeilen | **23** | 23 | **20** | **9** | **2** | **1** (`Started UiDeliveryTest` = der geteilte) | **1** | **1** | **1** |
+| Surefire-Summe | **80,3 s** (42 Reports, Lauf 16:36) | **35,7 s** (43 Reports) | **35,2 s** (44 Reports) | **33,5 s** (44 Reports) | **32,7 s** (44 Reports) | **32,1 s** (44 Reports) | **33,7 s** (45 Klassen, Guard +1,4 s) | **33,2 s** (45 Klassen; XML 33,1 s) | **33,6 s** (45 Reports) |
+| Wanduhr `clean test` | **118 s** | **73 s** | **72,8 s** (Maven 01:11 min) | **51,1 s** (Maven 50,1 s) | **41,9 s** (Maven 41,2 s) | **41,5 s** — Ziel < 60 s **erreicht** | **43,4 s** | **42,8 s** (Gegenlauf 42,8 s) | **43,1 s** (Maven 42,1 s; Gegenlauf 43,7 s) |
+| Tests | **208** / 0 Fehler | **210** / 0 Fehler (`TurnGateTest` +2) | **212** / 0 Fehler (`FactorySpringTestResetTest` +2) | **212** / 0 Fehler | **212** / 0 Fehler | **212** / 0 Fehler | **216** / 0 Fehler (`SingleContextGuardTest` +4) | **216** / 0 Fehler | **216** / 0 Fehler |
 
 **Nach Inc 2b gemessen (2026-11-03):** Die Wanduhr ist von 72,8 s auf **51,1 s** gefallen — die Kontexte
 kosteten also deutlich mehr als die Summe ihrer Boot-Zeilen (6,1 s): die Boot-Zeile misst nur die
@@ -543,8 +544,41 @@ Benannte Abweichungen Inc 6:
    `junit.jupiter.execution.timeout.lifecycle.method.default` zu fassen — **Vorschlag, nicht gebaut**.
 2. **§4 schrieb „180 → 60 s"** — bei korrekter Semantik wäre 60 s für die Restart-Klassen und für die
    Klasse mit 90-s-Deadline falsch. Gebaut ist die Formel oben (180 → 90 bzw. 120), nicht die Zahl.
-3. **Offen gemeldet (§9):** `afterARestartEveryProjectIsFree` trägt eine 90-s-Deadline **und** eine
-   90-s-Obergrenze — ein langsamer, korrekter Lauf stürbe an der eigenen Grenze. Vorbestehend, hier nicht
-   geändert: eine der beiden Zahlen zu verschieben ist eine Beweismaß-Entscheidung, keine
-   Obergrenzen-Härtung.
+3. **Nachträglich berichtigt (Inc 7):** die hier gemeldete Kollision „Deadline = Obergrenze" trägt **nicht**
+   `afterARestartEveryProjectIsFree` (deren Wartepunkte: 15 s / 15 s / 60 s bei Obergrenze 90 s), sondern
+   `aQueuedInputIsCounted` (Deadline 90 s bei `@Timeout(90)`). Inc 7 hat dort die Deadline auf 60 s gesenkt.
+
+**Inc 7 — erledigt (2026-11-03, Freigabe-Nachtrag zu §9):** beide offenen Punkte gebaut, **keine**
+Assertion geändert.
+
+1. **Die 90/90-Kollision liegt in `aQueuedInputIsCounted`, nicht in `afterARestartEveryProjectIsFree`**
+   (die Namensangabe in §9 und hier bei Inc 6 war falsch, unten berichtigt). Nach Jons Prinzip — Deadline =
+   ehrliche Erwartung, Obergrenze = Netz darüber — ist dort die **Deadline 90 s → 60 s**: dieselbe Zahl, die
+   der Nachbarfall `theListShowsWorkingAndFreeAfterTheTurn` für denselben „frei"-Übergang schon vorher
+   verlangte. Die Klasse misst 2,5 s für drei Tests, die Erwartung ist also gut zwanzigfach die Realität.
+   Damit ist `@Timeout(90)` wieder ein Netz von +30 s über der Deadline; **eine Anhebung auf 120 s ist nicht
+   nötig und wäre eine Lockerung ohne Grund** (Zahlen unten, §9 berichtigt).
+2. **Lifecycle-Netz gebaut:** `factory-backend/src/test/resources/junit-platform.properties` (neu, erste
+   Test-Ressource des Moduls) setzt `junit.jupiter.execution.timeout.lifecycle.method.default=120s`
+   (JUnit **6.0.3**; Name am Jar belegt: `org.junit.jupiter.engine.Constants.
+   DEFAULT_LIFECYCLE_METHOD_TIMEOUT_PROPERTY_NAME`). Trifft `@BeforeAll`/`@BeforeEach`/`@AfterEach`/
+   `@AfterAll` — also auch den Context-Start (`SpringExtension.beforeAll`) und den Home-Reset der Basis, die
+   kein `@Timeout` der Welt erreichte (Inc 6/1). 120 s ≈ 50× der beobachteten Boot-Zeit (2,4 s).
+   **Probe:** provisorische Klasse mit `@BeforeAll { Thread.sleep(5_000) }` bei Netz **2 s** ⇒
+   `Timeout holdsTheLifecycleMethod() timed out after 2 seconds`; Nebenbefund: der Schlaf wurde
+   **unterbrochen** (`InterruptedException` als unterdrückte Exception) — die Grenze wirkt also auch im
+   Default-Thread-Modus. Probe und 2-s-Wert zurückgenommen.
+
+Beweis: volle Suite **216 / 0 Fehler, `missCount` 1, 1 Boot, 43,1 s** (`/tmp/inc7-cert.log`), Gegenlauf
+`reversealphabetical` 216 / 0 Fehler, `missCount` 1, 43,7 s (`/tmp/inc7-rev.log`); Surefire-Summe 33,6 s
+über 45 Reports.
+
+Benannte Abweichungen Inc 7:
+
+1. Die zwei Zahlen der Freigabe (90→60 und 90→120) gehörten **nicht an dieselbe Methode**: 60 s ist die
+   Deadline von `aQueuedInputIsCounted`, und dort braucht keine Obergrenze 120 s (Punkt 1 oben).
+   `afterARestartEveryProjectIsFree` bleibt, wie es ist: 60-s-Deadline, 90-s-Obergrenze.
+2. Die neue Ressourcendatei ist der erste Eintrag unter `src/test/resources` — geprüft im Gegenlauf:
+   dieselbe Datei wird geladen, `missCount` bleibt 1, kein Test läuft in die neue Grenze.
+
 
