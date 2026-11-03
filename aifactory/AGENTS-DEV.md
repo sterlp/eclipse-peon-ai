@@ -521,3 +521,36 @@
 - **Nach Inc 6: Backend 206** (202 + 4), **UI 128 Tests / 16 Dateien** (123/16), `tsc` + oxlint 0/0,
   Doc-Lint **67/67 UCs, 243 Test-Ids, 0 Findings**. UC-WP-67 bleibt ❌ (flippt Jon).
 
+
+## Inc 7 (Zyklus 2026-11-02, Runde 2) — Config-Seite in der visuellen Sprache des Chats
+
+- **`.ui-card` statt `.card` ist keine Geschmackssache**: Bootstrap 5 gibt `.card`
+  `display: flex; flex-direction: column` und eine eigene Border-Farbe; gegen den Bootstrap-Layer hilft
+  ohne `!important` nur ein eigener Name. Tokens der Chat-Cards (`.files-root-card`,
+  `.chat-insight-line`): `1px solid var(--border)` + Radius + Padding, **kein** Hintergrund — die Fläche
+  bleibt die Seite, die Kante nennt den Block.
+- **`declarations()` liest eine gruppierte Regel nur am LETZTEN Selector** (der Helfer sucht
+  `"<selector> {"`): aus `.settings input, … , .config-agents-key input {` ist nur
+  `.config-agents-key input` lesbar. Ein Gruppenmitglied, das nicht Tail ist, über
+  `appSheet().toContain('.config-agents-field input,')` pinnen — sonst beweist der Test die Teilmenge.
+- **Neuer Helfer `block(selector)` in `test/shared/sheets.ts`**: `declarations()` endet vor der ersten
+  verschachtelten Regel, ein Maß aus einem Nested-Block (das Padding von `.chat-composer textarea`) ist
+  nur über den klammerbalancierten Block lesbar. Die Maß-Regex muss `(^|[^-\w])padding:` heißen — sonst
+  trifft sie zuerst das `padding-top:` derselben Regel.
+- **Layout ist in jsdom ein Sheet-Beweis**: „die Card ersetzt die Trennlinie" =
+  `declarations('.config-agents-slot')` enthält kein `border-top` mehr; das Feldmaß wird gegen den Wert
+  des Chat-Feldes verglichen statt gegen eine Zahl (ein fest codierter Wert überlebt jede Änderung der
+  Chat-Eingabe nicht als Hinweis, sondern nur als Zufall).
+- **Zwei `AGENTS-DEV.md` im Repo**: die Bau-Fakten dieses Zyklus stehen in
+  `aifactory/AGENTS-DEV.md` (von Peon geladen als `/aifactory-parent/AGENTS-DEV.md`); die Wurzel-Datei
+  (112 Zeilen) endet bei Inc 4 und ist nicht der aktuelle Stand.
+- **Kein Doc-Delta durch Dev**: der Look-Absatz in `ui.md` gehört dem Docs-Besitzer, und keine
+  bestehende Zeile lügt (`config.md` kennt keine Look-Aussage, `styles.css`-Kommentar „Deliberately no
+  card" war der einzige Satz, der korrigiert werden musste). Jons Flip `UC-WP-67 ✅` in `config.md`
+  (uncommitted) reist im Inc-7-Commit mit.
+- **Proben Inc 7** (je genau `settingsUsesTheChatCard` rot): Form ohne `ui-card` · Slot ohne `ui-card` ·
+  `.ui-card` ohne Padding · `.ui-card` ohne Rand · Feldmaß zurück auf `0.3rem 0.5rem` · Agent-Felder aus
+  der geteilten Feldregel genommen · Slot-Trennlinie zurück · Key-Status ohne Mono.
+- **Nach Inc 7: Backend 206/0/0** (unverändert — kein Backend-Code), **UI 129 Tests / 16 Dateien**
+  (128/16), `tsc` + oxlint 0/0 (58 Dateien), Doc-Lint **67/67 UCs, 243 Test-Ids, 0 Findings**.
+
