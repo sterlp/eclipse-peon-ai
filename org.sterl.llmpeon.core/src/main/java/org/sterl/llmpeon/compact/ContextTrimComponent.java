@@ -11,6 +11,7 @@ import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
+import org.sterl.llmpeon.shared.PictureMessage;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolService;
 
@@ -155,7 +156,7 @@ public class ContextTrimComponent {
         if (m instanceof UserMessage um) {
             // The last real user message stays full; earlier user messages are state-only
             // (everything but the last TextContent — context-message-concept.md).
-            return m == lastRealUser ? e.uncapped() : renderStateOnly(um);
+            return m == lastRealUser ? e.uncapped() : renderStateOnly(um, e.blocks());
         }
         var blocks = new ArrayList<String>(e.blocks().size());
         for (var b : e.blocks()) {
@@ -208,11 +209,16 @@ public class ContextTrimComponent {
     /** State-only render of a user message: everything but the last TextContent (the real user
      *  text) — the entries run through the SAME drop pipeline (pure blocks fly out, R-TR-9; the
      *  count was already taken on the full message). Empty when nothing but real text is left. */
-    private static String renderStateOnly(UserMessage um) {
+    private static String renderStateOnly(UserMessage um, List<String> blocks) {
         var texts = um.contents().stream().filter(c -> c instanceof TextContent).toList();
-        if (texts.size() <= 1) return "";
-        return String.join(System.lineSeparator(),
-                dropBlocks(ChatMessageUtil.extractMessages(UserMessage.from(texts.subList(0, texts.size() - 1)))).kept());
+        var parts = new ArrayList<String>();
+        if (texts.size() > 1) {
+            parts.addAll(dropBlocks(ChatMessageUtil.extractMessages(UserMessage.from(texts.subList(0, texts.size() - 1)))).kept());
+        }
+        // picture placeholders are blocks of extractMessages, not TextContent — they carry the
+        // "a picture was seen" fact into the summary (R-RP-4); matched on the prefix (R-TR-7)
+        for (var b : blocks) if (b.startsWith(ChatMessageUtil.PICTURE_PLACEHOLDER_PREFIX)) parts.add(b);
+        return String.join(System.lineSeparator(), parts);
     }
 
     /** The last UserMessage whose last TextContent is real user text (R-CIB-4.1); {@code null} if none. */
@@ -240,7 +246,8 @@ public class ContextTrimComponent {
         if (last == null) return false;
         return !last.startsWith(ToolService.COMPACT_HINT)
                 && !last.startsWith(UserMessageQueue.QUEUED_MARKER_PREFIX)
-                && !last.startsWith(CompactConstants.REINSERT_MARKER);
+                && !last.startsWith(CompactConstants.REINSERT_MARKER)
+                && !PictureMessage.isHead(last);
     }
 
     /**

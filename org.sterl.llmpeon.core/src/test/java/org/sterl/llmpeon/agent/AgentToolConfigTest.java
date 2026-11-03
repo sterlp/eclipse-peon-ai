@@ -207,7 +207,7 @@ class AgentToolConfigTest {
         assertThat(preview).containsExactlyElementsOf(runtime);
         // sanity: the set is non-trivial (allow prefixes, deny, class filter all exercised)
         assertThat(preview).containsExactly(
-                "diskListDirectory", "diskReadFile", "diskSearchFiles", "eclipseGrepFiles", "eclipseMcp");
+                "diskListDirectory", "diskReadFile", "diskReadPicture", "diskSearchFiles", "eclipseGrepFiles", "eclipseMcp");
     }
 
     @Test
@@ -225,7 +225,7 @@ class AgentToolConfigTest {
 
         // THEN everything except shell* is active (edit tools stay out via the class filter)
         assertThat(names).containsExactly(
-                "debugJavaSetBreakpoint", "diskListDirectory", "diskReadFile", "diskSearchFiles",
+                "debugJavaSetBreakpoint", "diskListDirectory", "diskReadFile", "diskReadPicture", "diskSearchFiles",
                 "eclipseGrepFiles", "mcp__docs__search_docs", "readOperationSystemInformation");
     }
 
@@ -239,10 +239,10 @@ class AgentToolConfigTest {
 
         // WHEN the preview resolves an empty or absent value
         assertThat(dev.resolveActiveTools("")).containsExactly(
-                "diskListDirectory", "diskReadFile", "diskSearchFiles",
+                "diskListDirectory", "diskReadFile", "diskReadPicture", "diskSearchFiles",
                 "mcp__docs__search_docs", "readOperationSystemInformation", "shellRunCommand");
         assertThat(dev.resolveActiveTools(null)).containsExactly(
-                "diskListDirectory", "diskReadFile", "diskSearchFiles",
+                "diskListDirectory", "diskReadFile", "diskReadPicture", "diskSearchFiles",
                 "mcp__docs__search_docs", "readOperationSystemInformation", "shellRunCommand");
     }
 
@@ -261,6 +261,25 @@ class AgentToolConfigTest {
 
         // THEN the sub-loop's class filter (no shell, no edit tools) AND the allowlist apply
         assertThat(names).containsExactly("eclipseGrepFiles", "eclipseMcp");
+    }
+
+    // UC-RP-7
+    @Test
+    void readPictureFollowsTheReadToolsAndTheGlobSwitchesItOff() {
+        // GIVEN the disk read tool family and the eclipse-only / vision-less allowlists
+        var svc = new ToolServiceWithMcp(List.of());
+        svc.addTool(new DiskFileReadTool(Path.of(System.getProperty("java.io.tmpdir"))));
+        var dev = new AiDevAgent(model(Map.of()), svc);
+        var eclipseOnly = new AiDevAgent(model(Map.of(AgentModelConfig.DEV, "eclipse")), svc);
+        var noVision = new AiDevAgent(model(Map.of(AgentModelConfig.DEV, "*, !*ReadPicture")), svc);
+
+        // THEN whoever has diskReadFile has diskReadPicture
+        assertThat(dev.resolveActiveTools(null)).contains("diskReadFile", "diskReadPicture");
+        // AND the eclipse-only agent has neither disk tool
+        assertThat(eclipseOnly.resolveActiveTools("eclipse")).doesNotContain("diskReadPicture");
+        // AND the glob removes only the picture tool (UC-ATC-9 on agent level)
+        assertThat(noVision.resolveActiveTools("*, !*ReadPicture"))
+                .contains("diskReadFile").doesNotContain("diskReadPicture");
     }
 
     // R-CG-6

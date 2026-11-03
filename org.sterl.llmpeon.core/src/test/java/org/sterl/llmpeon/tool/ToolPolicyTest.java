@@ -118,8 +118,30 @@ class ToolPolicyTest {
     }
 
     @Test
-    void doubleStarMatchesNothing() {
-        assertThat(ToolPolicy.enables(List.of("**"), "anything")).isFalse();
+    void doubleStarMatchesAll() {
+        assertThat(ToolPolicy.enables(List.of("**"), "anything")).isTrue();
+    }
+
+    // UC-ATC-9
+    @Test
+    void leadingStarDenyExcludesBothReadPictureTools() {
+        var allow = List.of("*", "!*ReadPicture");
+        assertThat(ToolPolicy.enables(allow, "diskReadPicture")).isFalse();
+        assertThat(ToolPolicy.enables(allow, "eclipseReadPicture")).isFalse();
+        assertThat(ToolPolicy.enables(allow, "diskReadFile")).isTrue();
+    }
+
+    // UC-ATC-9
+    @Test
+    void innerStarAllowIsGlobOverTheWholeName() {
+        var allow = List.of("*Read*");
+        assertThat(ToolPolicy.enables(allow, "eclipseReadFile")).isTrue();
+        assertThat(ToolPolicy.enables(allow, "eclipseGrepFiles")).isFalse();
+    }
+
+    @Test
+    void starOnlyDenyIsNoOp() {
+        assertThat(ToolPolicy.enables(List.of("*", "!*", "!**"), "anything")).isTrue();
     }
 
     @Test

@@ -203,7 +203,7 @@ public class ToolService {
             if (isToolrequest) {
                 stuck = 0; // reset on productive tool use
                 var tR = runAllTools(response, req);
-                req.getMemory().addResult(response, tR);
+                req.getMemory().addResult(response, tR, req.drainAfterResults());
                 // R-CC-18: the state-based decision runs after EVERY tool round — over budget the
                 // component compacts directly, in the band it hints (one implementation, ADR-0070)
                 compactHandler.handle(req, hasCompactTool);

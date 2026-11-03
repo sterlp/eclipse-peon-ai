@@ -173,6 +173,27 @@ idPrefix: ATC
 - GIVEN Allowlist `foo*` WHEN Filter THEN alle Tools mit Präfix `foo` (vorher: wirkungslos)
 - GIVEN Allowlist `*, !debugJava*` WHEN Filter THEN unverändert (All-Token + Negation, Regression)
 - GIVEN ToolPolicy-Test THEN je Fall ein Test (Allow-Suffix, `*` allein, Deny unverändert)
+- Erweitert durch R-ATC-11 (`*` an beliebiger Stelle).
+
+### R-ATC-11 ✅ done (2026-11-03) — `*` an beliebiger Stelle: Token mit `*` = Glob, Full-Match (Allow UND Deny)
+
+- **SOLL (Paul, 2026-11-03):** Enthält ein Token ein `*`, ist es ein **Glob** (`*` = beliebig viele
+  Zeichen, auch keine) und muss den **ganzen** Tool-Namen treffen — in Allow wie Deny. `*ReadPicture`
+  trifft `diskReadPicture` und `eclipseReadPicture`; `*Read*` jeden Namen mit `Read` darin.
+  Tokens **ohne** `*` bleiben wie heute (Präfix bzw. exakt, R-ATC-1); `*` allein bleibt der All-Token;
+  ein trailing `*` (`debugJava*`) ergibt als Glob genau den heutigen Präfix-Match (R-ATC-10).
+- **WEIL:** Tool-Namen tragen die Familie vorn ([ADR-0054](../../docs/adr/0054-tool-naming-camelcase-family-prefix.md)),
+  Geschwister-Tools teilen nur das Ende. Heute wird ein führendes `*` wörtlich genommen — `!*ReadPicture`
+  schließt **still nichts** aus (falsches „ist abgeschaltet"). Ein Glob ist die allgemeine Lösung statt
+  eines weiteren Sonderfalls „Suffix".
+- **Randfälle:** Glob-Tokens matchen case-insensitive (wie `RegexUtils`, nur strikt mehr Treffer);
+  `**` = alles (wie `*`); `!*` (Deny-all) ist ein No-op wie bare `!` (R-ATC-9) — ein Agent ohne Tools
+  ist nicht vorgesehen (R-ATC-3).
+- **Tests:** nur direkt am Matcher mit Tool-Namen als Strings (Paul) — keine Tool-Matrix nötig.
+- GIVEN Allowlist `*, !*ReadPicture` WHEN `diskReadPicture` / `eclipseReadPicture` THEN aus;
+  WHEN `diskReadFile` THEN an
+- GIVEN Allowlist `*Read*` WHEN `eclipseReadFile` THEN an; WHEN `eclipseGrepFiles` THEN aus
+- GIVEN Allowlist `!debugJava*` / `eclipse*` / `eclipse` / `*` THEN Verhalten unverändert (Regression)
 
 ## Use-Case-Definitionen
 
@@ -206,6 +227,10 @@ GIVEN Plan-Agent mit `eclipse, !debugJava*` WHEN Preview-Button THEN Dialog zeig
 GIVEN Dev-Agent mit Allowlist `eclipse*` WHEN `toolSpecifications` THEN alle Tools mit Präfix
 `eclipse` aktiv — identisch zu `eclipse` (R-ATC-10).
 
+#### UC-ATC-9 — Geschwister-Tools über führendes `*` ausschließen
+GIVEN Allowlist `*, !*ReadPicture` WHEN der Matcher `diskReadPicture`, `eclipseReadPicture` und
+`diskReadFile` prüft THEN sind die beiden ReadPicture-Tools aus, `diskReadFile` an (R-ATC-11).
+
 ## BDD-Test-Mapping
 
 | Regel | Test |
@@ -220,6 +245,7 @@ GIVEN Dev-Agent mit Allowlist `eclipse*` WHEN `toolSpecifications` THEN alle Too
 | R-ATC-8 | `resolveActiveTools*` (Preview↔Runtime-Äquivalenz) + Dialog-Inhalt = User-Smoke (Paul) |
 | R-ATC-9 | `ToolPolicyTest.bareBangIsNoOp` + UI-Validierungs-Test (inc4: Speichern verweigert) |
 | R-ATC-10 | `ToolPolicyTest` — Allow-Suffix-Präfix (`eclipse*`, `foo*`), `*` allein, Deny unverändert |
+| R-ATC-11 | `ToolPolicyTest` — Glob mit `*` vorn/innen (Allow + Deny), Regression R-ATC-10 |
 
 ## Out of Scope
 

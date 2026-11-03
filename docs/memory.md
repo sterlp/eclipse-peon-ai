@@ -5,6 +5,16 @@
 > R-PT-5, Da-Dok-Review behandelt, Plan archiviert `overview-done-2026-10-31-10-36.md`).
 > **Merge-Entscheidung (Squash-Default) liegt bei Paul.**
 
+## Micro-Feature Read Picture (2026-11-03) — ✅ gebaut, **UNCOMMITTED (Paul: kein Commit/Push)**
+
+- `diskReadPicture`/`eclipseReadPicture` (R-RP-1…6) + Glob-Filter R-ATC-11; Docs
+  `core/docs/read-picture-tool.md` (+ `-architektur.md`, langchain4j-Feature-Request-md).
+- Gates: Core Surefire 1473/0/0/0 (nach Inc 4), Tycho package grün, Lint UC-RP 0 Findings.
+- Review REJECTED → Delta (Platzhalter bei Stufenkürzung, DetailLevel.HIGH) gefixt + Mutationsbelege.
+- Inc 4 R-RP-7: eclipseReadPicture nennt überall den Workspace-Pfad (Paul-Fund beim Smoke).
+- Paul-Smoke beider Tools ✅. Offen: Commit durch Paul, danach planImplemented; Backlog im Doc:
+  Downscale, Browser-Screenshot-Spike.
+
 ## Zyklus-Ergebnis (2026-10-31, Mini-Zyklus)
 
 - **Inc 1** (`85422a43` + Warn-Assert `d38fce13`): AgentOrder-Fallback — matcht kein Agent irgendein

@@ -72,6 +72,17 @@ public class DiskFileReadTool extends AbstractTool {
         }
     }
 
+    @Tool("Load a picture from disk; you see it in the next user message. png, jpg, jpeg, gif, webp, max 4 MB.")
+    public String diskReadPicture(@P(name = "filePath") String filePath) {
+        ArgsUtil.requireNonBlank(filePath, "filePath");
+
+        Path resolved = resolve(filePath);
+        if (resolved == null || !Files.isRegularFile(resolved)) {
+            throw new IllegalArgumentException("File not found: " + filePath + " also not in " + workingDir);
+        }
+        return attachPicture(resolved);
+    }
+
     @Tool("Find files by name pattern (*, ?), recursive in working directory. limit caps results.")
     public String diskSearchFiles(
             @P(description = "file name query - only *, ? wildcard is supported.", name = "query") String query,

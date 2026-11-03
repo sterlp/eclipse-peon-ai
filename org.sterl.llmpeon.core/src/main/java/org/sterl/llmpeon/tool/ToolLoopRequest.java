@@ -1,6 +1,8 @@
 package org.sterl.llmpeon.tool;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
@@ -22,6 +24,7 @@ import org.sterl.llmpeon.streaming.StreamingBridge;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.Builder;
@@ -107,6 +110,26 @@ public class ToolLoopRequest {
 
     public void addMessage(ChatMessage message) {
         memory.add(message);
+    }
+
+    /**
+     * User messages tools queue for the memory right after this round's tool results (R-RP-1, picture
+     * follow-ups). Deliberately no {@code @Default}: Lombok skips an initialized {@code final} field, so a
+     * {@code toBuilder()} sub-request gets its OWN list — a sub-agent loop never feeds the parent's round.
+     */
+    private final List<UserMessage> afterResults = Collections.synchronizedList(new ArrayList<>());
+
+    public void appendAfterResults(UserMessage message) {
+        afterResults.add(message);
+    }
+
+    /** Empties the queue and returns what it held, in order. */
+    public List<UserMessage> drainAfterResults() {
+        synchronized (afterResults) {
+            var copy = List.copyOf(afterResults);
+            afterResults.clear();
+            return copy;
+        }
     }
 
     public LlmConfig getConfig() {

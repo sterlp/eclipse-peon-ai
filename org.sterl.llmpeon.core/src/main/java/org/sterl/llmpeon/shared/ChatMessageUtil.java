@@ -12,6 +12,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -30,6 +31,10 @@ public class ChatMessageUtil {
     public static final String TOOL_RESULT_BODY_MARKER = "result:" + System.lineSeparator();
     /** Body marker of a TOOL REQUEST: block — the arguments start after the (structural) occurrence. */
     public static final String TOOL_REQUEST_BODY_MARKER = "arguments:";
+    /** Compact render of a picture (R-RP-4): the compressor never sees image bytes. */
+    public static final String PICTURE_PLACEHOLDER_PREFIX = "[picture removed for compact: ";
+    /** Flat estimate per picture (R-RP-4): 1.600 tokens at chars/3. */
+    public static final int PICTURE_ESTIMATE_CHARS = 4800;
     /** Marker of a front-capped thinking block: the head was dropped, the end (conclusion) is kept. */
     public static final String THINK_FRONT_CAP_ANCHOR = "…$ ";
 
@@ -89,7 +94,11 @@ public class ChatMessageUtil {
     }
 
     private static int charCount(ChatMessage msg) {
-        return toString(msg).length();
+        int pictures = 0;
+        if (msg instanceof UserMessage um) {
+            for (var c : um.contents()) if (c instanceof ImageContent) pictures++;
+        }
+        return toString(msg).length() + pictures * PICTURE_ESTIMATE_CHARS;
     }
 
     public static UserMessage join(UserMessage m1, UserMessage m2) {
@@ -142,10 +151,13 @@ public class ChatMessageUtil {
             result.add(SYSTEM_PREFIX + sm.text());
         } else {
             if (msg instanceof UserMessage um) {
-                um.contents().stream().filter(m -> m instanceof TextContent)
-                    .map(m -> (TextContent)m)
-                    .forEach(c -> result.add(tagged(c.text(), t)));
-                
+                for (var c : um.contents()) {
+                    if (c instanceof TextContent tc) result.add(tagged(tc.text(), t));
+                    else if (c instanceof ImageContent) {
+                        result.add(PICTURE_PLACEHOLDER_PREFIX + PictureMessage.pathOf(um) + "]");
+                    }
+                }
+
             } else if (msg instanceof AiMessage m) {
                 if (StringUtil.hasValue(m.text())) {
                     result.add(tagged(m.text(), t));
