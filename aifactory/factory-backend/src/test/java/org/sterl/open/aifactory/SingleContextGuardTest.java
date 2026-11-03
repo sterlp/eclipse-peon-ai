@@ -1,13 +1,20 @@
 package org.sterl.open.aifactory;
 
 import static java.util.stream.Collectors.toCollection;
+import static java.util.stream.Collectors.toUnmodifiableSet;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
@@ -26,16 +33,28 @@ import com.tngtech.archunit.core.importer.ClassFileImporter;
  * the test tree is checked here instead of reviewed by eye. ArchUnit reads bytecode, which is what
  * Spring's context cache keys on, and the rules run without a context of their own.</p>
  *
+ * <p>Two things decide whether this guard can fail open: <b>what it scans</b> and <b>what it reads</b>.
+ * It scans the test class path and never a name schema — an intermediate class without a {@code Test}
+ * suffix takes part in the Spring tree exactly like one with it, and Spring inherits its annotations.
+ * And it reads a declaration together with its meta-annotations: a home-grown {@code @FactoryBootTest}
+ * carrying {@code @SpringBootTest} is the same second context as the annotation itself, so every rule
+ * resolves a declaration through the annotation types of this tree ({@link #carriedByAnnotation()}).</p>
+ *
  * <p>{@link FactorySpringTest} is the single owner of the annotation, the {@code FakeGitConfig} import
- * and the dynamic home; {@code assertSameContext} in that base is the runtime half of the same rule.</p>
+ * and the dynamic home; {@code assertOneSharedContext} in that base is the runtime half of the same
+ * rule.</p>
  */
 class SingleContextGuardTest {
 
     private static final String BASE_PACKAGE = "org.sterl.open.aifactory";
     private static final String BASE = BASE_PACKAGE + ".FactorySpringTest";
     private static final String SPRING_BOOT_TEST = "org.springframework.boot.test.context.SpringBootTest";
+    private static final String SPRING_BOOT_TEST_NAME = "SpringBootTest";
     private static final String SPRING_APPLICATION_BUILDER =
             "org.springframework.boot.builder.SpringApplicationBuilder";
+
+    /** Test classes have their own output dir; that is the scope of the scan, not a name pattern. */
+    private static final String TEST_CLASSES = "test-classes";
 
     /**
      * Everything that changes the context cache key or replaces the context — a class or a member
@@ -50,6 +69,11 @@ class SingleContextGuardTest {
             "MockitoBean", "MockitoSpyBean", // a mock bean is a bean-definition change is a new context
             "WebMvcTest", "WebFluxTest", "DataJpaTest", "JsonTest"); // Boot slices: a context of their own
 
+    /** What a declaration is measured against: the splitting annotations plus {@code @SpringBootTest}. */
+    private static final Set<String> SPLITTING = Stream
+            .concat(CONTEXT_SPLITTING.stream(), Stream.of(SPRING_BOOT_TEST_NAME))
+            .collect(toUnmodifiableSet());
+
     /**
      * The only classes allowed to boot an application outside the shared context: a restart is proven
      * by a second application over the same home, never by {@code @DirtiesContext}
@@ -61,19 +85,29 @@ class SingleContextGuardTest {
             "DelegatedAnswerRestartTest", // a delegated answer must not survive it either
             "ProjectStatusTest"); // UC-WP-47 — since Inc 3 its own project, so its own restart
 
-    private final JavaClasses imported = new ClassFileImporter().importPackages(BASE_PACKAGE);
+    /**
+     * Imported once for the whole class: JUnit builds an instance per test method, and four imports of
+     * the test tree would cost more than all four rules together.
+     */
+    private static final JavaClasses imported = new ClassFileImporter().importPackages(BASE_PACKAGE);
+
+    /** Annotation types of this tree by name — the walk into a meta-annotation needs them. */
+    private static final Map<String, JavaClass> annotationTypes = annotationTypesByName();
+
+    /** Our annotation types to the splitting annotations they carry, directly or through another one. */
+    private static final Map<String, Set<String>> carriedByAnnotation = carriedByAnnotation();
 
     @Test
     void onlyTheBaseDeclaresTheSpringBootTest() {
         List<String> offenders = new ArrayList<>();
-        for (JavaClass test : springRelevantTests()) {
+        for (JavaClass test : testTreeClasses()) {
             if (test.getName().equals(BASE)) {
                 continue;
             }
             for (JavaAnnotation<?> annotation : test.getAnnotations()) {
-                if (annotation.getRawType().getName().equals(SPRING_BOOT_TEST)) {
-                    offenders.add(test.getSimpleName()
-                            + " deklariert @SpringBootTest — erbt stattdessen FactorySpringTest");
+                if (carries(annotation, SPRING_BOOT_TEST_NAME)) {
+                    offenders.add(test.getName() + " erklärt @" + annotation.getRawType().getSimpleName()
+                            + carrying(annotation) + " — erbt stattdessen FactorySpringTest");
                 }
             }
         }
@@ -85,12 +119,12 @@ class SingleContextGuardTest {
     @Test
     void noTestDeclaresItsOwnContextConfiguration() {
         List<String> offenders = new ArrayList<>();
-        for (JavaClass test : springRelevantTests()) {
-            collect(test, test.getAnnotations(), test.getSimpleName(), offenders);
+        for (JavaClass test : testTreeClasses()) {
+            collect(test, test.getAnnotations(), test.getName(), offenders);
             test.getMethods().forEach(method -> collect(test, method.getAnnotations(),
-                    test.getSimpleName() + "#" + method.getName(), offenders));
+                    test.getName() + "#" + method.getName(), offenders));
             test.getFields().forEach(field -> collect(test, field.getAnnotations(),
-                    test.getSimpleName() + "." + field.getName(), offenders));
+                    test.getName() + "." + field.getName(), offenders));
         }
 
         assertThat(offenders).as("only the base may touch the context configuration — see FactorySpringTest")
@@ -100,22 +134,21 @@ class SingleContextGuardTest {
     @Test
     void theSharedContextIsTheOneAndTheSameEverywhere() {
         List<String> offenders = new ArrayList<>();
-        for (JavaClass test : springRelevantTests()) {
-            for (JavaAnnotation<?> annotation : test.getAnnotations()) {
-                if (!annotation.getRawType().getName().equals(SPRING_BOOT_TEST)) {
-                    continue;
-                }
-                if (hasEntries(annotation, "properties")) {
-                    offenders.add(test.getSimpleName() + " trägt @SpringBootTest(properties = …)");
+        for (JavaClass test : testTreeClasses()) {
+            for (SpringBootTest declaration : springBootTests(test, new HashSet<>(), "")) {
+                if (hasEntries(declaration.annotation(), "properties")) {
+                    offenders.add(test.getName() + " trägt " + declaration.through()
+                            + "@SpringBootTest(properties = …)");
                 }
                 if (test.getName().equals(BASE)) {
-                    if (!rendersRealServer(annotation)) {
+                    if (!rendersRealServer(declaration.annotation())) {
                         offenders.add("FactorySpringTest läuft nicht auf RANDOM_PORT — ohne echten "
                                 + "Server braucht jede Klasse ihren eigenen Kontext");
                     }
-                } else if (!rendersRealServer(annotation)) {
-                    offenders.add(test.getSimpleName() + " deklariert @SpringBootTest mit webEnvironment = "
-                            + property(annotation, "webEnvironment").map(String::valueOf)
+                } else if (!rendersRealServer(declaration.annotation())) {
+                    offenders.add(test.getName() + " deklariert " + declaration.through()
+                            + "@SpringBootTest mit webEnvironment = "
+                            + property(declaration.annotation(), "webEnvironment").map(String::valueOf)
                                     .orElse("nicht angegeben")
                             + " statt RANDOM_PORT wie der geteilte Kontext");
                 }
@@ -143,14 +176,103 @@ class SingleContextGuardTest {
 
     // ------------------------------------------------------------------ the scan
 
-    /** The classes of this package that take part in the Spring test tree. */
-    private List<JavaClass> springRelevantTests() {
-        return imported.stream().filter(SingleContextGuardTest::isTestName).toList();
+    /**
+     * Every class of the test class path under this package. A name filter would be the gap: what
+     * Spring inherits from is a base class, an intermediate helper or an annotation type, and none of
+     * those has to be called {@code *Test}.
+     */
+    private static List<JavaClass> testTreeClasses() {
+        return imported.stream().filter(SingleContextGuardTest::onTestClassPath).toList();
     }
 
-    private static boolean isTestName(JavaClass javaClass) {
-        String name = javaClass.getSimpleName();
-        return name.endsWith("Test") || name.endsWith("Tests");
+    /** A class of unknown origin stays in scope — dropping it would be the gap again. */
+    private static boolean onTestClassPath(JavaClass javaClass) {
+        return javaClass.getSource().map(source -> source.getUri().toString().contains(TEST_CLASSES))
+                .orElse(true);
+    }
+
+    private static Map<String, JavaClass> annotationTypesByName() {
+        Map<String, JavaClass> types = new HashMap<>();
+        imported.stream().filter(JavaClass::isAnnotation)
+                .forEach(type -> types.put(type.getName(), type));
+        return types;
+    }
+
+    /**
+     * The fixpoint over the annotation types of this tree: an annotation carries a splitting annotation
+     * if it declares one, or declares an annotation that carries one. Names, not types — the splitting
+     * annotations live in three jars and this must not depend on them being imported.
+     */
+    private static Map<String, Set<String>> carriedByAnnotation() {
+        Map<String, Set<String>> declared = declaredAnnotationNames();
+        Map<String, Set<String>> carried = new HashMap<>();
+        boolean grown = true;
+        while (grown) {
+            grown = false;
+            for (Map.Entry<String, Set<String>> type : declared.entrySet()) {
+                Set<String> found = new HashSet<>(carried.getOrDefault(type.getKey(), Set.of()));
+                type.getValue().stream().filter(SPLITTING::contains).forEach(found::add);
+                declared.entrySet().stream()
+                        .filter(other -> type.getValue().contains(simpleName(other.getKey())))
+                        .forEach(other -> found.addAll(carried.getOrDefault(other.getKey(), Set.of())));
+                if (!found.isEmpty() && !found.equals(carried.getOrDefault(type.getKey(), Set.of()))) {
+                    carried.put(type.getKey(), found);
+                    grown = true;
+                }
+            }
+        }
+        return carried;
+    }
+
+    /** Annotation type to the simple names of the annotations it declares. */
+    private static Map<String, Set<String>> declaredAnnotationNames() {
+        Map<String, Set<String>> declared = new LinkedHashMap<>();
+        imported.stream().filter(JavaClass::isAnnotation).forEach(type -> declared.put(type.getName(),
+                type.getAnnotations().stream()
+                        .map(annotation -> annotation.getRawType().getSimpleName())
+                        .collect(toCollection(LinkedHashSet::new))));
+        return declared;
+    }
+
+    /** True if this annotation is the splitting one, or an annotation of this tree carrying it. */
+    private static boolean carries(JavaAnnotation<?> annotation, String splitting) {
+        return annotation.getRawType().getSimpleName().equals(splitting)
+                || carriedByAnnotation.getOrDefault(annotation.getRawType().getName(), Set.of())
+                        .contains(splitting);
+    }
+
+    /** Names the way through: {@code " (Meta-Annotation von @SpringBootTest)"} for a carrier. */
+    private static String carrying(JavaAnnotation<?> annotation) {
+        String name = annotation.getRawType().getSimpleName();
+        if (SPLITTING.contains(name)) {
+            return "";
+        }
+        return " (Meta-Annotation von " + carriedByAnnotation
+                .getOrDefault(annotation.getRawType().getName(), Set.of()).stream().sorted()
+                .map(carried -> "@" + carried).reduce((left, right) -> left + ", " + right).orElse("") + ")";
+    }
+
+    /** Where {@code @SpringBootTest} is in effect for a class: its own declaration, or a meta one. */
+    private record SpringBootTest(JavaAnnotation<?> annotation, String through) {
+    }
+
+    private static List<SpringBootTest> springBootTests(JavaClass owner, Set<String> visited, String through) {
+        List<SpringBootTest> found = new ArrayList<>();
+        if (!visited.add(owner.getName())) {
+            return found;
+        }
+        for (JavaAnnotation<?> annotation : owner.getAnnotations()) {
+            String name = annotation.getRawType().getName();
+            if (name.equals(SPRING_BOOT_TEST)) {
+                found.add(new SpringBootTest(annotation, through));
+            } else if (carries(annotation, SPRING_BOOT_TEST_NAME) && annotationTypes.containsKey(name)) {
+                // the declaration of the meta-annotation is the one Spring reads for this class
+                found.addAll(springBootTests(annotationTypes.get(name), visited,
+                        through + "@" + annotation.getRawType().getSimpleName() + " → "));
+            }
+        }
+        visited.remove(owner.getName());
+        return found;
     }
 
     private static void collect(JavaClass owner, Set<? extends JavaAnnotation<?>> annotations, String where,
@@ -159,9 +281,12 @@ class SingleContextGuardTest {
             return; // the one owner of the shared configuration
         }
         for (JavaAnnotation<?> annotation : annotations) {
-            String name = annotation.getRawType().getSimpleName();
-            if (CONTEXT_SPLITTING.contains(name)) {
-                offenders.add(where + " deklariert @" + name);
+            for (String splitting : SPLITTING) {
+                if (carries(annotation, splitting)) {
+                    offenders.add(where + " deklariert @" + annotation.getRawType().getSimpleName()
+                            + carrying(annotation));
+                    break; // one offender per declaration is enough to read
+                }
             }
         }
     }
@@ -186,5 +311,10 @@ class SingleContextGuardTest {
 
     private static Optional<Object> property(JavaAnnotation<?> annotation, String key) {
         return annotation.tryGetExplicitlyDeclaredProperty(key);
+    }
+
+    private static String simpleName(String name) {
+        int lastDot = name.lastIndexOf('.');
+        return lastDot < 0 ? name : name.substring(lastDot + 1);
     }
 }

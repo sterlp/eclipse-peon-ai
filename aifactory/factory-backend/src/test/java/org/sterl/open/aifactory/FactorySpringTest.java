@@ -7,6 +7,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
@@ -22,6 +23,8 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.sterl.open.aifactory.project.FakeGitConfig;
 import org.sterl.open.aifactory.project.Project;
 import org.sterl.open.aifactory.project.ProjectService;
+import org.sterl.open.aifactory.project.ProjectWork;
+import org.sterl.open.aifactory.project.ProjectWorkStates;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
@@ -53,6 +56,13 @@ public abstract class FactorySpringTest {
     /** First context seen by any subclass; a second instance is the rule breaking, so it is kept. */
     private static final AtomicReference<ApplicationContext> FIRST_CONTEXT = new AtomicReference<>();
 
+    /**
+     * How long a turn that was released at the end of a method may still take to answer. Far above what
+     * a released tool needs, far below a tool nobody released — that one is what {@link
+     * #assertNoTurnOfAPreviousMethod()} waits for and then names.
+     */
+    private static final long TURN_GRACE_MS = 10_000;
+
     /** Shared application — a subclass that asserts "nothing was restarted" asserts on this one. */
     @Autowired
     protected ApplicationContext context;
@@ -65,6 +75,10 @@ public abstract class FactorySpringTest {
 
     @Autowired
     protected FakeGitConfig fakeGit;
+
+    /** The work states of the running projects — the port {@code project} shows, not the runtime. */
+    @Autowired
+    protected ProjectWorkStates workStates;
 
     @DynamicPropertySource
     static void sharedHome(DynamicPropertyRegistry registry) {
@@ -96,6 +110,7 @@ public abstract class FactorySpringTest {
      */
     @BeforeEach
     void resetSharedState() throws IOException {
+        assertNoTurnOfAPreviousMethod();
         for (Project leftover : projects.projects()) {
             projects.remove(leftover.id());
         }
@@ -103,6 +118,43 @@ public abstract class FactorySpringTest {
         Files.createDirectories(HOME);
         fakeGit.failWith = null;
         fakeGit.cloneTargets.clear();
+    }
+
+    /**
+     * The precondition of one shared home: no project is worked on while the next test starts. Every
+     * test still ends its own turn inside its own method — the proof that a turn ends is the test's, and
+     * only there does its provider double still answer. What the home's owner owes every test is caught
+     * here: a turn that outlived its method is either still inside a tool nobody released or still
+     * waiting for an answer, and both would write into the fresh home below while its checkout is being
+     * removed. Failing here names the project, so the leak is loud in the next test instead of quiet in
+     * this one.
+     */
+    private void assertNoTurnOfAPreviousMethod() {
+        long until = System.currentTimeMillis() + TURN_GRACE_MS;
+        List<ProjectWork> working = workingProjects();
+        while (!working.isEmpty() && System.currentTimeMillis() < until) {
+            sleepBriefly();
+            working = workingProjects();
+        }
+
+        assertThat(working)
+                .as("kein Projekt arbeitet noch, während %s das geteilte Home leert — die vorige "
+                                + "Testmethode muss ihren Turn beenden, solange ihr eigenes Provider-Double lebt",
+                        getClass().getSimpleName())
+                .isEmpty();
+    }
+
+    private List<ProjectWork> workingProjects() {
+        return workStates.current().stream().filter(ProjectWork::working).toList();
+    }
+
+    private static void sleepBriefly() {
+        try {
+            Thread.sleep(25);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted while waiting for a turn to end", interrupted);
+        }
     }
 
     /** Best effort around the test run — a leftover that survives here is red in the test itself. */

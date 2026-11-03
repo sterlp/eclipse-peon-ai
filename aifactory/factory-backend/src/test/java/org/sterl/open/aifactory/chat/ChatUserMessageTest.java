@@ -257,8 +257,6 @@ class ChatUserMessageTest extends FactorySpringTest {
                 .as("beim Anbieter steht Marker und Name, weil der Core beides in einer Nachricht trägt")
                 .contains("[Queued Message]")
                 .contains("[User Anna]: zweite Frage");
-
-        awaitUntil(() -> !jon.isWorking(), 30_000, "der Turn ist durch, bevor das Test-Model verschwindet");
     }
 
     // ------------------------------------------------------------------ edge

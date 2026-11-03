@@ -25,12 +25,6 @@ Defekte/Fragen, je eine Story je Punkt erst nach Klärung (❓ = präzisieren, b
 * **❓ F10 · Bootstrap „docs laden einmal zu Beginn" greift nicht zuverlässig** — Fabrik-Jon fragte nach
   `docs/index.md`, statt es beim Start geladen zu haben. Bootstrap-/Prompt-Defekt der Fabrik-Agenten —
   prüfen, wo die Regel stehen muss (Agent-Prompt vs. Factory-Bootstrap).
-* **⏳ F6 · Spring-Container-Regel (harte Regel, sofort gültig)** — der Spring-Kontext darf im Test
-  **genau einmal** pro Build starten: keine Restarts, keine Verschmutzung, keine Mock-Bean-Treiber,
-  die Neustarts erzwingen. Steht jetzt in [AGENTS.md](../AGENTS.md); Testzeit war 2 min — inakzeptabel.
-  Umsetzung (Cache-Konfiguration prüfen) als Teil von F7.
-* **⏳ F7 · Timeout-Tests auditieren** — Tests mit langen Timeouts ziehen die Suite in die Länge;
-  Timeouts auf testwürdige Werte reduzieren. Zusammen mit F6 ein Build-Geschwindigkeit-Inkrement.
 
 ## Runde 3 — Live-Befunde aus der Nutzung (2026-11-03, zweiter Schwung)
 

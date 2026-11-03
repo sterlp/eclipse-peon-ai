@@ -602,9 +602,9 @@
   derselbe Cache-Key. Eigene DPS / `@DirtiesContext` / `@MockitoBean` / `@TestPropertySource` /
   `@ActiveProfiles` / `@SpringBootTest(properties=…)` / Boot-Slices sind verboten —
   `SingleContextGuardTest` prüft das im Bytecode (ArchUnit ohne `@ArchTest`, gleiches Muster wie
-  `ArchitectureGuardTest`), `assertSameContext` in der Basis erwischt jeden zweiten Kontext zur Laufzeit.
+  `ArchitectureGuardTest`), `assertOneSharedContext` in der Basis erwischt jeden zweiten Kontext zur Laufzeit.
 - **Der Cache-Key ist die Kostenstelle, nicht die Boot-Zeit** (gemessen): 23 Klassen mit je eigener DPS =
-  23 Kontexte = 23 Server, **118 s → 41,5 s** Wanduhr bei gleichbleibend 212 Tests. Die 23 Boot-Zeilen
+  23 Klassen mit je eigener DPS = 23 Kontexte = 23 Server, **118 s → 43,1 s** Wanduhr bei gleichbleibend 216 Tests. Die 23 Boot-Zeilen
   summierten auf nur ~6 s — **hochgerechnet aus Boot-Zeilen fehlt die Hälfte** (gemessen ~21 s pro elf
   Kontexte: Context-Refresh, Web-Server, Modulith). Messen statt schätzen:
   `grep -cE "Started [A-Za-z]+ in [0-9.]+ seconds"` (die Zeile nennt die **Testklasse**, nie
@@ -675,4 +675,24 @@
   `Timeout holdsTheLifecycleMethod() timed out after 2 seconds`; Nebenbefund: der Schlaf wurde
   **unterbrochen** (`InterruptedException` als unterdrückte Exception) — die Grenze wirkt also auch im
   Default-`thread.mode`; ein Blocker, der Interrupts ignoriert, liefe dagegen weiter.
+- **Der Guard scannt einen Pfad, keinen Namen** (Review S1): `SingleContextGuardTest` prüft alle Klassen
+  mit `test-classes` im Source-URI (`Source.getUri()`), nicht die `*Test`-Endung — eine
+  Helper-Oberklasse ohne Endung erbt Spring genauso, und eine eigene `@FactoryBootTest` mit
+  `@SpringBootTest` ist derselbe zweite Kontext. Meta-Auflösung läuft über einen **Namens-Fixpunkt** der
+  eigenen Annotationstypen (`JavaClass.isAnnotation()` + `getRawType().getSimpleName()`), denn
+  ArchUnits `isMetaAnnotatedWith` müsste die Spring-Jars importieren. `JavaClass.getAnnotations()` sind
+  **nur die direkt gesetzten** — das war die Lücke. Sonde: `ProbeHelper` (ohne `*Test`) mit Meta-`@SpringBootTest`
+  ⇒ drei Regeln rot **und** `missCount = 2` (ohne die Sonde: grün bei zwei Kontexten).
+  `imported` ist **statisch**: JUnit baut pro Testmethode eine Instanz, vier Imports des Test-Baums
+  kosten mehr als alle vier Regeln (1,4 s → 0,4 s Guard).
+- **Die Basis kann ein „kein Turn überlebt seine Methode" nur abprüfen, nie reparieren** (Review L1):
+  `FactorySpringTest.resetSharedState` schlägt zuerst fehl, wenn `workStates.current()` noch ein
+  arbeitendes Projekt nennt (Grace 10 s). Sie kann es nicht beenden — die `@AfterEach` der **Unterklasse**
+  laufen **vor** der der Basis, also ist ihr Provider-Double längst gestoppt, und der Kern wartet dann
+  seinen Earned-Patience-Backoff: `ApiRetry` ist **pro Turn** und hat `credit = 1` aus der Antwort vor dem
+  Tool ⇒ erster Fehler wird wiederholt, **10 s** (`WAIT_STEP_MS`) lang, gemessen 10,0 s bis
+  „chat turn of project … failed". Eine höhere Grace wäre ein Wettlauf gegen eine Kern-Konstante.
+  Deshalb: Das Warten auf das Turn-Ende bleibt **in der Testmethode**, solange ihr Stub lebt
+  (`ProjectStatusTest#afterARestartEveryProjectIsFree`), entfallen konnte es nur, wo die Methode ohnehin
+  auf das Ergebnis wartet (`ChatUserMessageTest` — die Verlaufs-Zeile kommt nach der letzten Antwort).
 

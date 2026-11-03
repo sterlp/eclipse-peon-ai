@@ -208,6 +208,7 @@ AGENTS-DEV.md:284).
 | **5** ✅ | Guard-Test (D-7) + Messzahlen/Regel in `AGENTS-DEV.md` | Guard grün, Gegenproben: `@ActiveProfiles`/`@SpringBootTest` an einer Unterklasse ⇒ Guard rot; Eintrag ohne Boot ⇒ rot | Regel hält mechanisch |
 | **6** ✅ | `@Timeout`-Obergrenzen auf testwürdige Werte (Formel statt Accumulation, s. §10 Inc 6) | Suite grün, Gegenlauf grün, Probe: Obergrenze an einer Methode beißt | nur Fehlerfall schneller (grün unverändert 42,8 s) |
 | **7** ✅ | Freigabe-Nachtrag §9: Deadline des 90/90-Falls auf 60 s + Lifecycle-Netz `junit-platform.properties` (120 s) | Suite grün, Gegenlauf grün, Probe: `@BeforeAll` mit 5 s Schlaf bei Netz 2 s ⇒ `TimeoutException` | nur Fehlerfall schneller (grün 43,1 s) |
+| **8** ✅ | Review §11: Guard auf Test-Klassenpfad statt Namensschema **und** Meta-Annotationen (S1); „kein Turn überlebt seine Methode" von acht Klassen in `resetSharedState` (L1) | S1-Sonde: Hilfsklasse ohne `*Test` mit Meta-`@SpringBootTest` ⇒ Guard rot **und** `missCount` 2; Suite grün, Gegenlauf grün | 43,1 → **42,1 s** (Guard 1,4 → 0,4 s) |
 
 **Reihenfolge-Begründung:** 1 zuerst — reine Testmechanik, keine Strukturänderung, sofort messbar.
 2/3/4 bauen aufeinander auf; 4 ist der teuerste Schritt und bringt am wenigsten (ein Kontext), daher
@@ -315,13 +316,13 @@ entfernt oder verschoben.
 
 ## 10 Status der Messung
 
-| Kennzahl | Baseline (2026-11-03) | nach Inc 1 | nach Inc 2a | nach Inc 2b | nach Inc 3 | nach Inc 4 | nach Inc 5 | nach Inc 6 | nach Inc 7 |
-|---|---|---|---|---|---|---|---|---|---|
-| `missCount` (Kontexte) | **23** | 23 — Inc 1 öffnet keine Kontexte | **20** (−3, wie vorhergesagt) | **9** (−11) | **2** (−7) | **1** (erreicht — Regel erfüllt) | **1** | **1** | **1** |
-| Boot-Zeilen | **23** | 23 | **20** | **9** | **2** | **1** (`Started UiDeliveryTest` = der geteilte) | **1** | **1** | **1** |
-| Surefire-Summe | **80,3 s** (42 Reports, Lauf 16:36) | **35,7 s** (43 Reports) | **35,2 s** (44 Reports) | **33,5 s** (44 Reports) | **32,7 s** (44 Reports) | **32,1 s** (44 Reports) | **33,7 s** (45 Klassen, Guard +1,4 s) | **33,2 s** (45 Klassen; XML 33,1 s) | **33,6 s** (45 Reports) |
-| Wanduhr `clean test` | **118 s** | **73 s** | **72,8 s** (Maven 01:11 min) | **51,1 s** (Maven 50,1 s) | **41,9 s** (Maven 41,2 s) | **41,5 s** — Ziel < 60 s **erreicht** | **43,4 s** | **42,8 s** (Gegenlauf 42,8 s) | **43,1 s** (Maven 42,1 s; Gegenlauf 43,7 s) |
-| Tests | **208** / 0 Fehler | **210** / 0 Fehler (`TurnGateTest` +2) | **212** / 0 Fehler (`FactorySpringTestResetTest` +2) | **212** / 0 Fehler | **212** / 0 Fehler | **212** / 0 Fehler | **216** / 0 Fehler (`SingleContextGuardTest` +4) | **216** / 0 Fehler | **216** / 0 Fehler |
+| Kennzahl | Baseline (2026-11-03) | nach Inc 1 | nach Inc 2a | nach Inc 2b | nach Inc 3 | nach Inc 4 | nach Inc 5 | nach Inc 6 | nach Inc 7 | nach Inc 8 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `missCount` (Kontexte) | **23** | 23 — Inc 1 öffnet keine Kontexte | **20** (−3, wie vorhergesagt) | **9** (−11) | **2** (−7) | **1** (erreicht — Regel erfüllt) | **1** | **1** | **1** | **1** (S1-Sonde beweist: ohne den neuen Scan wären es 2) |
+| Boot-Zeilen | **23** | 23 | **20** | **9** | **2** | **1** (`Started UiDeliveryTest` = der geteilte) | **1** | **1** | **1** | **1** |
+| Surefire-Summe | **80,3 s** (42 Reports, Lauf 16:36) | **35,7 s** (43 Reports) | **35,2 s** (44 Reports) | **33,5 s** (44 Reports) | **32,7 s** (44 Reports) | **32,1 s** (44 Reports) | **33,7 s** (45 Klassen, Guard +1,4 s) | **33,2 s** (45 Klassen; XML 33,1 s) | **33,6 s** (45 Reports) | **32,6 s** (45 Reports; Guard 1,4 → 0,4 s) |
+| Wanduhr `clean test` | **118 s** | **73 s** | **72,8 s** (Maven 01:11 min) | **51,1 s** (Maven 50,1 s) | **41,9 s** (Maven 41,2 s) | **41,5 s** — Ziel < 60 s **erreicht** | **43,4 s** | **42,8 s** (Gegenlauf 42,8 s) | **43,1 s** (Maven 42,1 s; Gegenlauf 43,7 s) | **42,1 s** (Gegenlauf 42,1 s) |
+| Tests | **208** / 0 Fehler | **210** / 0 Fehler (`TurnGateTest` +2) | **212** / 0 Fehler (`FactorySpringTestResetTest` +2) | **212** / 0 Fehler | **212** / 0 Fehler | **212** / 0 Fehler | **216** / 0 Fehler (`SingleContextGuardTest` +4) | **216** / 0 Fehler | **216** / 0 Fehler | **216** / 0 Fehler (kein neuer Fall — Inc 8 härtet nur) |
 
 **Nach Inc 2b gemessen (2026-11-03):** Die Wanduhr ist von 72,8 s auf **51,1 s** gefallen — die Kontexte
 kosteten also deutlich mehr als die Summe ihrer Boot-Zeilen (6,1 s): die Boot-Zeile misst nur die
@@ -580,5 +581,182 @@ Benannte Abweichungen Inc 7:
    `afterARestartEveryProjectIsFree` bleibt, wie es ist: 60-s-Deadline, 90-s-Obergrenze.
 2. Die neue Ressourcendatei ist der erste Eintrag unter `src/test/resources` — geprüft im Gegenlauf:
    dieselbe Datei wird geladen, `missCount` bleibt 1, kein Test läuft in die neue Grenze.
+
+**Inc 8 — erledigt (2026-11-03, Nachzieh-Zyklus zu §11):** **S1 gebaut** — `SingleContextGuardTest`
+scannt jetzt **alle Klassen des Test-Klassenpfads** (`Source.getUri()` enthält `test-classes`, eine Klasse
+unbekannten Ursprungs bleibt in Scope) statt des Namensschemas, und löst **Meta-Annotationen** über einen
+Namens-Fixpunkt der eigenen Annotationstypen auf (`JavaClass.isAnnotation()` +
+`getRawType().getSimpleName()` — die Spring-Jars bleiben außen vor, `isMetaAnnotatedWith` würde sie
+importieren). Alle vier Regeln lesen Klasse, Methode **und** Feld; Regel (c) läuft in importierte
+Meta-Annotationstypen hinein und liest dort `properties`/`webEnvironment`. Beweis: volle Suite
+**216 / 0 Fehler, `missCount` 1, 1 Boot, 42,1 s** (`/tmp/inc8-cert.log`), Gegenlauf
+`reversealphabetical` 216 / 0 Fehler, `missCount` 1, 42,1 s (`/tmp/inc8-rev.log`); Surefire-Summe 32,6 s.
+**L1 gebaut, aber mit einer begründeten Ausnahme** — `FactorySpringTest.resetSharedState` prüft zuerst,
+ob `workStates.current()` noch ein arbeitendes Projekt nennt (Grace 10 s, 25 ms Poll), und schlägt mit
+dem Projektnamen fehl; die Kopie in `ChatUserMessageTest` (Wait auf `!jon.isWorking()` nach der
+Verlaufs-Assertion) ist entfallen. Beweis der Zähmung: dieselbe Sonde in `ProjectStatusTest`
+(`/tmp/inc8-subset.log`) ⇒ genau `aQueuedInputIsCounted` rot über
+`resetSharedState → assertNoTurnOfAPreviousMethod` mit
+`[ProjectWork[projectId=restart-47-…, working=true, queued=0]]`; mit dem zurückgenommenen Wait im Test
+wieder grün (`/tmp/inc8-subset2.log`, `/tmp/inc8-subset3.log`: 25 Tests, 0 Fehler, `missCount` 1).
+
+Benannte Abweichungen Inc 8:
+
+1. **L1 ist ein Abprüf-Netz, keine Aufräum-Maschine — die zweite Kopie konnte nicht entfallen.**
+   `ProjectStatusTest#afterARestartEveryProjectIsFree` hält seinen Turn bis zum Methoden-Ende im Gate;
+   die Klasse stoppt ihr `MockLlmServer` im `@AfterEach`, und JUnit lässt **immer die Unterklasse zuerst**
+   aufräumen — jede Variante eines Basis-`@AfterEach` läge also nach dem Stub. Der Kern braucht dann
+   seinen Earned-Patience-Backoff: `ApiRetry` ist pro Turn, `credit = 1` aus der Antwort vor dem Tool ⇒
+   der erste Fehler wird wiederholt und kostet `WAIT_STEP_MS` = **10 s** (gemessen 10,0 s bis
+   „chat turn of project … failed", `/tmp/inc8-subset.log:366`). Eine höhere Grace wäre ein Wettlauf mit
+   einer Kern-Konstanten, kein Beweis. Das Warten auf das eigene Turn-Ende bleibt dort also in der
+   Methode — die Basis hält es jetzt **zusätzlich** mechanisch, und genau das ist der Grund, warum der
+   vergessene Wait nicht mehr still durchläuft. **Zwischenstand L1: 1 von 8 Wartepunkten entbehrlich,
+   7 bleiben mit Grund** (5 sind der Stop-Beweis selbst, 2 Vorbedingungen einer direkten Assertion,
+   1 `awaitIdle` mitten im Test — siehe `AgentActionTest:213/337`, `AgentStopTest:146/201/242/271/339`,
+   `ChatQueueTest:294`, `ChatConfigTurnTest:224`, `SharedProjectChatTest:116`, `AgentInsightTest:159`;
+   `TurnFailureTest` erbt die Basis nicht und kann sie nicht besitzen).
+2. **`imported` im Guard ist statisch** — JUnit baut pro Testmethode eine Instanz, vier Imports des
+   Test-Baums kosteten mehr als alle vier Regeln zusammen (Guard 1,4 s → **0,4 s**). Nicht Teil von S1,
+   aber derselbe Datei-Kontext und dasselbe Ziel (Bau-Zeit).
+3. **§11-Punkte, die Inc 8 *nicht* angeht:** S2, S3, L2–L8 (L2 und L4 hat Jon bereits selbst gezogen:
+   `AGENTS-DEV.md` auf `assertOneSharedContext`/216/43,1 s berichtigt, F6/F7 aus `docs/open-points.md`
+   entfernt), die vier Pre-existing-Punkte und die Skill-Lücke. Die Skill-Lücke ist durch Jons neue Zeile
+   in `aifactory/AGENTS.md` (Messgröße `missCount = 1`, Neustart-Beweise erlaubt, Ausnahmeliste) erledigt.
+
+
+## 11 Review F6/F7 — unabhängiger Review 2026-11-03 (Input: Diff `c47c4aa7~1..ab3c7b07`, dieser Plan, AGENTS/AGENTS-DEV/docs)
+
+**Verdict: CONCERNS** — kein BUG gefunden; die LOWs unten sind wert, in einem kleinen Nachzieh-Zyklus
+gehandelt zu werden. Geprüft: Inkremente 0–7 gegen Code, §5 gegen die Realität, harte Regel,
+Beweiskraft von vier umgestellten Klassen, AGENTS-DEV-Abschnitt gegen gemessene Zahlen.
+
+**Testlauf des Reviews (eigenständig, nicht aus dem Plan übernommen):**
+`mvn -o -pl factory-backend clean test -Dlogging.level.org.springframework.test.context.cache=DEBUG`
+→ Exit 0, **216 Tests / 0 Failures / 0 Errors**, `missCount = 1`, genau **1** Boot-Zeile, Wanduhr
+**43,7 s** (`/tmp/review-cert.log`). §10 Inc 7 ist damit reproduziert; die harte Regel
+(`aifactory/AGENTS.md`) und das Ziel < 60 s halten.
+
+**Belegt in Ordnung (keine Beanstandung):**
+* `git log --name-only c47c4aa7~1..ab3c7b07 -- 'aifactory/factory-backend/src/main' 'aifactory/factory-ui' 'llmpeon-core'`
+  = **leer**: keine Produktions-Änderung, §6 hält.
+* Kein `// UC-…`-Test-Id-Kommentar entfernt oder verschoben (Pro-Datei-Zählung vorher/nachher identisch;
+  die einzige neue UC-Zeile ist `SingleContextGuardTest.java:62`).
+* **Beweiskraft gehalten oder verschärft.** Alle 12 `TurnGate.release(…)`-Stellen haben ein vorgelagertes
+  Warten auf „Werkzeug läuft / Jon arbeitet / Queue steht" **und** ein nachgelagertes Warten auf das
+  Turn-Ende — die Freigabe nimmt kein Beweismittel weg (`AgentStopTest:133/145/188/193/241/266/270/327/338`,
+  `ChatQueueTest:152/157/169/238/288`, `ChatUserMessageTest:240-244` + Ende-Warten `:261`,
+  `ChatTurnTest:243-246`, `AgentActionTest:201/212`, `ProjectStatusTest:139-143/181-185/240`,
+  `TurnFailureTest:219/247`). Jeder „removed assertion"-Treffer der Umbau-Commits ist ein
+  `home` → `HOME`-Umbau; die eine inhaltliche Änderung (`ProjectStatusTest#afterARestartEveryProjectIsFree`)
+  ist **strenger** als vorher (§10 Inc 3/1 stimmt). `ProjectControllerTest` hat weiterhin 12 Tests,
+  Status/JSON-Pfade/Dateibeweise unverändert, `rows(…)` beweist die Array-Form am Body.
+* Boot-Ausnahmen: `SingleContextGuardTest:53-62` begründet jede der drei Klassen einzeln und prüft die
+  Liste in beide Richtungen (`:134-142`); die Begründung stimmt mit dem Code (`ProjectStatusTest:221`).
+* Die veraltete Aussage „pro Settings-Klasse ein eigener `@SpringBootTest`-Kontext … (~3 s)" ist restlos
+  weg (Commit `51d4e0be`, grep über `AGENTS-DEV.md`: kein Treffer mehr).
+* `AifactoryApplicationTests:20-23` pinnt das Throwaway-Home jetzt positiv (`home.root() == HOME`) statt
+  über einen eigenen Temp-Home — kein Beweisverlust.
+
+### BUGs
+Keine.
+
+### Suspicions (nicht belegt — mit Sonde prüfen, nicht blind reparieren)
+* **S1 · Guard-Lücke: Meta-Annotation und Namensfilter.** `SingleContextGuardTest:73` liest
+  `test.getAnnotations()` = **direkt gesetzte** Annotationen; D-7 (§3) verspricht „direkt **oder über
+  Meta-Annotation**". Eine eigene `@FactoryBootTest`, die selbst mit `@SpringBootTest` annotiert ist, und
+  eine Intermediate-Klasse ohne `Test`/`Tests`-Endung (`:151-154`) sieht weder der Guard noch
+  `assertOneSharedContext` (die Klasse erbt die Basis dann nicht). Sonde: eine solche Klasse mit einem
+  Test anlegen ⇒ Guard grün, `missCount` 2. Erwartung nach D-7: rot.
+* **S2 · `ProjectStatusTest` bootet die zweite App über dem geteilten Home, während in der ersten App ein
+  Turn in einem laufenden Werkzeug steckt** (`:216-241`). Die Beweisaussage liest nur App 2, aber zwei
+  Apps teilen sich für ~2 s denselben Baum. Kein Fehler gemessen (Gegenlauf grün); ein späterer
+  Interrupt/Timeout in diesem Fenster würde schwer lesbar.
+* **S3 · Home-Wipe ist „best effort".** `FactorySpringTest:117` schluckt jeden einzelnen
+  Lösch-Fehler (`catch (IOException ignored)`), `Files.createDirectories` danach gelingt trotzdem ⇒
+  ein Test startet still auf einem schmutzigen Home. Die Leer-Probe gibt es genau einmal
+  (`FactorySpringTestResetTest:78`), nicht je Klasse. Sonde: ein Read-only-Verzeichnis unter
+  `target/test-home` anlegen ⇒ die *nächste* Klasse läuft mit Rest, statt rot zu werden.
+
+### LOWs (einfacher zu haben, kauft Wartbarkeit)
+* **L1 · „Kein Turn überlebt seine Testmethode" gehört der Basis, nicht acht Klassen.** Der geteilte Home
+  macht das zur Vorbedingung jedes Tests, gehalten wird es per Hand in jedem Turn-Test
+  (`ChatUserMessageTest:261`, `AgentActionTest:213`, `ProjectStatusTest:241`, `ChatQueueTest:288`).
+  Wer es vergisst, schreibt in den frischen Home des nächsten Tests. Einfacher: in
+  `resetSharedState` (`FactorySpringTest:98`) die Registry nach arbeitenden Runtimes fragen und
+  **falls** noch eine arbeitet sofort fehlschlagen — der Besitzer des Zustands ist dann die Basis.
+* **L2 · AGENTS-DEV-Zahlen sind nach Inc 5/6/7 nicht nachgezogen:** `:607` sagt „118 s → 41,5 s bei
+  gleichbleibend **212** Tests", `:589` „Backend **208**"; gemessen ist **216 / 43,1–43,7 s**. Dazu
+  `:605` nennt `assertSameContext`, die Methode heißt `assertOneSharedContext` (`FactorySpringTest:80`) —
+  der Name ist die Suchschnur für den nächsten Dev. Einfacher: ein Satz Endstand (216 Tests, 1 Kontext,
+  ~43 s) + korrekter Methodenname; die Inkrement-Tabelle bleibt in diesem Plan.
+* **L3 · Obergrenzen-Formel gilt nicht für sechs Klassen**, obwohl `AGENTS-DEV:661-663` sie allgemein
+  formuliert („ohne methodenweite Grenze 60 s"): `ui/UiDeliveryTest.java:39`,
+  `config/SettingsControllerTest.java:46`, `project/ProjectFilesTest.java:45`,
+  `project/ProjectControllerTest.java:38`, `AifactoryApplicationTests.java:14`,
+  `SingleContextGuardTest.java:32` (der Guard importiert Bytecode und kann unbegrenzt hängen).
+  Keine Regression (Baseline hatte dort auch keine), aber die Doku beschreibt eine Regel, die der Code
+  nicht für alle trägt. Einfacher: `@Timeout(60)` an diese sechs Klassen.
+* **L4 · Zyklus-Buchhaltung in `docs/` widerspricht der Realität, und §5/D-8 bestreitet sie.**
+  `99fd9aeb` ändert `docs/memory.md` und `docs/open-points.md`, obwohl §5 „Unberührt: … `docs/**`" und
+  D-8 sagen, dieser Zyklus fasse die Doku nicht an; und die Änderungen lassen **F6 und F7 weiterhin als
+  ⏳ offen** stehen (`docs/open-points.md:28-33`), obgleich der Zyklus sie erledigt hat und `AGENTS.md`
+  die Regel schon trägt. Wer die Backlog-Datei liest, glaubt, die harte Regel sei unumgesetzt. Einfacher:
+  F6/F7 auf „erledigt (2026-11-03, `c47c4aa7..ab3c7b07`)" setzen, `memory.md` fortschreiben, §5 auf
+  „`docs/open-points.md`/`memory.md`: Buchhaltung, kein UC" korrigieren. Fremder Doku-Inhalt im
+  Inc-4-Commit gehört außerdem in einen eigenen Commit.
+* **L5 · Plan-§5/§7 beschreiben die Lieferung nicht mehr:** §5 „Neu" nennt
+  `FactorySpringTestResetTest.java` nicht (127 Zeilen, 2 Tests), §5 notiert eine Umbenennung
+  „`AgentTurnsFailureTest` → `ChatTurnFailureTest`", die es nie gab (die Klasse hieß schon in der
+  Baseline so), §7-Akzeptanzzeile verlangt weiter „`Tests run: 208`" und schreibt `ProjectControllerTest`
+  eine „405-Matrix" zu, die dort nie lag (§10 Inc 4/2 hat beides richtig vermerkt — nur §7 nicht).
+  Einfacher: drei Zeilen in §5/§7 auf den Ist-Stand.
+* **L6 · `junit-platform.properties:2` enthält ein kaputtes Zeichen** (`… never @BeforeAll/@BeforeEach ?
+  so the Spring context boot …`) — der Satz ist unlesbar. Kommentar, keine Wirkung; ein Zeichen ersetzen.
+* **L7 · Ein dritter und vierter Kopie von „Baum rekursiv löschen":**
+  `FactorySpringTest:109` (neu), `ChatRestartTest:253`, `DelegatedAnswerRestartTest:283`,
+  `WritePinningTest:508`. Die beiden Letzten sind uralt, aber dieser Zyklus hat die dritte Kopie
+  erzeugt, obwohl §3 D-2 den Muster-Umzug „in die Basisklasse" nennt. Einfacher: ein
+  Test-Helfer (`TestHomes.deleteTree` o. ä.), den Basis und die beiden Neustart-Klassen nutzen.
+  Ebenso liegt `chat/TurnGate` jetzt paketöffentlich im `chat`-Paket, weil `project/ProjectStatusTest:79`
+  es braucht (§10 Inc 1/1) — das Gerät gehört eher in ein Test-Support-Paket als in ein Produkt-Paket.
+* **L8 · UC-Id-Kommentar am falschen Ort:** `SingleContextGuardTest:62` trägt `// UC-WP-47` an einem
+  Listeneintrag, nicht an einem Testfall. Heute kein Lint-Befund (UC-WP-47 ist anderweitig belegt),
+  aber die Id↔Test-Zuordnung, auf die das Doc-Lint baut, wird damit unzuverlässig. Referenz als
+  Text (`UC-WP-47` in Worten) genügt.
+
+### Pre-existing (berichtet, nie blockierend)
+* Doc-Lint über `docs` + Backend/UI-Tests: **43 Findings** — 15× `UNBELEGT_ERLEDIGT`
+  (u. a. UC-WP-54…61, 65, 66 in `chat.md`/`files.md`/`ui.md`), 28× `UNBELEGT`
+  (`config-repo.md` UC-CR-1…14, `paco.md` UC-PC-1…14). Kein einziger UC-Kommentar wurde in diesem
+  Zyklus bewegt ⇒ nicht hausgemacht, aber offen.
+* `awaitUntil(…)` ist 18-mal als private Kopie vorhanden (feste Poll-25-ms-Schleife) — der Zyklus hat
+  sie nicht angefasst, obwohl er an den Wartezeiten gearbeitet hat.
+* `ChatRestartTest`/`DelegatedAnswerRestartTest` behalten eigene Homes (`target/inc3d-home`,
+  `target/inc3f-home`) — korrekt für ihren Beweis, aber die Kennzahl „1 Kontext" bildet sie nicht ab.
+
+### Plan conflict (4)
+* **`AGENTS.md` „The Spring context may start AT MOST ONCE per test build. No context restarts" vs.
+  §3 D-7 / §10 Inc 5/1:** der gebaute Stand bootet drei zusätzliche Anwendungen außerhalb des Caches
+  (`ChatRestartTest`, `DelegatedAnswerRestartTest`, `ProjectStatusTest` — zusammen ~4 Boots, nicht in der
+  Kennzahl). Inhaltlich richtig (der Gegenstand des Beweises ist der Neustart) und in `AGENTS-DEV:635-638`
+  ehrlich beschrieben — aber die **Anweisungsdatei** kennt die Ausnahme nicht, also ist die Regel dort
+  wörtlich verletzt. Empfehlung: ein Halbsatz in `AGENTS.md`, der Neustart-Beweise mit Verweis auf die
+  Guard-Ausnahmeliste freistellt.
+
+### Skill-/Instruction-Lücke (10)
+* `aifactory/AGENTS.md` (Spring-Regel): die Zeile sagt „at most once", sagt aber nicht, was zählt —
+  der TestContext-**Cache** oder die Zahl der Anwendungboots. Genau diese Lücke hat die drei Ausnahmen
+  erzeugt und §10 Inc 2b/5 zu drei Nachträgen gezwungen. Änderung: Messgröße in die Regel schreiben
+  (`missCount` aus `org.springframework.test.context.cache` = 1; Boots außerhalb des Caches sind als
+  Neustart-Beweis erlaubt und stehen in der Ausnahmeliste von `SingleContextGuardTest`).
+
+**Wahrscheinlichster Grund, warum das später bricht:** die Ein-Kontext-Regel hängt an einem
+namensbasierten Bytecode-Guard auf direkt gesetzten Annotationen plus einem Namensschema — eine
+Meta-Annotation oder eine Helper-Oberklasse ohne `*Test`-Endung erzeugt einen zweiten Kontext, ohne dass
+irgendwo Rot angeht, und der geteilte Home hat keinen Besitzer für „kein Turn überlebt seine Methode".
+**Änderung, die dieses Risiko am stärksten senkt:** Guard auf Meta-Annotationen und
+Basis-Vererbung erweitern (S1) **und** die „kein laufender Turn"-Prüfung in `resetSharedState` einziehen
+(L1) — zusammen zwei kleine, test-seitige Änderungen ohne Produktions-Eingriff.
 
 

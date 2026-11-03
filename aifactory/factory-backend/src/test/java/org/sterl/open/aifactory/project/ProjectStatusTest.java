@@ -27,7 +27,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.web.server.context.WebServerApplicationContext;
@@ -88,9 +87,6 @@ class ProjectStatusTest extends FactorySpringTest {
 
     @LocalServerPort
     private int port;
-
-    @Autowired
-    private ProjectWorkStates workStates;
 
     private RestTemplate http;
 
@@ -236,7 +232,10 @@ class ProjectStatusTest extends FactorySpringTest {
             }
         }
 
-        // the proof is made — the tool may end, so no turn of this class outlives its own test method
+        // the proof is made — the tool may end. Waiting for that end stays in this method: after it
+        // returns, the class's own @AfterEach stops the model stub, and the core's earned patience
+        // (ApiRetry: one credit earned by the answer before the tool) then sits out a full backoff step
+        // of ten seconds before the call fails. The base can only report a leftover turn, never end it.
         TurnGate.release(created.localPath());
         assertThat(awaitDirectState(free(), 60_000, "die Liste sagt frei"))
                 .as("auch der laufende Turn ist zu Ende, bevor der nächste Test das Home leert")

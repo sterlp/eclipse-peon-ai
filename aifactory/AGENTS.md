@@ -4,6 +4,7 @@
 - Plans are structured as vertical increments, each resulting in running software.
 
 Spring tests (hard rule, all Spring projects):
+- Measured: context cache `missCount = 1` for the whole `clean test` run (verify with `-Dlogging.level.org.springframework.test.context.cache=DEBUG`). Reboot proofs via `SpringApplicationBuilder` never enter the context cache and are allowed — they are tracked in the exception list of `SingleContextGuardTest` (aifactory). Share one base test class (`FactorySpringTest`), never declare your own `@DynamicPropertySource`.
 - The Spring context may start AT MOST ONCE per test build. No context restarts, no @DirtiesContext, no mock-bean churn that forces a new context. A slow suite (minutes) is a defect, not a state — keep tests fast.
 
 Language:
