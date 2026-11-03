@@ -340,8 +340,6 @@
   erst prüfen, ob die Probe etwas ändert, dann schließen.
 - **Slot-Liste und Slot-Tests trennen**: `AgentSlots.all()` ist eine Quelle (Q9), die Reihenfolge pinnt ein
   Test; die übrigen lesen über `JsonPath`-Filter `$[?(@.id == 'dev')]` und hängen nicht an der Reihenfolge.
-  pro Settings-Klasse ein eigener `@SpringBootTest`-Kontext (eigenes `@TempDir` + `@DynamicPropertySource`) —
-  der Kontext-Key enthält die Dynamic-Properties, also startet jede Klasse ihren eigenen Server (~3 s).
 - **Neue Route im UI = neuer Stub-Zweig, sonst crashen fremde Tests** (wie 7a): `ConfigPage` hängt
   `<Agents/>` unter dem Formular; der lokale Stub von `config.page.test.tsx` musste `/api/settings/agents`
   beantworten (sonst `slots.map is not a function`), und im Harness muss der Zweig **vor**
@@ -591,4 +589,61 @@
   Proben, je genau die erwarteten Tests rot: `ranTurn = true` im RuntimeException-Zweig →
   `aQueuedSubmitThatFailsOwnsNothingOfTheRunningTurn`; `containsUserMessage`-Schutz aus `recordFailure` →
   `aTurnThatFailsInsideTheModelCallLeavesTheSamePair` + `thePayloadIsWrittenOnlyOnce`.
+
+
+## Build-Geschwindigkeit / Test-Kontext (Zyklus 2026-11-03, F6/F7)
+
+- **Die Regel steht als Zeile in `aifactory/AGENTS.md` und wird jetzt gemessen**: der Spring-Kontext
+  startet genau einmal pro Build. Die Basisklasse `FactorySpringTest` (abstract) besitzt allein
+  `@SpringBootTest(RANDOM_PORT)`, `@Import(FakeGitConfig.class)` und die **eine**
+  `@DynamicPropertySource`; Unterklassen erben die statische Methode → gleiches `Method`-Objekt →
+  derselbe Cache-Key. Eigene DPS / `@DirtiesContext` / `@MockitoBean` / `@TestPropertySource` /
+  `@ActiveProfiles` / `@SpringBootTest(properties=…)` / Boot-Slices sind verboten —
+  `SingleContextGuardTest` prüft das im Bytecode (ArchUnit ohne `@ArchTest`, gleiches Muster wie
+  `ArchitectureGuardTest`), `assertSameContext` in der Basis erwischt jeden zweiten Kontext zur Laufzeit.
+- **Der Cache-Key ist die Kostenstelle, nicht die Boot-Zeit** (gemessen): 23 Klassen mit je eigener DPS =
+  23 Kontexte = 23 Server, **118 s → 41,5 s** Wanduhr bei gleichbleibend 212 Tests. Die 23 Boot-Zeilen
+  summierten auf nur ~6 s — **hochgerechnet aus Boot-Zeilen fehlt die Hälfte** (gemessen ~21 s pro elf
+  Kontexte: Context-Refresh, Web-Server, Modulith). Messen statt schätzen:
+  `grep -cE "Started [A-Za-z]+ in [0-9.]+ seconds"` (die Zeile nennt die **Testklasse**, nie
+  `AifactoryApplication`) und `missCount` mit
+  `-Dlogging.level.org.springframework.test.context.cache=DEBUG`.
+- **Ein Home für den ganzen Build (`target/test-home`), Reset je Testmethode** in der Reihenfolge
+  `ProjectService.remove` → Home-Wipe → FakeGit-Reset. `remove` **vor** dem Wipe, weil
+  `requireOwnCheckout` den Checkout braucht; ohne Drop bleibt der Runtime des vorigen Tests unter
+  derselben Id hängen (Id = Hash der URL) — der Isolationsbeweis `FactorySpringTestResetTest` fällt dann
+  laut, nicht still.
+- **`@TempDir` ist nie das Fabrik-Home** (bleibt aber richtig für Ausbruch-Ziele): das geteilte Home muss
+  **außerhalb** von `java.io.tmpdir` liegen, sonst kann `..` die zweite Schreibwurzel nie verlassen
+  (s. oben „`/tmp` is NOT `java.io.tmpdir`"). Und ein `@BeforeEach` der Unterklasse, der einen leeren Home
+  behauptet, während die Basis ihn gerade geleert hat, ist ein zweiter unsichtbarer Besitzer desselben
+  Zustands → gestrichen (`AgentSettingsTest.emptyHome` → `talkToTheRunningServer`).
+- **Feste Wartezeiten sind kein Beweis**: `chat/TurnGate` hält den Turn in einem **laufenden**
+  Shell-Werkzeug (`while [ ! -f .turn-gate ]; do sleep 0.1; done`, selbst begrenzt ~45 s,
+  Werkzeug-Timeout 60 s — beides **über** den Test-Deadlines, damit eine vergessene Freigabe rot wird und
+  nicht „langsam"). Vorher standen ~40 s `sleep 3`/`sleep 6` in der Suite. Kommentare und Testtexte, die
+  eine Pause behaupten, sind nach der Umstellung falsch und müssen mit (`SLEEP_TOOL` → `GATE_TOOL`,
+  `call_sleep` → `call_gate`, „Schlaf drei Sekunden" → „hält das Werkzeug").
+- **Zahlen, die Semantik sind, bleiben**: `DelayedModel(SUMMARY, 2_500)` in `AgentActionTest` liegt über
+  dem 1500-ms-Prüfschritt des Kerns — das ist eine Aussage, keine Wartezeit.
+- **Zustand vorheriger Methoden lesen ist ein latenter Fehler, keine Ausnahme**: `ProjectStatusTest`'s
+  Neustart-Fall (UC-WP-47) verlangte früher „die Projekte der Tests vorher sind registriert"; heute legt er
+  sein Projekt selbst an und hält es bis zum Neustart im Gate — **strenger**, und `@TestMethodOrder` ist
+  entfallen.
+- **Wer trotzdem eine zweite App bootet, gehört in die Ausnahmliste von `SingleContextGuardTest`**
+  (`ChatRestartTest`, `DelegatedAnswerRestartTest`, `ProjectStatusTest`). Die Liste prüft in **beide**
+  Richtungen: ein neuer Boot ist rot, ein überflüssiger Eintrag auch. `SpringApplicationBuilder`-Boots
+  erscheinen **nie** im Context-Cache — kein Kontext der Kennzahl, aber ein zweiter Server.
+- **Env-Startwerte über System-Properties, nicht über Dynamic Properties**: `Environment` liest
+  `System.getProperties()` als Live-Map (`AbstractEnvironment.getSystemProperties()` liefert die echte
+  Map, keinen Clone) → `System.setProperty` wirkt ohne zweiten Kontext. Pflicht danach ist `@AfterEach` +
+  `System.clearProperty`: System-Properties gelten JVM-weit, ein Leak ist eine zweite Antwort auf
+  `AIFACTORY_LLM_*` in einer fremden Klasse.
+- **Handgeschriebener Test-Zustand muss im Test enden**: die vergiftete `projects.json` (UC-WP-29) wirft
+  schon beim **Lesen** `IllegalStateException` (`StoredProject.toProject`); auf dem geteilten Home zerlegt
+  das den Reset **aller** folgenden Klassen (Messprobe ohne `finally`: 10 Fehler in drei Klassen).
+  Geräumt wird im Test, nicht mit Milde im Basis-Reset — sonst verschwindet jeder echte Remove-Fehler.
+- **MockMvc ist ein zweiter Kontext**: Registry-Tests fahren `java.net.http.HttpClient` +
+  `@LocalServerPort` (`RestTemplate` kann kein PATCH, s. oben). Die 405-Methoden-Matrix bleibt
+  `ProjectFilesTest`; `jsonPath("$").isArray()` gibt es über HTTP nicht — die Array-Form am Body beweisen.
 

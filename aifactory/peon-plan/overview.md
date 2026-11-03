@@ -205,7 +205,7 @@ AGENTS-DEV.md:284).
 | **2b** | restliche 12 RANDOM_PORT+FakeGit-Klassen der Chat-Gruppe | ganze Suite grün | 16 → 1 Kontext |
 | **3** | MOCK-Klassen + G4 (`AifactoryApplicationTests`, `OneChatPerProjectTest`, `ProjectWorkStateTest`, `UiDeliveryTest`, `AgentSettingsTest`, `SettingsControllerTest`) auf die Basis; `SettingsControllerTest` auf System-Properties (D-6) | Suite grün, `missCount` = 5 | 8 → 2 Kontexte |
 | **4** ✅ | `ProjectControllerTest` MockMvc → echter HTTP-Client (D-5) | Suite grün, `missCount` = 5 → 1 (real 2 → **1**) | 1 Kontext — erreicht |
-| **5** | Guard-Test (D-7) + Messzahlen/Regel in `AGENTS-DEV.md` | Guard grün, Gegenprobe: DPS in einer Unterklasse ⇒ Guard rot | Regel hält mechanisch |
+| **5** ✅ | Guard-Test (D-7) + Messzahlen/Regel in `AGENTS-DEV.md` | Guard grün, Gegenproben: `@ActiveProfiles`/`@SpringBootTest` an einer Unterklasse ⇒ Guard rot; Eintrag ohne Boot ⇒ rot | Regel hält mechanisch |
 | **6** *(optional)* | `@Timeout`-Obergrenzen auf testwürdige Werte (180 → 60 s) | Suite grün | nur Fehlerfall schneller |
 
 **Reihenfolge-Begründung:** 1 zuerst — reine Testmechanik, keine Strukturänderung, sofort messbar.
@@ -274,7 +274,7 @@ entfernt oder verschoben.
 | GIVEN eine vorige Testmethode hat Projekt + Home hinterlassen, WHEN `resetSharedState` läuft, THEN ist `projects()` leer, `target/test-home` leer und `fakeGit` neutral | `FactorySpringTestResetTest#aPreviousTestLeavesNothingBehind` |
 | GIVEN zwei Spring-Testklassen, WHEN beide laufen, THEN sehen sie dieselbe `ApplicationContext`-Instanz | Basisklasse `assertSameContext` (in jedem `@BeforeEach`) |
 | GIVEN eine neue Testklasse mit eigenem `@DynamicPropertySource`, WHEN die Suite baut, THEN ist der Guard rot | `SingleContextGuardTest#noTestDeclaresItsOwnContextConfiguration` |
-| GIVEN eine neue `@SpringBootTest`-Klasse ohne Basisklasse, WHEN die Suite baut, THEN ist der Guard rot | `SingleContextGuardTest#everySpringTestSharesTheOneContext` |
+| GIVEN eine neue `@SpringBootTest`-Klasse ohne Basisklasse, WHEN die Suite baut, THEN ist der Guard rot | `SingleContextGuardTest#onlyTheBaseDeclaresTheSpringBootTest` |
 | GIVEN die volle Suite, WHEN `clean test`, THEN `Tests run: 208, Failures: 0, Errors: 0`, `missCount ≤ 5`, Wanduhr < 60 s | Messprotokoll §2 |
 | GIVEN `ProjectControllerTest`, WHEN über HTTP statt MockMvc, THEN dieselben Status/Bodies wie vorher (405-Matrix inklusive) | `ProjectControllerTest` (12 Tests, unveränderte Assertions) |
 
@@ -477,4 +477,39 @@ Benannte Abweichungen Inc 4:
 6. **Offen für Inc 5:** `aifactory/AGENTS-DEV.md:343-344` („pro Settings-Klasse ein eigener
    `@SpringBootTest`-Kontext … ~3 s") beschreibt den alten Stand und wird mit dem Bau-Abschnitt von Inc 5
    korrigiert — in Inc 4 bewusst nicht angefasst.
+
+**Inc 5 — erledigt (2026-11-03):** `SingleContextGuardTest` (4 Regeln, ArchUnit auf Bytecode, ohne eigenen
+Kontext) und der Bau-Abschnitt „Build-Geschwindigkeit / Test-Kontext" in `aifactory/AGENTS-DEV.md`; die
+veraltete Aussage „pro Settings-Klasse ein eigener `@SpringBootTest`-Kontext … (~3 s)" ist ersetzt (sie hing
+als Rest an einem Slot-Bullet). Beweis: volle Suite **216 / 0 Fehler, `missCount` 1, 1 Boot, 43,4 s**
+(`/tmp/inc5-cert.log`; der Guard selbst kostet 1,4 s). Gegenproben, alle zurückgenommen und diff-geprüft:
+(a) §7-Fall — `@DynamicPropertySource`-Methode in `ProjectFilesTest` ⇒ genau
+`noTestDeclaresItsOwnContextConfiguration` rot, Nenner nennt die Methode
+(`/tmp/inc5-probe-dps.log`); dasselbe für `@ActiveProfiles` an einer Unterklasse
+(`/tmp/inc5-probe-a.log`); (b) `@SpringBootTest` an einer Unterklasse ⇒ genau
+`onlyTheBaseDeclaresTheSpringBootTest` **und** `theSharedContextIsTheOneAndTheSameEverywhere` rot, weil die
+`webEnvironment` dann nicht gesetzt ist (`/tmp/inc5-probe-b.log`); (c) Ausnahmeliste um eine Klasse ohne
+zweiten Boot erweitert ⇒ genau `theRestartProofsStayTheOnlySecondBoots` rot
+(`/tmp/inc5-probe-c.log`).
+
+Benannte Abweichungen Inc 5:
+
+1. **Die Ausnahmliste führt drei Klassen, nicht zwei.** `ProjectStatusTest` bootet seit Inc 3 (Jons
+   Entscheidung gegen die dritte Ausnahme) seine eigene zweite App für UC-WP-47 — dieselbe Ausnahme-Form wie
+   `ChatRestartTest`/`DelegatedAnswerRestartTest`. Für die **Kontext-Kennzahl** ist es keine Ausnahme: es
+   erbt die Basis und deklariert kein eigenes `@SpringBootTest` (`missCount` bleibt 1). Die Liste ist die
+   Regel für *zweite Boots* und prüft in beide Richtungen — ein neuer Boot ist rot, ein überflüssiger
+   Eintrag auch.
+2. **ArchUnit ja, aber ohne `@ArchTest`** — gleiches Muster wie `ArchitectureGuardTest`: das Artefakt
+   `archunit-junit5` liegt offline nicht bei, `com.tngtech.archunit:archunit` kommt über `spring-modulith`
+   und reicht für `ArchRule.check` bzw. eigene Auswertung über `JavaClasses`.
+3. **Regel (a) ist strenger als formuliert:** statt „erbt die Basis oder steht auf der Liste" gilt „nur die
+   Basis *deklariert* `@SpringBootTest`". Das erwischt auch eine Unterklasse, die die Annotation erneut
+   erklärt (geerbte Annotationen ändern den Cache-Key nicht, ein anderer `webEnvironment` täte es).
+   Zusätzlich geprüft: `properties=` nirgends, `webEnvironment` der Basis = `RANDOM_PORT`, und
+   Boot-Slices (`@WebMvcTest`, `@WebFluxTest`, `@DataJpaTest`, `@JsonTest`) sind kontext-splitlend — D-7
+   nannte sie nicht. `@MockitoBean`/`@MockitoSpyBean` werden auf Klasse, Methode **und** Feld geprüft, denn
+   dort stehen sie.
+4. **„bootet außerhalb" wird über `SpringApplicationBuilder` gemessen**, nicht über Annotationen: ein
+   Neustart-Beweis trägt bewusst keine Spring-Test-Annotation, ein Annotationsscan sähe ihn nicht.
 
