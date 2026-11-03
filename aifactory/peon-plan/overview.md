@@ -306,13 +306,27 @@ entfernt oder verschoben.
 
 ## 10 Status der Messung
 
-| Kennzahl | Baseline (2026-11-03) | nach Inc 1 | nach Inc 2b | nach Inc 4 (Ziel) |
-|---|---|---|---|---|
-| `missCount` (Kontexte) | **23** | 23 — Inc 1 öffnet keine Kontexte | | ≤ 5 |
-| Boot-Zeilen | **23** | 23 | | ≤ 5 |
-| Surefire-Summe | **80,3 s** (42 Reports, Lauf 16:36) | **35,7 s** (43 Reports) | | |
-| Wanduhr `clean test` | **118 s** | **73 s** | | < 60 s |
-| Tests | **208** / 0 Fehler | **210** / 0 Fehler (`TurnGateTest` +2) | | 208 |
+| Kennzahl | Baseline (2026-11-03) | nach Inc 1 | nach Inc 2a | nach Inc 2b | nach Inc 4 (Ziel) |
+|---|---|---|---|---|---|
+| `missCount` (Kontexte) | **23** | 23 — Inc 1 öffnet keine Kontexte | **20** (−3, wie vorhergesagt) | **9** (−11) | **2** (1 geteilt + `ProjectStatusTest`) |
+| Boot-Zeilen | **23** | 23 | **20** | **9** | **2** |
+| Surefire-Summe | **80,3 s** (42 Reports, Lauf 16:36) | **35,7 s** (43 Reports) | **35,2 s** (44 Reports) | **33,5 s** (44 Reports) | |
+| Wanduhr `clean test` | **118 s** | **73 s** | **72,8 s** (Maven 01:11 min) | **51,1 s** (Maven 50,1 s) | erreicht (Ziel war ~65 s) |
+| Tests | **208** / 0 Fehler | **210** / 0 Fehler (`TurnGateTest` +2) | **212** / 0 Fehler (`FactorySpringTestResetTest` +2) | **212** / 0 Fehler | 212 |
+
+**Nach Inc 2b gemessen (2026-11-03):** Die Wanduhr ist von 72,8 s auf **51,1 s** gefallen — die Kontexte
+kosteten also deutlich mehr als die Summe ihrer Boot-Zeilen (6,1 s): die Boot-Zeile misst nur die
+Anwendung, nicht Context-Refresh, Web-Server und Modulith-Verdrahtung. Damit ist auch Jons korrigiertes
+Ziel (~65 s) unterschritten und das ursprüngliche (< 60 s) erreicht. zweiter Lauf mit
+`-Dsurefire.runOrder=reversealphabetical`: 212 Tests, 0 Fehler, `missCount` 9, 50,5 s — die Reihenfolge
+ändert nichts. Verbleibende 9 Kontexte: 1 geteilter + `ProjectStatusTest` (Neustart-Beweis, s. Ausnahmen)
++ `AifactoryApplicationTests` + `OneChatPerProjectTest` + `ProjectWorkStateTest` + `UiDeliveryTest` +
+`AgentSettingsTest` + `SettingsControllerTest` (Inc 3) + `ProjectControllerTest` (Inc 4).
+
+**Ziel-Korrektur (Jon, 2026-11-03):** Wanduhr-Ziel ist **~65 s**, nicht < 60 s. Die 69-s-Startzeit-Annahme
+ist falsifiziert (Boot-Summe der 23 Kontexte = 6,1 s); der Maven-Vorlauf von ~37 s (clean, zwei
+Compile-Läufe, Fork) wird in diesem Zyklus **nicht** angefasst. Gebaut wird Inc 2–5 trotzdem: die
+Einmal-Kontext-Regel ist Jons harte Regel, der Guard (Inc 5) ist der Nutzen.
 
 **Inc 0 — erledigt (2026-11-03):** gemessen wie in §2, Gate bestanden (`missCount` 23 > 3).
 
@@ -344,4 +358,47 @@ Benannte Abweichungen von der Skizze (§3 D-4 / §5):
 5. `ProjectStatusTest.createProject` liefert `CreatedProject(id, localPath)` (vorher nur die Id) — der
    Checkout ist die Tür zum Gate. Nebenbefund: `Path.of(JsonPath.read(…))` bindet an
    `Path.of(URI, String…)`, also typisierte lokale Variable.
+
+**Inc 2a — erledigt (2026-11-03, Commit `55648e79`):** `FactorySpringTest` (abstract, Basis für alle
+Spring-Klassen) mit der einen `@DynamicPropertySource` auf `target/test-home`, `@Import(FakeGitConfig)`,
+`assertSameContext` + `resetSharedState` (remove → wipe → FakeGit-Reset). Umgezogen: `ProjectFilesTest`,
+`ChatConfigTurnTest`, `TeamInternalsTest`, `WritePinningTest` (+ neu `FactorySpringTestResetTest`, 2 Tests).
+Beweis: Teilmenge 5 Klassen grün bei `missCount = 1` / 1 Boot; volle Suite 212 Tests / 0 Fehler,
+`missCount` 20, 72,8 s. Gegenprobe §8(3): `projects.remove(…)` im Reset entfernt ⇒ genau
+`aPreviousTestLeavesNothingBehind` rot (Zeile „frischer Verlauf" — der alte Runtime antwortet noch),
+Probe zurückgenommen. Die 4 Klassen sind die 4 Namen der Skizze; der Doppel-Eintrag
+„`ProjectFilesTest`-Muster" in §4 ist als `ProjectFilesTest` selbst gelesen (4 Klassen ⇒ `missCount` −3 ✓).
+
+Benannte Abweichungen Inc 2a:
+
+1. Die Basis deklariert `classes = AifactoryApplication.class` explizit (Skizze ließ es weg) — sonst hängt
+   der Cache-Key an der Paket-Suchläufe jeder Unterklasse; explizit ist er für alle identisch.
+2. Kontext-Identität über `AtomicReference` statt `WeakReference` — der Kontext lebt in der Spring-Cache-
+   Statik ohnehin bis zum JVM-Ende, ein Weak-Reference gewinnt nichts.
+3. Die Basis prüft zusätzlich `environment.getProperty("aifactory.home") == HOME`: eine Unterklasse, die
+   ihr eigenes Home registriert, fällt damit sofort und nicht erst als Id-Kollision.
+4. `assertThat(HOME).isEmpty()` gibt es in dieser AssertJ-Version nicht (`AbstractPathAssert` ohne
+   `isEmpty`) — die Leer-Probe liest `Files.list(HOME)`.
+
+**Inc 2b — erledigt (2026-11-03, Commit `a2bd2554`):** elf Klassen der Chat-Gruppe auf
+`FactorySpringTest` (`AgentActionTest`, `AgentInsightTest`, `AgentStopTest`, `ChatFirstTouchTest`,
+`ChatQueueTest`, `ChatTurnFailureTest`, `ChatTurnTest`, `ChatUserMessageTest`, `DelegatedAnswerTest`,
+`ProjectRemovalTest`, `SharedProjectChatTest`) — pro Klasse: `@SpringBootTest`/`@Import`/`@TempDir
+static Path home`/eigene DPS weg, `home.resolve(…)` → `HOME.resolve(…)`, eigenes `ProjectService`-Feld
+weg (die Basis liefert es). **Keine Assertion geändert**, kein UC-Kommentar bewegt.**
+Beweis: Teilmenge 11 Klassen = 45 Tests grün bei `missCount` 1; volle Suite 212 / 0 Fehler,
+`missCount` 9, 51,1 s; Gegenprobe §8(2) ist Inc 5 (Guard).
+
+**Benannte Abweichung Inc 2b (melden statt entscheiden):** §4 zählte für 2b **12** Klassen.
+`ProjectStatusTest` bleibt eigener Kontext: sein Fall `afterARestartEveryProjectIsFree` (UC-WP-47) liest
+`workStates.current()` und verlangt `isNotEmpty()` — „die Projekte der Tests vorher sind registriert"
+(javadoc-begründet: nur ein Projekt, das *gearbeitet hat*, macht „frei nach dem Neustart" zur Aussage).
+Der Reset des geteilten Homes löscht genau diese Projekte vor jeder Testmethode, also wäre der Fall auf
+der Basis entweder rot oder nur mit Uminterpretation grün (§6 verbietet beides still). Er ist damit die
+**dritte dokumentierte Ausnahme** neben `ChatRestartTest`/`DelegatedAnswerRestartTest`; Kommentar im
+Kopf der Klasse sagt es, `SingleContextGuardTest` (Inc 5) führt sie mit Grund. Folge für die Ziele: der
+`missCount`-Boden nach Inc 3/4 ist **2** (1 geteilter Kontext + `ProjectStatusTest`), nicht „1 geteilt +
+4 Neustart" aus §2 — die beiden Neustart-Klassen booten per `SpringApplicationBuilder` und erscheinen
+damit nie im Context-Cache (`ChatRestartTest`/`DelegatedAnswerRestartTest` haben bewusst kein
+`@SpringBootTest`). Ihre zweiten Apps bleiben zusätzliche Boots, sind aber nicht Teil der Kennzahl.
 
