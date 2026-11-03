@@ -41,8 +41,8 @@ Zu protokollieren (in `peon-plan/overview.md` §2 als Tabelle nachtragen, nicht 
 
 | Kennzahl | Wie | Baseline | Ziel |
 |---|---|---|---|
-| Kontexte erzeugt | `grep -o "missCount = [0-9]*" /tmp/baseline.log \| tail -1` | **23** | ≤ 5 (1 geteilt + 4 Neustart) |
-| Boot-Zeilen | `grep -cE "Started [A-Za-z]+ in [0-9.]+ seconds"` — **nicht** `Started AifactoryApplication`: ein `@SpringBootTest`-Kontext nennt seine Testklasse, die Anwendungs-Zeile gibt es genau einmal | **23** | ≤ 5 |
+| Kontexte erzeugt | `grep -o "missCount = [0-9]*" /tmp/baseline.log \| tail -1` | **23** | **1** (der geteilte; `ProjectControllerTest` ist Inc 4) |
+| Boot-Zeilen | `grep -cE "Started [A-Za-z]+ in [0-9.]+ seconds"` — **nicht** `Started AifactoryApplication`: ein `@SpringBootTest`-Kontext nennt seine Testklasse, die Anwendungs-Zeile gibt es genau einmal | **23** | **1** |
 | Surefire-Summe | Summe der `testsuite time` über 42 Reports | **80,3 s** | |
 | Wanduhr `clean test` | `time` | **118 s** (Maven `Total time 01:57 min`) | < 60 s |
 | Tests | `Tests run:` Zeile | **208** (0 Failures, 0 Errors) | 208 |
@@ -306,13 +306,13 @@ entfernt oder verschoben.
 
 ## 10 Status der Messung
 
-| Kennzahl | Baseline (2026-11-03) | nach Inc 1 | nach Inc 2a | nach Inc 2b | nach Inc 4 (Ziel) |
-|---|---|---|---|---|---|
-| `missCount` (Kontexte) | **23** | 23 — Inc 1 öffnet keine Kontexte | **20** (−3, wie vorhergesagt) | **9** (−11) | **2** (1 geteilt + `ProjectStatusTest`) |
-| Boot-Zeilen | **23** | 23 | **20** | **9** | **2** |
-| Surefire-Summe | **80,3 s** (42 Reports, Lauf 16:36) | **35,7 s** (43 Reports) | **35,2 s** (44 Reports) | **33,5 s** (44 Reports) | |
-| Wanduhr `clean test` | **118 s** | **73 s** | **72,8 s** (Maven 01:11 min) | **51,1 s** (Maven 50,1 s) | erreicht (Ziel war ~65 s) |
-| Tests | **208** / 0 Fehler | **210** / 0 Fehler (`TurnGateTest` +2) | **212** / 0 Fehler (`FactorySpringTestResetTest` +2) | **212** / 0 Fehler | 212 |
+| Kennzahl | Baseline (2026-11-03) | nach Inc 1 | nach Inc 2a | nach Inc 2b | nach Inc 3 | nach Inc 4 (Ziel) |
+|---|---|---|---|---|---|---|
+| `missCount` (Kontexte) | **23** | 23 — Inc 1 öffnet keine Kontexte | **20** (−3, wie vorhergesagt) | **9** (−11) | **2** (−7) | **1** (nur der geteilte) |
+| Boot-Zeilen | **23** | 23 | **20** | **9** | **2** | **1** |
+| Surefire-Summe | **80,3 s** (42 Reports, Lauf 16:36) | **35,7 s** (43 Reports) | **35,2 s** (44 Reports) | **33,5 s** (44 Reports) | **32,7 s** (44 Reports) | |
+| Wanduhr `clean test` | **118 s** | **73 s** | **72,8 s** (Maven 01:11 min) | **51,1 s** (Maven 50,1 s) | **41,9 s** (Maven 41,2 s) | **< 60 s** (erreicht) |
+| Tests | **208** / 0 Fehler | **210** / 0 Fehler (`TurnGateTest` +2) | **212** / 0 Fehler (`FactorySpringTestResetTest` +2) | **212** / 0 Fehler | **212** / 0 Fehler | 212 |
 
 **Nach Inc 2b gemessen (2026-11-03):** Die Wanduhr ist von 72,8 s auf **51,1 s** gefallen — die Kontexte
 kosteten also deutlich mehr als die Summe ihrer Boot-Zeilen (6,1 s): die Boot-Zeile misst nur die
@@ -323,10 +323,11 @@ Ziel (~65 s) unterschritten und das ursprüngliche (< 60 s) erreicht. zweiter La
 + `AifactoryApplicationTests` + `OneChatPerProjectTest` + `ProjectWorkStateTest` + `UiDeliveryTest` +
 `AgentSettingsTest` + `SettingsControllerTest` (Inc 3) + `ProjectControllerTest` (Inc 4).
 
-**Ziel-Korrektur (Jon, 2026-11-03):** Wanduhr-Ziel ist **~65 s**, nicht < 60 s. Die 69-s-Startzeit-Annahme
-ist falsifiziert (Boot-Summe der 23 Kontexte = 6,1 s); der Maven-Vorlauf von ~37 s (clean, zwei
-Compile-Läufe, Fork) wird in diesem Zyklus **nicht** angefasst. Gebaut wird Inc 2–5 trotzdem: die
-Einmal-Kontext-Regel ist Jons harte Regel, der Guard (Inc 5) ist der Nutzen.
+**Ziel-Korrektur (Jon, 2026-11-03, zweiter Nachtrag — gilt):** Wanduhr-Ziel bleibt **< 60 s**, die
+65-s-Korrektur ist hinfällig; Inc 3 ist bei 41,9 s angekommen. Die 69-s-Startzeit-Annahme bleibt
+falsifiziert (Boot-Summe der 23 Kontexte = 6,1 s), aber die Kontexte kosteten eben doch 21 s pro elf
+Stück (Context-Refresh, Web-Server, Modulith — nicht die Boot-Zeile). Der Maven-Vorlauf von ~37 s
+(clean, zwei Compile-Läufe, Fork) wird in diesem Zyklus **nicht** angefasst.
 
 **Inc 0 — erledigt (2026-11-03):** gemessen wie in §2, Gate bestanden (`missCount` 23 > 3).
 
@@ -389,16 +390,53 @@ weg (die Basis liefert es). **Keine Assertion geändert**, kein UC-Kommentar bew
 Beweis: Teilmenge 11 Klassen = 45 Tests grün bei `missCount` 1; volle Suite 212 / 0 Fehler,
 `missCount` 9, 51,1 s; Gegenprobe §8(2) ist Inc 5 (Guard).
 
-**Benannte Abweichung Inc 2b (melden statt entscheiden):** §4 zählte für 2b **12** Klassen.
-`ProjectStatusTest` bleibt eigener Kontext: sein Fall `afterARestartEveryProjectIsFree` (UC-WP-47) liest
+**Benannte Abweichung Inc 2b (melden statt entscheiden — von Jon in Inc 3 aufgehoben):** §4 zählte für 2b
+**12** Klassen.
+`ProjectStatusTest` blieb eigener Kontext: sein Fall `afterARestartEveryProjectIsFree` (UC-WP-47) liest
 `workStates.current()` und verlangt `isNotEmpty()` — „die Projekte der Tests vorher sind registriert"
 (javadoc-begründet: nur ein Projekt, das *gearbeitet hat*, macht „frei nach dem Neustart" zur Aussage).
 Der Reset des geteilten Homes löscht genau diese Projekte vor jeder Testmethode, also wäre der Fall auf
-der Basis entweder rot oder nur mit Uminterpretation grün (§6 verbietet beides still). Er ist damit die
-**dritte dokumentierte Ausnahme** neben `ChatRestartTest`/`DelegatedAnswerRestartTest`; Kommentar im
-Kopf der Klasse sagt es, `SingleContextGuardTest` (Inc 5) führt sie mit Grund. Folge für die Ziele: der
-`missCount`-Boden nach Inc 3/4 ist **2** (1 geteilter Kontext + `ProjectStatusTest`), nicht „1 geteilt +
-4 Neustart" aus §2 — die beiden Neustart-Klassen booten per `SpringApplicationBuilder` und erscheinen
+der Basis entweder rot oder nur mit Uminterpretation grün (§6 verbietet beides still). Er war damit als
+**dritte dokumentierte Ausnahme** neben `ChatRestartTest`/`DelegatedAnswerRestartTest` vorgeschlagen;
+Jon hat abgelehnt (Reihenfolge-Kopplung ist ein latenter Fehler) — Inc 3 macht den Fall selbsttragend,
+die Ausnahme entfällt. Die beiden Neustart-Klassen booten per `SpringApplicationBuilder` und erscheinen
 damit nie im Context-Cache (`ChatRestartTest`/`DelegatedAnswerRestartTest` haben bewusst kein
 `@SpringBootTest`). Ihre zweiten Apps bleiben zusätzliche Boots, sind aber nicht Teil der Kennzahl.
+
+**Inc 3 — erledigt (2026-11-03):** sechs Klassen auf `FactorySpringTest` (`AifactoryApplicationTests`,
+`ui/UiDeliveryTest`, `chat/OneChatPerProjectTest`, `chat/ProjectWorkStateTest`, `config/AgentSettingsTest`,
+`config/SettingsControllerTest`) **und** `project/ProjectStatusTest` — nach Jons Entscheidung statt der
+vorgeschlagenen Ausnahme: `afterARestartEveryProjectIsFree` legt sein Projekt jetzt **selbst** an und hält
+es bis zum Neustart in einem echten Tool, statt die Projekte der Methoden vorher zu lesen. Beweis: Teilmenge
+7 Klassen = 31 Tests grün bei `missCount` 1 / 1 Boot; volle Suite **212 / 0 Fehler, `missCount` 2,
+41,9 s** (`/tmp/inc3-cert.log`); Gegenlauf `reversealphabetical` 212 / 0 Fehler, `missCount` 2, 41,9 s.
+Damit ist die **dritte Ausnahme vom Tisch**: verbleibende 2 Kontexte = 1 geteilter +
+`ProjectControllerTest` (Inc 4). D-6 erfüllt: `SettingsControllerTest` führt seine Env-Startwerte über
+**System-Properties** zu (`@AfterEach` räumt sie — sie wirken auf die ganze JVM, ein Leak wäre eine
+zweite Antwort auf `AIFACTORY_LLM_*` in einer fremden Klasse), die eigene DPS ist weg.
+Gegenproben: (a) D-6 — `System.setProperty` für den Key auskommentiert ⇒ genau
+`configFileWinsOverEnvironment` (`keySource` ENV→NONE) und `removeKeyDeletesItAndRefreshesTheStatus` rot;
+(b) Neustart-Fall — Erwartung auf `working=true` gesetzt ⇒ genau `afterARestartEveryProjectIsFree` rot;
+(c) Grundlage geschwächt (`ProjectWork.free` statt `working`) ⇒ derselbe Fall rot. Alle Proben zurückgenommen.
+
+Benannte Abweichungen Inc 3:
+
+1. **`ProjectStatusTest` ist keine Ausnahme mehr** (Jons Auftrag): der Neustart-Fall ist selbsttragend und
+   damit **strenger** als vorher — vorher war die Grundlage „die Projekte der Tests vorher sind registriert"
+   (alle längst frei), jetzt ist das eigene Projekt im Moment des Neustarts **arbeitend**, und die
+   Erwartung ist `containsExactly(ProjectWork.free(…))` statt einer aus `before` abgeleiteten Menge.
+   `@TestMethodOrder`/`@Order` sind entfallen (keine Reihenfolge-Abhängigkeit mehr); der Fall wartet nach
+   dem Beweis auf das Ende des eigenen Turns, damit kein laufendes Werkzeug in den Reset des nächsten
+   Methods läuft.
+2. `AgentSettingsTest.emptyHome` → `talkToTheRunningServer`: der Home-Wipe ist Aufgabe der Basis, ein
+   `@BeforeEach`, der einen leeren Home behauptet, während die Basis ihn schon geleert hat, wäre ein
+   zweiter, unsichtbarer Besitzer desselben Zustands. Ebenso `SettingsControllerTest.emptyHomeWithoutStartValues`
+   → `withoutStartValues` (+ `@AfterEach forgetTheStartValues`).
+3. `OneChatPerProjectTest` schreibt seine Factory-Config jetzt im `@BeforeEach` statt im `@BeforeAll`
+   (nur `MODEL.start()` bleibt Klassenarbeit): der geteilte Home wird je Methode geleert, eine im
+   `@BeforeAll` geschriebene Config wäre vor dem ersten Test weg.
+4. Nachziehen aus Inc 1 (§6): die beiden Tool-Call-Ids `call_sleep` in `ProjectStatusTest` heißen
+   `call_gate`; Inc 1 hatte die Umbenennung gemeldet, diese Klasse aber nicht erwischt.
+5. `AifactoryApplicationTests` prüft weiterhin „kein `~/.aifactory`", jetzt gegen das geteilte
+   `target/test-home`; sein eigener `createTempDirectory`-Home und der `@AfterAll`-Wipe sind entfallen.
 

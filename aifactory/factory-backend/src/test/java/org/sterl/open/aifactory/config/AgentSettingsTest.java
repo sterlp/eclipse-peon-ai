@@ -7,16 +7,13 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -24,8 +21,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
@@ -33,6 +28,7 @@ import com.jayway.jsonpath.JsonPath;
 
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.open.aifactory.FactorySpringTest;
 import org.sterl.open.aifactory.config.agent.AgentConfigFile;
 import org.sterl.open.aifactory.config.dto.AgentSettingsDto;
 import org.sterl.open.aifactory.config.dto.AgentSettingsUpdateRequest;
@@ -44,15 +40,11 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * request. Masking is checked on the raw body for the same reason it is checked there for the default
  * level (R-WP-16).
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Timeout(60)
-class AgentSettingsTest {
+class AgentSettingsTest extends FactorySpringTest {
 
     private static final String KEY = "sk-agent-secret-0123456789";
     private static final String BODY = "This is the slot's own prompt.";
-
-    @TempDir
-    static Path home;
 
     @LocalServerPort
     int port;
@@ -62,20 +54,9 @@ class AgentSettingsTest {
 
     private RestTemplate http;
 
-    @DynamicPropertySource
-    static void factoryHome(DynamicPropertyRegistry registry) {
-        registry.add("aifactory.home", () -> home.toString());
-    }
-
+    /** The shared context already emptied the home (see {@link FactorySpringTest#resetSharedState()}). */
     @BeforeEach
-    void emptyHome() throws IOException {
-        try (var files = Files.walk(home)) {
-            for (Path file : files.sorted(Comparator.reverseOrder()).toList()) {
-                if (!file.equals(home)) {
-                    Files.deleteIfExists(file);
-                }
-            }
-        }
+    void talkToTheRunningServer() {
         this.http = new RestTemplate();
         // the status IS the assertion — a client that throws would hide what the app answers
         this.http.setErrorHandler(new NoOpResponseErrorHandler());
@@ -92,8 +73,8 @@ class AgentSettingsTest {
         assertThat(values(body, "$[*].id")).containsExactly("po", "plan", "dev", "review", "search", "compact");
         assertThat(values(body, "$[*].name")).containsExactly("Jon", "Plan", "Dev", "Review", "Search", "Compact");
         assertThat(values(body, "$[*].overridden")).containsOnly(false);
-        assertThat(home.resolve("agents")).doesNotExist();
-        assertThat(home.resolve(FactoryHome.CONFIG_FILE)).doesNotExist();
+        assertThat(HOME.resolve("agents")).doesNotExist();
+        assertThat(HOME.resolve(FactoryHome.CONFIG_FILE)).doesNotExist();
 
         // no field a key could sit in — an added component fails whatever it is called
         assertThat(componentNamesOf(AgentSettingsDto.class)).containsExactly("id", "name", "overridden", "model",
@@ -197,7 +178,7 @@ class AgentSettingsTest {
 
         assertThat(rejected.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(rejected.getBody()).contains("agent").doesNotContain("paco");
-        assertThat(home.resolve("agents")).doesNotExist();
+        assertThat(HOME.resolve("agents")).doesNotExist();
     }
 
     /** R-WP-16's one-intent rule, same as the default level: setting and removing in one request is a 400. */
@@ -209,7 +190,7 @@ class AgentSettingsTest {
 
         assertThat(rejected.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(rejected.getBody()).doesNotContain(KEY, "sk-");
-        assertThat(home.resolve("agents")).doesNotExist();
+        assertThat(HOME.resolve("agents")).doesNotExist();
     }
 
     /** The core reads a temperature as a number and only warns when it cannot — so the edge refuses. */
@@ -219,7 +200,7 @@ class AgentSettingsTest {
 
         assertThat(rejected.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(rejected.getBody()).contains("temperature").doesNotContain("hot");
-        assertThat(home.resolve("agents")).doesNotExist();
+        assertThat(HOME.resolve("agents")).doesNotExist();
     }
 
     /**
@@ -317,7 +298,7 @@ class AgentSettingsTest {
     // ----------------------------------------------------------------- files
 
     private static Path agentFile(String slot) {
-        return AgentConfigFile.forSlot(FactoryHome.of(home), slot).file();
+        return AgentConfigFile.forSlot(FactoryHome.of(HOME), slot).file();
     }
 
     private static void write(String slot, String content) {

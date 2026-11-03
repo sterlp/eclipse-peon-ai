@@ -9,7 +9,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,18 +18,16 @@ import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
+
+import org.sterl.open.aifactory.FactorySpringTest;
 
 /**
  * Delivery is part of the increment, not of the deployment (R-WP-22): a UI that answers 500 in the
@@ -39,25 +36,16 @@ import org.springframework.web.client.RestTemplate;
  * path) only surfaces as a {@code StackOverflowError} over real HTTP, so everything here runs against
  * a started server on a random port.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class UiDeliveryTest {
+class UiDeliveryTest extends FactorySpringTest {
 
     /** The hashed names change with every build, so they are read from the html, never hardcoded. */
     private static final Pattern ASSET = Pattern.compile("assets/(index-[\\w-]+\\.(?:js|css))");
     private static final String INDEX = "static/ui/index.html";
 
-    @TempDir
-    static Path home;
-
     @LocalServerPort
     int port;
 
     private RestTemplate http;
-
-    @DynamicPropertySource
-    static void isolateHome(DynamicPropertyRegistry registry) {
-        registry.add("aifactory.home", () -> home.toString());
-    }
 
     @BeforeEach
     void talkToTheRunningServer() {

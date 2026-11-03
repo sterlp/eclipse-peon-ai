@@ -13,7 +13,6 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.RecordComponent;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -29,16 +28,11 @@ import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpMethod;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.util.ClassUtils;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -59,6 +53,7 @@ import org.sterl.llmpeon.agent.AiReviewAgent;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.poagent.AiPoAgent;
+import org.sterl.open.aifactory.FactorySpringTest;
 import org.sterl.open.aifactory.chat.dto.AgentAction;
 import org.sterl.open.aifactory.chat.dto.AgentActionRequest;
 import org.sterl.open.aifactory.chat.dto.AgentTileDto;
@@ -68,9 +63,7 @@ import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
 import org.sterl.open.aifactory.chat.dto.TileCapability;
 import org.sterl.open.aifactory.chat.dto.TranscriptLineDto;
-import org.sterl.open.aifactory.project.FakeGitConfig;
 import org.sterl.open.aifactory.project.Project;
-import org.sterl.open.aifactory.project.ProjectService;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
@@ -95,10 +88,8 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * {@code -parameters}, so parameter names are {@code arg0} and would prove nothing (AGENTS-DEV). The
  * field names of a record do not depend on that flag — they live in the class file.</p>
  */
-@SpringBootTest
-@Import(FakeGitConfig.class)
 @Timeout(60)
-class OneChatPerProjectTest {
+class OneChatPerProjectTest extends FactorySpringTest {
 
     private static final String GIT_URL = "https://git.example.com/acme/one-chat.git";
     private static final String MODEL_PACKAGE = "org.sterl.open.aifactory.chat.dto";
@@ -133,22 +124,8 @@ class OneChatPerProjectTest {
             "chatId", "sessionId", "threadId", "conversationId", "dialogId",
             "username", "userName", "author", "owner");
 
-    @TempDir
-    static Path home;
-
-    @Autowired
-    private ApplicationContext context;
-
-    @Autowired
-    private ProjectService projects;
-
     @Autowired
     private ProjectRuntimeRegistry runtimes;
-
-    @DynamicPropertySource
-    static void isolateHome(DynamicPropertyRegistry registry) {
-        registry.add("aifactory.home", home::toString);
-    }
 
     /**
      * The positive check at the end sends, so this class needs a model: with no config no turn reaches a
@@ -156,9 +133,8 @@ class OneChatPerProjectTest {
      * a line, which is exactly the statement the guard owes Inc 6.
      */
     @BeforeAll
-    static void startModelAndConfig() throws IOException {
+    static void startModel() {
         MODEL.start();
-        writeFactoryConfig();
     }
 
     @AfterAll
@@ -166,13 +142,15 @@ class OneChatPerProjectTest {
         MODEL.stop();
     }
 
-    private static void writeFactoryConfig() throws IOException {
+    /** Written per method: the shared context wipes the home before every test of the build. */
+    @BeforeEach
+    void writeFactoryConfig() throws IOException {
         Properties config = new Properties();
         config.setProperty(LlmConfigKeys.PROVIDER_TYPE, "OPEN_AI");
         config.setProperty(LlmConfigKeys.MODEL, "one-chat-guard");
         config.setProperty(LlmConfigKeys.URL, MODEL.getUrl());
         config.setProperty(LlmConfigKeys.API_KEY, "test-key");
-        try (OutputStream out = Files.newOutputStream(home.resolve(FactoryHome.CONFIG_FILE))) {
+        try (OutputStream out = Files.newOutputStream(HOME.resolve(FactoryHome.CONFIG_FILE))) {
             config.store(out, "one chat guard - the named send needs a model to reach");
         }
     }

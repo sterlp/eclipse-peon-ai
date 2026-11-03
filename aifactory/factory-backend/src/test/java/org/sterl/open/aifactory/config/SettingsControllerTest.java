@@ -11,23 +11,18 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
@@ -37,6 +32,7 @@ import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.FileLlmConfigStore;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.provider.LlmProviders;
+import org.sterl.open.aifactory.FactorySpringTest;
 import org.sterl.open.aifactory.config.dto.ProviderDefaultsDto;
 import org.sterl.open.aifactory.config.dto.SettingsDto;
 import org.sterl.open.aifactory.config.dto.SettingsUpdateRequest;
@@ -45,43 +41,30 @@ import org.sterl.open.aifactory.shared.FactoryHome;
 /**
  * The HTTP contract of the settings view, over real HTTP: masking has to hold in the bytes on the wire,
  * which is what a started server and the raw response body can prove and an in-process mapper cannot.
- * Every test runs against a throwaway home.
+ * Every test runs against the shared throwaway home of {@link FactorySpringTest}, empty per method.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class SettingsControllerTest {
+class SettingsControllerTest extends FactorySpringTest {
 
     private static final String KEY = "sk-file-secret-0123456789";
     private static final String ENV_KEY = "sk-env-secret-9876543210";
-
-    /**
-     * The start values of this run. A {@link DynamicPropertySource} supplier is resolved on every
-     * lookup, so a test can switch one environment value on and off without a restart — the same
-     * {@code Environment} the running server reads.
-     */
-    private static final Map<String, String> START_VALUES = new ConcurrentHashMap<>();
-
-    @TempDir
-    static Path home;
 
     @LocalServerPort
     int port;
 
     private RestTemplate http;
 
-    @DynamicPropertySource
-    static void homeAndStartValues(DynamicPropertyRegistry registry) {
-        registry.add("aifactory.home", () -> home.toString());
-        EnvFallbackLlmConfigStore.ENV_NAMES.values()
-                .forEach(name -> registry.add(name, () -> START_VALUES.get(name)));
-    }
-
     @BeforeEach
-    void emptyHomeWithoutStartValues() {
-        START_VALUES.clear();
-        deleteConfig();
+    void withoutStartValues() {
+        clearStartValues();
         this.http = new RestTemplate();
         // the status IS the assertion — a client that throws would hide what the app answers
         this.http.setErrorHandler(new NoOpResponseErrorHandler());
+    }
+
+    /** System properties reach the whole JVM: a start value of this class never outlives its own test. */
+    @AfterEach
+    void forgetTheStartValues() {
+        clearStartValues();
     }
 
     @Test
@@ -162,7 +145,7 @@ class SettingsControllerTest {
 
         // GIVEN neither carries anything — the documented core defaults, and the key is not set
         deleteConfig();
-        START_VALUES.clear();
+        clearStartValues();
 
         String fromDefaults = bodyOfSettings();
         assertThat(field(fromDefaults, "$.provider")).isEqualTo("OLLAMA");
@@ -421,7 +404,7 @@ class SettingsControllerTest {
     }
 
     private static List<String> fileNames() throws IOException {
-        try (var files = Files.list(home)) {
+        try (var files = Files.list(HOME)) {
             return files.map(file -> file.getFileName().toString()).sorted().toList();
         }
     }
@@ -438,11 +421,21 @@ class SettingsControllerTest {
         return JsonPath.read(body, path);
     }
 
+    /**
+     * The start values of this run, as <em>system properties</em> (plan D-6): {@code Environment} answers
+     * from {@code System.getProperties()} on every lookup, so a test switches one value on and off without
+     * a restart — exactly what the {@code DynamicPropertyRegistry} used to do here, only without a dynamic
+     * property of its own, which is what used to give this class a context of its own.
+     */
     private void useStartValues(String provider, String model, String url, String key) {
-        START_VALUES.put(EnvFallbackLlmConfigStore.ENV_NAMES.get(LlmConfigKeys.PROVIDER_TYPE), provider);
-        START_VALUES.put(EnvFallbackLlmConfigStore.ENV_NAMES.get(LlmConfigKeys.MODEL), model);
-        START_VALUES.put(EnvFallbackLlmConfigStore.ENV_NAMES.get(LlmConfigKeys.URL), url);
-        START_VALUES.put(EnvFallbackLlmConfigStore.ENV_NAMES.get(LlmConfigKeys.API_KEY), key);
+        System.setProperty(EnvFallbackLlmConfigStore.ENV_NAMES.get(LlmConfigKeys.PROVIDER_TYPE), provider);
+        System.setProperty(EnvFallbackLlmConfigStore.ENV_NAMES.get(LlmConfigKeys.MODEL), model);
+        System.setProperty(EnvFallbackLlmConfigStore.ENV_NAMES.get(LlmConfigKeys.URL), url);
+        System.setProperty(EnvFallbackLlmConfigStore.ENV_NAMES.get(LlmConfigKeys.API_KEY), key);
+    }
+
+    private static void clearStartValues() {
+        EnvFallbackLlmConfigStore.ENV_NAMES.values().forEach(System::clearProperty);
     }
 
     private String url(String path) {
@@ -450,7 +443,7 @@ class SettingsControllerTest {
     }
 
     private static Path config() {
-        return home.resolve(FactoryHome.CONFIG_FILE);
+        return HOME.resolve(FactoryHome.CONFIG_FILE);
     }
 
     private static void writeConfig(String content) {

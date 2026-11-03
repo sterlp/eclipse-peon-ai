@@ -25,19 +25,13 @@ import java.util.function.Predicate;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.builder.SpringApplicationBuilder;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.web.server.context.WebServerApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -45,8 +39,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
@@ -58,6 +50,7 @@ import dev.langchain4j.data.message.AiMessage;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.open.aifactory.AifactoryApplication;
+import org.sterl.open.aifactory.FactorySpringTest;
 import org.sterl.open.aifactory.chat.TurnGate;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
@@ -74,20 +67,13 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * the busy window is a real shell tool that holds until the test releases its {@link TurnGate} (as in the
  * queue test) and the waited input really is answered before the row may go free.</p>
  *
- * <p>Ordered on purpose: the restart case reads the projects of the tests before it, because a project
- * that <em>had</em> been working is the only kind of project that makes "free after a restart" say
- * something.</p>
- *
- * <p>That same dependency is why this class is not on {@code FactorySpringTest}: the shared context
- * resets the factory per test method, and the restart case needs the leftovers of the methods before it.
- * It is therefore the third documented context of the build (with the two restart proofs), and
- * {@code SingleContextGuardTest} (Inc 5) names it as such.</p>
+ * <p>Every method stands on its own, including the restart case: it brings the project it needs and puts
+ * it into the busy state before it restarts, because a project that <em>is</em> working is the only kind
+ * of project that makes "free after a restart" say something. Reading that project from the tests before
+ * it would tie the case to a class order and to whatever those tests left behind.</p>
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(FakeGitConfig.class)
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Timeout(180)
-class ProjectStatusTest {
+class ProjectStatusTest extends FactorySpringTest {
 
     /** Holds one turn inside a running tool until the test releases it — long enough to be watched. */
     private static final String GATE_TOOL = TurnGate.toolArguments();
@@ -97,9 +83,6 @@ class ProjectStatusTest {
             .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(Duration.ofSeconds(5))
             .build();
-
-    @TempDir
-    static Path home;
 
     private MockLlmServer model;
 
@@ -133,13 +116,7 @@ class ProjectStatusTest {
         }
     }
 
-    @DynamicPropertySource
-    static void isolateHome(DynamicPropertyRegistry registry) {
-        registry.add(FactoryHome.HOME_PROPERTY, home::toString);
-    }
-
     @Test
-    @Order(1)
     @Timeout(90)
     // UC-WP-47
     void theListShowsWorkingAndFreeAfterTheTurn() throws Exception {
@@ -152,7 +129,7 @@ class ProjectStatusTest {
                     .as("ein neuer Betrachter wird mit dem vollen Stand verbunden")
                     .contains(ProjectWork.free(projectId));
 
-            model.queueResponse(toolCall("call_sleep", "shellRunCommand", GATE_TOOL));
+            model.queueResponse(toolCall("call_gate", "shellRunCommand", GATE_TOOL));
             model.queueResponse("die Antwort des laufenden Turns");
 
             assertThat(send(projectId, "die erste Frage").getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
@@ -179,7 +156,6 @@ class ProjectStatusTest {
     }
 
     @Test
-    @Order(2)
     @Timeout(90)
     // UC-WP-47
     void aQueuedInputIsCounted() throws Exception {
@@ -190,7 +166,7 @@ class ProjectStatusTest {
 
         try (StatusStream stream = new StatusStream(port)) {
             stream.awaitSnapshot();
-            model.queueResponse(toolCall("call_sleep", "shellRunCommand", GATE_TOOL));
+            model.queueResponse(toolCall("call_gate", "shellRunCommand", GATE_TOOL));
             model.queueResponse("die Antwort des laufenden Turns");
             model.queueResponse(waitedAnswer);
 
@@ -216,40 +192,55 @@ class ProjectStatusTest {
     }
 
     @Test
-    @Order(3)
     @Timeout(90)
     // UC-WP-47
-    void afterARestartEveryProjectIsFree() {
-        List<ProjectWork> before = workStates.current();
-        assertThat(before)
-                .as("die Projekte der Tests vorher sind registriert — sonst sagt diese Zeile nichts")
-                .isNotEmpty();
-        List<ProjectWork> allFree = before.stream()
-                .map(state -> ProjectWork.free(state.projectId()))
-                .toList();
+    void afterARestartEveryProjectIsFree() throws Exception {
+        writeFactoryConfig("inc2-restart-47");
+        CreatedProject created = createProject("restart-47");
+        String projectId = created.id();
+
+        // the project of THIS test, working at the moment of the restart: a project of some earlier test,
+        // long since free, would make the assertion below a tautology — so this case registers its own and
+        // holds it busy in a real tool instead of depending on the tests before it
+        model.queueResponse(toolCall("call_gate", "shellRunCommand", GATE_TOOL));
+        model.queueResponse("die Antwort des laufenden Turns");
+        assertThat(send(projectId, "die erste Frage").getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+
+        assertThat(awaitDirectState(workingWith(0), 15_000, "die Liste sagt arbeitet"))
+                .as("die Grundlage: dieses Projekt arbeitet in diesem Prozess")
+                .isEqualTo(new WorkStates.State(true, 0));
+        assertThat(workStates.current())
+                .as("und die Liste kennt genau dieses eine Projekt")
+                .containsExactly(new ProjectWork(projectId, true, 0));
 
         // a restarted process knows only its files: the same application in a fresh context over the same
         // home dir (ChatRestartTest boots the same way), with runtimes and listeners of its own — none
         try (ConfigurableApplicationContext restarted = new SpringApplicationBuilder(
                 AifactoryApplication.class, FakeGitConfig.class)
                         .properties(
-                                FactoryHome.HOME_PROPERTY + "=" + home,
+                                FactoryHome.HOME_PROPERTY + "=" + HOME,
                                 "server.port=0",
                                 "spring.main.banner-mode=off",
                                 "logging.level.root=WARN")
                         .run()) {
 
             assertThat(restarted.getBean(ProjectWorkStates.class).current())
-                    .as("dieselben Projekte, und jedes von ihnen frei")
-                    .containsExactlyInAnyOrderElementsOf(allFree);
+                    .as("dasselbe Projekt — von seiner Arbeit weiß der Neustart nichts")
+                    .containsExactly(ProjectWork.free(projectId));
 
             int restartedPort = ((WebServerApplicationContext) restarted).getWebServer().getPort();
             try (StatusStream stream = new StatusStream(restartedPort)) {
                 assertThat(stream.awaitSnapshot())
                         .as("und wer sich jetzt verbindet, sieht dasselbe")
-                        .containsExactlyInAnyOrderElementsOf(allFree);
+                        .containsExactly(ProjectWork.free(projectId));
             }
         }
+
+        // the proof is made — the tool may end, so no turn of this class outlives its own test method
+        TurnGate.release(created.localPath());
+        assertThat(awaitDirectState(free(), 60_000, "die Liste sagt frei"))
+                .as("auch der laufende Turn ist zu Ende, bevor der nächste Test das Home leert")
+                .isEqualTo(new WorkStates.State(false, 0));
     }
 
     // ------------------------------------------------------------------ the edges
@@ -297,9 +288,24 @@ class ProjectStatusTest {
         properties.setProperty(LlmConfigKeys.MODEL, model);
         properties.setProperty(LlmConfigKeys.URL, this.model.getUrl());
         properties.setProperty(LlmConfigKeys.API_KEY, "test-key");
-        try (var out = Files.newOutputStream(home.resolve(FactoryHome.CONFIG_FILE))) {
+        try (var out = Files.newOutputStream(HOME.resolve(FactoryHome.CONFIG_FILE))) {
             properties.store(out, "ProjectStatusTest");
         }
+    }
+
+    /**
+     * The same row read from the port instead of off a connection: the restart case has no stream of its
+     * own on the old process — it is about what a new process reads from the files.
+     */
+    private WorkStates.State awaitDirectState(Predicate<WorkStates.State> wanted, long timeoutMs, String what) {
+        awaitUntil(() -> directStates().stream().anyMatch(wanted), timeoutMs, what);
+        return directStates().stream().filter(wanted).findFirst().orElseThrow();
+    }
+
+    private List<WorkStates.State> directStates() {
+        return workStates.current().stream()
+                .map(state -> new WorkStates.State(state.working(), state.queued()))
+                .toList();
     }
 
     private static Predicate<WorkStates.State> workingWith(int queued) {

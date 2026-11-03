@@ -2,20 +2,12 @@ package org.sterl.open.aifactory.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.nio.file.Path;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 
-import org.sterl.open.aifactory.project.FakeGitConfig;
+import org.sterl.open.aifactory.FactorySpringTest;
 import org.sterl.open.aifactory.project.Project;
-import org.sterl.open.aifactory.project.ProjectService;
 import org.sterl.open.aifactory.project.ProjectWork;
 import org.sterl.open.aifactory.project.ProjectWorkStates;
 import org.sterl.open.aifactory.shared.FactoryHome;
@@ -25,27 +17,14 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * registry, and a snapshot that built a runtime would hand every viewer of that list a Jon, a team and a
  * memory per project. So the port reads what is there and asks for nothing.
  */
-@SpringBootTest
-@Import(FakeGitConfig.class)
 @Timeout(60)
-class ProjectWorkStateTest {
-
-    @TempDir
-    static Path home;
-
-    @Autowired
-    private ProjectService projects;
+class ProjectWorkStateTest extends FactorySpringTest {
 
     @Autowired
     private ProjectRuntimeRegistry runtimes;
 
     @Autowired
     private ProjectWorkStates workStates;
-
-    @DynamicPropertySource
-    static void isolateHome(DynamicPropertyRegistry registry) {
-        registry.add(FactoryHome.HOME_PROPERTY, home::toString);
-    }
 
     @Test
     void readingTheStatusBuildsNoRuntime() {
@@ -55,7 +34,7 @@ class ProjectWorkStateTest {
         assertThat(runtimes.runtimeCount())
                 .as("der Blick auf die Liste legt nichts an — kein Jon, kein Team, kein Gedächtnis")
                 .isZero();
-        assertThat(home.resolve(FactoryHome.STATE_DIR))
+        assertThat(HOME.resolve(FactoryHome.STATE_DIR))
                 .as("und er schreibt nichts in den Bestand")
                 .doesNotExist();
     }
