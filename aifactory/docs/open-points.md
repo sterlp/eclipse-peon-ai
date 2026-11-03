@@ -2,6 +2,70 @@
 
 Status: ❓ offen · ⏳ selbst entschieden (Rückversicherung steht aus) · 🔒 geklärt.
 Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entfällt.
+## Runde 3 — Pauls Smoke-Test-Befunde (2026-11-03, Backlog)
+
+Positiv bestätigt: **(1)** Chat-Restore geht. **(2)** Gemeinsam ein RAG-Chat gebaut
+(`/Users/sterlp/dev/workset/ai-schulung`) — die Fabrik ist damit erstmals real produktiv gewesen.
+
+Defekte/Fragen, je eine Story je Punkt erst nach Klärung (❓ = präzisieren, bevor geplant wird):
+
+* **❓ F3 · Agent-Arbeit unsichtbar in den Status-Kacheln** — läuft ein Team-Mitglied, zeigt die Kachel
+  oben keinen Fortschritt/Zustand. Welche Anzeige gewünscht ist (läuft-Status wie der Jon-Kachel?),
+  klären, dann Regel + UC in [chat.md](chat.md).
+* **❓ F4 · hr-Linien im Verlauf ganz raus** — die Trennlinien bei Rollenwechsel (R-WP-29, Runde 2)
+  sollen weg. Konsequenz für die Abgrenzung der Voices klären (nur Rahmen links?) — R-WP-29 anfassen.
+* **❓ F5 · Optik im Detail** (u. a. Config-Seite) — Totalschaden-Einschätzung von Paul; Detail-Liste
+  fehlt noch. Erst sammeln, dann eigenes Look-Inkrement.
+* **❓ F8 · Config-Umfang fehlt** — `reasoning_effort` nicht einstellbar, Header-Einstellungen und
+  weitere Plugin-Einstellungen fehlen. Gehört zu [config.md](config.md)/[R-WP-23](config.md) — Umfang
+  mit dem Core-Bestand abgleichen, dann UCs ziehen. (Verwandt: ⏳ Dev-Slot oben.)
+* **❓ F9 · „Clear" hinterlässt Tool-Zeilen mit zerstörtem Layout** — nach Clear bleiben Tool-Messages
+  im Chat, Layout kaputt. Verhalten von Clear klären (was sollClear entfernen?) → Regel in
+  [chat.md](chat.md).
+* **❓ F10 · Bootstrap „docs laden einmal zu Beginn" greift nicht zuverlässig** — Fabrik-Jon fragte nach
+  `docs/index.md`, statt es beim Start geladen zu haben. Bootstrap-/Prompt-Defekt der Fabrik-Agenten —
+  prüfen, wo die Regel stehen muss (Agent-Prompt vs. Factory-Bootstrap).
+* **⏳ F6 · Spring-Container-Regel (harte Regel, sofort gültig)** — der Spring-Kontext darf im Test
+  **genau einmal** pro Build starten: keine Restarts, keine Verschmutzung, keine Mock-Bean-Treiber,
+  die Neustarts erzwingen. Steht jetzt in [AGENTS.md](../AGENTS.md); Testzeit war 2 min — inakzeptabel.
+  Umsetzung (Cache-Konfiguration prüfen) als Teil von F7.
+* **⏳ F7 · Timeout-Tests auditieren** — Tests mit langen Timeouts ziehen die Suite in die Länge;
+  Timeouts auf testwürdige Werte reduzieren. Zusammen mit F6 ein Build-Geschwindigkeit-Inkrement.
+
+## Runde 3 — Live-Befunde aus der Nutzung (2026-11-03, zweiter Schwung)
+
+* **❓ C-1 · TurnClaim-Timeout** — `ERROR ProjectRuntime: turn ... never got the project back from a
+  claimed action` — `TurnClaim.awaitNoAction` wirft nach 10 000 ms (`ProjectRuntime.java:348`).
+  Aufgetreten beim Compact. Verwandt zur ⏳ TurnClaim-Lücke; Ursache im Code klären (Dev), bevor eine
+  Regel steht.
+* **❓ C-2 · Compact-Ergebnis im UI** — (a) live: nur „error" in der Agent-Karte, weder Ergebnis noch
+  Fehlermeldung sichtbar; (b) nach Reload: Ergebnis da, aber **ohne Markdown** (nur Text). Regel in
+  [chat.md](chat.md) fehlt: wie Compact live + im Verlauf erscheint.
+* **❓ C-3 · URL mit Hash-Suffix** — `/ui/chat/spring-persistent-tasks-071d14a` statt
+  `/ui/chat/spring-persistent-tasks`. Paul will den klaren Namen. Prüfen, ob die Registry-ID den Hash
+  braucht (Namens-Kollision) — wenn Namen eindeutig sind, URL auf den Namen legen.
+* **🔒 C-4 · Diffs im Chat (entschieden 2026-11-03, Paul)** — Ursache gemessen: der Core feuert je
+  Schreib-Tool `AiMonitor.onFileUpdate(file, old, new)` (plugin-seitig rendert `SimpleDiff.unifiedDiff`
+  den Unified-Diff in den Chat, `AIChatView.java:371`); die Fabrik überschreibt `onFileUpdate` nicht
+  (`SseTurnMonitor`), der Default reduziert ihn auf `Updated: <file>`. SOLL: `SseTurnMonitor` →
+  `ChatEvent.Diff(file, diff)` → Chat-Widget rendert den Diff (+/− gefärbt), **live only** (Pauls
+  Entscheidung; Nach-review über `git diff` im Files-Bereich), kein Core-Eingriff, Diffs des ganzen
+  Teams sichtbar (AiFileUpdate trägt keinen Urheber — „sehen und mitlesen"). Regel + UC bei der Story
+  nach [chat.md](chat.md) ziehen; Referenz für das Chat-Verhalten:
+  `/Users/sterlp/dev/workset/ai-schulung/app/frontend` (Paul: Chat dort funktioniert, hier defekt).
+* **❓ C-5 · Verlauf out of order / Antwort weg** — bei langer Konversation total defekt; eine
+  gestreamte Antwort verschwindet (Reload repariert). Chat-Log-Defekt: Reihenfolge/Live-Fragment-
+  Ersetzung. Im Umfeld von [R-WP-34](chat.md); Ursache im SSE-/Log-Merge klären. Referenz (Paul):
+  Chat-Log/Input in `/Users/sterlp/dev/workset/ai-schulung/app/frontend` funktioniert — dort abschauen.
+* **🔒 C-6 · hr raus, Linien treffen sich seitlich wie in Eclipse** — F4 bestätigt und präzisiert:
+  keine `hr`, die Voices-Trennung läuft über die seitlichen Akzentlinien. In R-WP-29 nachziehen.
+* **❓ C-7 · Agent-Chat ist ein anderes Widget** — der aufgeklappte Blick auf ein Team-Mitglied nutzt
+  ein eigenes Chat-Widget: anderes Look&Feel, aktualisiert nicht während der Agent arbeitet, zieht
+  alle Daten erneut (= Totalschaden). SOLL: dasselbe Chat-Widget wie der Haupt-Chat, an den
+  Agent-Stream gehängt, **read-only** (keine Eingabe). Im Umfeld von [R-WP-26](chat.md).
+
+
+
 
 ## ⏳ selbst entschieden (2026-10-25/26) — bitte überfliegen
 
@@ -147,13 +211,12 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
 
 ## ❓ offen
 
-* **❓ Bild-Support im Backend** (2026-11-02, Review Runde 2) — der Fremd-Commit `eeac8abb` „added
-  picture support" liegt auf `web-factory-mvp` (von Dev mitgepusht, ohne force nicht trennbar; nur
-  Plugin/Core-Pfade, `aifactory` unberührt) und die Backend-Codepfade liefern Bild-Parts als Text:
-  `textOf` (ProjectRuntime) rendert `#picture: …` als Nutzerzeile, Core-`ThreadSafeMemory` schreibt
-  `AiMessage.from("ok")` je Follow-up. Keine Regel der Fabrik kennt Bilder. *Entscheidung nötig:*
-  ist Bild-Support eine Story (Regel + UC, wieParts im Chat gezeigt werden), oder werden Text-Parts
-  weiter verbatim gezeigt — dann als Regel festhalten, dass das gewollt ist.
+* **⏳ Bild-Support-Tools bleiben** (2026-11-02/03, Paul: „die tools sind von mir — drin lassen") — der
+  Fremd-Commit `eeac8abb` „added picture support" ist Pauls Material auf `web-factory-mvp` (nur
+  Plugin/Core-Pfade, `aifactory` unberührt). Die Fabrik kennt bisher keine Bild-Regel: Backend-Text-Parts
+  erscheinen als `#picture: …`-Textzeile, Core-`ThreadSafeMemory` schreibt `AiMessage.from("ok")` je
+  Follow-up. *Offen bis Pauls Smoke-Test:* wie Bild-Parts im Chat gezeigt werden sollen — dann als
+  Regel + UC in chat.md, oder Verbatim bleibt gewollt und wird festgehalten.
 * **❓ Core: der Abbruch verliert eine bereits gepollte Queue-Eingabe** (2026-11-01, Inc 5d gemessen) —
   [UC-WP-50](chat.md) verspricht „gequeuete Eingaben bleiben in der Queue"; tatsächlich verliert
   `AbstractAgent.call` eine Eingabe, die der laufende Turn beim Stop schon gepollt hat (Poll, dann

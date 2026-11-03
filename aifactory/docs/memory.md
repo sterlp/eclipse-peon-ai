@@ -14,11 +14,27 @@ Inc 5 `f069dd17` (Files-Tab bündig, Zeilenhöhe — Shiki-`\n`-Knoten, R-WP-33/
 `7cc5b54f` (Think je Agent nach Provider-Form, R-WP-23/UC-WP-67) · Inc 7 `e682e7cc` (Config-Look,
 Cards) · Review-Followup `cf8133ec` (UC-WP-64 GIVEN 2 gepinnt, `ranTurn` gepinnt, Historien-Warten
 ein Helfer, Marker). Stand: Backend **208/0/0**, UI **129 Tests/16 Dateien**, oxlint 0/0,
-UC **67/67**, Doc-Lint 0 Findings (250 Ids). Alle 10 Feedback-Punkte verarbeitet. **Offen für Paul:**
-Bild-Support-❓ (`eeac8abb` + Text-Parts, open-points), Smoke-Test-Sichtprüfung (Scroll-Fläche,
-Kante links, Card-Look, Think-Formen, Files-Tab bündig). Dev-Slot-Lücke ⏳. Trailer-Regel: kein
-Modellname. Nächster Schritt: planImplemented (Dev) + Plan-Archiv löschen (Pauls Regel), dann Runde 3
-oder merge.
+UC **67/67**, Doc-Lint 0 Findings (250 Ids). Alle 10 Feedback-Punkte verarbeitet. Dev-Slot-Lücke ⏳.
+Trailer-Regel: kein Modellname.
+
+## Zyklus 2026-11-03 — Runde 3 LÄUFT
+
+**Runde 2 Smoke-Test erledigt (Paul, 2026-11-03).** Positiv: Chat-Restore geht; RAG-Chat gemeinsam in
+`/Users/sterlp/dev/workset/ai-schulung` gebaut. Befunde 3–10 = Backlog in
+[open-points.md](open-points.md) (F3 Kacheln, F4 hr raus, F5 Optik/Config, F6 Spring-Regel, F7
+Timeout-Audit, F8 Config-Umfang, F9 Clear-Layout, F10 Bootstrap docs-Laden). **Zweiter Schwung
+(2026-11-03, live)**: C-1 TurnClaim-Timeout, C-2 Compact-Anzeige, C-3 URL-Hash, C-4 Diff-Sichern
+(kritisch, unpräzise), C-5 Verlauf out of order/Antwort weg, C-6 hr raus bestätigt, C-7 Agent-Chat =
+anderes Widget (SOLL: Haupt-Widget read-only). Beide Listen in [open-points.md](open-points.md).
+Vision-Tool-Entscheid: **schlanker Playwright-Kern** (Messen via evaluate + Shots, eigenes Script, kein
+Vitest-/Maven-Eingriff) — warten bis F-Befunde präzisiert sind. Arbeitsregel (Paul): **Nur-UI-Änderung
+⇒ nur UI-Tests; Backend anfassen ⇒ Backend-Tests** (Dev weist Backend-Unberührtheit nach). **F6 als
+harte Regel in [AGENTS.md](../AGENTS.md) + memory\*-Tool** (Spring-Kontext genau einmal pro Build).
+Bild-Support-Anzeige weiter ⏳. **Freigabe (2026-11-03): Bau Runde 3, Reihenfolge:** 1. F6/F7
+(Build-Geschwindigkeit, LÄUFT — Agenten gecleared) · 2. C-4 Diffs (🔒 entschieden, live only) ·
+3. C-5 Verlauf (Referenz ai-schulung-Frontend) · 4. C-7 Agent-Chat (nach C-5) · 5. C-2+C-1 Compact ·
+6. C-3 URL · 7. F3/F4/F5/F9/F10 Optik. Alle Agenten (Plan/Dev/Review) vor F6/F7 auf Null.
+`docs/memory.md`-Delta uncommittet, fährt mit dem nächsten Commit mit.
 
 **Pauls 10 Feedback-Punkte (2026-11-02, Runde 2) = Backlog dieses Zyklus:**
 

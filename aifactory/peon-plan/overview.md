@@ -204,7 +204,7 @@ AGENTS-DEV.md:284).
 | **2a** | `FactorySpringTest` + Reset + Umzug der 4 „ruhigen" Klassen (`ProjectFilesTest`, `ProjectFilesTest`-Muster, `ChatConfigTurnTest`, `TeamInternalsTest`, `WritePinningTest`) | 4 Klassen grün, `missCount` sinkt um 3 | Muster bewiesen |
 | **2b** | restliche 12 RANDOM_PORT+FakeGit-Klassen der Chat-Gruppe | ganze Suite grün | 16 → 1 Kontext |
 | **3** | MOCK-Klassen + G4 (`AifactoryApplicationTests`, `OneChatPerProjectTest`, `ProjectWorkStateTest`, `UiDeliveryTest`, `AgentSettingsTest`, `SettingsControllerTest`) auf die Basis; `SettingsControllerTest` auf System-Properties (D-6) | Suite grün, `missCount` = 5 | 8 → 2 Kontexte |
-| **4** | `ProjectControllerTest` MockMvc → echter HTTP-Client (D-5) | Suite grün, `missCount` = 5 → 1 | 1 Kontext |
+| **4** ✅ | `ProjectControllerTest` MockMvc → echter HTTP-Client (D-5) | Suite grün, `missCount` = 5 → 1 (real 2 → **1**) | 1 Kontext — erreicht |
 | **5** | Guard-Test (D-7) + Messzahlen/Regel in `AGENTS-DEV.md` | Guard grün, Gegenprobe: DPS in einer Unterklasse ⇒ Guard rot | Regel hält mechanisch |
 | **6** *(optional)* | `@Timeout`-Obergrenzen auf testwürdige Werte (180 → 60 s) | Suite grün | nur Fehlerfall schneller |
 
@@ -308,11 +308,11 @@ entfernt oder verschoben.
 
 | Kennzahl | Baseline (2026-11-03) | nach Inc 1 | nach Inc 2a | nach Inc 2b | nach Inc 3 | nach Inc 4 (Ziel) |
 |---|---|---|---|---|---|---|
-| `missCount` (Kontexte) | **23** | 23 — Inc 1 öffnet keine Kontexte | **20** (−3, wie vorhergesagt) | **9** (−11) | **2** (−7) | **1** (nur der geteilte) |
-| Boot-Zeilen | **23** | 23 | **20** | **9** | **2** | **1** |
-| Surefire-Summe | **80,3 s** (42 Reports, Lauf 16:36) | **35,7 s** (43 Reports) | **35,2 s** (44 Reports) | **33,5 s** (44 Reports) | **32,7 s** (44 Reports) | |
-| Wanduhr `clean test` | **118 s** | **73 s** | **72,8 s** (Maven 01:11 min) | **51,1 s** (Maven 50,1 s) | **41,9 s** (Maven 41,2 s) | **< 60 s** (erreicht) |
-| Tests | **208** / 0 Fehler | **210** / 0 Fehler (`TurnGateTest` +2) | **212** / 0 Fehler (`FactorySpringTestResetTest` +2) | **212** / 0 Fehler | **212** / 0 Fehler | 212 |
+| `missCount` (Kontexte) | **23** | 23 — Inc 1 öffnet keine Kontexte | **20** (−3, wie vorhergesagt) | **9** (−11) | **2** (−7) | **1** (erreicht — Regel erfüllt) |
+| Boot-Zeilen | **23** | 23 | **20** | **9** | **2** | **1** (`Started UiDeliveryTest` = der geteilte) |
+| Surefire-Summe | **80,3 s** (42 Reports, Lauf 16:36) | **35,7 s** (43 Reports) | **35,2 s** (44 Reports) | **33,5 s** (44 Reports) | **32,7 s** (44 Reports) | **32,1 s** (44 Reports) |
+| Wanduhr `clean test` | **118 s** | **73 s** | **72,8 s** (Maven 01:11 min) | **51,1 s** (Maven 50,1 s) | **41,9 s** (Maven 41,2 s) | **41,5 s** — Ziel < 60 s **erreicht** |
+| Tests | **208** / 0 Fehler | **210** / 0 Fehler (`TurnGateTest` +2) | **212** / 0 Fehler (`FactorySpringTestResetTest` +2) | **212** / 0 Fehler | **212** / 0 Fehler | **212** / 0 Fehler |
 
 **Nach Inc 2b gemessen (2026-11-03):** Die Wanduhr ist von 72,8 s auf **51,1 s** gefallen — die Kontexte
 kosteten also deutlich mehr als die Summe ihrer Boot-Zeilen (6,1 s): die Boot-Zeile misst nur die
@@ -439,4 +439,42 @@ Benannte Abweichungen Inc 3:
    `call_gate`; Inc 1 hatte die Umbenennung gemeldet, diese Klasse aber nicht erwischt.
 5. `AifactoryApplicationTests` prüft weiterhin „kein `~/.aifactory`", jetzt gegen das geteilte
    `target/test-home`; sein eigener `createTempDirectory`-Home und der `@AfterAll`-Wipe sind entfallen.
+
+**Inc 4 — erledigt (2026-11-03):** `ProjectControllerTest` von MockMvc auf echten HTTP-Client umgestellt —
+`extends FactorySpringTest`, `@LocalServerPort`, `java.net.http.HttpClient`; `@SpringBootTest`,
+`@AutoConfigureMockMvc`, `@Import`, eigener Temp-Home, `emptyHome`, `@AfterAll` und die eigene
+`@DynamicPropertySource` sind weg. Damit hat **keine Testklasse** des Projekts noch eine eigene
+Context-Konfiguration. Beweis: Teilmenge `ProjectControllerTest` + `ProjectFilesTest` = 15 Tests grün bei
+`missCount` 1 / 1 Boot; volle Suite **212 / 0 Fehler, `missCount` 1, 1 Boot, 41,5 s**
+(`/tmp/inc4-cert.log`); Gegenlauf `reversealphabetical` 212 / 0 Fehler, `missCount` 1, 41,45 s
+(`/tmp/inc4-rev.log`). §4 erwartete für Inc 4 „`missCount` 5 → 1"; nach Inc 2b/3 waren es real 2 → **1**.
+Die beiden Neustart-Beweise (`ChatRestartTest`, `DelegatedAnswerRestartTest`) booten per
+`SpringApplicationBuilder` und erscheinen im Context-Cache nie — sie sind und bleiben keine Kontexte der
+Kennzahl.
+
+Benannte Abweichungen Inc 4:
+
+1. **Nur der Draht hat sich geändert.** Status, JSON-Pfade, `fakeGit`- und Dateibeweise aller 12 Tests sind
+   unverändert; die MockMvc-Matcher sind durch AssertJ auf `statusCode()` bzw. den Body ersetzt.
+   `jsonPath("$").isArray()` existiert über HTTP nicht — die Array-Form wird am Body geprüft
+   (`rows(…)` verlangt `[` am Anfang), sonst wäre daraus still eine Objekt-Assertion geworden.
+2. **§7/D-5 schreibt dieser Klasse eine „405-Matrix" zu — die gibt es dort nicht.** Die Methoden-Matrix
+   (`PUT`/`POST`/`PATCH`/`DELETE` ⇒ 405) liegt in `ProjectFilesTest` und bleibt dort; nichts ist dafür
+   neu erfunden oder als Fall gestrichen worden. Der JDK-Client ist trotzdem richtig
+   (`RestTemplate` kann kein PATCH — AGENTS-DEV.md:49-53).
+3. **`finally`-Räumer in `removeNeverDeletesOutsideProjectDir`** (Jons Freigabe): die Klasse schreibt eine
+   handgemachte, vergiftete `projects.json`; schon deren **Lesen** wirft `IllegalStateException`
+   (`StoredProject.toProject`), und auf dem geteilten Home zerlegt das den Reset **jeder** folgenden
+   Klasse. Gegenprobe (Räumer entfernt, `/tmp/inc4-probe-cleanup.log`): 10 Fehler — 4 spätere Methoden der
+   Klasse selbst und je 3 in `ProjectFilesTest` und `ProjectStatusTest`. Der Zweig gehört zum Test, weil
+   der Zustand ihm gehört; die Basis bleibt streng (Beweiskraft §8(3) unverändert).
+4. Zwei Formen ohne Beweiskraft-Änderung: `sameUrlReusesExistingClone` prüft nach dem Array-Beweis
+   `isNotEmpty()` (folgt ohnehin aus dem Zugriff auf `$[0].id`); die Leser sind typisiert
+   (`text`/`number`/`rows`), weil ein generisches `<T>` direkt in `assertThat` für javac mehrdeutig ist
+   (`assertThat(Predicate)` vs. `assertThat(IntPredicate)`).
+5. Home ist jetzt das geteilte `target/test-home`; `victim` bleibt ein eigener `@TempDir` — es ist die
+   Ausbruch-Seite außerhalb beider Wurzeln, nicht das Home (AGENTS-DEV.md:31-36).
+6. **Offen für Inc 5:** `aifactory/AGENTS-DEV.md:343-344` („pro Settings-Klasse ein eigener
+   `@SpringBootTest`-Kontext … ~3 s") beschreibt den alten Stand und wird mit dem Bau-Abschnitt von Inc 5
+   korrigiert — in Inc 4 bewusst nicht angefasst.
 
