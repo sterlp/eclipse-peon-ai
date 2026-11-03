@@ -209,6 +209,7 @@ AGENTS-DEV.md:284).
 | **6** ✅ | `@Timeout`-Obergrenzen auf testwürdige Werte (Formel statt Accumulation, s. §10 Inc 6) | Suite grün, Gegenlauf grün, Probe: Obergrenze an einer Methode beißt | nur Fehlerfall schneller (grün unverändert 42,8 s) |
 | **7** ✅ | Freigabe-Nachtrag §9: Deadline des 90/90-Falls auf 60 s + Lifecycle-Netz `junit-platform.properties` (120 s) | Suite grün, Gegenlauf grün, Probe: `@BeforeAll` mit 5 s Schlaf bei Netz 2 s ⇒ `TimeoutException` | nur Fehlerfall schneller (grün 43,1 s) |
 | **8** ✅ | Review §11: Guard auf Test-Klassenpfad statt Namensschema **und** Meta-Annotationen (S1); „kein Turn überlebt seine Methode" von acht Klassen in `resetSharedState` (L1) | S1-Sonde: Hilfsklasse ohne `*Test` mit Meta-`@SpringBootTest` ⇒ Guard rot **und** `missCount` 2; Suite grün, Gegenlauf grün | 43,1 → **42,1 s** (Guard 1,4 → 0,4 s) |
+| **9** ✅ | §11 L6: Zeichen-Fix im Kommentar von `junit-platform.properties` | Suite grün 216 / 0 Fehler, `missCount` 1 | keine Wirkung (Kommentar) |
 
 **Reihenfolge-Begründung:** 1 zuerst — reine Testmechanik, keine Strukturänderung, sofort messbar.
 2/3/4 bauen aufeinander auf; 4 ist der teuerste Schritt und bringt am wenigsten (ein Kontext), daher
@@ -616,6 +617,7 @@ Benannte Abweichungen Inc 8:
    1 `awaitIdle` mitten im Test — siehe `AgentActionTest:213/337`, `AgentStopTest:146/201/242/271/339`,
    `ChatQueueTest:294`, `ChatConfigTurnTest:224`, `SharedProjectChatTest:116`, `AgentInsightTest:159`;
    `TurnFailureTest` erbt die Basis nicht und kann sie nicht besitzen).
+
 2. **`imported` im Guard ist statisch** — JUnit baut pro Testmethode eine Instanz, vier Imports des
    Test-Baums kosteten mehr als alle vier Regeln zusammen (Guard 1,4 s → **0,4 s**). Nicht Teil von S1,
    aber derselbe Datei-Kontext und dasselbe Ziel (Bau-Zeit).
@@ -623,6 +625,16 @@ Benannte Abweichungen Inc 8:
    `AGENTS-DEV.md` auf `assertOneSharedContext`/216/43,1 s berichtigt, F6/F7 aus `docs/open-points.md`
    entfernt), die vier Pre-existing-Punkte und die Skill-Lücke. Die Skill-Lücke ist durch Jons neue Zeile
    in `aifactory/AGENTS.md` (Messgröße `missCount = 1`, Neustart-Beweise erlaubt, Ausnahmeliste) erledigt.
+
+**Inc 9 — erledigt (2026-11-03, Freigabe zu §11 L6):** das kaputte Satzzeichen im Kommentar von
+`factory-backend/src/test/resources/junit-platform.properties:2` ist ersetzt (ASCII `--`). Nebenbefund
+der Sonde: die Datei ist durchgehend ASCII (an der Stelle des `?` stand 0x3F, und auch der
+Gedankenstrich in Zeile 1 ist ein ASCII `-`) — es war also kein Unicode-Zeichen beim Schreiben
+verlorengegangen, die Datei trug von Anfang an ein `?` statt des Strichs. Beweis: volle Suite
+**216 / 0 Fehler, `missCount` 1, 1 Boot, 42,1 s** (`/tmp/inc9-cert.log`), kein Verhaltenswechsel, die
+Ressource erreicht `target/test-classes` unverändert. Damit ist §11 bis auf die gemeldeten Punkte
+(S2, S3, L3, L5, L7, L8, Pre-existing) abgearbeitet; L2 und L4 zog Jon selbst, die Skill-Lücke schließt
+seine Zeile in `aifactory/AGENTS.md`.
 
 
 ## 11 Review F6/F7 — unabhängiger Review 2026-11-03 (Input: Diff `c47c4aa7~1..ab3c7b07`, dieser Plan, AGENTS/AGENTS-DEV/docs)
