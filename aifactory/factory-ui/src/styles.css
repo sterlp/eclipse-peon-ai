@@ -124,6 +124,15 @@ button {
   color: var(--text);
 }
 
+/* A card in the app's own language, taken from the chat's cards (`.files-root-card`,
+   `.chat-insight-line`): the border names the block, the surface stays the page's. Named `ui-card` and not
+   `card` because Bootstrap paints `.card` as well, and its flex column would move these blocks. */
+.ui-card {
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.75rem;
+}
+
 .project-list {
   list-style: none;
   margin: 1rem 0 0;
@@ -875,7 +884,8 @@ button {
   }
 }
 
-/* The config page (R-WP-16): one column of labeled fields, the key row carrying its own status. */
+/* The config page (R-WP-16): one column of labeled fields, the key row carrying its own status. Each area
+   is a card (`.ui-card`) — the chat's border-and-radius language, no geometry of its own here. */
 .settings-form {
   display: grid;
   justify-items: start;
@@ -910,15 +920,10 @@ button {
     margin: 0;
   }
 
+  /* the field takes the width the label leaves; what travels beside it wraps after that */
   input,
   select {
     flex: 1 1 12rem;
-    min-width: 0;
-    padding: 0.3rem 0.5rem;
-    border: 1px solid var(--border);
-    border-radius: 0.4rem;
-    background: var(--bg);
-    color: var(--text-h);
   }
 
   /* A field the provider makes unusable stays readable and says so — it is not hidden (Q3). */
@@ -930,21 +935,41 @@ button {
   }
 }
 
+/* One measure for every field of the page: the measure of the chat's own input (`.chat-composer`), so the
+   config page reads as the same app rather than as a smaller generation of control. */
+.settings input,
+.settings select,
+.config-agents-field input,
+.config-agents-key input {
+  min-width: 0;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+}
+
+/* The key status is the status line of its row — the mono measure of the chat's tile metadata. */
 .key-set {
   color: var(--agent);
+  font-family: var(--mono);
+  font-size: 0.78rem;
 }
 
 .key-missing {
   color: var(--problem);
+  font-family: var(--mono);
+  font-size: 0.78rem;
 }
 
 /*
- * The agent section under the default form (R-WP-23): one row per slot, the checkbox above the fields it
- * unlocks. Deliberately no card and no second column — the default form above is the only form shape.
+ * The agent section under the default form (R-WP-23): one card per slot, the checkbox above the fields it
+ * unlocks. The card tokens are those of the form above (`.ui-card`) — two areas of one page, one language.
  */
 .config-agents {
   display: grid;
-  gap: 0.5rem;
+  gap: 0.4rem;
   margin-top: 1.5rem;
   max-width: 34rem;
 }
@@ -954,8 +979,6 @@ button {
   justify-items: start;
   gap: 0.35rem;
   width: 100%;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--border);
 }
 
 .config-agents-name {
@@ -987,15 +1010,6 @@ button {
     font-size: 0.8rem;
     text-align: right;
   }
-
-  input {
-    min-width: 0;
-    padding: 0.3rem 0.5rem;
-    border: 1px solid var(--border);
-    border-radius: 0.4rem;
-    background: var(--bg);
-    color: var(--text-h);
-  }
 }
 
 /* the key row keeps the status and its removal beside the field, as the default level does */
@@ -1014,11 +1028,5 @@ button {
 
   input {
     flex: 1 1 8rem;
-    min-width: 0;
-    padding: 0.3rem 0.5rem;
-    border: 1px solid var(--border);
-    border-radius: 0.4rem;
-    background: var(--bg);
-    color: var(--text-h);
   }
 }

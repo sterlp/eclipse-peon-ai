@@ -32,6 +32,25 @@ export function appSheet(): string {
   return SHEETS[APP_SHEET]
 }
 
+/**
+ * One rule block as written, nested rules included. `declarations` stops at the first nested rule, so a
+ * measure that lives inside one — the padding of the chat's own field — is read here.
+ */
+export function block(selector: string): string {
+  const source = SHEETS[APP_SHEET]
+  const at = source.indexOf(`${selector} {`)
+  expect(at, `${selector} is styled at all`).toBeGreaterThanOrEqual(0)
+  let depth = 0
+  for (let i = at + selector.length + 1; i < source.length; i++) {
+    if (source[i] === '{') {
+      depth++
+    } else if (source[i] === '}' && --depth === 0) {
+      return source.slice(at, i + 1)
+    }
+  }
+  return source.slice(at)
+}
+
 /** The declarations a sheet gives one selector, up to a nested rule — a selector it does not name fails. */
 export function declarations(selector: string): string {
   return declarationsIn(APP_SHEET, selector)

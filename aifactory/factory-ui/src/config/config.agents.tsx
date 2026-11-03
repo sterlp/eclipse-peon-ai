@@ -215,7 +215,11 @@ export function Agents({ think }: { think: ThinkInput }) {
       {slots.map((slot) => {
         const draft = drafts[slot.id]
         return (
-          <div className="config-agents-slot" key={slot.id} data-testid={'agent-slot-' + slot.id}>
+          <div
+            className="config-agents-slot ui-card"
+            key={slot.id}
+            data-testid={'agent-slot-' + slot.id}
+          >
             <h3 className="config-agents-name">{slot.name}</h3>
             <label className="config-agents-override" htmlFor={'agent-' + slot.id + '-override'}>
               <input

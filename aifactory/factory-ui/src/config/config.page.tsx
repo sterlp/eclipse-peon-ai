@@ -166,7 +166,7 @@ export function ConfigPage() {
         </p>
       )}
       {settings && draft && (
-        <form className="settings-form" onSubmit={(event) => void save(event)}>
+        <form className="settings-form ui-card" onSubmit={(event) => void save(event)}>
           <dl className="settings">
             <div>
               <dt>{content.config.provider}</dt>

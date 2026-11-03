@@ -166,7 +166,7 @@ Agenten; was nicht sichtbar ist, wirkt auch nicht.
   speichert THEN trägt die Datei kein Config-Feld mehr, der Rumpf ist unverändert, Dev nutzt den Default
   und der Haken ist beim nächsten Öffnen leer.
 
-#### UC-WP-67 — agentThinkFollowsTheProviderForm ❌
+#### UC-WP-67 — agentThinkFollowsTheProviderForm ✅
 - GIVEN die Config-Seite mit Basis-Provider `OLLAMA` WHEN ein Slot überschreibt THEN ist Think eine
   Auswahl aus leer / `true` / `false` — kein Freitext-Feld.
 - GIVEN ein Basis-Provider mit fester Werte-Liste (z. B. `ANTHROPIC` → `adaptive`, `enabled`) WHEN der

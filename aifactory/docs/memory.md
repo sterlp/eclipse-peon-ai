@@ -6,14 +6,16 @@ Proposal mit WARUM** (2026-10-29) — gilt auch für Core-Tests.
 
 ## Zyklus 2026-11-02 LÄUFT — UI-Nacharbeiten nach Pauls Smoke-Test
 
-Branch `web-factory-mvp`, Spitze `82f98dbe` (= origin). Runde 1 abgeschlossen (Review bestanden,
+Branch `web-factory-mvp`, Spitze `94baad98` (= origin). Runde 1 abgeschlossen (Review bestanden,
 Plan-Archiv gelöscht). **Runde 2 läuft:** Inc 1 ✅ `321cb3ea` (Turn-Fehler = Verlaufszeile,
 R-WP-34/UC-WP-64) · Inc 2 ✅ `6027bbe4` (Warte-Rahmen endet, R-WP-31/UC-WP-65) · Inc 3 ✅
 `72e97e6d` (Chat scrollt, Eingabe fixed, R-WP-35/UC-WP-66) · Inc 4 ✅ `99560a9b` (Akzent links,
 R-WP-29/UC-WP-55) · Inc 5 ✅ `f069dd17` (Files-Tab bündig, Viewer-Zeilenhöhe — Shiki `\n`-Knoten,
-R-WP-33/UC-WP-60/61). Stand: Backend **202/0/0**, UI **123 Tests/16 Dateien**, oxlint 0/0,
-UC **66/66**, Doc-Lint 0 Findings. Dev-Slot-Lücke bleibt ⏳. Trailer-Regel: **kein Modellname**
-im Commit-Trailer.
+R-WP-33/UC-WP-60/61) · Inc 6 ✅ `7cc5b54f` (Think je Agent nach Provider-Form: Toggle/Values/Free/
+None, Dev-Slot `Think (Default)`, R-WP-23/UC-WP-67). Stand: Backend **206/0/0**, UI **128 Tests/
+16 Dateien**, oxlint 0/0, UC **67/67**, Doc-Lint 0 Findings. Dev-Slot-Lücke bleibt ⏳. Trailer-Regel:
+**kein Modellname**. **Fremder Commit `eeac8abb` "added picture support"** lag auf der Inc-5-Spitze
+und wurde von Dev mitgepusht (82f98dbe..94baad98) — ohne force nicht trennbar; Herkunft klärt Paul.
 
 **Pauls 10 Feedback-Punkte (2026-11-02, Runde 2) = Backlog dieses Zyklus:**
 

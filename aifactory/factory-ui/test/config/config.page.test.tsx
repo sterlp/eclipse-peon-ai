@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 
 import { ConfigPage } from '../../src/config/config.page'
 import { content } from '../../src/shared/content'
+import { appSheet, block, declarations } from '../shared/sheets'
 import type { Settings } from '../../src/config/config.client'
 
 const KEY = 'sk-file-secret-0123456789'
@@ -142,6 +143,28 @@ function controlValues(container: HTMLElement): string[] {
   return Array.from(container.querySelectorAll('input, select')).map(
     (el) => (el as HTMLInputElement).value,
   )
+}
+
+/** One slot, overridden so its fields show: enough for a structure contract of the page. What a slot
+ *  *does* is pinned in `config.agents.test.tsx`. */
+function agentAnswer(): Record<string, unknown> {
+  return {
+    id: 'dev',
+    name: 'Dev',
+    overridden: true,
+    model: 'gpt-dev',
+    url: null,
+    think: 'low',
+    temperature: null,
+    keySet: true,
+  }
+}
+
+/** The first `padding` a block states — the measure of a nested rule, where `declarations` cannot reach. */
+function paddingOf(css: string): string {
+  const match = css.match(/(^|[^-\w])padding:\s*([^;]+);/)
+  expect(match, 'the block states a padding').not.toBeNull()
+  return (match as RegExpMatchArray)[2].trim()
 }
 
 // UC-WP-23
@@ -484,4 +507,35 @@ test('showsErrorMessageWhenSettingsCannotLoad', async () => {
   render(<ConfigPage />)
 
   expect(await screen.findByRole('alert')).toHaveTextContent('config.properties')
+})
+
+test('settingsUsesTheChatCard', async () => {
+  // Look only (A6): the config page speaks the chat's language. No UC behind it — the wording of the look
+  // paragraph is the docs owner's, so the contract is read where it is written: the classes and the sheet.
+  stubServer({ GET: settingsAnswer(), AGENTS: [agentAnswer()] })
+  const { container } = render(<ConfigPage />)
+  const slot = await screen.findByTestId('agent-slot-dev')
+
+  expect(container.querySelector('.settings-form'), 'the default level is a card').toHaveClass('ui-card')
+  expect(slot, 'every slot is a card of the same language').toHaveClass('ui-card')
+
+  // painted, not only classed: the border, the radius and the padding of the chat's cards
+  const card = declarations('.ui-card')
+  expect(card, 'the theme border, as on a file card').toContain('1px solid var(--border)')
+  expect(card, 'a radius, not a square frame').toContain('border-radius')
+  expect(card, 'and its own padding').toContain('padding')
+
+  // the fields take the measure of the chat's own field; the shared rule is readable at its last selector
+  const chatField = paddingOf(block('.chat-composer'))
+  expect(declarations('.config-agents-key input'), 'a field as high as the chat input').toContain(chatField)
+  expect(appSheet(), 'and every other field group shares that one measure').toContain(
+    '.config-agents-field input,',
+  )
+  expect(declarations('.config-agents-slot'), 'the card replaces the divider between slots').not.toContain(
+    'border-top',
+  )
+
+  // the status of a row reads as a status line: mono, like the metadata of a chat tile
+  expect(declarations('.key-set'), 'a stored key says it in mono').toContain('var(--mono)')
+  expect(declarations('.key-missing'), 'and so does a missing one').toContain('var(--mono)')
 })
