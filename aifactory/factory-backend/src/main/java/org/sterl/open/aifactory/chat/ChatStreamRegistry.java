@@ -185,6 +185,8 @@ public class ChatStreamRegistry {
                     .data(payload("message", failed.message()), MediaType.APPLICATION_JSON);
             case ChatEvent.Agents agents -> SseEmitter.event().name("agents")
                     .data(payload("tiles", agents.tiles()), MediaType.APPLICATION_JSON);
+            case ChatEvent.Diff diff -> SseEmitter.event().name("diff")
+                    .data(payload("file", diff.file(), "diff", diff.diff()), MediaType.APPLICATION_JSON);
         };
     }
 

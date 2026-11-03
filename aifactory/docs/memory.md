@@ -19,71 +19,25 @@ Trailer-Regel: kein Modellname.
 
 ## Zyklus 2026-11-03 — Runde 3 LÄUFT
 
-**Runde 2 Smoke-Test erledigt (Paul, 2026-11-03).** Positiv: Chat-Restore geht; RAG-Chat gemeinsam in
-`/Users/sterlp/dev/workset/ai-schulung` gebaut. Befunde 3–10 = Backlog in
-[open-points.md](open-points.md) (F3 Kacheln, F4 hr raus, F5 Optik/Config, F6 Spring-Regel, F7
-Timeout-Audit, F8 Config-Umfang, F9 Clear-Layout, F10 Bootstrap docs-Laden). **Zweiter Schwung
-(2026-11-03, live)**: C-1 TurnClaim-Timeout, C-2 Compact-Anzeige, C-3 URL-Hash, C-4 Diff-Sichern
-(kritisch, unpräzise), C-5 Verlauf out of order/Antwort weg, C-6 hr raus bestätigt, C-7 Agent-Chat =
-anderes Widget (SOLL: Haupt-Widget read-only). Beide Listen in [open-points.md](open-points.md).
-Vision-Tool-Entscheid: **schlanker Playwright-Kern** (Messen via evaluate + Shots, eigenes Script, kein
-Vitest-/Maven-Eingriff) — warten bis F-Befunde präzisiert sind. Arbeitsregel (Paul): **Nur-UI-Änderung
-⇒ nur UI-Tests; Backend anfassen ⇒ Backend-Tests** (Dev weist Backend-Unberührtheit nach). **F6 als
-harte Regel in [AGENTS.md](../AGENTS.md) + memory\*-Tool** (Spring-Kontext genau einmal pro Build).
-Bild-Support-Anzeige weiter ⏳. **Freigabe (2026-11-03): Bau Runde 3, Reihenfolge:** 1. F6/F7
-(Build-Geschwindigkeit, LÄUFT — Agenten gecleared) · 2. C-4 Diffs (🔒 entschieden, live only) ·
-3. C-5 Verlauf (Referenz ai-schulung-Frontend) · 4. C-7 Agent-Chat (nach C-5) · 5. C-2+C-1 Compact ·
-6. C-3 URL · 7. F3/F4/F5/F9/F10 Optik. Alle Agenten (Plan/Dev/Review) vor F6/F7 auf Null.
-`docs/memory.md`-Delta uncommittet, fährt mit dem nächsten Commit mit.
+**✅ F6/F7 abgeschlossen (Review CONCERNS ohne Bug, Delta S1/L1 nachgebaut, Inc 9):** 23 → **1**
+Spring-Kontext, Wanduhr **118 → 42,1 s**, 216 Tests/0, null Produktionscode. Commits `c47c4aa7`…`30c42754`
+auf `web-factory-mvp`. Regel + Messgröße jetzt in [AGENTS.md](../AGENTS.md), Fakten in
+`AGENTS-DEV.md` (Abschnitt „Build-Geschwindigkeit / Test-Kontext"); Guard `SingleContextGuardTest`
+(härtet Meta-Annotationen + Nicht-`*Test`-Klassen), Lifecycle-Netz 120 s, TurnGate statt Schlaf,
+ein Home `target/test-home`. F6/F7 aus open-points entfernt (Fakten leben in AGENTS-DEV).
 
-**Pauls 10 Feedback-Punkte (2026-11-02, Runde 2) = Backlog dieses Zyklus:**
+**Offen Runde 3 (Backlog in [open-points.md](open-points.md)):** F3 Kacheln · F4/F6-C hr raus, Linien
+wie Eclipse · F5 Optik/Config · F8 Config-Umfang (reasoning_effort, Header) · F9 Clear-Layout ·
+F10 Bootstrap docs-Laden · C-1 TurnClaim-Timeout · C-2 Compact-Anzeige · C-3 URL-Hash ·
+C-5 Verlauf out of order (Referenz: `/Users/sterlp/dev/workset/ai-schulung/app/frontend`) ·
+C-7 Agent-Chat = Haupt-Widget read-only. **C-4 Diffs 🔒 entschieden (live only)** — als nächstes
+Inkrement mit Regel+UC in chat.md. Bild-Support-Anzeige weiter ⏳.
+**Nächster Schritt: C-4 bauen** (SseTurnMonitor → ChatEvent.Diff → Chat-Widget, kein Core-Eingriff).
+Arbeitsregel (Paul): Nur-UI-Änderung ⇒ nur UI-Tests; Backend anfassen ⇒ Backend-Tests.
+Trailer-Regel: kein Modellname. Commit nur `aifactory/`-Pfade scopen (Core im selben Repo).
 
-1. Alte Pläne: Jon löscht sie selbst, sobald die Docs stehen ✅ (6 Plugin-/Core-Archive + eigenes Archiv gelöscht)
-2. Chat-Rand zu stark; nur ein hr war gemeint — und der Trenner ist rechts statt links
-3. Gesendete Nachricht verschwindet nach Navigation; Fehler weder im Chat noch im UI sichtbar
-4. Think-Level je Agent einstellbar wie in Eclipse
-5. Files-Slide-out sitzt mittig am Pfeil — Deckel-Linie nicht bündig
-6. Datei-Viewer: Zeilen wie mit doppeltem Enter — zu weit auseinander
-7. Nach Key-Setzen verschwindet der Fehler im UI; der Chat soll den Fehler ebenfalls bekommen
-8. Nach Jons Antwort verschwindet der schwarze „in-flight"-Rahmen um meine Nachricht nicht
-9. Chat-Scroll fehlt; Input unten fixed wie in der Vorlage — Chat und Config kreativ überarbeiten
-10. Nach Stop bleibt der schwarze gestrichelte Rahmen
-
-**Runde 1 — 19 Smoke-Test-Befunde (2026-11-02): abgearbeitet (Details im gelöschten Archiv
-`overview-done-2026-11-02-17-15.md`):**
-
-1. Bootstrap rein; Config-UI Kraut und Rüben
-2. Config: Provider-Wechsel ohne Live-Update wie Eclipse
-3. API-Key muss gesetzt werden, obwohl Endpunkte in der Config stehen — klären
-4. Statische Ränder L/R raus — Chat nutzt fast volle Breite
-5. Input: Enter = Neue Zeile, Cmd/Ctrl+Enter = Senden
-6. „Waiting for AI…"-Indikator wie Eclipse
-7. Farben: AI grün, User blau, User am rechten Chat-Rand
-8. Agent-Cards oben nebeneinander; Agent-Name als Titel, Rest darunter
-9. Erneut senden ohne Neueingabe (z. B. nach Fehler)
-10. „Chat"-Überschrift im Chat raus
-11. Card-Klick = Funktion (Blick aufziehen), Hover fehlt
-12. Jons Antwort: grauer Hintergrund raus, keine Marks/Cards, nur hr bei Rollenwechsel
-13. Tool-Ausgaben kompakt; notfalls Portierung aus alter `chat.html`
-14. Antworten/Dateien nicht mittig zentrieren
-15. Dateien: linkes Slide-out, Files anklickbar, Anzeige unten/Split — Layout mit Paul prototypen
-16. Linke Sidebar: verfügbare Projekte + Status (läuft gerade), Tabs „Chats"/„Files" darüber
-17. UI Englisch + `content.ts` (Strings aus dem Code), i18n
-18. Syntax-Highlighting: **react-shiki** (lib + Usage von Paul gegeben)
-19. URL-stabil: Navigation = URL-Änderung (Aktion → URL → UI), kein useState
-
-**Entscheidungen (2026-11-02, mit Paul):**
-* Design: **Bootstrap + eigenes Theme** (Farben der alten `chat.html`); stara-web bleibt nur Referenz.
-* Streaming: **markstream-react** + **react-shiki** für Code; Fallback react-markdown. Tool-Zeilen
-  sichtbar, inline im Verlauf, kompakt.
-* Navigation MVP: **Top-Menü (Projekte, Chat, Settings), keine Sidebar**; Chat = zuletzt aktives
-  Projekt (⏳). Chats-Übersicht (Accordion, Paco-Chats +) = spätere Vision (❓).
-* Files: **rechts als Slide-out** (bleibt), vertikaler „Files"-Tab am rechten Rand, `>`/`<`-Icons,
-  Wurzeln Checkout/TMP als Cards, Baum-Navigation, kein Projektname im Panel, Viewer mit
-  Syntax-Highlighting, nichts zentriert.
-* Config: **dynamische abhängige Felder** (Provider-Wechsel → Modell/URL/Think, wie Eclipse),
-  „Remove key"-Aktion, Key-Status frisch nach jedem Speichern, Fehler nennt die Settings-Seite (⏳).
-* AGENTS.md „UI: English" von Paul bestätigt → Language-Block-❓ gelöst, Block committen.
+Runde 1/2-Befundlisten und die Design-Entscheidungen vom 2026-11-02 sind verarbeitet und leben in den
+Feature-Docs (ui/chat/files/config.md) — hier gelöscht.
 
 ## Offen für Paul (❓ in [open-points.md](open-points.md))
 

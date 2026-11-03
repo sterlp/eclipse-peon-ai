@@ -6,7 +6,9 @@ import java.util.function.Supplier;
 
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.shared.OnPartialAiResponse;
+import org.sterl.llmpeon.shared.SimpleDiff;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.open.aifactory.chat.dto.AgentTileDto;
 
@@ -23,6 +25,13 @@ import org.sterl.open.aifactory.chat.dto.AgentTileDto;
  * lines stay because Jon's tool emitted them under Jon's name. The rule is policy and therefore lives in
  * the factory, not in the core: the Eclipse plugin hands the same callback stream to its views and goes on
  * showing every member line.</p>
+ *
+ * <p><b>A file write is a block, not a line.</b> {@link #onFileUpdate} is the callback that carries the
+ * content of a change instead of a chat line, and the one that arrives <em>unstamped</em>:
+ * {@code OwnerMonitor} passes it through untouched, so no origin filter can apply to it — a diff of a
+ * team member's write belongs to the project's chat exactly as Jon's does (R-WP-36, UC-WP-68).
+ * Overriding it also retires {@code AiMonitor}'s default, the {@code Updated: <file>} notice: the block
+ * names its own file, and the plugin, which renders the same callback, shows no such line either.</p>
  *
  * <p><b>The member's final answer is not a live line.</b> It has no callback of its own — it is the
  * result of Jon's delegation tool, and the browser reads it as a history line when {@code done} makes it
@@ -123,6 +132,25 @@ class SseTurnMonitor implements AiMonitor {
         if (message.role() == SimpleMessage.Type.TOOL || message.role() == SimpleMessage.Type.PROBLEM) {
             streams.publish(projectId, new ChatEvent.ToolLine(message.message()));
         }
+    }
+
+    /**
+     * The core's diff of one written file, straight to the wire (R-WP-36). Computed here and not in the
+     * browser because the core already owns the algorithm and its three answers — empty, a real diff, a
+     * guard summary — and deciding them twice would be a second truth about the same change.
+     */
+    @Override
+    public void onFileUpdate(AiFileUpdate update) {
+        String diff = SimpleDiff.unifiedDiff(update.file(), update.oldContent(), update.newContent());
+        if (diff.isEmpty()) {
+            return;                                  // nothing changed: a block of nothing would claim a change
+        }
+        if (diff.startsWith("--- a/")) {             // SimpleDiff's own contract for a computed diff
+            streams.publish(projectId, new ChatEvent.Diff(update.file(), diff));
+            return;
+        }
+        // the guard summary of a file too large to diff — the plugin's own fallback (AIChatView.onFileUpdate)
+        streams.publish(projectId, new ChatEvent.ToolLine(diff));
     }
 
     /** The core has released its compacting flag here — the end state of UC-WP-13 goes out on this callback. */

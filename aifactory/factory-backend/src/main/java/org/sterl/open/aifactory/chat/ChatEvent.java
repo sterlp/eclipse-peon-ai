@@ -40,4 +40,12 @@ public sealed interface ChatEvent {
     record Agents(List<AgentTileDto> tiles) implements ChatEvent {
     }
 
+    /**
+     * One file a turn changed: the unified diff of that file (R-WP-36). Live only — like a tool line it
+     * never enters the history, so a reload loses it (R-WP-11). Carries no origin: {@code AiFileUpdate}
+     * has none, and every producer of the project writes into the same chat (UC-WP-68).
+     */
+    record Diff(String file, String diff) implements ChatEvent {
+    }
+
 }
