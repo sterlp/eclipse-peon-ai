@@ -2,8 +2,6 @@ package org.sterl.open.aifactory.project;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -11,25 +9,17 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Stream;
 
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponents;
@@ -38,7 +28,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import org.sterl.open.aifactory.AifactoryApplication;
+import org.sterl.open.aifactory.FactorySpringTest;
 import org.sterl.open.aifactory.shared.FactoryHome;
 import org.sterl.open.aifactory.shared.TmpRoots;
 
@@ -48,24 +38,18 @@ import org.sterl.open.aifactory.shared.TmpRoots;
  * layer would assert our own opinion about them.
  *
  * <p>The escape target is a {@link TempDir} of its own and <em>never</em> the system tmp: tmp is one
- * of the two roots, so a path into it proves nothing. The factory home is {@code target/inc4b-home}
- * rather than a temp dir, so {@code ..} really leaves the checkout ({@code aifactory/AGENTS-DEV.md}).</p>
+ * of the two roots, so a path into it proves nothing. The factory home is the shared
+ * {@code target/test-home} of {@link FactorySpringTest} and not a temp dir, so {@code ..} really leaves
+ * the checkout ({@code aifactory/AGENTS-DEV.md}).</p>
  */
-@SpringBootTest(classes = AifactoryApplication.class,
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(FakeGitConfig.class)
-class ProjectFilesTest {
+class ProjectFilesTest extends FactorySpringTest {
 
     private static final String URL = "https://git.example.com/acme/demo.git";
-    private static final Path HOME = Path.of("target", "inc4b-home").toAbsolutePath();
     private static final ObjectMapper MAPPING = new ObjectMapper();
     private static final HttpClient CLIENT = HttpClient.newHttpClient();
 
     @LocalServerPort
     int port;
-
-    @Autowired
-    FakeGitConfig fakeGit;
 
     /** Outside both roots — what an escaping path must never reach. */
     @TempDir
@@ -76,18 +60,9 @@ class ProjectFilesTest {
     private String projectId;
     private Path checkout;
 
-    @DynamicPropertySource
-    static void isolateHome(DynamicPropertyRegistry registry) {
-        registry.add("aifactory.home", () -> HOME.toString());
-    }
-
     @BeforeEach
     void registerProjectAndFillCheckout() throws Exception {
         http.setErrorHandler(new NoOpResponseErrorHandler());
-        deleteTree(HOME);
-        createDirectories(HOME);
-        fakeGit.cloneTargets.clear();
-        fakeGit.failWith = null;
 
         ResponseEntity<String> created = http.postForEntity(base() + "/api/projects",
                 json("{\"gitUrl\":\"" + URL + "\"}"), String.class);
@@ -97,11 +72,6 @@ class ProjectFilesTest {
         Files.createDirectories(checkout.resolve("src").resolve("main"));
         Files.writeString(checkout.resolve("README.md"), "# demo\n");
         Files.writeString(checkout.resolve("src").resolve("main").resolve("App.java"), "class App {}\n");
-    }
-
-    @AfterAll
-    static void removeHome() {
-        deleteTree(HOME);
     }
 
     @Test
@@ -301,32 +271,5 @@ class ProjectFilesTest {
             }
         }
         return null;
-    }
-
-    // ------------------------------------------------------------------ home
-
-    private static void createDirectories(Path dir) {
-        try {
-            Files.createDirectories(dir);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
-    private static void deleteTree(Path dir) {
-        if (!Files.exists(dir)) {
-            return;
-        }
-        try (Stream<Path> tree = Files.walk(dir)) {
-            tree.sorted(Comparator.reverseOrder()).forEach(path -> {
-                try {
-                    Files.deleteIfExists(path);
-                } catch (IOException ignored) {
-                    // best effort around the test run
-                }
-            });
-        } catch (IOException ignored) {
-            // best effort around the test run
-        }
     }
 }
