@@ -275,7 +275,7 @@ erst ein separater Link.
 
 Scheitert ein Turn, bleiben **beides** im Verlauf: der Text, den der Nutzer gesendet hat, und
 **genau eine** Fehlerzeile. Gezeigt wird der **nackte Grund**; im Core-Memory trägt die Zeile den
-Marker `Turn failed: <Grund>` (der Marker ist Speicher-Konvention, kein UI-Text). Die Fehlerzeile trägt **keinen** Autor, ist
+Marker `[Turn failed]: <Grund>` (der Marker ist Speicher-Konvention, kein UI-Text). Die Fehlerzeile trägt **keinen** Autor, ist
 **kein** Jon-Text und **kein** Werkzeug- oder Status-Zeile — sie ist deshalb gerade **nicht**
 live-only, sondern Teil dessen, was der Verlauf nach Neustart und Reload zeigt (Abgrenzung zu
 [R-WP-11](chat.md)). Sie liegt im **Core-Memory** des Projekts, wird über `GET …/messages` gelesen

@@ -147,6 +147,13 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
 
 ## ❓ offen
 
+* **❓ Bild-Support im Backend** (2026-11-02, Review Runde 2) — der Fremd-Commit `eeac8abb` „added
+  picture support" liegt auf `web-factory-mvp` (von Dev mitgepusht, ohne force nicht trennbar; nur
+  Plugin/Core-Pfade, `aifactory` unberührt) und die Backend-Codepfade liefern Bild-Parts als Text:
+  `textOf` (ProjectRuntime) rendert `#picture: …` als Nutzerzeile, Core-`ThreadSafeMemory` schreibt
+  `AiMessage.from("ok")` je Follow-up. Keine Regel der Fabrik kennt Bilder. *Entscheidung nötig:*
+  ist Bild-Support eine Story (Regel + UC, wieParts im Chat gezeigt werden), oder werden Text-Parts
+  weiter verbatim gezeigt — dann als Regel festhalten, dass das gewollt ist.
 * **❓ Core: der Abbruch verliert eine bereits gepollte Queue-Eingabe** (2026-11-01, Inc 5d gemessen) —
   [UC-WP-50](chat.md) verspricht „gequeuete Eingaben bleiben in der Queue"; tatsächlich verliert
   `AbstractAgent.call` eine Eingabe, die der laufende Turn beim Stop schon gepollt hat (Poll, dann

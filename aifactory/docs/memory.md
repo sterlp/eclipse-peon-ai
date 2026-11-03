@@ -6,18 +6,19 @@ Proposal mit WARUM** (2026-10-29) — gilt auch für Core-Tests.
 
 ## Zyklus 2026-11-02 LÄUFT — UI-Nacharbeiten nach Pauls Smoke-Test
 
-Branch `web-factory-mvp`, Spitze `922f2912` (= origin). Runde 1 abgeschlossen (Review bestanden,
-Plan-Archiv gelöscht). **Runde 2: alle 7 Inkremente gebaut ✅** — Inc 1 `321cb3ea` (Turn-Fehler =
-Verlaufszeile, R-WP-34/UC-WP-64) · Inc 2 `6027bbe4` (Warte-Rahmen endet, R-WP-31/UC-WP-65) · Inc 3
-`72e97e6d` (Chat scrollt, Eingabe fixed, R-WP-35/UC-WP-66) · Inc 4 `99560a9b` (Akzent links,
-R-WP-29/UC-WP-55) · Inc 5 `f069dd17` (Files-Tab bündig, Zeilenhöhe — Shiki-`\n`-Knoten,
-R-WP-33/UC-WP-60/61) · Inc 6 `7cc5b54f` (Think je Agent nach Provider-Form, R-WP-23/UC-WP-67) ·
-Inc 7 `e682e7cc` (Config-Look, Cards). Stand: Backend **206/0/0**, UI **129 Tests/16 Dateien**,
-oxlint 0/0, UC **67/67**, Doc-Lint 0 Findings. Alle 10 Feedback-Punkte verarbeitet (F1 Prozess ✅,
-F3/F5/F6/F7/F8/F10 Defekte behoben, F2/F4/F9 Feedback umgesetzt). **Nächster Schritt: Review** über
-den ganzen Zyklus, dann planImplemented. Dev-Slot-Lücke bleibt ⏳. Trailer-Regel: **kein Modellname**.
-**Fremder Commit `eeac8abb` "added picture support"** lag auf der Inc-5-Spitze und wurde von Dev
-mitgepusht (82f98dbe..94baad98) — ohne force nicht trennbar; Herkunft klärt Paul.
+Branch `web-factory-mvp`, Spitze `cf8133ec` (= origin). **Runde 2 abgeschlossen + Review bestanden**
+(2026-11-02): alle 7 Inkremente + Follow-up gebaut — Inc 1 `321cb3ea` (Turn-Fehler = Verlaufszeile,
+R-WP-34/UC-WP-64) · Inc 2 `6027bbe4` (Warte-Rahmen endet, R-WP-31/UC-WP-65) · Inc 3 `72e97e6d`
+(Chat scrollt, Eingabe fixed, R-WP-35/UC-WP-66) · Inc 4 `99560a9b` (Akzent links, R-WP-29/UC-WP-55) ·
+Inc 5 `f069dd17` (Files-Tab bündig, Zeilenhöhe — Shiki-`\n`-Knoten, R-WP-33/UC-WP-60/61) · Inc 6
+`7cc5b54f` (Think je Agent nach Provider-Form, R-WP-23/UC-WP-67) · Inc 7 `e682e7cc` (Config-Look,
+Cards) · Review-Followup `cf8133ec` (UC-WP-64 GIVEN 2 gepinnt, `ranTurn` gepinnt, Historien-Warten
+ein Helfer, Marker). Stand: Backend **208/0/0**, UI **129 Tests/16 Dateien**, oxlint 0/0,
+UC **67/67**, Doc-Lint 0 Findings (250 Ids). Alle 10 Feedback-Punkte verarbeitet. **Offen für Paul:**
+Bild-Support-❓ (`eeac8abb` + Text-Parts, open-points), Smoke-Test-Sichtprüfung (Scroll-Fläche,
+Kante links, Card-Look, Think-Formen, Files-Tab bündig). Dev-Slot-Lücke ⏳. Trailer-Regel: kein
+Modellname. Nächster Schritt: planImplemented (Dev) + Plan-Archiv löschen (Pauls Regel), dann Runde 3
+oder merge.
 
 **Pauls 10 Feedback-Punkte (2026-11-02, Runde 2) = Backlog dieses Zyklus:**
 
