@@ -50,9 +50,10 @@ type Entry =
  * carry yet, and the live lines of the running turn — each live line at the place it happened, so tool
  * activity stands between the parts of an answer it belongs to (R-WP-28, D-7).
  *
- * A row is speech and not a card — an accent line names its voice, the person's row sits at the right
- * edge, and one rule separates the two voices (R-WP-29). An answer reads as Markdown, so the model's
- * headings, lists and code blocks are what the user sees; the person's line stays the text he typed.
+ * A row is speech and not a card — the accent line on its left names its voice, in the flow of the text
+ * and never right-aligned, and one rule separates the two voices (R-WP-29). An answer reads as Markdown, so
+ * the model's headings, lists and code blocks are what the user sees; the person's line stays the text he
+ * typed.
  *
  * A user's line always names its author — the person the server named, or the role label of the doc —
  * because the chat is shared and every viewer has to read the same thing (R-WP-25, UC-WP-48). An agent's

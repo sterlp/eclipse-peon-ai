@@ -1,6 +1,7 @@
 package org.sterl.open.aifactory.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.sterl.open.aifactory.chat.ChatHistoryWaits.awaitAnswer;
 
 import java.io.IOException;
 import java.lang.reflect.RecordComponent;
@@ -112,7 +113,7 @@ class SharedProjectChatTest {
         model.queueResponse(ANSWER_A);
         assertThat(send(userA, projectId, QUESTION_A, PERSON_A).getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
         // B does not open a conversation of its own to wait in — it reads the one A is in
-        awaitAnswer(userB, projectId, ANSWER_A);
+        awaitAnswer(() -> messages(userB, projectId), ANSWER_A);
 
         assertThat(messages(userB, projectId))
                 .as("B sieht dieselben Nachrichten wie A, gleiche Rollenfolge, gleicher Text")
@@ -132,7 +133,7 @@ class SharedProjectChatTest {
         assertThat(send(userB, projectId, QUESTION_B, PERSON_B).getStatusCode())
                 .as("B sendet in denselben Verlauf, nicht in eine eigene Kopie")
                 .isEqualTo(HttpStatus.ACCEPTED);
-        awaitAnswer(userA, projectId, ANSWER_B);
+        awaitAnswer(() -> messages(userA, projectId), ANSWER_B);
 
         assertThat(messages(userA, projectId))
                 .as("A sieht Bs Eingabe und Jons Antwort darauf in seinem eigenen Verlauf — und an Bs"
@@ -214,12 +215,6 @@ class SharedProjectChatTest {
 
         assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         return JsonPath.read(created.getBody(), "$.id");
-    }
-
-    private void awaitAnswer(RestTemplate reader, String projectId, String answer) {
-        awaitUntil(() -> messages(reader, projectId).stream()
-                .anyMatch(line -> answer.equals(line.text())), 20_000,
-                "\"" + answer + "\" steht im Verlauf, den der andere Client liest");
     }
 
     /** The factory's own file — the same one the settings view writes. Never {@code ~/.peon}. */

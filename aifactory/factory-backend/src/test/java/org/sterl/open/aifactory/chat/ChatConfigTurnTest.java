@@ -1,6 +1,7 @@
 package org.sterl.open.aifactory.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.sterl.open.aifactory.chat.ChatHistoryWaits.awaitAnswer;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -124,7 +125,7 @@ class ChatConfigTurnTest {
 
         llm.queueResponse("erste Antwort");
         assertThat(send(projectId, "erste Frage").getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-        awaitJonAnswer(projectId, "erste Antwort");
+        awaitAnswer(() -> messages(projectId), "erste Antwort");
 
         assertThat(modelOnTheWire())
                 .as("der erste Turn läuft mit dem Modell aus der Datei der Fabrik")
@@ -154,7 +155,7 @@ class ChatConfigTurnTest {
         awaitIdle(runtime);
         llm.queueResponse("zweite Antwort");
         assertThat(send(projectId, "zweite Frage").getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-        awaitJonAnswer(projectId, "zweite Antwort");
+        awaitAnswer(() -> messages(projectId), "zweite Antwort");
 
         assertThat(modelOnTheWire())
                 .as("GIVEN 3: der nächste Turn nutzt den neuen Wert, ohne Neu-Start")
@@ -174,7 +175,7 @@ class ChatConfigTurnTest {
         awaitIdle(runtime);
         llm.queueResponse("dritte Antwort");
         assertThat(send(projectId, "dritte Frage").getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-        awaitJonAnswer(projectId, "dritte Antwort");
+        awaitAnswer(() -> messages(projectId), "dritte Antwort");
 
         assertThat(modelOnTheWire())
                 .as("ein dritter Turn ohne Änderung läuft mit demselben Wert")
@@ -234,12 +235,6 @@ class ChatConfigTurnTest {
     /** The model the provider was told to run — read from the request body, never from a config object. */
     private String modelOnTheWire() {
         return JsonPath.read(llm.getLastRequestBody(), "$.model");
-    }
-
-    private void awaitJonAnswer(String projectId, String answer) {
-        awaitUntil(() -> messages(projectId).stream()
-                .anyMatch(line -> "jon".equals(line.role()) && answer.equals(line.text())),
-                20_000, "Jon hat „" + answer + "“ in den Verlauf geschrieben");
     }
 
     /**

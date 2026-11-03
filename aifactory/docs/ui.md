@@ -18,7 +18,9 @@ Zeilen statt Bubbles, Tool-/Think-Zeilen klein und grau, Komponenten als `react-
 Icons als `bootstrap-icons`. Der Chat nutzt die **volle Fensterbreite abzüglich eines kleinen Randes**
 — kein zentrierter Container, keine statischen Seitenränder (Befund Paul: genau das wollte er nicht).
 `stara-web` bleibt Referenz für Wirkung (Abstände, Motion), **kein Abhängigkeitsziel** — nichts wird
-kopiert, was wir nicht selbst verstehen und pflegen. Die endgültige Look-Abnahme erfolgt im
+kopiert, was wir nicht selbst verstehen und pflegen. Jeder Bereich der **Config-Seite** ist eine
+**Card** wie im Chat (Rand `--border`, Radius, Padding, kein Hintergrund); Eingaben tragen die
+**Maße der Chat-Eingabe**, Statuszeilen (Key-Status) **Mono** (2026-11-02, Inc 7). Die endgültige Look-Abnahme erfolgt im
 Smoke-Test am Prototypen.
 
 ## Regeln

@@ -8,10 +8,12 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
@@ -27,6 +29,8 @@ import org.sterl.llmpeon.poagent.AiPoAgent;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
+
 
 import org.sterl.open.aifactory.chat.dto.AgentAction;
 import org.sterl.open.aifactory.config.TurnNotConfiguredException;
@@ -51,6 +55,12 @@ class TurnFailureTest {
     private static final String SLEEP_TOOL = "{\"command\":\"sleep 3\",\"timeout\":20}";
     private static final String SLOW_INPUT = "LAUF: Schlaf drei Sekunden";
     private static final String ANSWER_AFTER_THE_STOP = "DIESE-ANTWORT-DARF-NICHT-MEHR-KOMMEN";
+
+    /** The reason of a turn whose model call failed — the runtime's own words, not the config's. */
+    private static final String MID_MODEL_REASON = "the turn failed — the server log names the reason";
+    private static final String HOLD_TOOL = "{\"command\":\"sleep 6\",\"timeout\":20}";
+    private static final String QUEUED_INPUT = "LAUF: Diese Eingabe wartet hinter dem Turn";
+
 
     @TempDir
     Path home;
@@ -142,9 +152,84 @@ class TurnFailureTest {
     @Test
     @Timeout(60)
     // UC-WP-64
+    void aTurnThatFailsInsideTheModelCallLeavesTheSamePair() {
+        // a model that was there and is gone: reading the config succeeds, so the turn is past
+        // updateConfig and inside jon.call when the connection is refused — the second GIVEN of UC-WP-64
+        MockLlmServer model = new MockLlmServer(0);
+        model.start();
+        String url = model.getUrl();
+        model.stop();
+
+        ProjectRuntime runtime = runtime(() -> openAiAt(url).toBuilder().timeout(Duration.ofSeconds(5)).build());
+
+        runtime.submit(INPUT, "Paul");
+
+        awaitUntil(() -> runtime.history().size() == 2, 20_000, "the failed turn wrote its two lines");
+        assertThat(runtime.history()).containsExactly(
+                ChatLine.user(INPUT, "Paul"),
+                ChatLine.error(MID_MODEL_REASON));
+        assertThat(model.getRequestBodies())
+                .as("no model was ever asked — the call itself is what failed")
+                .isEmpty();
+        assertThat(userLinesOf(runtime))
+                .as("the core writes the input inside the turn, so the failure adds no second copy of it")
+                .hasSize(1);
+    }
+
+    @Test
+    @Timeout(90)
+    // UC-WP-14, UC-WP-50
+    void aQueuedSubmitThatFailsOwnsNothingOfTheRunningTurn() {
+        MockLlmServer model = new MockLlmServer(0);
+        model.start();
+        try {
+            ChatStreamRegistry streams = new ChatStreamRegistry();
+            RecordedWire wire = new RecordedWire();
+            streams.subscribe(PROJECT, wire);
+            // the first read serves the turn that opens, the second one is the waited input and fails —
+            // so the queued submit reaches nothing but the failure branch, and owns no turn of its own
+            AtomicInteger configReads = new AtomicInteger();
+            Supplier<LlmConfig> configForTurn = () -> {
+                if (configReads.incrementAndGet() == 1) {
+                    return openAiAt(model.getUrl());
+                }
+                throw new IllegalStateException("the config file is unreadable");
+            };
+            ProjectRuntime runtime = runtime(configForTurn, streams);
+            model.queueResponse(toolCall("call_sleep", "shellRunCommand", HOLD_TOOL));
+            model.queueResponse(ANSWER_AFTER_THE_STOP);
+
+            runtime.submit(SLOW_INPUT, "Paul");
+            awaitUntil(wire::reportsToolLine, 20_000, "the running shell reported its command");
+            assertThat(runtime.jon().isWorking()).as("the first turn holds the project").isTrue();
+
+            runtime.submit(QUEUED_INPUT, "Paul");
+            awaitUntil(() -> runtime.history().stream()
+                    .anyMatch(line -> ChatLine.ROLE_ERROR.equals(line.role())),
+                    20_000, "the waited submit reported its own failure");
+
+            assertThatCode(runtime::stop)
+                    .as("the turn that is running is still the turn this project has — a submit that "
+                            + "only waited may not end it, and its end belongs to its own task alone")
+                    .doesNotThrowAnyException();
+            assertThatThrownBy(() -> runtime.act(AiPoAgent.NAME, AgentAction.CLEAR))
+                    .as("the project stays taken while that turn runs — no action slips in beside it")
+                    .isInstanceOf(IllegalStateException.class);
+
+            awaitUntil(() -> !runtime.jon().isWorking(), 30_000, "the running turn ended on that stop");
+        } finally {
+            model.stop();
+        }
+    }
+
+
+    @Test
+    @Timeout(60)
+    // UC-WP-64
     void stopIsNoFailure() {
         MockLlmServer model = new MockLlmServer(0);
         model.start();
+
         try {
             ChatStreamRegistry streams = new ChatStreamRegistry();
             RecordedWire wire = new RecordedWire();
@@ -218,6 +303,14 @@ class TurnFailureTest {
     private static AiMessage toolCall(String id, String toolName, String arguments) {
         return new AiMessage(null,
                 List.of(ToolExecutionRequest.builder().id(id).name(toolName).arguments(arguments).build()));
+    }
+
+    /** What the memory holds as speech of the user — the copy the core wrote, not the one of the failure. */
+    private static List<UserMessage> userLinesOf(ProjectRuntime runtime) {
+        return runtime.jon().getMemory().getCopy().stream()
+                .filter(UserMessage.class::isInstance)
+                .map(UserMessage.class::cast)
+                .toList();
     }
 
     private static void createDirectories(Path directory) {

@@ -14,6 +14,7 @@ const FAILURE: ChatMessage = { role: 'error', text: 'turn needs a model — set 
  * problem, and it owns no surface of its own. Colour is no fact of the DOM in jsdom, so the sheet is read
  * where the contract is written — see `test/shared/sheets.ts`.
  */
+// UC-WP-64, UC-WP-55
 test('roleChangeToAnErrorDrawsARule', () => {
   const { container } = render(<ChatLog messages={[QUESTION, FAILURE]} outgoing={[]} live={[]} pending={false} />)
 
@@ -29,6 +30,7 @@ test('roleChangeToAnErrorDrawsARule', () => {
 })
 
 /** The other half of the same rule: the failure shows the moment the stream reports it, in the log. */
+// UC-WP-64, UC-WP-65
 test('aLiveFailureIsALineAndNotAWaitingFrame', () => {
   render(
     <ChatLog

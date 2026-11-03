@@ -2,6 +2,7 @@ package org.sterl.open.aifactory.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.sterl.open.aifactory.chat.ChatHistoryWaits.awaitAnswers;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -113,7 +114,7 @@ class ChatUserMessageTest {
         model.queueResponse("Antwort an Anna");
 
         send(projectId, "bitte X", "Anna");
-        awaitAnswers(projectId, 1, "der benannte Turn ist beantwortet");
+        awaitAnswers(() -> history(projectId), 1, "der benannte Turn ist beantwortet");
 
         assertThat(model.getLastRequestBody())
                 .as("das Modell liest den Absender in der Nachricht selbst — ein Label für die UI allein"
@@ -134,7 +135,7 @@ class ChatUserMessageTest {
         model.queueResponse("Antwort ohne Namen");
 
         send(projectId, "bitte X", null);
-        awaitAnswers(projectId, 1, "der Turn ohne Namen ist beantwortet");
+        awaitAnswers(() -> history(projectId), 1, "der Turn ohne Namen ist beantwortet");
 
         assertThat(requestedUserTexts())
                 .as("R-WP-17: ohne Namen wird nichts erfunden — auch kein leerer Präfix-Rahmen")
@@ -154,7 +155,7 @@ class ChatUserMessageTest {
         String typed = "[User Anna]: bitte X";
 
         send(projectId, typed, null);
-        awaitAnswers(projectId, 1, "die getippte Format-Zeile ist beantwortet");
+        awaitAnswers(() -> history(projectId), 1, "die getippte Format-Zeile ist beantwortet");
 
         assertThat(history(projectId))
                 .as("R-WP-25: das Präfix ist Protokoll, kein Ausweis — eine selbst getippte Format-Zeile"
@@ -176,7 +177,7 @@ class ChatUserMessageTest {
         model.queueResponse("Antwort an Anna");
 
         send(projectId, "bitte X", "Anna");
-        awaitAnswers(projectId, 1, "der benannte Turn ist beantwortet");
+        awaitAnswers(() -> history(projectId), 1, "der benannte Turn ist beantwortet");
 
         assertThat(history(projectId))
                 .as("der Verlauf nennt den Menschen, ohne dass ein Client den Namen mitschickt")
@@ -194,7 +195,7 @@ class ChatUserMessageTest {
         model.queueResponse("Antwort an Anna");
 
         send(projectId, "bitte X", "Anna");
-        awaitAnswers(projectId, 1, "der benannte Turn ist beantwortet");
+        awaitAnswers(() -> history(projectId), 1, "der benannte Turn ist beantwortet");
 
         // dasselbe state-Verzeichnis, keine Runtime mehr — der Neustart der Fabrik
         int runtimesBefore = runtimes.runtimeCount();
@@ -223,10 +224,10 @@ class ChatUserMessageTest {
         model.queueResponse("Antwort an Paul");
 
         send(projectId, "frage von anna", "Anna");
-        awaitAnswers(projectId, 1, "Annas Eingabe ist beantwortet");
+        awaitAnswers(() -> history(projectId), 1, "Annas Eingabe ist beantwortet");
         int runtimesBeforeTheSecondSender = runtimes.runtimeCount();
         send(projectId, "frage von paul", "Paul");
-        awaitAnswers(projectId, 2, "Pauls Eingabe ist beantwortet");
+        awaitAnswers(() -> history(projectId), 2, "Pauls Eingabe ist beantwortet");
 
         assertThat(history(projectId))
                 .as("ein geteiltes Gespräch, zwei Autoren — und beide Namen stehen für denselben Betrachter da")
@@ -275,16 +276,6 @@ class ChatUserMessageTest {
     }
 
     // ------------------------------------------------------------------ edge
-
-    /**
-     * Waits for <b>answers</b>, never for a line count: a failed turn writes a user line and an error line
-     * as well (R-WP-34), so "two lines" no longer says the model was ever asked — it says the turn is over.
-     * The assertions of the tests read what they always read; only the wait had to learn the difference.
-     */
-    private void awaitAnswers(String projectId, int expected, String what) {
-        awaitUntil(() -> history(projectId).stream()
-                .filter(line -> "jon".equals(line.role())).count() >= expected, 20_000, what);
-    }
 
     private void send(String projectId, String text, String user) {
         HttpHeaders headers = new HttpHeaders();

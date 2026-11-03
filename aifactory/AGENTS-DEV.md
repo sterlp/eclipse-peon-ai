@@ -554,3 +554,41 @@
 - **Nach Inc 7: Backend 206/0/0** (unverändert — kein Backend-Code), **UI 129 Tests / 16 Dateien**
   (128/16), `tsc` + oxlint 0/0 (58 Dateien), Doc-Lint **67/67 UCs, 243 Test-Ids, 0 Findings**.
 
+
+## Review-Followup (Zyklus 2026-11-03, Runde 2) — Fehlerpfad gepinnt, Warten zusammengelegt
+
+- **Der Modellaufruf wirft, er liefert nicht null** (gemessen): `ApiRetry` startet mit `credit = 0` und
+  `if (retryCount >= credit) throw` ⇒ der **erste** Fehler durchreicht ohne jede Backoff-Warte;
+  `ToolLoopRequest.call` verpackt eine nachrichtlose Provider-Exception zu
+  `RuntimeException("AI call to <url> failed: …")`. Ein `MockLlmServer`, das nach `start()` **gestoppt**
+  wird, ergibt darum in < 1 s denselben RuntimeException-Zweig von `submit` wie ein defekter Provider —
+  `ToolService:187` („AI call returned null") ist auf diesem Weg **nicht** erreichbar.
+- **`MockLlmServer.isAlive()` ist nach `stop()` kein Beweis** (`getPort()` → NPE auf `server == null`,
+  vom `catch (Exception)` in `isAlive` verschluckt ⇒ false aus dem falschen Grund). Beweis des
+  „nie gefragt" ist `getRequestBodies().isEmpty()`, nicht eine Socket-Probe.
+- **`teamIsWorking()` sieht Jon nicht** — die Iteration läuft über `jon.getTeam()`. Während Jons Tool
+  läuft, wird `act(CLEAR)` also **allein** über `turnInFlight` abgelehnt: genau darum trägt
+  `assertThatThrownBy(act)` die Regel „der Claim bleibt belegt" mit, entscheidend ist
+  `assertThatCode(stop)` (Mutation `ranTurn = true` ⇒ beide rot).
+- **Ein Submit, der vor dem Core scheitert, erreicht den Core nie**: ein stateful `configForTurn`-Supplier
+  (erste Lese gibt die Config, zweite wirft) ist der einzige nötige Haken für einen **gequeuerten**,
+  scheiternden Submit — kein zweiter Turn-Pfad, kein Core-Double, kein Core-Eingriff.
+- **Historien-Warten ist jetzt eine Datei**: `ChatHistoryWaits.awaitAnswers(history, n, what)` und
+  `awaitAnswer(history, answer)` über einem `Supplier<List<ChatMessageDto>>`; beides nennt **Jons Rolle**,
+  nie eine Zeilenzahl (R-WP-34: ein Fehlturn schreibt zwei Zeilen und war damit als „beantwortet" lesbar).
+  `SharedProjectChatTest` prüfte vorher **ohne Rollenprüfung** — benannte Verschärfung (getextet wird
+  jeweils eine Modellantwort, alle Aufrufstellen bleiben grün). Die 15 Kopien von `awaitUntil` sind
+  damit **nicht** consolidated — sie warten auf andere Dinge (`isWorking`, SSE, Queue).
+- **Fundstelle „vier Lines-Zählungen ohne Warten in `ChatUserMessageTest`" ist an HEAD nicht messbar**:
+  alle sieben Wartepunkte der Klasse warten seit Inc 2 auf Jon-Zeilen. Verbliebene
+  `history().size()`-Wartungen stehen nur in `TurnFailureTest`/`ChatTurnFailureTest`, wo die **Zeilenzahl
+  selbst die Regel ist** (R-WP-34) — keine Flake-Quelle.
+- **`eclipseInsertLines` rechnet auf dem Stand des letzten Reads** (gemessen): nach einem Insert bei
+  Zeile 140 landete ein zweiter Insert „afterLine=221" mitten in `stopIsNoFailure`. Entweder von unten
+  nach oben einfügen oder nach **jedem** Insert neu lesen; vor dem Bauen immer `git diff` lesen.
+- **Nach dem Review-Followup: Backend 208** (206 + 2), **UI 129 Tests / 16 Dateien** (unverändert — nur
+  UC-Marker und ein Kommentar), `tsc` + oxlint 0/0, Doc-Lint **67/67 UCs, 250 Test-Ids, 0 Findings**.
+  Proben, je genau die erwarteten Tests rot: `ranTurn = true` im RuntimeException-Zweig →
+  `aQueuedSubmitThatFailsOwnsNothingOfTheRunningTurn`; `containsUserMessage`-Schutz aus `recordFailure` →
+  `aTurnThatFailsInsideTheModelCallLeavesTheSamePair` + `thePayloadIsWrittenOnlyOnce`.
+
