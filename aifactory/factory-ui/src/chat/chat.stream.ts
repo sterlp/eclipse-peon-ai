@@ -67,6 +67,14 @@ function toEvent(name: string, payload: string): ChatStreamEvent | null {
       return { kind: 'done', millis: Number(fields.millis ?? 0) }
     case 'error':
       return { kind: 'error', message: String(fields.message ?? content.chat.unknownError) }
+    case 'diff': {
+      // the pair or nothing: a block without its file would be a statement without a subject, and a block
+      // without its diff an empty promise of a change (R-WP-36)
+      if (typeof fields.file !== 'string' || typeof fields.diff !== 'string') {
+        return null
+      }
+      return { kind: 'diff', file: fields.file, diff: fields.diff }
+    }
     case 'agents': {
       // the whole roster, and the view replaces its list with it — a snapshot never accumulates, so it
       // cannot grow into a second history (R-WP-7); a payload without a list is not my error to guess

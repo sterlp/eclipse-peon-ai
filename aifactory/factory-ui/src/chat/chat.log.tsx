@@ -2,6 +2,7 @@ import type { Ref } from 'react'
 
 
 import type { ChatMessage } from './chat.client'
+import { ChatDiff } from './chat.diff'
 import { ChatMarkdown } from './chat.markdown'
 import { ChatTools } from './chat.tools'
 import { liveRuns, type LiveItem } from './chat.live'
@@ -39,11 +40,12 @@ interface Row {
   pending: boolean
 }
 
-/** One thing the log draws: a line of the conversation, a live answer, or one merged box of tool lines. */
+/** One thing the log draws: a line of the conversation, a live answer, one merged box of tool lines, or one diff block. */
 type Entry =
   | { type: 'row'; row: Row; rule: boolean }
   | { type: 'live'; item: LiveItem; rule: boolean }
   | { type: 'tools'; lines: string[] }
+  | { type: 'diff'; file: string; text: string }
 
 /**
  * One project's conversation as the screen shows it: the history, the own inputs the history does not
@@ -61,7 +63,8 @@ type Entry =
  * A thinking delta never reaches here (§3.3.3, Q7).
  *
  * Tool activity is not a voice: it keeps the grey of `chat.html`, takes no part in the rule between the
- * voices, and never carries a name.
+ * voices, and never carries a name. A diff block is of the same family — a fact about the project's files,
+ * seen by everybody watching (R-WP-36).
  */
 export function ChatLog({ messages, outgoing, user, live, pending, logRef, onScroll }: Props) {
   const rows: Row[] = [
@@ -98,6 +101,9 @@ export function ChatLog({ messages, outgoing, user, live, pending, logRef, onScr
       {entries.map((entry, index) => {
         if (entry.type === 'tools') {
           return <ChatTools key={`tools-${index}`} lines={entry.lines} />
+        }
+        if (entry.type === 'diff') {
+          return <ChatDiff key={`diff-${index}`} file={entry.file} diff={entry.text} />
         }
         if (entry.type === 'live') {
           // a live failure is already over, so it carries no waiting frame; its text is the server's
@@ -143,8 +149,9 @@ export function ChatLog({ messages, outgoing, user, live, pending, logRef, onScr
 /**
  * The rows and the live items in the order the screen shows them: a run of live items is placed after the
  * number of rows it was anchored at, and inside the run the arrival order holds. Consecutive tool lines
- * become one box; the rule between two voices is decided over the rows and the live answers only, because
- * tool activity is neither voice (R-WP-29).
+ * become one box, a diff block stands beside it as a block of its own; the rule between two voices is
+ * decided over the rows and the live answers only, because tool activity and a diff are neither voice
+ * (R-WP-29).
  */
 function entriesOf(rows: Row[], live: LiveItem[]): Entry[] {
   const entries: Entry[] = []
@@ -171,6 +178,12 @@ function entriesOf(rows: Row[], live: LiveItem[]): Entry[] {
       if (tools.length > 0) {
         entries.push({ type: 'tools', lines: tools })
         tools = []
+      }
+      if (item.kind === 'diff') {
+        // a diff is neither voice nor trace: it ends the tool run before it, takes no rule, and leaves the
+        // voice of what follows unchanged (R-WP-29, R-WP-36)
+        entries.push({ type: 'diff', file: item.file, text: item.text })
+        continue
       }
       // a failure is a voice of its own for the rule: it separates what was said from what failed
       const spoken: Row['voice'] = item.kind === 'error' ? 'error' : 'agent'

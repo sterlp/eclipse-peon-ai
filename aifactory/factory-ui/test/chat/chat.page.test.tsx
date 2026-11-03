@@ -34,6 +34,9 @@ const ANSWER: ChatMessage = { role: 'jon', text: 'Im Root liegen: pom.xml und RE
 const TEAM_ANSWER: ChatMessage = { role: 'jon', text: 'Eine Banane.', origin: 'Dev' }
 const JONS_ANSWER: ChatMessage = { role: 'jon', text: 'Dev nennt eine Banane.', origin: 'Jon' }
 
+/** The unified diff the wire carries for one written file (R-WP-36) — as the core's `SimpleDiff` writes it. */
+const DIFF = '--- a/src/App.java\n+++ b/src/App.java\n@@ -1,2 +1,3 @@\n a\n+b\n \n'
+
 /** One roster entry as the server sends it — the tile family of R-WP-7. */
 function tile(name: string, state: AgentTileState): AgentTile {
   return {
@@ -160,7 +163,12 @@ function stubChat(
     },
     closeStream: async () => {
       await act(async () => {
-        controller?.close()
+        try {
+          controller?.close()
+        } catch {
+          // the test closed its own stream — the tear-down of every test closes it once more, and an
+          // already closed stream is the end of the story, not a failure of this one
+        }
         await new Promise(resolve => setTimeout(resolve, 0))
       })
     },
@@ -827,6 +835,36 @@ test('consecutiveToolLinesAreMerged', async () => {
   expect(lines).toHaveLength(10)
   expect(lines[0]).toBe('step 3')
   expect(lines[9]).toBe('step 12')
+})
+
+// UC-WP-68
+test('aFileChangeIsLiveAndDoesNotOutliveTheReload', async () => {
+  const chat = stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  // the turn writes a file: the trace names the tool, the block names the file and shows what changed
+  await chat.push(event('tool', { text: 'write src/App.java' }))
+  await chat.push(event('diff', { file: 'src/App.java', diff: DIFF }))
+  expect(screen.getByTestId('chat-diff-file')).toHaveTextContent('src/App.java')
+  expect(screen.getByTestId('chat-diff')).toHaveTextContent('+b')
+  // beside the trace and not inside it — a box is one place of the trace, a diff is a block
+  expect(within(screen.getByTestId('chat-tool-line')).queryByTestId('chat-diff')).toBeNull()
+
+  // the turn ends and the history is read: the block has no line in that history and keeps its place on
+  // the screen, exactly like the trace of the same turn (R-WP-11, R-WP-36)
+  chat.setMessages([QUESTION, ANSWER])
+  await chat.push(event('done', { millis: 9 }))
+  expect(screen.getByTestId('chat-diff')).toHaveTextContent('+b')
+  expect(screen.getByTestId('chat-tool-line')).toHaveTextContent('write src/App.java')
+
+  // a dropped connection is the reload's stand-in: what the wire will not send back leaves the screen,
+  // and the history that comes back with the new connection carries no diff (R-WP-11)
+  await chat.closeStream()
+  await waitFor(() => expect(chat.countOf('/events', 'GET')).toBe(2), { timeout: 1500 })
+  expect(screen.queryByTestId('chat-diff')).toBeNull()
+  expect(screen.queryByTestId('chat-tool-line')).toBeNull()
+  expect(agentLinesSaying(ANSWER.text)).toHaveLength(1)
 })
 
 // UC-WP-57

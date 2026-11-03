@@ -25,10 +25,15 @@ export interface ChatMessage {
  * `agents` is the one event that is not part of a conversation: the whole tile roster, every time. The UI
  * <em>replaces</em> its list with it and accumulates nothing, so a snapshot can never become a second
  * history (R-WP-7) and a lost one costs nothing — the roster is read again on mount.
+ *
+ * `diff` is one file the turn changed: `file` is the project-relative path, `diff` the unified diff the
+ * core computed — never the file's content, and no author, because a change of this project belongs to
+ * everybody watching it (R-WP-36). Live only, exactly like `tool`.
  */
 export type ChatStreamEvent =
   | { kind: 'partial'; thinking: boolean; text: string }
   | { kind: 'tool'; text: string }
+  | { kind: 'diff'; file: string; diff: string }
   | { kind: 'done'; millis: number }
   | { kind: 'error'; message: string }
   | { kind: 'agents'; tiles: AgentTile[] }

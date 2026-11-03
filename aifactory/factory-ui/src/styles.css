@@ -381,6 +381,59 @@ button {
   display: block;
 }
 
+/* A file the turn changed (R-WP-36) is a block of the log and neither a voice nor a trace line: the accent
+   stays the trace grey, the colours are the ones the app already has — an addition is what the agent did
+   (the agent token), a removal the problem token, the headers and context dimmed. Flat rules, one selector
+   each: the colour contract is read off this sheet in a test, and a grouped rule is only readable at its
+   last selector. */
+.chat-log .chat-line.diff {
+  border-left-color: var(--tool-line);
+  padding-top: 0.1rem;
+  padding-bottom: 0.25rem;
+}
+
+/* the path above the diff — the block names its own file, so the headers below can stay dimmed */
+.chat-diff .chat-diff-file {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text);
+  margin-bottom: 0.15rem;
+}
+
+.chat-diff .chat-diff-body {
+  margin: 0;
+  padding: 0.4rem 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* one span per line and each of them a box: the text carries no line break, so a second one here would
+   double every line of the diff (the trap `.code-view .line` fell into) */
+.chat-log .chat-diff .chat-diff-line {
+  display: block;
+  color: var(--tool);
+}
+
+.chat-log .chat-diff .diff-added {
+  color: var(--agent);
+}
+
+.chat-log .chat-diff .diff-removed {
+  color: var(--problem);
+}
+
+.chat-log .chat-diff .diff-context {
+  color: var(--tool);
+}
+
+.chat-log .chat-diff .diff-meta {
+  color: var(--text);
+}
+
 /* An answer is Markdown (R-WP-28): the renderer's own type classes carry no sheet here, the app's
    compact measure does — and the line's pre-wrap ends where a rendered block begins. */
 .chat-log .chat-markdown {

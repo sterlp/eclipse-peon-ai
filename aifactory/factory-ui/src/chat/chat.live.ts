@@ -6,12 +6,11 @@
  * count and not a text, so it survives the history read that `done` triggers: the finished line lands in
  * the log, and the tool lines of that turn stay where they happened (UC-WP-54).
  */
-export interface LiveItem {
-  kind: 'text' | 'tool' | 'error'
-  text: string
-  /** Rows of the log (history plus the own, unconfirmed inputs) at the moment this item arrived. */
-  afterLines: number
-}
+export type LiveItem =
+  /** `afterLines` — rows of the log (history plus the own, unconfirmed inputs) when this item arrived. */
+  | { kind: 'text' | 'tool' | 'error'; text: string; afterLines: number }
+  /** One file the turn changed: `text` is its unified diff, `file` the path the block names. */
+  | { kind: 'diff'; file: string; text: string; afterLines: number }
 
 /** What `chat.html` keeps of a tool block: the tail, so a chatty turn cannot push the answer away. */
 export const MAX_TOOL_LINES = 10
@@ -40,12 +39,25 @@ export function appendLiveError(items: LiveItem[], text: string, afterLines: num
 }
 
 /**
+ * One file the turn changed, as its own item (R-WP-36): never merged into the tool box, because a diff is
+ * a block that names its file, and the trace beside it is the running account of what the turn reported.
+ */
+export function appendLiveDiff(
+  items: LiveItem[],
+  file: string,
+  diff: string,
+  afterLines: number,
+): LiveItem[] {
+  return [...items, { kind: 'diff', file, text: diff, afterLines }]
+}
+
+/**
  * What a history read leaves of the live list: the answer has become a line of the history and would
- * stand there twice, while the tool lines exist on the wire only — losing them at `done` is exactly what
- * UC-WP-54 forbids.
+ * stand there twice, while the tool lines and the diff blocks exist on the wire only — losing them at
+ * `done` is exactly what UC-WP-54 forbids, and R-WP-36 puts its block in the same family.
  */
 export function liveLinesAfterHistory(items: LiveItem[]): LiveItem[] {
-  return items.filter(item => item.kind === 'tool')
+  return items.filter(item => item.kind === 'tool' || item.kind === 'diff')
 }
 
 /**
@@ -74,6 +86,10 @@ export function livePreview(items: LiveItem[]): string {
   const last = items[items.length - 1]
   if (last === undefined) {
     return ''
+  }
+  if (last.kind === 'diff') {
+    // a body line of a diff names no file; the bar names what changed (R-WP-31, UC-WP-68)
+    return last.file
   }
   const lines = last.text.split('\n').filter(line => line.trim() !== '')
   return lines[lines.length - 1] ?? ''

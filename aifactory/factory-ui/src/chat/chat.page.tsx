@@ -13,6 +13,7 @@ import { ChatComposer } from './chat.composer'
 import { ChatInsight } from './chat.insight'
 import { ChatLog } from './chat.log'
 import {
+  appendLiveDiff,
   appendLiveError,
   appendLiveText,
   appendLiveTool,
@@ -172,6 +173,11 @@ export function ChatPage({ project, files, user }: Props) {
           break
         case 'tool':
           setLive(previous => appendLiveTool(previous, event.text, shownRows.current))
+          break
+        case 'diff':
+          // the change itself, live, for every browser watching this project — the block names its own file,
+          // so no author is needed and none is shown (R-WP-36, UC-WP-68)
+          setLive(previous => appendLiveDiff(previous, event.file, event.diff, shownRows.current))
           break
         case 'done':
           // one reload per turn — the turn that drained a queued input closes that input too, and the

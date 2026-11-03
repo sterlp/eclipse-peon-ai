@@ -696,3 +696,51 @@
   (`ProjectStatusTest#afterARestartEveryProjectIsFree`), entfallen konnte es nur, wo die Methode ohnehin
   auf das Ergebnis wartet (`ChatUserMessageTest` — die Verlaufs-Zeile kommt nach der letzten Antwort).
 
+
+## C4 (Zyklus 2026-11-03, Runde 3) — Datei-Änderung als Live-Diff im Chat (Backend + UI)
+
+- **Der SSE-Draht ist im reinen Unit-Test lesbar**: ein `SseEmitter`-Double überschreibt
+  `send(SseEventBuilder)` und sammelt `event.build()` in ein `Set<SseEmitter.DataWithMediaType>`. Das erste
+  Stück ist TEXT_PLAIN `"event:<name>\ndata:"`, danach folgt **genau ein** Stück mit
+  `MediaType.APPLICATION_JSON` — der Diff liegt als String im JSON, Jackson escaped die Umbrüche, also bleibt
+  es bei **einem** `data:`-Eintrag (kein Aufbrechen in mehrere Field-Values).
+- **„genau ein Event, kein zweites daneben" braucht ein Marker-Event, keine Momentaufnahme**: der Versand ist
+  asynchron, ein `sleep` gewinnt nur zufällig. Muster `SseTurnMonitorDiffTest`: Ereignis einspielen, dann
+  `registry.publish(projectId, new ChatEvent.Done(1L))` und auf den `done` warten — die Verbindung ist FIFO,
+  also ist alles davor die vollständige Liste. Ein leerer Diff, der nichts sendet, ist damit von einem
+  kaputten Draht zu unterscheiden.
+- **`eclipseWriteFile`/Edit mit relativem `aifactory/…`-Pfad legt unter dem Projekt an** (gemessen, C4-1):
+  `aifactory/factory-backend/src/test/…` landete als `/aifactory-parent/aifactory/factory-backend/…`; Maven
+  fand die Klasse nicht und brach mit `No tests matching pattern "SseTurnMonitorDiffTest"` (BUILD FAILURE,
+  **trotz** kompilierter Quellen), `git status` zeigte ein `?? aifactory/aifactory/`. Neue Dateien nur mit
+  Workspace-Pfaden `/factory-backend/…` bzw. `/factory-ui/…` anlegen, dann `git status` prüfen.
+- **Den UI-Parser ohne Eingriff testen**: `chat.stream.ts`'s `toEvent` ist Modul-privat. Der Guard gegen ein
+  `diff`-Event ohne `file`/`diff` wird über `openChatStream` + `fetch`-Double mit offener `ReadableStream`
+  bewiesen (Chunk mit `event:diff\ndata:{…}`), die Behauptung lautet dann `live` bleibt leer — analog zum
+  Stream-Harness von `chat.page.test.tsx`.
+- **`closeStream`-Helfer muss doppelt-schließfest sein**: schließt ein Test den Stream selbst und der
+  `afterEach` erneut, wirft `controller.close()` `TypeError` — und zwar **aus `act()`**, also als kryptischer
+  Folgefehler eines grünen Tests. try/catch um den Close, nie um die Assertion.
+- **`chat-diff` gehört an das `<li>`, nicht an die innere Fläche** (Plan-Skizze ist hier widerlegt): die
+  flachen Selektoren `.chat-diff .chat-diff-file` und `.chat-diff .chat-diff-body` verlangen `chat-diff` als
+  **Vater** von Datei-Label und `<pre>`. Die Fläche bleibt das geteilte `.chat-code`; Diffs bekommen **keinen**
+  `.code-view`-Vertrag (kein Shiki im Diff, Regel aus Inc 6).
+- **Farbe bleibt ein Sheet-Beweis** (Inc 3a gilt weiter): `declarations()`-Regeln, jede Diff-Regel flach und
+  ungruppiert. Zusätzlich: `getAllByTestId(/chat-(tool-line|diff)/)` trifft **auch** `chat-diff-line` — Anker
+  `^chat-(tool-line|diff)$` setzen, sonst zählt die Box-Abgrenzung Zeilen statt Blöcke.
+- **Ein Diff-Test braucht eine `---`-Zeile im Rumpf**: der Header-Zweig von `lineClassOf` ist
+  `index <= 1 && (startsWith('--- ') || startsWith('+++ '))`. Eine Fixtur ohne `---`-Zeile außerhalb der Köpfe
+  macht die Index-Bedingung zum **äquivalenten Mutanten** (Probelauf war grün). Fixtur `db/seed.sql` mit
+  entfernter Kommentarzeile `--- eine alte Konstante` ⇒ die Zeile muss `diff-context` bleiben.
+- **Proben C4** (je genau die erwarteten Tests rot, Restore per `cp` + `diff`): `index <= 1` raus →
+  `aChangeIsABlockWithItsFileAndItsColouredLines`; `liveLinesAfterHistory` zurück auf nur `tool` →
+  `aFileChangeIsLiveAndDoesNotOutliveTheReload`; `diff`-Zweig aus `entriesOf` → beide
+  Diff-Komponententests + Page-Test; D6-Guard auf `false` → `aDiffEventWithoutItsFieldsIsDropped`;
+  `display: block` aus der Zeilenregel → Block-Test; `livePreview`-Diff-Zweig raus →
+  `theWaitingPreviewNamesTheFile`. Backend-Seite (C4-1): Guard-leerer-Diff raus →
+  `anUnchangedFileShowsNothing`; Guard-Zusammenfassung als Diff → `aFileTooLargeForADiffIsAToolLine`;
+  Override stillgelegt → alle vier (Default „Updated: …").
+- **Nach C4: Backend 220/0/0** (216 + 4, C4-1, ein Kontext-Start), **UI 134 Tests / 17 Dateien** (129/16),
+  `tsc` + oxlint 0/0 (60 Dateien), Doc-Lint **68/68 UCs, 258 Test-Ids, 0 Findings** (UC-WP-68 belegt).
+  `R-WP-36`/`UC-WP-68` bleiben ❌ im Commit — flippt Jon.
+
