@@ -28,11 +28,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -41,8 +38,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
@@ -56,6 +51,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.poagent.AiPoAgent;
+import org.sterl.open.aifactory.FactorySpringTest;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
 import org.sterl.open.aifactory.config.FactoryConfigService;
@@ -72,10 +68,8 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * <p>Every test works on its own project, so none of them can inherit another one's runtime or
  * history — that sharing is the subject of UC-WP-16, not a fixture here.</p>
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(FakeGitConfig.class)
 @Timeout(120)
-class ChatTurnTest {
+class ChatTurnTest extends FactorySpringTest {
 
     /** Longer than the mock's 10-char chunk width, so a streamed answer is provable. */
     private static final String LONG_ANSWER = "Die Antwort kommt in mehreren Stücken beim Leser an.";
@@ -88,9 +82,6 @@ class ChatTurnTest {
             .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(Duration.ofSeconds(5))
             .build();
-
-    @TempDir
-    static Path home;
 
     private static final MockLlmServer MODEL = new MockLlmServer(0);
 
@@ -124,11 +115,6 @@ class ChatTurnTest {
         this.http = new RestTemplate();
         // the status IS the assertion — a client that throws would hide what the app answers
         this.http.setErrorHandler(new NoOpResponseErrorHandler());
-    }
-
-    @DynamicPropertySource
-    static void isolateHome(DynamicPropertyRegistry registry) {
-        registry.add("aifactory.home", home::toString);
     }
 
     @Test
@@ -431,7 +417,7 @@ class ChatTurnTest {
         properties.setProperty(LlmConfigKeys.MODEL, model);
         properties.setProperty(LlmConfigKeys.URL, url);
         properties.setProperty(LlmConfigKeys.API_KEY, apiKey);
-        try (var out = Files.newOutputStream(home.resolve(FactoryHome.CONFIG_FILE))) {
+        try (var out = Files.newOutputStream(HOME.resolve(FactoryHome.CONFIG_FILE))) {
             properties.store(out, "ChatTurnTest");
         }
     }

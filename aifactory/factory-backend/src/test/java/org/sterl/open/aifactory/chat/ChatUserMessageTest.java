@@ -15,11 +15,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -27,8 +24,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
@@ -39,11 +34,10 @@ import dev.langchain4j.data.message.UserMessage;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.poagent.AiPoAgent;
+import org.sterl.open.aifactory.FactorySpringTest;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
-import org.sterl.open.aifactory.project.FakeGitConfig;
 import org.sterl.open.aifactory.project.ProjectRemoved;
-import org.sterl.open.aifactory.project.ProjectService;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
@@ -60,24 +54,16 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * fire-and-forget, so a red assertion would otherwise leave a turn running on a server the next test has
  * already replaced.</p>
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(FakeGitConfig.class)
 @Timeout(120)
-class ChatUserMessageTest {
+class ChatUserMessageTest extends FactorySpringTest {
 
     /** Holds a turn open until the test releases it, so a second send has to queue (see {@code ChatQueueTest}). */
     private static final String GATE_TOOL = TurnGate.toolArguments();
-
-    @TempDir
-    static Path home;
 
     private MockLlmServer model;
 
     @LocalServerPort
     private int port;
-
-    @Autowired
-    private ProjectService projects;
 
     @Autowired
     private ProjectRuntimeRegistry runtimes;
@@ -98,11 +84,6 @@ class ChatUserMessageTest {
         if (model != null) {
             model.stop();
         }
-    }
-
-    @DynamicPropertySource
-    static void isolateHome(DynamicPropertyRegistry registry) {
-        registry.add("aifactory.home", home::toString);
     }
 
     @Test
@@ -339,7 +320,7 @@ class ChatUserMessageTest {
         properties.setProperty(LlmConfigKeys.MODEL, "sender-48");
         properties.setProperty(LlmConfigKeys.URL, model.getUrl());
         properties.setProperty(LlmConfigKeys.API_KEY, "test-key");
-        try (var out = Files.newOutputStream(home.resolve(FactoryHome.CONFIG_FILE))) {
+        try (var out = Files.newOutputStream(HOME.resolve(FactoryHome.CONFIG_FILE))) {
             properties.store(out, "ChatUserMessageTest");
         }
     }

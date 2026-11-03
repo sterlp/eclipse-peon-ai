@@ -9,7 +9,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,11 +24,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -37,8 +33,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
@@ -50,13 +44,12 @@ import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
+import org.sterl.open.aifactory.FactorySpringTest;
 import org.sterl.open.aifactory.chat.dto.AgentTileDto;
 import org.sterl.open.aifactory.chat.dto.AgentTileState;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
-import org.sterl.open.aifactory.project.FakeGitConfig;
 import org.sterl.open.aifactory.project.Project;
-import org.sterl.open.aifactory.project.ProjectService;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
@@ -75,10 +68,8 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * cancel-is-no-error rule is pinned purely in {@code TurnOutcomeTest} and its use in the turn is proven by
  * the missing {@code error} event below.</p>
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(FakeGitConfig.class)
 @Timeout(180)
-class AgentStopTest {
+class AgentStopTest extends FactorySpringTest {
 
     /** Holds the turn inside a running tool until the test releases it — the stop has to land in there. */
     private static final String GATE_TOOL = TurnGate.toolArguments();
@@ -94,14 +85,8 @@ class AgentStopTest {
             .connectTimeout(Duration.ofSeconds(5))
             .build();
 
-    @TempDir
-    static Path home;
-
     @Autowired
     private ProjectRuntimeRegistry runtimes;
-
-    @Autowired
-    private ProjectService projects;
 
     @LocalServerPort
     private int port;
@@ -133,11 +118,6 @@ class AgentStopTest {
         if (model != null) {
             model.stop();
         }
-    }
-
-    @DynamicPropertySource
-    static void isolateHome(DynamicPropertyRegistry registry) {
-        registry.add("aifactory.home", home::toString);
     }
 
     @Test
@@ -449,7 +429,7 @@ class AgentStopTest {
         properties.setProperty(LlmConfigKeys.MODEL, "stop-model");
         properties.setProperty(LlmConfigKeys.URL, model.getUrl());
         properties.setProperty(LlmConfigKeys.API_KEY, "test-key");
-        try (var out = Files.newOutputStream(home.resolve(FactoryHome.CONFIG_FILE))) {
+        try (var out = Files.newOutputStream(HOME.resolve(FactoryHome.CONFIG_FILE))) {
             properties.store(out, "AgentStopTest");
         }
     }

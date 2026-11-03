@@ -77,6 +77,11 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * <p>Ordered on purpose: the restart case reads the projects of the tests before it, because a project
  * that <em>had</em> been working is the only kind of project that makes "free after a restart" say
  * something.</p>
+ *
+ * <p>That same dependency is why this class is not on {@code FactorySpringTest}: the shared context
+ * resets the factory per test method, and the restart case needs the leftovers of the methods before it.
+ * It is therefore the third documented context of the build (with the two restart proofs), and
+ * {@code SingleContextGuardTest} (Inc 5) names it as such.</p>
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(FakeGitConfig.class)

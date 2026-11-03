@@ -21,11 +21,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -33,8 +30,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
@@ -45,9 +40,9 @@ import dev.langchain4j.data.message.UserMessage;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.poagent.AiPoAgent;
+import org.sterl.open.aifactory.FactorySpringTest;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
-import org.sterl.open.aifactory.project.FakeGitConfig;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
@@ -56,13 +51,8 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * project" (R-WP-11, UC-WP-16) therefore has to hold <b>at the same time</b>, not only one after the
  * other — which is what no sequential test of {@link OneChatPerProjectTest} can show.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(FakeGitConfig.class)
 @Timeout(120)
-class ChatFirstTouchTest {
-
-    @TempDir
-    static Path home;
+class ChatFirstTouchTest extends FactorySpringTest {
 
     private static final MockLlmServer MODEL = new MockLlmServer(0);
 
@@ -90,11 +80,6 @@ class ChatFirstTouchTest {
         this.http = new RestTemplate();
         // the status IS the assertion — a client that throws would hide what the app answers
         this.http.setErrorHandler(new NoOpResponseErrorHandler());
-    }
-
-    @DynamicPropertySource
-    static void isolateHome(DynamicPropertyRegistry registry) {
-        registry.add("aifactory.home", home::toString);
     }
 
     @Test
@@ -179,7 +164,7 @@ class ChatFirstTouchTest {
                 .anySatisfy(text -> assertThat(text).contains("ERSTE-EINGABE"))
                 .anySatisfy(text -> assertThat(text).contains("ZWEITE-EINGABE"));
 
-        List<Path> stored = Files.list(home.resolve(FactoryHome.STATE_DIR).resolve(project.id())).toList();
+        List<Path> stored = Files.list(HOME.resolve(FactoryHome.STATE_DIR).resolve(project.id())).toList();
         assertThat(stored).as("one chat, one history file — no sidecar from the losing branch")
                 .singleElement()
                 .satisfies(file -> assertThat(file.getFileName().toString()).endsWith("-history.jsonl"));
@@ -231,7 +216,7 @@ class ChatFirstTouchTest {
         properties.setProperty(LlmConfigKeys.MODEL, model);
         properties.setProperty(LlmConfigKeys.URL, MODEL.getUrl());
         properties.setProperty(LlmConfigKeys.API_KEY, "test-key");
-        try (var out = Files.newOutputStream(home.resolve(FactoryHome.CONFIG_FILE))) {
+        try (var out = Files.newOutputStream(HOME.resolve(FactoryHome.CONFIG_FILE))) {
             properties.store(out, "ChatFirstTouchTest");
         }
     }
