@@ -77,7 +77,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  *
  * <p>The memories are seeded through the core's own {@code add}, so the numbers a tile shows are real
  * before the action and really gone after it; nothing here stubs an agent. Only the busy case needs a
- * turn, and it is slowed by a real {@code sleep 3} shell tool (the pattern of {@code ChatQueueTest}),
+ * turn, and it is held by a real {@link TurnGate} shell tool (the pattern of {@code ChatQueueTest}),
  * never by a wait that could pass by accident.</p>
  *
  * <p>Every wait is a deadline on the <b>end</b> state, and every end state is read behind a handshake: a
@@ -96,9 +96,9 @@ import org.sterl.open.aifactory.shared.FactoryHome;
 @Timeout(120)
 class AgentActionTest {
 
-    /** Real tool content that keeps one turn busy long enough for an action to hit a running project. */
-    private static final String SLEEP_TOOL = "{\"command\":\"sleep 3\",\"timeout\":20}";
-    private static final String SLOW_INPUT = "MITGLIEDS-LAUF: Schlaf drei Sekunden";
+    /** Holds one turn inside a running tool until the test releases it — long enough for an action. */
+    private static final String GATE_TOOL = TurnGate.toolArguments();
+    private static final String SLOW_INPUT = "MITGLIEDS-LAUF: Der Turn hält das Werkzeug";
 
     /** The answer the compressor gets back: a memory holding this line was compacted, not skipped. */
     private static final String SUMMARY = "ZUSAMMENFASSUNG: Devs Auftrag und seine Zwischenschritte";
@@ -216,8 +216,8 @@ class AgentActionTest {
         Project project = projects.add("https://git.example.com/acme/clear-busy.git").project();
         ProjectRuntime runtime = runtimes.runtime(project.id());
         model.queueResponse(new AiMessage(null, List.of(ToolExecutionRequest.builder()
-                .id("call_sleep").name("shellRunCommand").arguments(SLEEP_TOOL).build())));
-        model.queueResponse("fertig nach dem schlaf");
+                .id("call_gate").name("shellRunCommand").arguments(GATE_TOOL).build())));
+        model.queueResponse("fertig nach dem werkzeug");
         send(project.id(), SLOW_INPUT);
         awaitUntil(runtime.jon()::isWorking, 20_000, "Jon arbeitet an der Eingabe");
 
@@ -228,6 +228,8 @@ class AgentActionTest {
                 .as("and the refusal changed nothing: the turn's own input still stands in his memory")
                 .anySatisfy(message -> assertThat(textOf(message)).contains(SLOW_INPUT));
 
+        // the refusal is read while the tool still holds the turn; releasing it ends the turn undisturbed
+        TurnGate.release(project.localPath());
         awaitUntil(() -> !runtime.jon().isWorking(), 30_000, "der Turn endete ungestört");
         assertThat(messages(project.id()))
                 .as("the turn answers as if no action had been asked for")

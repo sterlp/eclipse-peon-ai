@@ -58,6 +58,7 @@ import dev.langchain4j.data.message.AiMessage;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.open.aifactory.AifactoryApplication;
+import org.sterl.open.aifactory.chat.TurnGate;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
 import org.sterl.open.aifactory.shared.FactoryHome;
@@ -70,8 +71,8 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  *
  * <p>The states are read through {@link ProjectWorkStates} — the port and not the runtime: the list
  * belongs to {@code project} and is only <em>told</em> what runs (D-6). Nothing of the turn is faked, so
- * the busy window is a real three-second shell tool (as in the queue test) and the waited input really is
- * answered before the row may go free.</p>
+ * the busy window is a real shell tool that holds until the test releases its {@link TurnGate} (as in the
+ * queue test) and the waited input really is answered before the row may go free.</p>
  *
  * <p>Ordered on purpose: the restart case reads the projects of the tests before it, because a project
  * that <em>had</em> been working is the only kind of project that makes "free after a restart" say
@@ -83,8 +84,8 @@ import org.sterl.open.aifactory.shared.FactoryHome;
 @Timeout(180)
 class ProjectStatusTest {
 
-    /** Real tool content that keeps one turn busy long enough for a second input to wait behind it. */
-    private static final String SLEEP_TOOL = "{\"command\":\"sleep 3\",\"timeout\":20}";
+    /** Holds one turn inside a running tool until the test releases it — long enough to be watched. */
+    private static final String GATE_TOOL = TurnGate.toolArguments();
 
     /** HTTP/1.1 on purpose — the SSE edge is what the browser talks (see {@code ChatQueueTest}). */
     private static final HttpClient STREAMS = HttpClient.newBuilder()
@@ -138,14 +139,15 @@ class ProjectStatusTest {
     // UC-WP-47
     void theListShowsWorkingAndFreeAfterTheTurn() throws Exception {
         writeFactoryConfig("inc2-working-47");
-        String projectId = createProject("working-47");
+        CreatedProject created = createProject("working-47");
+        String projectId = created.id();
 
         try (StatusStream stream = new StatusStream(port)) {
             assertThat(stream.awaitSnapshot())
                     .as("ein neuer Betrachter wird mit dem vollen Stand verbunden")
                     .contains(ProjectWork.free(projectId));
 
-            model.queueResponse(toolCall("call_sleep", "shellRunCommand", SLEEP_TOOL));
+            model.queueResponse(toolCall("call_sleep", "shellRunCommand", GATE_TOOL));
             model.queueResponse("die Antwort des laufenden Turns");
 
             assertThat(send(projectId, "die erste Frage").getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
@@ -154,6 +156,9 @@ class ProjectStatusTest {
             assertThat(states.await(workingWith(0), 15_000, "die Zeile sagt arbeitet"))
                     .as("arbeitet, und zwar auf genau der einen Verbindung")
                     .isEqualTo(new WorkStates.State(true, 0));
+
+            // the change is read off the one connection; now the tool may end and the row go free
+            TurnGate.release(created.localPath());
 
             assertThat(states.await(free(), 60_000, "die Zeile sagt frei"))
                     .as("nach dem Turn frei — niemand hat neu geladen")
@@ -174,12 +179,13 @@ class ProjectStatusTest {
     // UC-WP-47
     void aQueuedInputIsCounted() throws Exception {
         writeFactoryConfig("inc2-queued-47");
-        String projectId = createProject("queued-47");
+        CreatedProject created = createProject("queued-47");
+        String projectId = created.id();
         String waitedAnswer = "die Antwort auf die gewartete Eingabe";
 
         try (StatusStream stream = new StatusStream(port)) {
             stream.awaitSnapshot();
-            model.queueResponse(toolCall("call_sleep", "shellRunCommand", SLEEP_TOOL));
+            model.queueResponse(toolCall("call_sleep", "shellRunCommand", GATE_TOOL));
             model.queueResponse("die Antwort des laufenden Turns");
             model.queueResponse(waitedAnswer);
 
@@ -194,6 +200,8 @@ class ProjectStatusTest {
                     .as("gearbeitet wird an der ersten, die zweite wartet — dazwischen gibt es keinen Zustand")
                     .isEqualTo(new WorkStates.State(true, 1));
 
+            // working and waited are both on the wire, so the tool may end and both inputs be answered
+            TurnGate.release(created.localPath());
             states.await(free(), 90_000, "die Zeile sagt frei");
             assertThat(messages(projectId))
                     .as("frei heißt: auch die gewartete Eingabe ist abgearbeitet, sonst wäre die Zeile zu früh frei")
@@ -252,12 +260,14 @@ class ProjectStatusTest {
                 }).getBody();
     }
 
-    private String createProject(String slug) {
+    private CreatedProject createProject(String slug) {
         ResponseEntity<String> created = http.postForEntity(url("/api/projects"),
                 jsonEntity(Map.of("gitUrl", "https://git.example.com/acme/" + slug + ".git")), String.class);
 
         assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        return JsonPath.read(created.getBody(), "$.id");
+        // a typed local, not a nested read: Path.of(URI, String…) would win the overload for T = URI
+        String localPath = JsonPath.read(created.getBody(), "$.localPath");
+        return new CreatedProject(JsonPath.read(created.getBody(), "$.id"), Path.of(localPath));
     }
 
     private String url(String path) {
@@ -312,6 +322,10 @@ class ProjectStatusTest {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("interrupted while waiting for a state", interrupted);
         }
+    }
+
+    /** The project as the create answered it — the checkout is what opens the turn gate. */
+    private record CreatedProject(String id, Path localPath) {
     }
 
     /** The state as the wire names it — the three fields {@code ProjectWorkDto} writes. */

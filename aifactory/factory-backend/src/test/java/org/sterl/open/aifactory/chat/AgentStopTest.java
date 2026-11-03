@@ -63,11 +63,12 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * Stop over the real edge (UC-WP-50): one flag on the project's one monitor ends the whole turn — Jon
  * <b>and</b> a delegation that is running inside him — and it does so as an end, not as an error.
  *
- * <p>Nothing below {@code AiPoAgent} is stubbed. A turn is slowed by a real {@code sleep 3} shell tool, the
+ * <p>Nothing below {@code AiPoAgent} is stubbed. A turn is held by a real {@link TurnGate} shell tool, the
  * pattern of {@code ChatQueueTest}, and every wait is a deadline on the <b>end</b> state. The core's own
  * boundary is respected and never asserted away: it reads the cancel <b>between</b> its model calls, so a
- * tool that is already running runs to its end — which is exactly why the turn needs a real three seconds
- * and the test a generous deadline instead of a claim about the middle of a stream.</p>
+ * tool that is already running runs to its end — which is exactly why the gate stays shut until the stop
+ * has landed, and why the test keeps a generous deadline instead of a claim about the middle of a
+ * stream.</p>
  *
  * <p>What is proven here is the turn, not the classification of an exception: a stop that lands while the
  * model is mid-stream cannot be produced on demand (the mock writes a streamed answer in one piece), so the
@@ -79,10 +80,10 @@ import org.sterl.open.aifactory.shared.FactoryHome;
 @Timeout(180)
 class AgentStopTest {
 
-    /** Real tool content that keeps a turn busy long enough for a stop to land inside it. */
-    private static final String SLEEP_TOOL = "{\"command\":\"sleep 3\",\"timeout\":20}";
-    private static final String SLOW_INPUT = "LAUF: Schlaf drei Sekunden";
-    private static final String MEMBER_PROMPT = "HALTE: Schlaf drei Sekunden";
+    /** Holds the turn inside a running tool until the test releases it — the stop has to land in there. */
+    private static final String GATE_TOOL = TurnGate.toolArguments();
+    private static final String SLOW_INPUT = "LAUF: Der Turn hält das Werkzeug";
+    private static final String MEMBER_PROMPT = "HALTE: Dev hält das Werkzeug";
     private static final String QUEUED_INPUT = "WARTENDE-ZWEITFRAGE";
 
     /**
@@ -146,10 +147,10 @@ class AgentStopTest {
         Project project = projects.add("https://git.example.com/acme/stop-turn.git").project();
         ProjectRuntime runtime = runtimes.runtime(project.id());
         try (StopStream wire = new StopStream(project.id())) {
-            model.queueResponse(toolCall("call_sleep", "shellRunCommand", SLEEP_TOOL));
+            model.queueResponse(toolCall("call_gate", "shellRunCommand", GATE_TOOL));
             model.queueResponse("DIESE-ANTWORT-DARF-NICHT-MEHR-KOMMEN");
             send(project.id(), SLOW_INPUT);
-            awaitUntil(() -> wire.hasToolLine("Running: `sleep 3`"), 20_000,
+            awaitUntil(() -> wire.hasToolLine(TurnGate.runningLine()), 20_000,
                     "der laufende Shell meldet seinen Befehl");
 
             assertThat(stop(project.id()))
@@ -159,6 +160,9 @@ class AgentStopTest {
                     .as("and taken again while the tool still drains — the same wish, not a new error")
                     .isEqualTo(HttpStatus.ACCEPTED.value());
 
+            // the gate is what holds the turn open; opening it after the stop is what lets the running
+            // tool reach its end, and that end is the only place the core reads the cancel
+            TurnGate.release(project.localPath());
             awaitUntil(() -> !runtime.jon().isWorking(), 30_000, "Jons Turn endete nach dem Stop");
             wire.await(() -> wire.countOf("done") >= 1, "das Ende kam auf die Leitung");
             wire.awaitRosterAsLastEvent();
@@ -199,11 +203,14 @@ class AgentStopTest {
         ProjectRuntime runtime = runtimes.runtime(project.id());
         try (StopStream wire = new StopStream(project.id())) {
             // the first call earns one credit of patience, the second one finds no server at all
-            model.queueResponse(toolCall("call_sleep", "shellRunCommand", SLEEP_TOOL));
+            model.queueResponse(toolCall("call_gate", "shellRunCommand", GATE_TOOL));
             send(project.id(), SLOW_INPUT);
-            awaitUntil(() -> wire.hasToolLine("Running: `sleep 3`"), 20_000,
+            awaitUntil(() -> wire.hasToolLine(TurnGate.runningLine()), 20_000,
                     "der laufende Shell meldet seinen Befehl");
             model.stop();
+            // the answer the tool would come back to is gone: the gate may open, because what the stop has
+            // to find now is the wait the retry takes before its next call
+            TurnGate.release(project.localPath());
 
             awaitUntil(() -> wire.hasToolLine("API error — attempt"), 30_000,
                     "die Retry-Geduld meldet den Fehler auf der Leitung");
@@ -237,12 +244,12 @@ class AgentStopTest {
         ProjectRuntime runtime = runtimes.runtime(project.id());
         AiAgent dev = member(runtime, AiDevAgent.NAME);
         try (StopStream wire = new StopStream(project.id())) {
-            // Jon delegates, Dev sleeps inside the delegation — one monitor for both of them
+            // Jon delegates, Dev holds a shell inside the delegation — one monitor for both of them
             model.queueResponse(toolCall("call_dev", "askDev", "{\"prompt\":\"" + MEMBER_PROMPT + "\"}"));
-            model.queueResponse(toolCall("call_dev_sleep", "shellRunCommand", SLEEP_TOOL));
+            model.queueResponse(toolCall("call_dev_sleep", "shellRunCommand", GATE_TOOL));
             model.queueResponse("DEV-ANTWORT-NACH-DEM-STOP");
             model.queueResponse("JON-ANTWORT-NACH-DEM-STOP");
-            send(project.id(), "DELEGATION: Frag Dev nach drei Sekunden");
+            send(project.id(), "DELEGATION: Frag Dev, während sein Werkzeug läuft");
             awaitUntil(() -> dev.isWorking() && runtime.jon().isWorking(), 25_000,
                     "Dev arbeitet in Jons Turn");
 
@@ -250,6 +257,8 @@ class AgentStopTest {
                     .as("the stop is asked of the turn, and Dev runs inside it")
                     .isEqualTo(HttpStatus.ACCEPTED.value());
 
+            // Dev's tool is the innermost thing still running, so releasing it is what ends both turns
+            TurnGate.release(project.localPath());
             awaitUntil(() -> !dev.isWorking() && !runtime.jon().isWorking(), 30_000,
                     "auch die laufende Delegation endete — „alles gestopt“");
             wire.await(() -> wire.countOf("done") >= 1, "das Ende kam auf die Leitung");
@@ -272,12 +281,13 @@ class AgentStopTest {
         Project project = projects.add("https://git.example.com/acme/stop-then-turn.git").project();
         ProjectRuntime runtime = runtimes.runtime(project.id());
         try (StopStream wire = new StopStream(project.id())) {
-            model.queueResponse(toolCall("call_sleep", "shellRunCommand", SLEEP_TOOL));
+            model.queueResponse(toolCall("call_gate", "shellRunCommand", GATE_TOOL));
             send(project.id(), SLOW_INPUT);
-            awaitUntil(() -> wire.hasToolLine("Running: `sleep 3`"), 20_000, "der laufende Shell meldet seinen Befehl");
+            awaitUntil(() -> wire.hasToolLine(TurnGate.runningLine()), 20_000, "der laufende Shell meldet seinen Befehl");
             assertThat(stop(project.id()))
                     .as("stop auf den laufenden Turn: %s", lastStopBody)
                     .isEqualTo(HttpStatus.ACCEPTED.value());
+            TurnGate.release(project.localPath());
             awaitUntil(() -> !runtime.jon().isWorking(), 30_000, "der gestoppte Turn endete");
             wire.await(() -> wire.countOf("done") >= 1, "das Ende kam auf die Leitung");
 
@@ -332,16 +342,20 @@ class AgentStopTest {
         Project project = projects.add("https://git.example.com/acme/stop-queue.git").project();
         ProjectRuntime runtime = runtimes.runtime(project.id());
         try (StopStream wire = new StopStream(project.id())) {
-            model.queueResponse(toolCall("call_sleep", "shellRunCommand", SLEEP_TOOL));
+            model.queueResponse(toolCall("call_gate", "shellRunCommand", GATE_TOOL));
             send(project.id(), SLOW_INPUT);
-            awaitUntil(() -> wire.hasToolLine("Running: `sleep 3`"), 20_000,
+            awaitUntil(() -> wire.hasToolLine(TurnGate.runningLine()), 20_000,
                     "der laufende Shell meldet seinen Befehl");
-            // Jon is still working, so this input goes to his queue (UC-WP-14)
+            // Jon is still working, so this input goes to his queue (UC-WP-14). The gate leaves no
+            // three-second window to lean on, so the queue itself is what this test waits for.
             send(project.id(), QUEUED_INPUT);
+            awaitUntil(() -> runtime.jon().getQueuedMessageCount() == 1, 2_000,
+                    "die zweite Eingabe liegt in der Queue, bevor der Stop kommt");
 
             assertThat(stop(project.id()))
                     .as("a second send in the queue does not free the project — the turn is still there to stop")
                     .isEqualTo(HttpStatus.ACCEPTED.value());
+            TurnGate.release(project.localPath());
             awaitUntil(() -> !runtime.jon().isWorking(), 30_000, "der gestoppte Turn endete");
             wire.await(() -> wire.countOf("done") >= 1, "das Ende kam auf die Leitung");
 

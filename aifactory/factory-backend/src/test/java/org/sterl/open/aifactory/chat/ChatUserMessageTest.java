@@ -65,8 +65,8 @@ import org.sterl.open.aifactory.shared.FactoryHome;
 @Timeout(120)
 class ChatUserMessageTest {
 
-    /** Real tool content that holds a turn open, so a second send has to queue (see {@code ChatQueueTest}). */
-    private static final String SLEEP_TOOL = "{\"command\":\"sleep 3\",\"timeout\":20}";
+    /** Holds a turn open until the test releases it, so a second send has to queue (see {@code ChatQueueTest}). */
+    private static final String GATE_TOOL = TurnGate.toolArguments();
 
     @TempDir
     static Path home;
@@ -248,7 +248,7 @@ class ChatUserMessageTest {
     void aQueuedInputKeepsItsName() throws Exception {
         writeFactoryConfig();
         String projectId = createProject("queued-48");
-        model.queueResponse(toolCall("call_sleep", "shellRunCommand", SLEEP_TOOL));
+        model.queueResponse(toolCall("call_gate", "shellRunCommand", GATE_TOOL));
         model.queueResponse("erste Antwort fertig");
         model.queueResponse("zweite Antwort");
 
@@ -256,6 +256,11 @@ class ChatUserMessageTest {
         AiPoAgent jon = runtimes.runtime(projectId).jon();
         awaitUntil(jon::isWorking, 2_000, "Jon arbeitet an der ersten Eingabe");
         send(projectId, "zweite Frage", "Anna");
+        // the gate leaves no three-second window to lean on: the queue itself is what says this input
+        // arrived inside the turn that was already running
+        awaitUntil(() -> jon.getQueuedMessageCount() == 1, 2_000,
+                "die zweite Eingabe liegt in der Queue");
+        TurnGate.release(checkoutOf(projectId));
 
         awaitUntil(() -> history(projectId).stream()
                 .anyMatch(line -> "user".equals(line.role()) && line.text().contains("[Queued Message]")),
@@ -299,6 +304,11 @@ class ChatUserMessageTest {
 
     private String createProject(String slug) {
         return projects.add("https://git.example.com/acme/" + slug + ".git").project().id();
+    }
+
+    /** The checkout as the production code names it — the directory a shell tool runs in. */
+    private Path checkoutOf(String projectId) {
+        return projects.find(projectId).orElseThrow().localPath();
     }
 
     /**

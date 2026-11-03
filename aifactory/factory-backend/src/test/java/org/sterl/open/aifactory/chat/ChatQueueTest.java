@@ -60,9 +60,9 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * A second input that arrives while Jon is mid-turn must not start a second turn on the same memory: it
  * lands in the queue of the very same Jon and is answered by him (UC-WP-14, UC-WP-22). Nothing below
  * {@code AiPoAgent} is stubbed — the busy guard, the {@code UserMessageQueue}, the drain and the tool loop
- * are the production ones. The turn is slowed down by a <b>real</b> {@code sleep 3} shell tool (working
+ * are the production ones. The turn is held by a <b>real</b> {@link TurnGate} shell tool (working
  * directory = the checkout, the same binding UC-WP-5 proves), so the window in which the second POST must
- * queue is real, never a faked delay.
+ * queue is real, never a faked delay — and it is the test that closes it, not a pause.
  *
  * <p>The measurements are the ones the core actually exposes — {@code MockLlmServer} has no request
  * counter. What is proven: the queue length of the live Jon, the raw body of the last provider request,
@@ -73,7 +73,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * (plan §3.6), so a queue count is only asserted exactly where one send meets an empty queue.</p>
  *
  * <p>The model double is <b>fresh per test</b>: a turn is fire-and-forget, so a test whose assertions fail
- * midway still has a {@code sleep 3} turn running on the shared executor. With one shared double that
+ * midway still has a gated turn running on the shared executor. With one shared double that
  * orphaned turn would drain the next test's scripted answers; with a per-test double it points at its own
  * already-stopped server and dies harmlessly. Every test also waits for its own turn to end.</p>
  *
@@ -95,8 +95,8 @@ import org.sterl.open.aifactory.shared.FactoryHome;
 @Timeout(120)
 class ChatQueueTest {
 
-    /** Real tool content that keeps one turn busy long enough for a second POST to have to queue. */
-    private static final String SLEEP_TOOL = "{\"command\":\"sleep 3\",\"timeout\":20}";
+    /** Holds one turn inside a running tool until the test releases it — long enough for a second POST. */
+    private static final String GATE_TOOL = TurnGate.toolArguments();
 
     /** HTTP/1.1 on purpose — the SSE edge is what the browser talks (see {@code ChatTurnTest}). */
     private static final HttpClient STREAMS = HttpClient.newBuilder()
@@ -155,7 +155,7 @@ class ChatQueueTest {
         try (ChatStream stream = new ChatStream(project.id())) {
             // one tool turn needs both halves: the call, then the answer that ends the loop; then the
             // reply to the queued input — three scripted answers in order.
-            model.queueResponse(toolCall("call_sleep", "shellRunCommand", SLEEP_TOOL));
+            model.queueResponse(toolCall("call_gate", "shellRunCommand", GATE_TOOL));
             model.queueResponse("erste Antwort fertig");
             model.queueResponse("zweite Antwort aus der Warteschlange");
 
@@ -180,6 +180,8 @@ class ChatQueueTest {
                     .as("wartend heißt: noch nicht beim Anbieter — kein zweiter Turn")
                     .doesNotContain("zweite Frage");
 
+            // both sends are read off the live queue, so the tool may end and the drain answer them
+            TurnGate.release(project.localPath());
             stream.awaitEvent("done", 1);
             assertThat(stream.countOf("done"))
                     .as("ein Turn, ein done — die abgearbeitete Warteschlange ist kein zweiter Turn (A1)")
@@ -214,7 +216,7 @@ class ChatQueueTest {
         CreatedProject project = createProject("parallel-22");
 
         try (ChatStream stream = new ChatStream(project.id())) {
-        model.queueResponse(toolCall("call_sleep", "shellRunCommand", SLEEP_TOOL));
+        model.queueResponse(toolCall("call_gate", "shellRunCommand", GATE_TOOL));
         model.queueResponse("erste Antwort fertig");
         model.queueResponse("zweite Antwort aus der Warteschlange");
 
@@ -247,6 +249,8 @@ class ChatQueueTest {
                 .as("und der eine Jon ist Jon")
                 .isEqualTo(AiPoAgent.NAME);
 
+        // the queue count and the runtime identity are read; now the tool may end and drain it
+        TurnGate.release(project.localPath());
         // Completion is anchored on the queued input's answer landing in THIS conversation's history:
         // isWorking() only says a turn is held, not that the waiting input was drained and answered —
         // the answer in the history is the honest signal that the same Jon did it, never a parallel turn.
@@ -275,7 +279,7 @@ class ChatQueueTest {
         CreatedProject project = createProject("two-3c");
 
         try (ChatStream stream = new ChatStream(project.id())) {
-            model.queueResponse(toolCall("call_sleep", "shellRunCommand", SLEEP_TOOL));
+            model.queueResponse(toolCall("call_gate", "shellRunCommand", GATE_TOOL));
             model.queueResponse("erste Antwort fertig");
             // verschmolzen braucht die Queue eine Antwort, nicht verschmolzen zwei — beide Fälle abdecken
             model.queueResponse("erste Warteschlangen-Antwort");
@@ -295,6 +299,8 @@ class ChatQueueTest {
                     .as("zum einen Eintrag verschmolzen oder getrennt — beides ist zulässiges Core-Verhalten")
                     .isBetween(1, 2);
 
+            // both waiting texts are on the queue, so the tool may end and the drain answer them
+            TurnGate.release(project.localPath());
             stream.awaitEvent("done", 1);
             assertThat(stream.countOf("done"))
                     .as("ein Turn, ein done — auch wenn zwei Eingaben darin abgearbeitet wurden (A1)")
@@ -454,14 +460,14 @@ class ChatQueueTest {
         }
 
         /**
-         * Blocks until a live {@code tool} line names the running shell command — the shell writes
-         * {@code Running: `sleep 3`} just before it blocks in {@code process.waitFor}. Once it is on the
-         * wire, the turn is provably inside the three-second tool, so any send that now arrives meets a
+         * Blocks until a live {@code tool} line names the running gate command — the shell writes its
+         * {@code Running: …} line just before it blocks in {@code process.waitFor}. Once it is on the
+         * wire, the turn is provably inside the tool, so any send that now arrives meets a
          * busy Jon and must queue; the queue assertion stops racing the turn's start.
          */
         void awaitShellRunning(long timeoutMs, String what) {
             long until = System.currentTimeMillis() + timeoutMs;
-            while (dataLines.stream().noneMatch(d -> d.contains("Running") && d.contains("sleep 3"))) {
+            while (dataLines.stream().noneMatch(d -> d.contains(TurnGate.runningLine()))) {
                 assertThat(System.currentTimeMillis())
                         .as("%s kam vor der Deadline von %d ms an (Verbindung: %s)", what, timeoutMs, failure)
                         .isLessThan(until);

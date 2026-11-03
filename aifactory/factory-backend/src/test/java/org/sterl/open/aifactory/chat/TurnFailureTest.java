@@ -43,7 +43,7 @@ import org.sterl.open.aifactory.project.ProjectStatusStream;
  *
  * <p>The failing half of a turn needs no model: reading the config is what throws, and that is the seam a
  * plain {@link ProjectRuntime} can be built on. Only the stop needs a real turn, and for it a real shell
- * tool that is slow enough to be stopped — the pattern of {@code AgentStopTest}.</p>
+ * tool that holds until the test releases it ({@link TurnGate}) — the pattern of {@code AgentStopTest}.</p>
  */
 @Timeout(90)
 class TurnFailureTest {
@@ -52,13 +52,12 @@ class TurnFailureTest {
     private static final String REASON = "no model is configured for this project";
     private static final String PROJECT = "project-1";
     private static final String INPUT = "RICHTUNG: Wohin mit der Datei?";
-    private static final String SLEEP_TOOL = "{\"command\":\"sleep 3\",\"timeout\":20}";
-    private static final String SLOW_INPUT = "LAUF: Schlaf drei Sekunden";
+    private static final String GATE_TOOL = TurnGate.toolArguments();
+    private static final String SLOW_INPUT = "LAUF: Der Turn hält das Werkzeug";
     private static final String ANSWER_AFTER_THE_STOP = "DIESE-ANTWORT-DARF-NICHT-MEHR-KOMMEN";
 
     /** The reason of a turn whose model call failed — the runtime's own words, not the config's. */
     private static final String MID_MODEL_REASON = "the turn failed — the server log names the reason";
-    private static final String HOLD_TOOL = "{\"command\":\"sleep 6\",\"timeout\":20}";
     private static final String QUEUED_INPUT = "LAUF: Diese Eingabe wartet hinter dem Turn";
 
 
@@ -196,7 +195,7 @@ class TurnFailureTest {
                 throw new IllegalStateException("the config file is unreadable");
             };
             ProjectRuntime runtime = runtime(configForTurn, streams);
-            model.queueResponse(toolCall("call_sleep", "shellRunCommand", HOLD_TOOL));
+            model.queueResponse(toolCall("call_gate", "shellRunCommand", GATE_TOOL));
             model.queueResponse(ANSWER_AFTER_THE_STOP);
 
             runtime.submit(SLOW_INPUT, "Paul");
@@ -216,6 +215,8 @@ class TurnFailureTest {
                     .as("the project stays taken while that turn runs — no action slips in beside it")
                     .isInstanceOf(IllegalStateException.class);
 
+            // the waited submit has told its own failure, so the tool may end and take the turn with it
+            TurnGate.release(checkout);
             awaitUntil(() -> !runtime.jon().isWorking(), 30_000, "the running turn ended on that stop");
         } finally {
             model.stop();
@@ -235,13 +236,15 @@ class TurnFailureTest {
             RecordedWire wire = new RecordedWire();
             streams.subscribe(PROJECT, wire);
             ProjectRuntime runtime = runtime(() -> openAiAt(model.getUrl()), streams);
-            model.queueResponse(toolCall("call_sleep", "shellRunCommand", SLEEP_TOOL));
+            model.queueResponse(toolCall("call_gate", "shellRunCommand", GATE_TOOL));
             model.queueResponse(ANSWER_AFTER_THE_STOP);
 
             runtime.submit(SLOW_INPUT, "Paul");
             awaitUntil(wire::reportsToolLine, 20_000, "the running shell reported its command");
 
             runtime.stop();
+            // the stop is given while the tool still runs; only its end lets the turn leave the loop
+            TurnGate.release(checkout);
             awaitUntil(() -> !runtime.jon().isWorking(), 30_000, "the turn ended on the stop");
 
             assertThat(runtime.history())

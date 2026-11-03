@@ -250,13 +250,14 @@ class ChatTurnTest {
         CreatedProject project = createProject("live-lines");
 
         try (ChatStream early = new ChatStream(project.id())) {
-            MODEL.queueResponse(toolCall("call_sleep", "shellRunCommand",
-                    "{\"command\":\"sleep 1\",\"timeout\":20}"));
+            MODEL.queueResponse(toolCall("call_gate", "shellRunCommand", TurnGate.toolArguments()));
             MODEL.queueResponse(LONG_ANSWER);
             assertThat(send(project.id(), "eine Frage").getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
             assertThat(early.countOf("done"))
                     .as("the POST is never the turn's thread — it answered while Jon is still working")
                     .isZero();
+            // the running tool has reported its line, so the gate may open and the answer can stream
+            TurnGate.release(project.localPath());
 
             early.awaitEvent("partial", 2);
             // a prefix, not the whole text: the reader lags on purpose, so what is provable at this point
