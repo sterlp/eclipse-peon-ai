@@ -462,10 +462,19 @@ class FactoryConfigServiceTest {
                 .isEqualTo(LlmProviders.of(AiProvider.valueOf(entry.name())).defaultBaseUrl()));
         // no model default exists, so no field could hold one
         assertThat(componentNamesOf(ProviderDefaults.class)).containsExactly("name", "defaultUrl",
-                "thinkSupported");
+                "thinkSupported", "thinkForm", "thinkValues");
         // the providers whose core class has no think input are exactly the ones the page marks as such
         assertThat(defaults).filteredOn(entry -> !entry.thinkSupported())
                 .map(ProviderDefaults::name).containsExactly("GOOGLE_GEMINI", "MISTRAL");
+        // and the form the field takes is the core class's own answer, provider by provider (UC-WP-67)
+        assertThat(theDefaultFor(defaults, "OLLAMA").thinkForm()).isEqualTo(ThinkForm.TOGGLE);
+        assertThat(theDefaultFor(defaults, "LM_STUDIO").thinkForm()).isEqualTo(ThinkForm.FREE);
+        assertThat(theDefaultFor(defaults, "ANTHROPIC").thinkForm()).isEqualTo(ThinkForm.VALUES);
+        assertThat(defaults).filteredOn(entry -> entry.thinkForm() == ThinkForm.NONE)
+                .map(ProviderDefaults::name).containsExactly("GOOGLE_GEMINI", "MISTRAL");
+        // only a VALUES form names the list it offers; every other form answers with an empty one
+        assertThat(theDefaultFor(defaults, "ANTHROPIC").thinkValues()).containsExactly("adaptive", "enabled");
+        assertThat(theDefaultFor(defaults, "OLLAMA").thinkValues()).isEmpty();
         // a provider that needs a configured URL carries none — the page leaves the field empty
         assertThat(theDefaultFor(defaults, "OPEN_AI").defaultUrl()).isNull();
         assertThat(theDefaultFor(defaults, "OLLAMA").defaultUrl()).isNotBlank();

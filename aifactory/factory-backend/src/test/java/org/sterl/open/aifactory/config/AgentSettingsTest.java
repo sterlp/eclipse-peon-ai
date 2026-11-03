@@ -261,6 +261,24 @@ class AgentSettingsTest {
         assertThat(dev.think()).isEqualTo("high");
     }
 
+    /**
+     * UC-WP-67: the <em>shape</em> of the field comes from the provider, the <em>value</em> never does. A
+     * level that no provider list offers is stored and read back exactly as typed — ADR-0064 forbids the
+     * silent substitute a fixed list would otherwise invite.
+     */
+    @Test
+    // UC-WP-67
+    void thinkValueIsStoredVerbatim() {
+        put("search", "{\"overridden\":true,\"think\":\"ultra-max\"}");
+
+        String body = bodyOfAgents();
+
+        assertThat(text("search")).contains("think: ultra-max");
+        assertThat(slot(body, "search")).containsEntry("think", "ultra-max");
+        assertThat(configService.load().modelConfigFor("search").think()).isEqualTo("ultra-max");
+    }
+
+
     // ------------------------------------------------------------------ wire
 
     private ResponseEntity<String> put(String id, String json) {

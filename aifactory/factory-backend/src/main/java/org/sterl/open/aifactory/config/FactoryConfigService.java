@@ -112,8 +112,8 @@ public class FactoryConfigService {
 
     /**
      * What the core knows per provider (UC-WP-62): the base URL it falls back to and whether it can carry
-     * a think input at all. No model default, because the core knows none — a page that invented one
-     * would carry over a value belonging to another provider.
+     * a think input at all, plus that input's form for the agent slots (UC-WP-67). No model default, because
+     * the core knows none — a page that invented one would carry over a value belonging to another provider.
      *
      * <p>{@link ThinkSupport.Unknown} counts as supported: it says the form is not known <em>yet</em>,
      * which is not the claim "this provider has no think input" that the disabled field makes.</p>
@@ -122,8 +122,10 @@ public class FactoryConfigService {
         return Arrays.stream(AiProvider.values())
                 .map(name -> {
                     LlmProvider provider = LlmProviders.of(name);
+                    ThinkSupport support = provider.thinkSupport();
                     return new ProviderDefaults(name.name(), provider.defaultBaseUrl(),
-                            !(provider.thinkSupport() instanceof ThinkSupport.None));
+                            !(support instanceof ThinkSupport.None), ThinkForm.of(support),
+                            support instanceof ThinkSupport.Values values ? values.values() : List.of());
                 })
                 .toList();
     }

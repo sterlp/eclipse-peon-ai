@@ -138,6 +138,14 @@ sobald die Agent-Datei mindestens ein Config-Feld trägt (Modell, URL, Key, Thin
 
 - Haken gesetzt: ein leeres Feld erbt den Default (Feld für Feld, wie R-DEF-1/2 im Plugin); Keys bleiben
   maskiert wie in R-WP-16.
+- **Think ist die Form des Basis-Providers**, nie Freitext: **Toggle** (leer / `true` / `false`) ·
+  **Values** (die feste Liste des Providers) · **FreeString** (Text) · **None** (kein Feld, nur der
+  Hinweis) — dieselbe Form, die das Think-Feld im Plugin hat. Einen Provider je Agent gibt es nicht
+  (oben), also entscheidet immer die Basis. Ein gespeicherter Wert außerhalb der Liste **bleibt
+  verbatim** erhalten — die Auswahl bietet ihn als zusätzlichen Eintrag an, sie ersetzt ihn nicht
+  (ADR-0064); leer erbt den Default ([R-THINK-10](../../org.sterl.llmpeon.core/docs/per-agent-think.md)).
+  Im **Dev-Slot** heißt das Feld **`Think (Default)`**, weil der Dev-Record im Core die Basis-Semantik
+  für alle anderen Agenten trägt (R-THINK-10).
 - Haken entfernt + Speichern: alle Config-Werte dieses Agenten werden **aus seiner Datei gelöscht** —
   der Agent ist wieder „Default". Der Prompt-Rumpf bleibt unberührt. Bewusst anders als R-DEF-11 im
   Plugin (dort bleibt ein versteckter Wert erhalten).
@@ -157,3 +165,15 @@ Agenten; was nicht sichtbar ist, wirkt auch nicht.
 - GIVEN Devs Datei trägt `model: gpt-5` und einen Prompt-Rumpf WHEN der Nutzer den Haken entfernt und
   speichert THEN trägt die Datei kein Config-Feld mehr, der Rumpf ist unverändert, Dev nutzt den Default
   und der Haken ist beim nächsten Öffnen leer.
+
+#### UC-WP-67 — agentThinkFollowsTheProviderForm ❌
+- GIVEN die Config-Seite mit Basis-Provider `OLLAMA` WHEN ein Slot überschreibt THEN ist Think eine
+  Auswahl aus leer / `true` / `false` — kein Freitext-Feld.
+- GIVEN ein Basis-Provider mit fester Werte-Liste (z. B. `ANTHROPIC` → `adaptive`, `enabled`) WHEN der
+  Slot trägt bereits `ultra` THEN zeigt die Auswahl `ultra` als zusätzlichen Eintrag, und Speichern
+  schreibt `ultra` unverändert in die Datei (kein stiller Ersatz, ADR-0064).
+- GIVEN ein Provider ohne Think-Eingang (`GOOGLE_GEMINI`, `MISTRAL`) WHEN ein Slot überschreibt THEN
+  steht kein Think-Feld, nur der Hinweis; der gespeicherte Wert bleibt erhalten und wird mitgesendet.
+- GIVEN der Dev-Slot WHEN seine Felder sichtbar THEN heißt das Think-Feld `Think (Default)`, weil Devs
+  Record die Basis für alle anderen ist (R-THINK-10).
+

@@ -6,6 +6,7 @@ import { Agents } from './config.agents'
 import {
   getSettings,
   listProviders,
+  thinkInputOf,
   updateSettings,
   type KeySource,
   type Provider,
@@ -286,8 +287,10 @@ export function ConfigPage() {
           </button>
         </form>
       )}
-      {/* R-WP-23: the agent overrides below the default — their own read, their own save per slot */}
-      <Agents />
+      {/* R-WP-23: the agent overrides below the default — their own read, their own save per slot. The
+          think field is built from the provider the form names (UC-WP-67), so the section reads the
+          answer of this page rather than asking the server the same question a second time. */}
+      <Agents think={thinkInputOf(chosen)} />
     </section>
   )
 }

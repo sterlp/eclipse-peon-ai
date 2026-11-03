@@ -21,17 +21,26 @@ type Call = { method: string; path: string; body?: string }
 
 /**
  * The provider list as the core answers it (UC-WP-62): one provider with a URL default, one without a
- * think input. The values are stubs on purpose — which URL the core really carries is pinned by
- * `SettingsControllerTest`, the page only has to follow what the server says.
+ * think input. The values are stubs on purpose — which URL and which think values the core really
+ * carries is pinned by `SettingsControllerTest`, the page only has to follow what the server says
+ * (UC-WP-67: the same answer also builds the agent think field).
  */
 const PROVIDER_ANSWER = [
-  { name: 'OPEN_AI', defaultUrl: null, thinkSupported: true },
+  {
+    name: 'OPEN_AI',
+    defaultUrl: null,
+    thinkSupported: true,
+    thinkForm: 'VALUES',
+    thinkValues: ['minimal', 'low', 'medium', 'high'],
+  },
   {
     name: 'OLLAMA',
     defaultUrl: 'https://ollama.example',
     thinkSupported: true,
+    thinkForm: 'TOGGLE',
+    thinkValues: [],
   },
-  { name: 'GOOGLE_GEMINI', defaultUrl: null, thinkSupported: false },
+  { name: 'GOOGLE_GEMINI', defaultUrl: null, thinkSupported: false, thinkForm: 'NONE', thinkValues: [] },
 ]
 
 /**
@@ -302,6 +311,53 @@ test('unsupportedThinkIsShownAndDisabled', async () => {
   // disabled is not cleared: the stored value stands until a save says otherwise (UC-WP-46)
   expect(screen.getByLabelText(content.config.sendThinking)).toHaveValue('no')
 })
+
+/**
+ * UC-WP-67 over the page: the agent rows take the form of the provider this form names — the slots have no
+ * provider of their own, so the section reads the answer the page already has instead of asking twice.
+ */
+// UC-WP-67
+test('agentThinkFollowsTheProviderOfTheForm', async () => {
+  const server = stubServer({
+    GET: settingsAnswer(),
+    AGENTS: [
+      {
+        id: 'dev',
+        name: 'Dev',
+        overridden: true,
+        model: null,
+        url: null,
+        think: 'medium',
+        temperature: null,
+        keySet: false,
+      },
+    ],
+  })
+  render(<ConfigPage />)
+
+  // OPEN_AI answers a fixed list, so the agent field is that list and not a text box
+  const think = (await screen.findByLabelText(content.agents.thinkDefault)) as HTMLSelectElement
+  expect(think.tagName).toBe('SELECT')
+  expect(Array.from(think.options).map((option) => option.value)).toEqual([
+    '',
+    'minimal',
+    'low',
+    'medium',
+    'high',
+  ])
+  expect(think.value).toBe('medium')
+
+  // the provider chosen on the page decides, at once and without a save in between (as R-WP-16 does for the URL)
+  fireEvent.change(screen.getByLabelText(content.config.provider), {
+    target: { value: 'GOOGLE_GEMINI' },
+  })
+  expect(screen.queryByLabelText(content.agents.thinkDefault)).toBeNull()
+  expect(screen.getByTestId('agent-dev-think-unsupported')).toBeInTheDocument()
+
+  // one provider answer serves both areas — a second read would be a second opinion on one question
+  expect(server.calls.filter((call) => call.path === '/api/settings/providers')).toHaveLength(1)
+})
+
 
 // UC-WP-63
 test('removeKeyDeletesItAndRefreshesTheStatus', async () => {

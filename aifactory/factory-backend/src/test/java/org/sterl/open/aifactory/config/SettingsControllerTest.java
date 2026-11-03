@@ -308,7 +308,38 @@ class SettingsControllerTest {
 
         // a model default would be an invention, so there is no field that could hold one
         assertThat(componentNamesOf(ProviderDefaultsDto.class)).containsExactly("name", "defaultUrl",
-                "thinkSupported");
+                "thinkSupported", "thinkForm", "thinkValues");
+        assertThat(config()).doesNotExist();
+    }
+
+    /**
+     * UC-WP-67 over HTTP: the agent slots build their think field from the base provider, so the answer
+     * carries the core's own form and, for a fixed list, the list itself. Nothing here is the factory's
+     * guess — every value is read off {@code LlmProvider.thinkSupport()}.
+     */
+    @Test
+    // UC-WP-67
+    @SuppressWarnings("unchecked")
+    void providerDefaultsCarryTheThinkForm() {
+        String body = http.getForEntity(url("/api/settings/providers"), String.class).getBody();
+        List<String> names = (List<String>) field(body, "$[*].name");
+
+        // a fixed list arrives as a list, in the core's own order — the page must not sort or replace it
+        assertThat(field(body, "$[" + names.indexOf("ANTHROPIC") + "].thinkForm")).isEqualTo("VALUES");
+        assertThat((List<String>) field(body, "$[" + names.indexOf("ANTHROPIC") + "].thinkValues"))
+                .containsExactly("adaptive", "enabled");
+        // a toggle names no list; the page offers unset/true/false itself
+        assertThat(field(body, "$[" + names.indexOf("OLLAMA") + "].thinkForm")).isEqualTo("TOGGLE");
+        assertThat((List<String>) field(body, "$[" + names.indexOf("OLLAMA") + "].thinkValues")).isEmpty();
+        // free text is a form of its own, not a missing list
+        assertThat(field(body, "$[" + names.indexOf("LM_STUDIO") + "].thinkForm")).isEqualTo("FREE");
+        // no input at all is answered as such — the page then shows no control, only the hint
+        assertThat(field(body, "$[" + names.indexOf("GOOGLE_GEMINI") + "].thinkForm")).isEqualTo("NONE");
+        assertThat(field(body, "$[" + names.indexOf("MISTRAL") + "].thinkForm")).isEqualTo("NONE");
+        // thinkSupported keeps its old meaning: it disables the field, the form says how it looks
+        assertThat(field(body, "$[" + names.indexOf("MISTRAL") + "].thinkSupported")).isEqualTo(false);
+        assertThat(field(body, "$[" + names.indexOf("OLLAMA") + "].thinkSupported")).isEqualTo(true);
+        // reading the form stays a read
         assertThat(config()).doesNotExist();
     }
 

@@ -9,7 +9,10 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
   7a/7b-Bau) — [R-WP-23](config.md) zeigt je Agent Modell, URL und Key; für den Slot `dev` liest der
   Core nur das Basismodell (`devAgentConfig()`) — gespeicherte Überschreibungen von Modell, URL und
   Key wirken nicht (der UI-Status `keySet` für Dev ist also nur Anzeige). Decision: Felder bleiben und
-  speichern doc-konform (`agents/dev/AGENT.md`); kein UI-Hinweis, kein Core-Workaround. *Andersfall:*
+  speichern doc-konform (`agents/dev/AGENT.md`); kein UI-Hinweis, kein Core-Workaround. Dev-**Think**
+  ist ausgenommen: es wirkt nicht nur, es ist im Core der Base-Default für alle anderen Agenten
+  ([R-THINK-10](../../org.sterl.llmpeon.core/docs/per-agent-think.md)) — die Seite beschriftet das Feld
+  im Dev-Slot deshalb `Think (Default)` ([R-WP-23/UC-WP-67](config.md)). *Andersfall:*
   sollen Devs Werte wirklich wirken, ist das eine Core-Story (Proposal mit WARUM) — dann UC in
   config.md nachziehen.
 * **⏳ „Chat" öffnet das zuletzt aktive Projekt** (2026-11-02, meine Empfehlung, Rückversicherung

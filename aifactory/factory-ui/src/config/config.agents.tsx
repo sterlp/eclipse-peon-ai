@@ -8,6 +8,13 @@ import {
   type AgentPatch,
   type AgentSettings,
 } from './config.agents.client'
+import type { ThinkInput } from './config.client'
+
+/** The slot whose record carries the base think value of every other agent (R-THINK-10). */
+const DEV_SLOT = 'dev'
+
+/** The two answers of a toggle form; the third state of `ThinkValueSupport.toggleItems()` is empty. */
+const TOGGLE_ITEMS = ['true', 'false']
 
 /**
  * One slot as its row holds it: text everywhere, so empty is one state across the four fields and it
@@ -58,7 +65,7 @@ function Field(props: {
   label: string
   value: string
   numeric?: boolean
-  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void
+  onChange: (value: string) => void
 }) {
   return (
     <div className="config-agents-field">
@@ -68,18 +75,74 @@ function Field(props: {
         id={props.id}
         value={props.value}
         inputMode={props.numeric ? 'numeric' : undefined}
-        onChange={props.onChange}
+        onChange={(event) => props.onChange(event.target.value)}
       />
     </div>
   )
 }
 
 /**
+ * The think field of a slot: the form of the **base provider**, never a free text box by choice
+ * (R-WP-23, UC-WP-67) — the same four forms the plugin's think field takes. A stored value outside the
+ * offered list stays on the screen and travels back unchanged (ADR-0064): the form narrows what can be
+ * picked, it decides nothing about what the file already holds. `NONE` shows no control and still sends
+ * the stored value, so a provider without think input does not delete a value it cannot show.
+ */
+function ThinkField(props: {
+  id: string
+  label: string
+  value: string
+  think: ThinkInput
+  onChange: (value: string) => void
+}) {
+  const { form, values } = props.think
+
+  if (form === 'NONE') {
+    return (
+      <div className="config-agents-field">
+        {/* no control, so no label target: the hint is the whole answer of a slot here */}
+        <label>{props.label}</label>
+        <span className="hint" data-testid={props.id + '-unsupported'}>
+          {content.agents.thinkUnsupported}
+        </span>
+      </div>
+    )
+  }
+
+  if (form === 'VALUES' || form === 'TOGGLE') {
+    const offered = (form === 'TOGGLE' ? TOGGLE_ITEMS : values).filter((item) => item !== '')
+    return (
+      <div className="config-agents-field">
+        <label htmlFor={props.id}>{props.label}</label>
+        <select id={props.id} value={props.value} onChange={(event) => props.onChange(event.target.value)}>
+          <option value="">{content.agents.inheritOption}</option>
+          {/* a stored value the list does not carry is offered as itself — never replaced (ADR-0064) */}
+          {props.value !== '' && !offered.includes(props.value) && (
+            <option value={props.value}>{props.value}</option>
+          )}
+          {offered.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </select>
+      </div>
+    )
+  }
+
+  // FREE and the core's UNKNOWN are one thing on the screen: the text the provider passes on
+  return <Field id={props.id} label={props.label} value={props.value} onChange={props.onChange} />
+}
+
+/**
  * The agent section of the config page (R-WP-23): one row per slot the factory runs, a checkbox that is
  * the file's content and not a flag of its own, and one save per slot. An empty field inherits, the
  * unchecked box clears the slot — both are the file's states, so the page holds no opinion about them.
+ * The think field takes the form of the base provider, which the page owns and hands in (`think`): the
+ * slots have no provider of their own, so a second read of the provider list would only be a second
+ * answer to one question.
  */
-export function Agents() {
+export function Agents({ think }: { think: ThinkInput }) {
   const [slots, setSlots] = useState<AgentSettings[]>([])
   const [drafts, setDrafts] = useState<Record<string, Draft>>({})
   // the removal of a key is queued per slot: the slot's own save carries it (R-WP-16, UC-WP-63)
@@ -97,9 +160,9 @@ export function Agents() {
       .catch((error) => setMessage(errorMessage(error)))
   }, [])
 
+  /** The one way a field of a slot changes: by its new value, whatever control reported it. */
   function edit(id: string, field: Exclude<keyof Draft, 'overridden'>) {
-    return (event: React.ChangeEvent<HTMLInputElement>) => {
-      const value = event.target.value
+    return (value: string) => {
       setDrafts((current) => ({ ...current, [id]: { ...current[id], [field]: value } }))
       // typing a key while one is queued for removal is two intents — the newer one wins
       if (field === 'apiKey' && value !== '') {
@@ -177,10 +240,12 @@ export function Agents() {
                   value={draft.url}
                   onChange={edit(slot.id, 'url')}
                 />
-                <Field
+                {/* Devs record is the base think value of every other agent (R-THINK-10, R-WP-23) */}
+                <ThinkField
                   id={'agent-' + slot.id + '-think'}
-                  label={content.agents.think}
+                  label={slot.id === DEV_SLOT ? content.agents.thinkDefault : content.agents.think}
                   value={draft.think}
+                  think={think}
                   onChange={edit(slot.id, 'think')}
                 />
                 <Field
@@ -198,7 +263,7 @@ export function Agents() {
                     autoComplete="off"
                     placeholder={content.config.unchanged}
                     value={draft.apiKey}
-                    onChange={edit(slot.id, 'apiKey')}
+                    onChange={(event) => edit(slot.id, 'apiKey')(event.target.value)}
                   />
                   <span className={slot.keySet ? 'key-set' : 'key-missing'}>
                     {slot.keySet ? content.config.keySet : content.config.keyMissing}

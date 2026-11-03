@@ -19,14 +19,41 @@ export interface Settings {
 }
 
 /**
- * One provider as the core knows it (UC-WP-62): the base URL it falls back to and whether it can carry a
+ * One provider as the core knows it (UC-WP-62): the base URL it falls back to and what it can do with a
  * think input. No model — the core knows no model default, so the page clears the field instead of
  * offering a value that belongs to another provider (Q2).
+ *
+ * `thinkSupported` is the yes/no answer the default area needs to disable its switch; `thinkForm` and
+ * `thinkValues` are the same answer undimmed, which is what the agent think field is built from
+ * (R-WP-23, UC-WP-67).
  */
 export interface Provider {
   name: string
   defaultUrl: string | null
   thinkSupported: boolean
+  thinkForm: ThinkForm
+  thinkValues: string[]
+}
+
+/**
+ * The form of a think input (R-WP-23): the core's sealed `ThinkSupport` as the wire names it.
+ * `UNKNOWN` is the core's honest "not described yet" and is not the same claim as `NONE`.
+ */
+export type ThinkForm = 'TOGGLE' | 'VALUES' | 'FREE' | 'NONE' | 'UNKNOWN'
+
+/** What a think field needs to build itself: the form and, for `VALUES`, the list it offers. */
+export interface ThinkInput {
+  form: ThinkForm
+  values: string[]
+}
+
+/**
+ * The think form of one provider answer. Without a provider — the list has not arrived, or the file names
+ * one the core does not offer — the form is `UNKNOWN`, which is a text field: the page keeps showing
+ * what the file holds instead of narrowing it to a list it cannot justify.
+ */
+export function thinkInputOf(provider: Provider | undefined): ThinkInput {
+  return { form: provider?.thinkForm ?? 'UNKNOWN', values: provider?.thinkValues ?? [] }
 }
 
 export async function getSettings(): Promise<Settings> {

@@ -159,6 +159,12 @@ export const content = {
     model: 'Model',
     url: 'URL',
     think: 'Think',
+    /** R-THINK-10: Devs record carries the base think value every other agent inherits (R-WP-23). */
+    thinkDefault: 'Think (Default)',
+    /** The empty option of the think selection — the slot says nothing of its own. */
+    inheritOption: 'inherits the default',
+    /** R-WP-23: the base provider has no per-request think input, so no field could do anything. */
+    thinkUnsupported: 'the base provider has no thinking input',
     temperature: 'Temperature',
     save: 'Save',
     /** UC-WP-44 "ein leeres Feld erbt den Default-Feld für Feld" — the empty state of these fields. */
