@@ -29,6 +29,10 @@ Different agents can use different models to optimize for cost, speed, or capabi
 
 Existing installations start with an empty PO slot, which inherits the base configuration. If Jon was previously controlled through the Plan slot, configure the PO slot once after upgrading. The **Review** slot is new: it used to share the Plan slot, so if the review agent ran on a model set in the Plan slot, copy those values into the Review slot once after upgrading — an empty Review slot inherits the **base** configuration, not the Plan one.
 
+### Model Selector in the Chat
+
+The chat's action bar (next to the agent selector) shows the **base model** of the connection: an editable dropdown filled from the same model list — fetched when the chat opens, `↻` reloads it (a failed reload keeps the previous list). Selecting an entry — or typing a model and moving away from the field — saves it as the base model (the **Model** field on the [Peon Configuration](./configuration.md) page). The per-agent overrides on this page stay effective: the chat selector only changes the base model.
+
 ## Temperature Settings
 
 Every built-in agent — **PO (Jon)**, **Dev**, **Plan**, **Review**, **Search** and **Compact** — has its own Temperature field. There is no shared default and no value is inherited between agents. The Dev agent's field lives on the main [Peon Configuration](./configuration.md#temperature) page (**Temperature** in the **Default for all agents** group) — this page has no Dev section.
