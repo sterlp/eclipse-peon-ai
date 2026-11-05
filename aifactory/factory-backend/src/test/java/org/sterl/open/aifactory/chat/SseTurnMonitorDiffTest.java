@@ -86,6 +86,26 @@ class SseTurnMonitorDiffTest {
 
     // UC-WP-68
     @Test
+    void aCreatedFileIsAPurePlusDiffOnTheWire() {
+        // the core answers a write to a missing file with oldContent = "" — the wire must not claim a
+        // removal the browser has no old version of, and no context of a file that was not there
+        monitor.onFileUpdate(new AiFileUpdate("new/File.java", "", "package x;\n"));
+        endTheTurn();
+
+        assertThat(wire.names()).containsExactly("diff", "done");
+        Map<String, Object> payload = wire.payload(0);
+        assertThat(payload.keySet()).as("no third field reaches the browser").containsExactly("file", "diff");
+        assertThat(payload).containsEntry("file", "new/File.java");
+
+        String diff = (String) payload.get("diff");
+        assertThat(diff).startsWith("--- a/new/File.java\n+++ b/new/File.java\n");
+        assertThat(diff.lines().skip(2).filter(line -> !line.startsWith("@@")).toList())
+                .as("a create carries additions only — no removal, no context line")
+                .containsExactly("+package x;");
+    }
+
+    // UC-WP-68
+    @Test
     void anUnchangedFileShowsNothing() {
         String unchanged = "a\nb\n";
         monitor.onFileUpdate(new AiFileUpdate(DIFF_FILE, unchanged, unchanged));
