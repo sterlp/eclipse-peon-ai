@@ -23,8 +23,7 @@ public class SimplePromptFile {
 
     protected final Map<String, List<String>> frontmatter;
     protected final String body;
-    /** only not set in tests */
-    protected final Path promptFile;
+    protected final Path promptFile ;
     @Setter
     @Getter
     protected volatile boolean enabled = true;

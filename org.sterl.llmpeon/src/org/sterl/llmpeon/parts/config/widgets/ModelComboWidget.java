@@ -22,7 +22,9 @@ import org.sterl.llmpeon.shared.StringUtil;
 
 /**
  * Model dropdown (native editable {@link Combo}) + Refresh button, shared by the basic config
- * page and the per-agent sections of the advanced config page.
+ * page and the per-agent sections of the advanced config page. The chat dialog's model
+ * selector ({@code ChatModelComboWidget}) reuses {@link #applyModelListTo(Combo, List)} so the
+ * R-ML4 list-apply behaviour has exactly one implementation.
  *
  * <p>The combo is filled from the provider's model list, cached per {@link ConnectionIdentity}
  * in {@link ModelListCache}: fetched once when the page opens (or on the refresh button), never
@@ -115,23 +117,28 @@ public class ModelComboWidget {
         return new FetchSnapshot(effective.identity(), effective.buildConfig());
     }
 
-    /**
-     * Applies the fetched model list to the combo. No-append rule (R-ML4): the list holds the
-     * server's entries only — the typed field text is never added as an entry. If the field text
-     * matches an entry case-insensitively, the server's ID wins (canonical) and is selected;
-     * otherwise the field text stays verbatim.
-     */
     private void applyModelList(List<AiModel> fetched, ConnectionIdentity identity) {
         EclipseUtil.runInUiThread(modelCombo, () -> {
             if (!identity.equals(snapshotProvider.get().identity())) return; // settings changed while fetching — stale
-            var items = new ArrayList<String>();
-            if (fetched != null) items.addAll(fetched.stream().map(AiModel::getId).toList());
-            var configured = StringUtil.stripToNull(modelCombo.getText());
-            var idx = indexOfIgnoreCase(items, configured);
-            modelCombo.setItems(items.toArray(String[]::new));
-            if (idx >= 0) modelCombo.select(idx);
-            else if (configured != null) modelCombo.setText(configured);
+            applyModelListTo(modelCombo, fetched);
         });
+    }
+
+    /**
+     * Applies the fetched model list to the combo (R-ML4, shared with the chat widget).
+     * No-append rule: the list holds the server's entries only — the typed field text is never
+     * added as an entry. If the field text matches an entry case-insensitively, the server's
+     * ID wins (canonical) and is selected; otherwise the field text stays verbatim.
+     * Must run on the UI thread.
+     */
+    public static void applyModelListTo(Combo combo, List<AiModel> fetched) {
+        var items = new ArrayList<String>();
+        if (fetched != null) items.addAll(fetched.stream().map(AiModel::getId).toList());
+        var configured = StringUtil.stripToNull(combo.getText());
+        var idx = indexOfIgnoreCase(items, configured);
+        combo.setItems(items.toArray(String[]::new));
+        if (idx >= 0) combo.select(idx);
+        else if (configured != null) combo.setText(configured);
     }
 
     /** First position whose entry equals value case-insensitively; -1 for null value or no match. */
