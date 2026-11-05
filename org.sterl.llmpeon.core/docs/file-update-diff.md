@@ -40,7 +40,7 @@ Guards gilt **ein Cap**: umfasst die Changed-Region (nach Prefix/Suffix-Trim) me
 **500 Zeilen**, diffed der Guard einen **partziellen** Diff — beide Seiten proportional gekürzt,
 zusammen maximal 500 Changed-Zeilen — und hängt einen Ende-Marker an. Der Marker nennt die
 **tatsächlich gezeigte** Changed-Zeilenmenge und die vorgestellte Gesamtmenge
-(`… diff truncated — showing <gezeigt> von N changed lines`) — nie die Cap-Zahl selbst
+(`… diff truncated — showing <shown> of N changed lines`) — nie die Cap-Zahl selbst
 (AGENTS.md: ein Tool lügt nie über sein Limit). Bei ≤ 500 Zeilen ändert sich nichts.
 
 **Begründung:** Pauls Idee aus dem C-4-Review — „lieber ein partzieller Diff als gar keiner".
