@@ -17,9 +17,12 @@ interface Chat {
   setMessages(messages: ChatMessage[]): void
   /**
    * Holds the next history read open until the test resolves it — a read in flight, without a sleep, so a
-   * test can say what the screen looks like <em>while</em> the server is still answering.
+   * test can say what the screen looks like <em>while</em> the server is still answering. May be used twice:
+   * the reads are held in the order they were asked for. `answersWith` hands that read the conversation as
+   * it stood when it started, whatever the store holds by the time it answers — two reads of one view
+   * racing is what C-5 is about.
    */
-  deferNextHistoryRead(): { resolve(): void }
+  deferNextHistoryRead(answersWith?: ChatMessage[]): { resolve(): void }
   /** Every `POST …/agents` answers this instead of 202 — the refusal a running turn produces. */
   refuseActions(status: number, message: string): void
   /** Every `POST …/messages` answers this instead of 202 — the send that never landed. */
@@ -86,8 +89,9 @@ function stubChat(
     stopAnswer: undefined as { status: number; message: string } | undefined,
   }
   let controller: ReadableStreamDefaultController<Uint8Array> | undefined
-  // set while the next history read is to be held open by the test
-  let heldRead: Promise<void> | undefined
+  // the history reads the test holds open, in the order they were asked for — each with the conversation it
+  // is allowed to bring back, which is the point of a slow answer: the conversation moved on since
+  let heldReads: { wait: Promise<void>; answersWith?: ChatMessage[] }[] = []
 
   vi.stubGlobal(
     'fetch',
@@ -140,10 +144,13 @@ function stubChat(
         return new Response(null, { status: 202 })
       }
       if (path.endsWith('/messages')) {
-        const held = heldRead
-        heldRead = undefined
-        // read at answer time, not at request time: the test decides what the conversation holds
-        return held === undefined ? json(200, state.messages) : held.then(() => json(200, state.messages))
+        const [held, ...rest] = heldReads
+        heldReads = rest
+        if (held === undefined) {
+          // read at answer time, not at request time: the test decides what the conversation holds
+          return json(200, state.messages)
+        }
+        return held.wait.then(() => json(200, held.answersWith ?? state.messages))
       }
       return json(200, initial.projects ?? [])
     }),
@@ -156,11 +163,12 @@ function stubChat(
     setMessages: messages => {
       state.messages = messages
     },
-    deferNextHistoryRead: () => {
+    deferNextHistoryRead: answersWith => {
       let settle: (() => void) | undefined
-      heldRead = new Promise<void>(done => {
+      const wait = new Promise<void>(done => {
         settle = done
       })
+      heldReads = [...heldReads, { wait, answersWith }]
       return {
         resolve: () => {
           settle?.()
@@ -407,6 +415,78 @@ test('theStreamOpensAfterTheFirstHistoryRead', async () => {
 
   expect(chat.countOf('/events', 'GET')).toBe(1)
   expect(agentLinesSaying(ANSWER.text)).toHaveLength(1)
+})
+
+// UC-WP-7
+test('aLaterTurnKeepsStreamingWhileAnEarlierReadInFlight', async () => {
+  const chat = stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  // turn one answers and its `done` reads the history — that read is held on the wire
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await chat.push(event('partial', { kind: 'answer', text: 'Im Root liegen ' }))
+  chat.setMessages([QUESTION, { role: 'user', text: 'zähl die Dateien' }, ANSWER])
+  const read = chat.deferNextHistoryRead()
+  await chat.push(event('done', { millis: 7 }))
+
+  // the queued input opens the next turn while that read is still out: its answer cannot be in what the
+  // read brings, because the read started before a single chunk of it arrived (R-WP-5, UC-WP-7)
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'und die Tests?' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await chat.push(event('partial', { kind: 'answer', text: 'Vierhundert ' }))
+  expect(
+    [...screen.getByTestId('chat-log').children].map(line => line.getAttribute('data-testid')),
+    'both answers are on the screen while the first one has no history line yet',
+  ).toEqual(['chat-line-user', 'chat-line-user', 'chat-live', 'chat-line-user', 'chat-live'])
+
+  read.resolve()
+  await flush()
+
+  // the read gives up only what it could know: turn one's answer became a line of the conversation and is
+  // not shown twice, while the answer that is still streaming keeps its head — the text of a turn the read
+  // never saw is not something the read may delete (UC-WP-7). The input that opened this turn is not in the
+  // history yet either, so it stays his own line, behind the answer that follows it (R-WP-10)
+  const streaming = screen.getAllByTestId('chat-live')
+  expect(streaming).toHaveLength(1)
+  expect(streaming[0]).toHaveTextContent('Vierhundert')
+  expect(agentLinesSaying(ANSWER.text)).toHaveLength(1)
+  const after = [...screen.getByTestId('chat-log').children].map(line =>
+    line.getAttribute('data-testid'),
+  )
+  expect(after).toEqual(['chat-line-user', 'chat-line-user', 'chat-line-jon', 'chat-live', 'chat-line-user'])
+})
+
+// UC-WP-11
+test('anOlderHistoryReadNeverOverwritesANewerOne', async () => {
+  const chat = stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  // two turns end one after the other, and each reads the history. A read is a round trip over the whole
+  // memory, so the first one can answer last — and it answers with the conversation as it stood when it
+  // started, which is the state before the newer read's turn
+  const older = chat.deferNextHistoryRead([QUESTION])
+  await chat.push(event('done', { millis: 7 }))
+  chat.setMessages([QUESTION, ANSWER])
+  const newer = chat.deferNextHistoryRead([QUESTION, ANSWER])
+  await chat.push(event('done', { millis: 9 }))
+
+  newer.resolve()
+  await flush()
+  expect(agentLinesSaying(ANSWER.text)).toHaveLength(1)
+
+  // the late answer of the older read is the older content: applying it would move the log back and lose the
+  // answer that is already on the screen (R-WP-11)
+  older.resolve()
+  await flush()
+  expect(agentLinesSaying(ANSWER.text)).toHaveLength(1)
+  expect([...screen.getByTestId('chat-log').children].map(line => line.getAttribute('data-testid'))).toEqual(
+    ['chat-line-user', 'chat-line-jon'],
+  )
+  // dropped is the answer, not the reading: both reads were asked for
+  expect(chat.countOf('/messages', 'GET')).toBe(3)
 })
 
 // UC-WP-16

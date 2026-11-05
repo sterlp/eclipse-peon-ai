@@ -804,3 +804,32 @@
 - **„An update to ChatPage was not wrapped in act(...)" in `chat.page.test.tsx` ist vorbestehend**
   (gemessen 2026-11-05 gegen HEAD derselbe Stand, 3 Meldungen pro Lauf) — kein Anzeichen eines neuen Fehlers.
 
+## C-5 Inc 2 (Zyklus 2026-11-05) — Readversion und liveMark: die laufende Antwort überlebt den Read
+
+- **Ein Verlaufs-Read gibt nur auf, was er kennen kann** (`chat.page.tsx`, `chat.live.ts`): `refresh()`
+  merkt sich **vor** der Anfrage `mark = liveItems.current.length`, und
+  `liveLinesAfterHistory(items, mark)` behält `text`/`error` ab Index `mark`. Der Default
+  (`mark = items.length`) erhält die alte Semantik für jeden Aufrufer ohne diese Kenntnis. Proben: `mark`
+  nicht übergeben ⇒ genau `aLaterTurnKeepsStreamingWhileAnEarlierReadInFlight` rot; `mark = 0` (der Read gibt
+  nichts auf) ⇒ sechs Tests rot (`streamingUpdatesChatWithoutReload`, `failedTurnIsALineInTheHistory`, …) —
+  der Parameter ist kein toter.
+- **Reads rasen, deshalb Nummer + zuletzt angewandte Nummer**: `readSeq` bei Ausgabe, `appliedRead` bei
+  Anwendung, `read < appliedRead` ⇒ Antwort verwerfen. Verglichen wird mit der **angewandten** und nicht der
+  höchsten vergebenen Nummer — sonst entwertet ein später ausgegebenes, noch unbeantwortetes Lesen das
+  Ergebnis eines früheren. Probe: Guard raus ⇒ genau `anOlderHistoryReadNeverOverwritesANewerOne` rot.
+  Alle Live-Schreibvorgänge laufen über `writeLive` (Ref + State zusammen), sonst stimmt der `mark`-Snapshot
+  nicht mit dem, was auf dem Schirm ist (D-B).
+- **R-WP-11 entscheidet, welcher Griff nach dem `done` die Antwort trägt**: sie steht dann als
+  `chat-line-jon` aus dem Read und **nicht** mehr als `chat-live` (`toolLinesSurviveTheDoneRefresh` pinnt
+  „nicht zweimal"). „Die Antwort verschwindet nicht" wird deshalb über die **Log-Form** und
+  `agentLinesSaying(…)` behauptet, nie über einen `chat-live`-Griff; der Griff gehört dem Text, den der Read
+  nicht kennen kann (`aLaterTurnKeepsStreamingWhileAnEarlierReadInFlight`: `user,user,jon,live,user`).
+- **`stubChat` hält mehrere Reads gleichzeitig offen** — `deferNextHistoryRead(answersWith?)`: die Wartenden
+  laufen der Reihe nach ab, und `answersWith` beantwortet genau diesen Read mit dem **Stand von der Ausgabe
+  der Anfrage**, nicht mit dem Store beim Auflösen. Erst das macht „der ältere Read antwortet zuletzt mit dem
+  älteren Gespräch" baubar — ohne sleep, ohne Fake-Timer.
+- **Kein `// UC-WP-69` in Inc 2**: Doc-Lint bleibt bei **1 Finding (UC-WP-69 UNBELEGT)** — die Bestätigung
+  über Position ist Inc 3. Ein Marker hier meldete Belegung, obwohl der `[Queued Message]`-Fall weiterhin
+  doppelt steht. **Nach Inc 2: UI 139 Tests / 17 Dateien** (137/17), `tsc` + oxlint 0/0, Doc-Lint 69/69 UCs,
+  265 Test-Ids, 1 Finding.
+

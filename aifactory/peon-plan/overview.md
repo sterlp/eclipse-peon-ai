@@ -233,7 +233,17 @@ Kein sichtbarer Text ändert sich, nur die Reihenfolge.
 4. Bestehend: `toolLinesStayInlineInOrder`, `toolLinesSurviveTheDoneRefresh`,
    `aFileChangeIsLiveAndDoesNotOutliveTheReload` bleiben unverändert grün.
 
-### Inc 2 — Die gestreamte Antwort verschwindet nicht mehr (U3 + D-C)
+### Inc 2 — Die gestreamte Antwort verschwindet nicht mehr (U3 + D-C) — **GEBAUT 2026-11-05, grün**
+`refresh()` mit `read = ++readSeq` und `mark = liveItems.current.length` (vor der Anfrage),
+`applyHistory(loaded, mark, read)` verwirft Antworten unter der zuletzt angewandten Nummer und gibt
+`text`/`error` nur unter `mark` auf (`liveLinesAfterHistory(items, mark)`, Default = ganze Liste);
+alle Live-Schreibvorgänge über `writeLive`. Tests 5–6 neu (Mutationsproben: ohne `mark` → Test 5 rot,
+Guard raus → Test 6 rot, `mark = 0` → 6 Tests rot). UI 139 Tests / 17 Dateien, tsc + oxlint 0/0,
+Doc-Lint 1 Finding (UC-WP-69 unbelegt = Inc 3).
+**Abweichung:** „die Antwort steht nach dem `done`" ist als `chat-line-jon` aus dem Read behauptet, nicht als
+`chat-live` — R-WP-11 und `toolLinesSurviveTheDoneRefresh` verbieten die doppelte Antwort; der
+`chat-live`-Griff gehört dem Text, den der Read nicht kennen kann. Kein `// UC-WP-69`-Marker in Inc 2
+(Inc 3 gehört die Regel; Pauls Entscheidung 2026-11-05).
 - `refresh()`: `read = ++reads.current`, `mark = liveItems.current.length`;
   `applyHistory(loaded, mark, read)` verwirft veraltete Reads und gibt nur Items `< mark` auf.
 - `chat.page.tsx`: Live-Schreibvorgänge über `writeLive`.
