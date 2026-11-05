@@ -446,8 +446,11 @@ test('aLaterTurnKeepsStreamingWhileAnEarlierReadInFlight', async () => {
 
   // the read gives up only what it could know: turn one's answer became a line of the conversation and is
   // not shown twice, while the answer that is still streaming keeps its head — the text of a turn the read
-  // never saw is not something the read may delete (UC-WP-7). The input that opened this turn is not in the
-  // history yet either, so it stays his own line, behind the answer that follows it (R-WP-10)
+  // never saw is not something the read may delete (UC-WP-7). What it does give up is the second provisional
+  // line: the read carries a user line of this browser's sender class and that class confirms every
+  // provisional line sent before it — a nameless browser holds no sender to tell "carried one" from
+  // "carried both", and the bundle of the core looks exactly like this (R-WP-37, §10.8.3: heilt mit dem
+  // nächsten Read). The queued text is not lost, it only reads from the history now
   const streaming = screen.getAllByTestId('chat-live')
   expect(streaming).toHaveLength(1)
   expect(streaming[0]).toHaveTextContent('Vierhundert')
@@ -455,7 +458,24 @@ test('aLaterTurnKeepsStreamingWhileAnEarlierReadInFlight', async () => {
   const after = [...screen.getByTestId('chat-log').children].map(line =>
     line.getAttribute('data-testid'),
   )
-  expect(after).toEqual(['chat-line-user', 'chat-line-user', 'chat-line-jon', 'chat-live', 'chat-line-user'])
+  expect(after).toEqual(['chat-line-user', 'chat-line-user', 'chat-line-jon', 'chat-live'])
+
+  // the positive replacement: the next read brings the drained input with the core's marker — it stands
+  // exactly once in the log, no provisional line beside it, the streaming text given way to its answer
+  chat.setMessages([
+    QUESTION,
+    { role: 'user', text: 'zähl die Dateien' },
+    ANSWER,
+    { role: 'user', text: '[Queued Message] (14:33): und die Tests?' },
+    { role: 'jon', text: 'Vierhundert Tests.' },
+  ])
+  await chat.push(event('done', { millis: 15 }))
+  expect(userLineTexts()).toEqual([
+    QUESTION.text,
+    'zähl die Dateien',
+    '[Queued Message] (14:33): und die Tests?',
+  ])
+  expect(screen.queryByTestId('chat-live')).toBeNull()
 })
 
 // R-WP-11
@@ -626,6 +646,9 @@ test('theSendCarriesTheName', async () => {
   const post = chat.calls.find(call => call.method === 'POST')
   expect(JSON.parse(post?.body ?? '{}')).toEqual({ text: 'bitte X', user: 'Anna' })
   expect(Object.keys(JSON.parse(post?.body ?? '{}'))).toEqual(['text', 'user'])
+  // the provisional line is stamped with the same trimmed name the server hands back as `origin` —
+  // stamped untrimmed, the history would never confirm this line (D-H, R-WP-37)
+  expect(userAuthorsOnScreen()).toEqual(['Anna'])
 })
 
 // UC-WP-48
@@ -1027,6 +1050,62 @@ test('theSameTextTwiceIsConfirmedTwice', async () => {
   // both provisional lines are gone: positions are counted, so the same text confirms twice and one
   // history line is never used for two of them (UC-WP-69)
   expect(userLineTexts()).toEqual(['nochmal', '[Queued Message] (14:32): nochmal'])
+})
+
+// UC-WP-69
+test('aBundledQueuedLineReplacesBothPendingLines', async () => {
+  const chat = stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} user="Paul" />)
+  await flush()
+
+  // both inputs fall into the core's bundle window, which joins them into ONE memory line
+  // (org.sterl.llmpeon.core/docs/queued-user-messages.md §1 "Join Short Burst Messages") — so the wire
+  // carries one role: user for both of his inputs
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await chat.push(event('partial', { kind: 'answer', text: 'Im Root liegen ' }))
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'und die Tests?' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+
+  const bundled = '[Queued Message] (14:32): [User Paul]: zähl die Dateien\n[User Paul]: und die Tests?'
+  chat.setMessages([QUESTION, { role: 'user', text: bundled, origin: 'Paul' }, ANSWER])
+  await chat.push(event('done', { millis: 9 }))
+
+  // one history line, two inputs: both provisional lines gave way to it, and the marker line stands
+  // verbatim in the log — the UI parses nothing and shortens nothing (R-WP-37, Bündel-Fall)
+  expect(userLineTexts()).toEqual([QUESTION.text, bundled])
+  expect(screen.queryByTestId('chat-live')).toBeNull()
+})
+
+// UC-WP-69
+test('aForeignUserLineConfirmsNoOwnPendingLine', async () => {
+  const chat = stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} user="Paul" />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'meine Frage' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await chat.push(event('partial', { kind: 'answer', text: 'Im Root liegen ' }))
+
+  // the core drains Anna's queued input first (FIFO) — her line stands behind Paul's watermark, but it
+  // is hers alone: his input still waits in the queue and keeps its provisional line (R-WP-37)
+  chat.setMessages([QUESTION, { role: 'user', text: 'Annas Frage', origin: 'Anna' }, ANSWER])
+  await chat.push(event('done', { millis: 7 }))
+  expect(userLineTexts()).toEqual([QUESTION.text, 'Annas Frage', 'meine Frage'])
+
+  // the next read brings HIS line with the marker: the provisional line is replaced by it, not doubled
+  chat.setMessages([
+    QUESTION,
+    { role: 'user', text: 'Annas Frage', origin: 'Anna' },
+    ANSWER,
+    { role: 'user', text: '[Queued Message] (14:33): meine Frage', origin: 'Paul' },
+  ])
+  await chat.push(event('done', { millis: 11 }))
+  expect(userLineTexts()).toEqual([
+    QUESTION.text,
+    'Annas Frage',
+    '[Queued Message] (14:33): meine Frage',
+  ])
 })
 
 test('consecutiveToolLinesAreMerged', async () => {

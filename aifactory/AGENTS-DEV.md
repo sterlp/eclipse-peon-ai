@@ -854,4 +854,37 @@
 - **Nach Inc 3: UI 145 Tests / 18 Dateien** (139/17), `tsc` + oxlint 0/0 (62 Dateien), Doc-Lint **0
   Findings** bei UC 69/69, 270 Test-Ids (`// UC-WP-69` in `chat.page.test.tsx` + `chat.pending.test.ts`,
   `// UC-WP-57` am Zweimal-Fall). Marker `R-WP-37`/`UC-WP-69` bleiben ❌ im Commit — flippt Jon.
+- **Modellierte Draht-Form braucht die erzeugende Core-Regel (Leitsatz, 2026-11-05):** bildet ein
+  UI-Test eine Verlaufs-/Draht-Form nach (z. B. zwei getrennte Verlaufszeilen für gequeueete
+  Eingaben), steht an der Testdatei die Core-Regel mit Datei:Zeile, die diese Form erzeugt — sonst
+  ist der Test eine Annahme und prüft eine Form, die der Core so nie liefert.
+
+## C-5 Inc 4 (Zyklus 2026-11-05) — Bestätigung je Absender: Wasserlinie statt Verbrauchsschleife
+
+- **`withoutConfirmed` ist jetzt zustandslos** (`chat.pending.ts`, R-WP-37 geschärft): Map
+  Absender → Index der **letzten** Nutzerzeile im Read, bestätigt bei `last >= afterHistory`. Der
+  `used`-Zeiger aus Inc 3 ist entfallen — er konnte den Bündel-Fall nicht (Core joinnt zwei gequeueete
+  Eingaben zu **einer** Memory-Zeile, `queued-user-messages.md` §1). `origin` wird beim Senden über
+  `senderName(user)` gestempelt (`chat.client.ts`, D-H): nur derselbe getrimmte Wert, den der Server als
+  `origin` zurückgibt, bestätigt je; `null` ist eine Absenderklasse (UC-WP-48). `ChatLog` zeichnet
+  `line.origin ?? content.chat.you`, die Prop `user` ist entfallen (D-I).
+- **Plan-Widerspruch, über die Docs entschieden:** §10.6 listete `aLaterTurnKeepsStreamingWhileAnEarlier
+  ReadInFlight` als „bleibt grün, darf nicht umformuliert werden" — die geschärfte R-WP-37 bestätigt aber
+  gerade beide namenlosen vorläufigen Zeilen durch die eine Read-Zeile (der Fall ist §10.8.3: Send
+  während eines Reads in flight, Zeile wurde vor dem Send geschrieben). Der Test ist **minimal**
+  umformuliert: Shape-Assertion auf `[…, chat-line-jon, chat-live]`, Kern-Assertions (streamender Text
+  überlebt den Read, genau ein `chat-live`, Antwort genau einmal) wörtlich erhalten, plus positive
+  Ersetzung (Folge-Read bringt die Markerzeile → genau einmal, kein `chat-live`). Regel aus memory #4:
+  betroffenen Kanal enger behaupten + positiven Ersatz im selben Test + benannte Abweichung.
+- **Mutationsproben §10.7 sind Mindestmengen, keine exakten Mengen:** Absendervergleich raus macht
+  zusätzlich `failedTurnLeavesNoPendingFrame` rot (namenlose vorläufige Zeile darf nicht durch eine
+  `origin: 'Paul'`-Zeile bestätigt werden — der Test pinnt die Regel mit, ohne sie zu nennen);
+  Rückbau auf 1:1 und die `<=`-Grenze rotieren ebenfalls über die erwartete Menge hinaus. Ein roter Test
+  außerhalb der erwarteten Liste ist erst dann ein Fehlalarm, wenn seine Kette nicht aus der Mutanten-
+  Semantik erklärbar ist.
+- **Bündel-Fixtur zitiert die erzeugende Core-Regel** (Jons Leitsatz, dasselbe Inkrement):
+  `aBundledQueuedLineReplacesBothPendingLines` nennt `queued-user-messages.md §1` im Kommentar.
+- **Nach Inc 4: UI 149 Tests / 18 Dateien** (145/18), `tsc` + oxlint 0/0 (62 Dateien), Doc-Lint **0
+  Findings** bei UC 69/69, 274 Test-Ids. Marker `R-WP-37`/`UC-WP-69` bleiben ❌ — flippt Jon;
+  `docs/chat.md`/`docs/user.md` (Jons Schärfungen) bleiben uncommitted bei ihm.
 

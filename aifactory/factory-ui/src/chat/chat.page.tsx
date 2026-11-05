@@ -4,6 +4,7 @@ import type { FormEvent, ReactNode } from 'react'
 import {
   listMessages,
   sendMessage,
+  senderName,
   stopTurn,
   type ChatMessage,
   type ChatStreamEvent,
@@ -39,8 +40,8 @@ interface Props {
   files?: ReactNode
   /**
    * The name of this browser (R-WP-25), given by the shell that holds it — identity is not per project,
-   * so this component neither stores nor interprets it: it labels the sends and the own pending lines.
-   * Absent means no name: no field on the wire, no prefix, the role label on the screen (UC-WP-48).
+   * so this component neither stores nor interprets it: it labels the sends and stamps the own pending
+   * lines with it (R-WP-37). Absent means no name: no field on the wire, no prefix (UC-WP-48).
    */
   user?: string | null
 }
@@ -366,8 +367,12 @@ export function ChatPage({ project, files, user }: Props) {
     }
     // shown before the server has it: a turn writes the user line into the memory only when it starts,
     // so a queued input would vanish from the screen until the next history read. The number of history
-    // lines standing now is where its own line cannot precede — that confirms it later (R-WP-37)
-    writePending([...pendingLines.current, { text, afterHistory: historyRows.current }])
+    // lines standing now and this browser's sender name are what confirm the line later — the name is
+    // normalised exactly as the wire carries it, or the history would never confirm it (R-WP-37, D-H)
+    writePending([
+      ...pendingLines.current,
+      { text, afterHistory: historyRows.current, origin: senderName(user) },
+    ])
     setError(null)
     // the send is what opens the turn, so the flag follows the intent and not the answer (D-13): 202 only
     // says "taken", and a stop that comes one moment later must already address this turn
@@ -497,7 +502,6 @@ export function ChatPage({ project, files, user }: Props) {
         <ChatLog
           messages={messages}
           outgoing={outgoing}
-          user={user}
           live={live}
           pending={pending}
           logRef={log}

@@ -52,6 +52,17 @@ export async function listMessages(projectId: string): Promise<ChatMessage[]> {
 }
 
 /**
+ * What a name is — one definition for the wire and for the confirmation of a pending line (R-WP-25).
+ * The server trims the same way before it writes the prefix, so a pending line stamped here carries the
+ * very `origin` the history will hand back (R-WP-37). No name: no field on the wire, no prefix in the
+ * memory, `origin` stays null (UC-WP-48).
+ */
+export function senderName(user?: string | null): string | null {
+  const name = user?.trim()
+  return name ? name : null
+}
+
+/**
  * Fire and forget — the server answers 202 with no body whether or not Jon is busy, because a busy
  * project queues the input instead of refusing it (R-WP-10).
  *
@@ -60,7 +71,7 @@ export async function listMessages(projectId: string): Promise<ChatMessage[]> {
  * server writes no prefix (UC-WP-48).
  */
 export async function sendMessage(projectId: string, text: string, user?: string | null): Promise<void> {
-  const name = user?.trim()
+  const name = senderName(user)
   return request<void>(`/api/projects/${encodeURIComponent(projectId)}/messages`, {
     method: 'POST',
     body: JSON.stringify({ text, ...(name ? { user: name } : {}) }),

@@ -12,11 +12,10 @@ import { content } from '../shared/content'
 interface Props {
   /** The finished lines — the only truth for text a turn has written (R-WP-11). */
   messages: ChatMessage[]
-  /** Inputs this browser sent that the history does not carry yet — provisional lines, confirmed by their
-   *  position in it and not by their text (a queued input carries the core's marker; R-WP-37). */
+  /** Inputs this browser sent that the history does not carry yet — provisional lines, confirmed by
+   *  their sender and position in it, not by their text (a queued input carries the core's marker;
+   *  R-WP-37). */
   outgoing: PendingLine[]
-  /** The name of this browser (R-WP-25) — the author of its own, not yet confirmed lines; null shows the role label. */
-  user?: string | null
   /** The live lines of the running turn, each anchored at the rows that already stood when it arrived. */
   live: LiveItem[]
   /** A turn this browser started is still open — the only thing that may paint a waiting frame (R-WP-31). */
@@ -68,7 +67,7 @@ type Entry =
  * voices, and never carries a name. A diff block is of the same family — a fact about the project's files,
  * seen by everybody watching (R-WP-36).
  */
-export function ChatLog({ messages, outgoing, user, live, pending, logRef, onScroll }: Props) {
+export function ChatLog({ messages, outgoing, live, pending, logRef, onScroll }: Props) {
   const rows: Row[] = [
     ...messages.map((message): Row => ({
       voice: voiceOf(message),
@@ -81,8 +80,9 @@ export function ChatLog({ messages, outgoing, user, live, pending, logRef, onScr
     ...outgoing.map((line): Row => ({
       voice: 'user',
       handle: 'chat-line-user',
-      // his own name, so the line does not jump when the history brings the server's author back
-      author: user ?? content.chat.you,
+      // the sender stamped at send time — the same value the history will hand back as `origin`, so the
+      // line does not jump when it is confirmed (R-WP-37, UC-WP-48)
+      author: line.origin ?? content.chat.you,
       text: line.text,
       // the frame is the page's call and not a property of the row: it ends with the turn, not with the
       // history read that confirms the text (R-WP-31, UC-WP-65)
