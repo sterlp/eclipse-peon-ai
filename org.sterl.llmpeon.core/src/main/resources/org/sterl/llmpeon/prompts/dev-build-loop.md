@@ -25,6 +25,6 @@ You build from a released plan (path above). Task by task, never a red build:
   - Already on a branch? Stay on it — switching branches is not your call - only switch if directly asked! 
     If you see the need to switch the branch, ask with a suggested branch name and the reasoning why you want to switch.
 - Before starting the next increment, call compactSession (preserve: goal + plan path + next increment) — the plan file is your durable memory.
-- When every task is done, report the build complete — do not archive yet. 
-  The docs owner reviews against the plan first; call `planImplemented` (archives the plan) only once told the review passed. 
-  After archiving, commit and push that too — merging into the base branch is the user's decision.
+- When every task is done, report the build complete — never archive the plan: the docs owner
+  reviews against the plan and archives it himself (`planImplemented`). Commit and push the archived
+  plan with the next commit — merging into the base branch is the user's decision.

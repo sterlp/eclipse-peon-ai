@@ -2,6 +2,7 @@ package org.sterl.llmpeon.shared;
 
 import java.time.Duration;
 
+import org.jspecify.annotations.Nullable;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.model.SimpleMessage.Type;
@@ -20,6 +21,14 @@ public interface AiMonitor {
 
     public static AiMonitor nullSafety(AiMonitor in) {
         return in == null ? NULL_MONITOR : in;
+    }
+
+    /**
+     * This monitor as {@code type}, or {@code null}. Wrappers ({@link OwnerMonitor}) pass the question
+     * on to their delegate — an {@code instanceof} check on a wrapped monitor is blind.
+     */
+    default <T> @Nullable T unwrap(Class<T> type) {
+        return type.isInstance(this) ? type.cast(this) : null;
     }
 
     /** Fired on every streaming token (thinking, answer, or tool). Default is a no-op. */

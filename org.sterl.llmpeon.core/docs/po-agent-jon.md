@@ -156,8 +156,8 @@ throw-away research sub-agent for multi-step lookups, so discovery does not burn
 
 **No completion signals on the delegate tools.** There is no `planComplete` / `planImplemented` on
 `PoDelegateTool`. Control returns to Jon on every team member turn anyway (natural stop), and Jon decides
-*"done vs. still working"* **from the reply text** himself (I2.3); Dev owns
-`planImplemented` and archives only after Jon's post-build review passes.
+*"done vs. still working"* **from the reply text** himself (I2.3); Jon archives the plan with
+`planImplemented` himself once his post-build review passes (I2.7).
 
 The slave's **done** progress line carries how long the slave worked, e.g. `Plan done. (3s)` (the
 planner; Dev shows as `Dev`) — the shared sub-agent timing rule (see
@@ -291,7 +291,8 @@ onto `PlanTool`:
 - `hasPlan()` → returns the **path** (`peon-plan/overview.md`) if a saved plan exists, else states none
   exists — so Jon can check for existing work before delegating.
 - `planRead()` → returns the current plan's content.
-- He does **not** get `planSave` / `planUpdate` / `planImplemented` — those stay with Plan and Dev.
+- `planImplemented()` → archives the plan (I2.7) — the only plan-mutating tool he gets.
+- He does **not** get `planSave` / `planUpdate` — those stay with Plan, Dev and Review.
 
 The path from `hasPlan` is exactly what Jon feeds to `buildWithDev(prompt, planPath)` (I2.1): it is set as
 a Dev standing order and is **sticky**, so it is re-injected on every later dispatch and survives
@@ -306,6 +307,24 @@ THEN it returns the path peon-plan/overview.md (and planRead returns its content
 GIVEN Jon calls buildWithDev with a planPath
 THEN the plan path is set as the Dev slave's standing order
 AND a later prompt-only buildWithDev call still carries that plan path (sticky, survives compaction)
+```
+
+### I2.7: Jon archives the plan himself ✅
+Archiving is the acceptance step that belongs to the ✅ flip Jon owns — not planning. Jon closes a
+cycle (and a findings-only plan Review created, [review-agent.md](review-agent.md) R9) with
+`planImplemented` on his read-only facade, delegating to the shared `PlanTool` — same archive
+behaviour (counter suffix, [plan-dev-agent-design.md](plan-dev-agent-design.md) R-PI1). Facade, not
+filter: `hasPlan` exists only on the facade, and a second `planRead` would collide. Search still
+gets no plan tools ([agent-tool-filter.md](agent-tool-filter.md) R-TF-2).
+
+```
+GIVEN Jon's tool set
+THEN it contains planRead, hasPlan and planImplemented
+AND it contains neither planSave nor planUpdate
+
+GIVEN a saved plan exists
+WHEN Jon calls planImplemented
+THEN peon-plan/overview.md is moved to overview-done-<timestamp>.md and hasPlan reports no plan
 ```
 
 ## Business Rules
@@ -560,11 +579,11 @@ question / interim status (→ answer or escalate, R13).
 | --- | --- | --- |
 | Plan | ✅ | — |
 | Dev | — | ✅ |
-| Jon | — | — |
+| Jon | — | ✅ (read facade, I2.7) |
 | standalone Plan / Dev | — | — |
 
-Dev never sees `planComplete`, Plan never sees `planImplemented`, and **Jon has no
-plan tools at all**. The signals live **only** on Jon's dedicated slave instances — they never leak into
+Dev never sees `planComplete`, Plan never sees `planImplemented`, and Jon has only the read
+facade plus `planImplemented` (I2.6/I2.7). The signals live **only** on Jon's dedicated slave instances — they never leak into
 the user-selectable standalone Plan/Dev. Filters stay **static per agent instance** (a per-turn tool-set
 change would kill the KV-cache); `ToolService.addTool` also **throws on a duplicate name**.
 

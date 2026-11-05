@@ -28,11 +28,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -41,8 +38,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
@@ -56,6 +51,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.poagent.AiPoAgent;
+import org.sterl.open.aifactory.FactorySpringTest;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
 import org.sterl.open.aifactory.config.FactoryConfigService;
@@ -72,10 +68,8 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * <p>Every test works on its own project, so none of them can inherit another one's runtime or
  * history — that sharing is the subject of UC-WP-16, not a fixture here.</p>
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(FakeGitConfig.class)
-@Timeout(120)
-class ChatTurnTest {
+@Timeout(60)
+class ChatTurnTest extends FactorySpringTest {
 
     /** Longer than the mock's 10-char chunk width, so a streamed answer is provable. */
     private static final String LONG_ANSWER = "Die Antwort kommt in mehreren Stücken beim Leser an.";
@@ -88,9 +82,6 @@ class ChatTurnTest {
             .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(Duration.ofSeconds(5))
             .build();
-
-    @TempDir
-    static Path home;
 
     private static final MockLlmServer MODEL = new MockLlmServer(0);
 
@@ -124,11 +115,6 @@ class ChatTurnTest {
         this.http = new RestTemplate();
         // the status IS the assertion — a client that throws would hide what the app answers
         this.http.setErrorHandler(new NoOpResponseErrorHandler());
-    }
-
-    @DynamicPropertySource
-    static void isolateHome(DynamicPropertyRegistry registry) {
-        registry.add("aifactory.home", home::toString);
     }
 
     @Test
@@ -185,6 +171,18 @@ class ChatTurnTest {
             assertThat(stream.payloads("tool"))
                     .as("the tool line names the absolute path, so the user sees where it went")
                     .anySatisfy(line -> assertThat(line).contains(marker.toString()));
+
+            // UC-WP-11 — a tile's state after the turn is the roster's end snapshot: it must reach the
+            // same connection that is already allowed to act again (ProjectRuntime.submit, finally)
+            // UC-WP-11 — the roster a tile shows after a turn is the last thing that turn sends: no reader
+            // who is already allowed to act again may keep seeing WORKING (ProjectRuntime.submit, finally)
+            stream.awaitLastEvent("agents");
+            List<String> rosters = stream.payloads("agents");
+            assertThat(rosters.get(rosters.size() - 1))
+                    .as("the snapshot after a finished turn leaves every agent idle")
+                    .contains("\"state\":\"IDLE\"")
+                    .doesNotContain("WORKING")
+                    .doesNotContain("COMPACTING");
         }
 
         assertThat(MODEL.getCapturedTool("shellRunCommand")).as("Jon offers the shell").isPresent();
@@ -199,8 +197,9 @@ class ChatTurnTest {
 
         assertThat(Arrays.stream(SendMessageRequest.class.getRecordComponents())
                 .map(recordComponent -> recordComponent.getName()).toList())
-                .as("the composer sends the text and nothing else — no field can name another agent")
-                .containsExactly("text");
+                .as("the composer sends its text and its sender-label — no field can name another agent"
+                        + " or another conversation (Inc 6 added the label of the person, R-WP-25)")
+                .containsExactly("text", "user");
 
         try (ChatStream stream = new ChatStream(project.id())) {
             MODEL.queueResponse("erste Antwort");
@@ -237,13 +236,14 @@ class ChatTurnTest {
         CreatedProject project = createProject("live-lines");
 
         try (ChatStream early = new ChatStream(project.id())) {
-            MODEL.queueResponse(toolCall("call_sleep", "shellRunCommand",
-                    "{\"command\":\"sleep 1\",\"timeout\":20}"));
+            MODEL.queueResponse(toolCall("call_gate", "shellRunCommand", TurnGate.toolArguments()));
             MODEL.queueResponse(LONG_ANSWER);
             assertThat(send(project.id(), "eine Frage").getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
             assertThat(early.countOf("done"))
                     .as("the POST is never the turn's thread — it answered while Jon is still working")
                     .isZero();
+            // the running tool has reported its line, so the gate may open and the answer can stream
+            TurnGate.release(project.localPath());
 
             early.awaitEvent("partial", 2);
             // a prefix, not the whole text: the reader lags on purpose, so what is provable at this point
@@ -417,7 +417,7 @@ class ChatTurnTest {
         properties.setProperty(LlmConfigKeys.MODEL, model);
         properties.setProperty(LlmConfigKeys.URL, url);
         properties.setProperty(LlmConfigKeys.API_KEY, apiKey);
-        try (var out = Files.newOutputStream(home.resolve(FactoryHome.CONFIG_FILE))) {
+        try (var out = Files.newOutputStream(HOME.resolve(FactoryHome.CONFIG_FILE))) {
             properties.store(out, "ChatTurnTest");
         }
     }
@@ -492,6 +492,16 @@ class ChatTurnTest {
 
         void awaitEvent(String name, int count) {
             await(() -> countOf(name) >= count, "event " + name + " x" + count + " on the stream");
+        }
+
+        /**
+         * Waits until {@code name} is the <b>last</b> event of this connection. For the end of a turn: its
+         * last event is the roster snapshot, and nothing follows it — so a positive wait here cannot pass
+         * too early, unlike a count that a monitor's earlier snapshot has already satisfied.
+         */
+        void awaitLastEvent(String name) {
+            await(() -> !names.isEmpty() && name.equals(names.get(names.size() - 1)),
+                    "last event " + name + " on the stream");
         }
 
         /** A negative assertion needs a grace window — this is the only fixed wait in this class. */

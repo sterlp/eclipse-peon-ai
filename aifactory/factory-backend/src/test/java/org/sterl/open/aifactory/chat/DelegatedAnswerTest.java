@@ -26,10 +26,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.io.TempDir;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -37,8 +34,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
@@ -52,9 +47,9 @@ import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.poagent.AiPoAgent;
+import org.sterl.open.aifactory.FactorySpringTest;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
-import org.sterl.open.aifactory.project.FakeGitConfig;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
@@ -73,10 +68,8 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * the text would prove that somebody guessed (R-WP-4 "niemand rät die Herkunft"). The reading half over a
  * real restart is {@link DelegatedAnswerRestartTest}.</p>
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(FakeGitConfig.class)
-@Timeout(120)
-class DelegatedAnswerTest {
+@Timeout(90)
+class DelegatedAnswerTest extends FactorySpringTest {
 
     /** The prompt Jon hands over — visible on his own delegation line. */
     private static final String MEMBER_PROMPT = "MITGLIEDS-AUFGABE: nenne genau eine Frucht";
@@ -98,9 +91,6 @@ class DelegatedAnswerTest {
             .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(Duration.ofSeconds(5))
             .build();
-
-    @TempDir
-    static Path home;
 
     private MockLlmServer model;
 
@@ -129,11 +119,6 @@ class DelegatedAnswerTest {
         if (model != null) {
             model.stop();
         }
-    }
-
-    @DynamicPropertySource
-    static void isolateHome(DynamicPropertyRegistry registry) {
-        registry.add("aifactory.home", home::toString);
     }
 
     @Test
@@ -168,9 +153,10 @@ class DelegatedAnswerTest {
                     .as("Jon's own answer still grows live on the same wire")
                     .isEqualTo(JON_ANSWER);
             assertThat(stream.eventNames())
-                    .as("the wire speaks exactly the three known names — a member line leaking under a"
-                            + " fourth name is red here, not merely unnamed")
-                    .containsOnly("partial", "tool", "done");
+                    .as("the conversation still speaks its three names, plus the tile snapshot — a member"
+                            + " line under a name of its own would be a fourth, and the member's text is"
+                            + " checked against every data line above (R-WP-7)")
+                    .containsOnly("partial", "tool", "done", "agents");
             assertThat(stream.countOf("done"))
                     .as("and it stays one done for the whole turn — the team's line is not a second answer")
                     .isEqualTo(1);
@@ -400,7 +386,7 @@ class DelegatedAnswerTest {
         properties.setProperty(LlmConfigKeys.MODEL, model);
         properties.setProperty(LlmConfigKeys.URL, this.model.getUrl());
         properties.setProperty(LlmConfigKeys.API_KEY, "test-key");
-        try (var out = Files.newOutputStream(home.resolve(FactoryHome.CONFIG_FILE))) {
+        try (var out = Files.newOutputStream(HOME.resolve(FactoryHome.CONFIG_FILE))) {
             properties.store(out, "DelegatedAnswerTest");
         }
     }

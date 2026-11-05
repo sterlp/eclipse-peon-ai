@@ -60,3 +60,32 @@ Standard ist der **Git-Checkout** des Projekts; umschaltbar dazu: das **temporä
 - GIVEN der Datei-Bereich WHEN ein Pfad gelesen werden soll, der nach Normalisierung außerhalb der
   gewählten Wurzel liegt (`..`, absoluter Pfad, oder ein Symlink, der aus der Wurzel hinausführt)
   THEN antwortet der Server mit einem Fehler und liefert keinen Inhalt.
+
+### R-WP-33 — Datei-Bereich als Slide-out rechts ✅ (Paul 2026-11-02; Tab-Bündigkeit geschärft Runde 2, Inc 5)
+
+Der Datei-Bereich ist ein **Slide-out am rechten Rand** mit einem **vertikalen „Files"-Tab** — so ist
+sichtbar, dass hier aufklappbar ist. Der Tab hängt **am Panel, nicht am Bildschirm**: er sitzt **bündig
+an der Oberkante** des Panels, an dem er hängt, und **wandert mit der Panelbreite** mit; im
+geschlossenen Zustand sitzt er am **rechten Rand der Chat-Fläche** — nicht am Viewport — damit sich Tab-
+und Panel-Oberkante bei jeder Fensterhöhe treffen. Auf- und Zuklappen steuern **Icons**
+(`bootstrap-icons`, `<` / `>`), Schließen ist immer möglich. Im Panel: **Baum-Navigation**
+über die zwei Wurzeln ([R-WP-14](files.md)), die als **Cards** erscheinen (Checkout, TMP —
+Paul-Vorschlag); der **Projektname wird im Panel nicht wiederholt** (er steht in der Kopfzeile des
+Chats). Eine geöffnete Datei zeigt der Viewer mit **Syntax-Highlighting** (react-shiki),
+**nicht mittig zentriert** — der Chat bleibt daneben sichtbar, der Viewer kann immer geschlossen
+werden.
+
+#### UC-WP-60 — filesPanelSlideOutWithTree ✅
+- GIVEN der Chat-View WHEN der Nutzer den vertikalen „Files"-Tab nutzt THEN klappt das Slide-out auf
+  (`>` / `<`), zeigt die zwei Wurzeln als Cards und eine Baum-Navigation; der Projektname steht im
+  Panel nicht wiederholt.
+- GIVEN der Chat-View **in beliebiger Fensterhöhe** WHEN der Tab offen oder geschlossen ist THEN sitzt
+  er **bündig an der Oberkante** des Panels, an dem er hängt (geschlossen am rechten Rand der
+  Chat-Fläche), und **wandert mit der Panelbreite** mit.
+
+#### UC-WP-61 — fileViewerHighlightsSyntax ✅
+- GIVEN eine geöffnete Datei WHEN sie angezeigt wird THEN zeigt der Viewer sie mit
+  Syntax-Highlighting, nicht zentriert, mit klarer Navigation zurück; der Chat bleibt daneben
+  sichtbar.
+- GIVEN eine geöffnete Datei mit mehreren Zeilen WHEN sie angezeigt wird THEN steht **je Code-Zeile
+  genau eine Zeilenhöhe** — kein zweiter, leerer Zeilenabstand zwischen den Zeilen.

@@ -32,9 +32,10 @@ Plugin zeigt sie als Überschrift
 ([agenten-namen-im-chat](../../org.sterl.llmpeon/docs/agenten-namen-im-chat.md)).
 
 **Man sieht nur Jon und die finalen Antworten seines Teams** — nicht die Unterhaltung eines
-Teammitglieds mit sich selbst: dessen **Denk- und Zwischenschritte** erscheinen im Chat **nie**,
+Teammitglieds mit sich selbst: dessen **Denk- und Zwischenschritte** erscheinen im Jon-Chat **nie**,
 weder live noch im Verlauf; sichtbar sind nur die Delegations-Zeilen und die finale Antwort. Es gibt
-genau **einen** Gesprächsstrang.
+genau **einen** Gesprächsstrang. Die **Einsicht** in das eigene Gespräch eines Mitglieds (lesend,
+außerhalb des Jon-Chats) regelt [R-WP-26](chat.md).
 
 #### UC-WP-6 — chatAlwaysGoesToJon ✅
 - GIVEN der Chat-View WHEN der Nutzer eine Nachricht sendet THEN antwortet Jon; ein Agenten-Wechsel
@@ -52,10 +53,12 @@ genau **einen** Gesprächsstrang.
 - GIVEN Jon delegiert per `askDev` an Dev WHEN der Turn endet (`done`) THEN steht dessen **finale**
   Antwort (das Werkzeug-Ergebnis, wie es ist — inkl. der angehängten Statistik-Zeile) als Zeile „Dev"
   im Chat; war das Ergebnis leer, erscheint ebenfalls eine Zeile („returned no result").
-- GIVEN dieselbe Delegation WHEN man den Chat betrachtet THEN sind die Zwischenschritte des
-  Teammitglieds (Denken, eigene Werkzeug-Aufrufe, Teilantworten) **nicht** sichtbar — sichtbar sind nur
-  die Delegations-Zeilen und die finale Antwort, es gibt genau einen Gesprächsstrang, keinen zweiten
-  Verlauf und keinen Mitschnitt je Agent.
+- GIVEN dieselbe Delegation WHEN man den Jon-Chat betrachtet THEN sind die Zwischenschritte des
+  Teammitglieds (Denken, eigene Werkzeug-Aufrufe, Teilantworten) **im Jon-Chat** nicht sichtbar —
+  sichtbar sind nur die Delegations-Zeilen und die finale Antwort; es gibt genau einen Gesprächsstrang,
+  keinen zweiten Verlauf und **in Jons Chat** keinen Mitschnitt je Agent. Das eigene Gespräch des
+  Mitglieds ist nur über den schreibgeschützten Blick seiner Kachel einsehbar ([R-WP-26](chat.md)) —
+  nie im Jon-Chat.
 - GIVEN ein Reload nach einer Delegation WHEN der Chat neu aufgebaut wird THEN ist die finale Antwort
   des Team-Mitglieds weiterhin Teil des Verlaufs (Live-Zeilen ausgenommen, R-WP-11) — in Jons Verlauf,
   nicht in einer zweiten Ablage.
@@ -76,6 +79,12 @@ Queue sind die des Cores — die Web-Schicht erfindet keinen zweiten Turn-Pfad.
 - GIVEN ein Zuschauer, der seine Verbindung nicht mehr liest WHEN ein Turn läuft THEN wird der Turn
   dadurch nicht aufgehalten und alle anderen Zuschauer sehen die Zeilen weiter — ein Zuschauer ist
   keine Bremse für das Projekt.
+
+#### UC-WP-50 — stopCancelsTheWholeTurn ❌
+- GIVEN ein laufender Turn WHEN der Nutzer **Stop** klickt THEN bricht die Fabrik den laufenden Turn
+  ab — Jon und jede laufende Delegation enden („alles gestopt", Paul 2026-11-01); schon gezeigte
+  Zeilen bleiben, es gibt keinen zweiten Speicher und keinen zweiten Turn-Pfad. Die Interaktion kehrt
+  an Jon zurück; gequeuete Eingaben bleiben in der Queue.
 
 ### R-WP-10 — Ein Turn je Projekt, weitere Eingaben in der Queue ✅
 
@@ -106,8 +115,9 @@ Projekt-Registry, Clone und **genau ein** Chat je Projekt sind persistent, solan
 bleibt. Auf einem **frischen Node** kommen die Projekte aus dem Config-Repo
 ([R-CR-8](config-repo.md)), die Chats beginnen leer. Ein Projekt hat genau ein
 Gespräch — es gibt keine Chat-Auswahl und kein zweites Gespräch neben dem einen. Nach dem Neustart
-zeigt der Chat die **Texte von Nutzer und Jon** und die **finalen Antworten des Teams** (Ergebnisse
-der Delegations-Werkzeuge, R-WP-4) aus dem History-Bestand; alle übrigen Werkzeug- und Statuszeilen
+zeigt der Chat die **Texte von Nutzer und Jon**, die **finalen Antworten des Teams** (Ergebnisse
+der Delegations-Werkzeuge, R-WP-4) und die **Fehlerzeile eines gescheiterten Turns**
+([R-WP-34](chat.md)) aus dem History-Bestand; alle übrigen Werkzeug- und Statuszeilen
 sind live-only — die Factory führt dafür **keinen** zweiten Speicher. Nach dem Neustart
 ist Jons Gespräch wieder da; **sein Team beginnt leer** (RAM-only-Parität zum Plugin, globales
 ADR-0024) — ⏳ Rückversicherung in [Open Points](open-points.md).
@@ -135,20 +145,203 @@ Jon und sein Team bekommen **alle** Core-Werkzeuge inklusive Shell (`disk*`, `we
   Disk-Werkzeuge an — die Factory könnte sonst ihre eigentliche Arbeit nicht tun; eine von Hand
   eingetragene `false` ändert daran nichts.
 
-### R-WP-7 — Eine Kachel je Agent mit Kontext, Status, Clear und Compact 🚧
+### R-WP-7 — Eine Kachel je Agent mit Kontext, Status, Clear und Compact ✅
 
 Kopf des Chat-Views: eine Kachel für jeden Agenten von Jons Team (Jon, Plan, Dev, Review,
 Search) — Name, Kontextgröße, Statusanzeige, **Clear**- und **Compact**-Knopf. Kontextgröße ist
 dieselbe Zahl wie im Plugin-Header: genutzte Tokens gegen das Auto-Compact-Budget des Agenten.
+Die **Search**-Kachel zeigt diese Zahl nicht — Search ist ein Sub-Loop von Jon
+([ADR-0079](adr/0079-display-names-without-ork-names.md)), hat keinen eigenen Kontext („—") und
+kein Clear/Compact. Kacheln von Plan, Dev und Review öffnen den schreibgeschützten Blick in das
+eigene Gespräch ([R-WP-26](chat.md)).
 
-#### UC-WP-11 — teamTilesShowContextAndStatus ❌
+#### UC-WP-11 — teamTilesShowContextAndStatus ✅
 - GIVEN der Chat-View WHEN er geöffnet wird THEN trägt jede Team-Kachel Name, Kontextzahl und
-  Status; der Status wechselt bei Arbeit/Compact/Fehler ohne manuelles Aktualisieren.
+  Status; der Status wechselt bei Arbeit/Compact/Fehler ohne manuelles Aktualisieren. Die
+  Search-Kachel trägt als Sub-Loop keinen Kontextwert.
 
-#### UC-WP-12 — clearOnJonCascadesTeam ❌
+#### UC-WP-12 — clearOnJonCascadesTeam ✅
 - GIVEN ein laufendes Team WHEN **Clear** auf Jons Kachel geklickt wird THEN sind Jon und sein Team
   leer (Parität zum Plugin); **Clear** auf einer Team-Kachel leert nur diesen Agenten.
 
-#### UC-WP-13 — compactAffectsOnlyThatAgent ❌
+#### UC-WP-13 — compactAffectsOnlyThatAgent ✅
 - GIVEN eine Kachel WHEN **Compact** geklickt wird THEN kompaktiert genau dieser Agent und die
   Kachel zeigt den Compact als eigenen Zustand.
+
+### R-WP-26 — Der Blick in den Agenten-Chat (Slide-out) ✅
+
+Jede Kachel von **Plan, Dev und Review** öffnet rechts einen **schreibgeschützten** Blick in das
+eigene Gespräch dieses Agenten (Slide-out). Search ist kein Agent (Sub-Loop von Jon,
+[ADR-0079](adr/0079-display-names-without-ork-names.md)) und bekommt keinen Blick. Standard bleibt
+Jons Chat; der Nutzer kann in den Chat eines Agenten wechseln und zurück. Interaktion läuft
+weiterhin nur über Jon ([R-WP-4](chat.md)): kein Eingabefeld im Blick. **Stop** im UI stoppt den
+laufenden Turn vollständig (wie bisher) — die Regel selbst und ihre Grenze (Queue-Klausel) stehen in
+[UC-WP-50](chat.md); dieser Absatz behauptet kein Queue-Verhalten. Die Einsicht liest den RAM-Stand des Agenten im Core —
+**kein** zweiter Speicher; nach einem Neustart ist das Team leer ([R-WP-11](chat.md)), der Blick ist
+leer. **WEIL** „warum hat Dev das gebaut?" sonst nur über die finale Antwort beantwortbar wäre
+(Paul, 2026-11-01).
+
+#### UC-WP-49 — agentChatIsReadOnlyInsight ✅
+- GIVEN Jon delegiert WHEN der Nutzer die Kachel eines Mitglieds öffnet THEN zeigt der Blick das
+  eigene Gespräch des Agenten (Zwischenschritte, eigene Werkzeug-Zeilen), schreibgeschützt; der
+  Jon-Chat zeigt weiterhin nur die Delegations-Zeilen und die finale Antwort (UC-WP-40).
+- GIVEN ein geöffneter Blick WHEN der Nutzer ihn betrachtet THEN gibt es kein Eingabe- oder
+  Bedienelement zum Schreiben; Stop stoppt den laufenden Turn (Jon und Team) vollständig.
+- GIVEN ein Neustart WHEN der Blick geöffnet wird THEN ist er leer (R-WP-11) — kein zweiter
+  Speicher und kein Mitschnitt im Jon-Chat.
+
+### R-WP-28 — Markdown-Streaming: markstream-react, Code mit react-shiki ✅ (Paul 2026-11-02)
+
+Antworten rendern als Markdown mit **Streaming-Unterstützung** (`markstream-react`): unvollständiges
+Markdown wird beim Streaming sauber gerendert, Code-Blöcke mit **react-shiki**; Fallback, falls
+markstream im Prototypen nicht hält: `react-markdown`. **Tool-Zeilen bleiben sichtbar** und stehen
+**inline im Verlauf** an der Stelle, wo sie passieren — nicht als separate Liste hinter dem Verlauf;
+kompakt (klein, grau, Tool-Zeilen gemerged wie in `chat.html`).
+
+#### UC-WP-54 — streamingMarkdownWithInlineToolLines ✅
+- GIVEN ein laufender Turn WHEN die Antwort streamt THEN wächst das Markdown sichtbar und bleibt
+  während des Streams lesbar — unvollständige Syntax-Bruchstücke erzeugen kein kaputtes Markup.
+- GIVEN Tool-Aktivität WHEN Zeilen erscheinen THEN stehen sie im Verlauf an ihrer Stelle, kompakt,
+  und bleiben nach dem Turn sichtbar.
+
+### R-WP-36 — Datei-Änderungen erscheinen live als Diff im Chat ✅ (Paul 2026-11-03, C-4)
+
+Jede **Inhalts-Änderung** (Anlegen **oder** Überschreiben) eines Agenten-Turns erscheint **im Chat als
+Unified-Diff** (vorher/nachher, +/− gefärbt, mit Dateinamen) — wie im Eclipse-Plugin (`AIChatView` →
+`SimpleDiff.unifiedDiff`). Der Umfang ist der der Core-Oberfläche: `onFileUpdate` feuert bei
+`diskEditFile`/`diskReplaceLines`/`diskInsertLines` sowie bei `diskWriteFile` **und**
+`eclipseWriteFile` — jeweils Anlegen **und** Überschreiben; nur **Löschen, Umbenennen, Kopieren und
+Shell-Schreibvorgänge** erscheinen als Werkzeug-Zeile („Created file: …"), nicht als Diff
+(Plugin-Parität). Über 500 Changed-Zeilen wird der Diff **partziell** und nennt am Ende die gekappte
+Menge; binärer Inhalt bekommt gar kein Diff, sondern eine Werkzeug-Zeile mit „binary content".
+Gebaut 2026-11-05; Vertrag und Regeln:
+[File Update Diff](../../org.sterl.llmpeon.core/docs/file-update-diff.md) (R-SD-1…3).
+
+Der Diff gilt für **Jon und sein Team** gleichermaßen: das Write-Event des Cores
+(`AiMonitor.onFileUpdate`) trägt keinen Urheber — „sehen und mitlesen" heißt, der Nutzer sieht jede
+Änderung am Projekt ([PR-3](index.md): der Core liefert das Ereignis, die Fabrik rendert — kein
+Core-Eingriff). Der Diff ist **live-only** wie die Werkzeug-Zeilen ([R-WP-11](chat.md)): er gehört nicht
+zum Verlaufs-Bestand und übersteht weder Reload noch Neustart; zum Nach-reviewen dient der Git-Stand im
+Datei-Bereich ([Dateien](files.md)).
+
+#### UC-WP-68 — fileChangesShowAsLiveDiff ✅
+- GIVEN ein laufender Turn WHEN ein Agent eine Datei (bestehende oder neu angelegte) inhaltlich ändert
+  THEN erscheint im Chat ein Diff-Block mit Dateinamen und den geänderten Zeilen (+/− gefärbt), live
+  und ohne manuelles
+  Aktualisieren ([R-WP-5](chat.md)).
+- GIVEN ein Agent legt eine Datei **neu** an (oder überschreibt sie) WHEN der Turn läuft THEN erscheint
+  ein Diff-Block — beim Anlegen aus reinen `+`-Zeilen, zusätzlich zur Werkzeug-Zeile (R-SD-1); per
+  **Shell** geschriebene Dateien erscheinen weiterhin nur als Werkzeug-Zeile.
+- GIVEN dieselbe Änderung WHEN ein anderer Nutzer dasselbe Projekt betrachtet THEN sieht er denselben
+  Diff — ein Chat für alle ([R-WP-15](chat.md)).
+- GIVEN der Turn ist vorbei WHEN der Verlauf nach Reload/Neustart gelesen wird THEN erscheint der
+  Diff-Block **nicht** im wiederhergestellten Verlauf (live-only, R-WP-11); die geänderte Datei selbst
+  ist im Datei-Bereich sichtbar.
+
+
+### R-WP-29 — Farben und Fließtext der Chat-Zeilen ✅ (Paul 2026-11-02; Korrektur auf Akzent-links in Runde 2, Inc 4)
+
+Beide Stimmen stehen **im Fluss** und tragen ihre Farbkante **links** — die Kante ist der **Akzent der
+Zeile**, kein Rahmen um den Chat (wie `chat.html`: Label „You" blau, Agent-Label grün). Keine Zeile ist
+**rechtsbündig**, nichts ist **mittig zentriert**. Jons Antworten haben **keinen grauen
+Hintergrund-Block** und keine eingestreuten Markierungen oder Cards im Fließtext; wo die Rolle wechselt,
+trennt **eine** einfache Trennlinie (`<hr>`) — nie zwei.
+
+#### UC-WP-55 — colorsFollowChatHtmlBaseline ✅
+- GIVEN eine Nutzer- und eine Agent-Antwort WHEN beide im Verlauf stehen THEN trägt die Nutzer-Zeile
+  den blauen Akzent **links** (nicht rechtsbündig), die Agent-Zeile den grünen — ohne grauen
+  Hintergrund-Block.
+- GIVEN dieselben beiden Zeilen WHEN zwischen ihnen die Rolle wechselt THEN trennt **genau eine**
+  Trennlinie, und keine der beiden Zeilen ist mittig zentriert.
+
+### R-WP-30 — Eingabe: Enter ist Zeilenumbruch, Cmd/Ctrl+Enter sendet ✅ (Paul 2026-11-02)
+
+Im Eingabefeld (Textarea) macht **Enter eine neue Zeile**; **Cmd/Ctrl+Enter** sendet — so bleiben
+Mehrzeiler möglich. Der Send-Knopf bleibt die klickbare Alternative. Zusätzlich kann der Nutzer die
+**letzte gesendete Nachricht erneut senden**, ohne sie neu zu tippen — etwa nach einem Fehler
+(„Resend"); sie läuft wie jede Eingabe in die Queue ([R-WP-10](chat.md)), wenn ein Turn läuft.
+
+#### UC-WP-56 — enterNewlinesCtrlEnterSends ✅
+- GIVEN das Eingabefeld WHEN der Nutzer Enter drückt THEN entsteht eine neue Zeile; WHEN er
+  Cmd/Ctrl+Enter drückt THEN sendet die Eingabe.
+
+#### UC-WP-57 — resendWithoutNewInput ✅
+- GIVEN der Nutzer hat eine Nachricht gesendet WHEN er „Resend" wählt THEN geht dieselbe Nachricht
+  erneut in die Queue (auch nach einem Fehler), ohne dass er sie neu tippt.
+
+### R-WP-31 — Warte-Indikator während des Turns ✅ (Paul 2026-11-02; Rahmens-Ende geschärft Runde 2, Inc 2)
+
+Während ein Turn läuft, zeigt der Chat eine kompakte **Warte-Leiste** („Waiting for AI…" wie im
+Plugin: dunkel, Mono, blinkender Cursor) mit dem Live-Preview des Streams; sie steht **über der
+Eingabe** ([R-WP-35](chat.md)).
+Der **Warte-Zustand endet mit dem Turn** — `done`, `error` und ein **akzeptierter Stop** schließen ihn
+ab; danach trägt **keine** Zeile mehr den Warte-Rahmen, und die bis dahin gezeigten Zeilen bleiben
+stehen ([UC-WP-50](chat.md)). Der **Rahmen** gilt dabei dem Turn, den **dieser Browser** gestartet hat;
+die Warte-Leiste gilt jedem Turn dieses Projekts, auch dem eines anderen Nutzers ([UC-WP-22](chat.md)).
+
+#### UC-WP-58 — waitingIndicatorShowsLiveState ✅
+- GIVEN ein laufender Turn WHEN er noch nichts geliefert hat THEN zeigt die Warte-Leiste „Waiting for
+  AI…"; WHEN der Stream liefert THEN wechselt sie auf das Live-Preview und endet mit dem Turn.
+
+#### UC-WP-65 — waitingMarkEndsWithTheTurn ✅
+- GIVEN eine eigene, noch nicht bestätigte Eingabe WHEN der Turn läuft THEN trägt ihre Zeile den
+  Warte-Rahmen.
+- GIVEN ein von diesem Browser gestarteter Turn WHEN `done` eintrifft THEN trägt **keine** Zeile den
+  Warte-Rahmen und die Zeilen des Turns bleiben sichtbar.
+- GIVEN ein laufender Turn WHEN ein `error` eintrifft THEN trägt **keine** Zeile den Warte-Rahmen.
+- GIVEN ein laufender Turn WHEN der Stop akzeptiert wird THEN trägt **keine** Zeile den Warte-Rahmen,
+  und was der Nutzer bis dahin gesehen hat, bleibt stehen (kein Geschichts-Read, D-16).
+
+### R-WP-32 — Kacheln als Reihe oben, Klick öffnet den Blick ✅ (Paul 2026-11-02)
+
+Die Agenten-Kacheln ([R-WP-7](chat.md)) stehen **oben nebeneinander in einer Reihe** — der
+Agenten-Name als Titel, Kontext, Status und Clear-/Compact darunter. Sie haben einen **Hover-Zustand**,
+und ein **Klick auf die Kachel** öffnet den schreibgeschützten Blick ([R-WP-26](chat.md)) — nicht
+erst ein separater Link.
+
+#### UC-WP-59 — tilesRowLayoutClickOpensInsight ✅
+- GIVEN der Chat-View WHEN er geöffnet wird THEN stehen die Kacheln als Reihe mit Name als Titel und
+  den Actions darunter.
+- GIVEN eine Kachel WHEN der Nutzer sie klickt THEN öffnet sich der Blick ([R-WP-26](chat.md)), mit
+  sichtbarem Hover-Zustand.
+
+
+### R-WP-34 — Ein gescheiterter Turn ist eine Verlaufszeile ✅ (Paul 2026-11-02, Runde 2)
+
+Scheitert ein Turn, bleiben **beides** im Verlauf: der Text, den der Nutzer gesendet hat, und
+**genau eine** Fehlerzeile. Gezeigt wird der **nackte Grund**; im Core-Memory trägt die Zeile den
+Marker `[Turn failed]: <Grund>` (der Marker ist Speicher-Konvention, kein UI-Text). Die Fehlerzeile trägt **keinen** Autor, ist
+**kein** Jon-Text und **kein** Werkzeug- oder Status-Zeile — sie ist deshalb gerade **nicht**
+live-only, sondern Teil dessen, was der Verlauf nach Neustart und Reload zeigt (Abgrenzung zu
+[R-WP-11](chat.md)). Sie liegt im **Core-Memory** des Projekts, wird über `GET …/messages` gelesen
+und ist damit dem **Modell im nächsten Turn sichtbar** (Verwandtschaft zu R-AEM-1: das Modell weiß,
+dass sein Turn gescheitert ist). Zwei Fehlschläge sind **zwei** Fehlerzeilen — keine Dedup, kein
+Überschreiben. Ein **Stop** ist kein Fehler und erzeugt keine Fehlerzeile ([UC-WP-50](chat.md)).
+
+#### UC-WP-64 — failedTurnIsAVisibleHistoryLine ✅
+- GIVEN ein Turn scheitert **vor** dem Modellaufruf (die Config trägt kein Modell) WHEN der Verlauf
+  gelesen wird THEN steht die gesendete Nachricht und danach **genau eine** Fehlerzeile — ohne
+  Autors, ohne Jon-Name.
+- GIVEN ein Turn scheitert **im** Modellaufruf WHEN der Verlauf gelesen wird THEN steht dieselbe
+  Paarung aus Nachricht und Fehlerzeile.
+- GIVEN ein Turn wird vom Nutzer gestoppt WHEN der Verlauf gelesen wird THEN steht **keine**
+  Fehlerzeile.
+- GIVEN ein gescheiterter Turn WHEN die Seite neu geladen wird THEN sind Nachricht und Fehlerzeile
+  weiterhin im Verlauf (derselbe Bestand wie vor dem Reload).
+
+
+### R-WP-35 — Der Chat scrollt, die Eingabe steht unten ✅ (Runde 2, Inc 3)
+
+Der Chat ist eine **Fläche mit eigenem Scroll**: der Verlauf scrollt in seiner **eigenen** Fläche,
+während die **Kachel-Reihe oben** und die **Eingabe unten** stehen bleiben — die Warte-Leiste
+([R-WP-31](chat.md)) liegt direkt **über** der Eingabe. Neue Zeilen scrollen **nur** dann ans Ende,
+wenn der Nutzer **unten** steht; wer oben nachliest, wird nicht nach unten gerissen. Die Fläche behält
+ihre volle Breite ([R-WP-1](ui.md)) — der Scroll gehört dem Verlauf, nicht der Seite.
+
+#### UC-WP-66 — chatScrollsWithFixedComposer ✅
+- GIVEN ein Chat mit langem Verlauf WHEN die Seite geöffnet wird THEN scrollt der Verlauf in seiner
+  eigenen Fläche, und Kachel-Reihe wie Eingabe bleiben sichtbar.
+- GIVEN der Nutzer steht am Ende des Verlaufs WHEN eine neue Zeile erscheint THEN scrollt der Verlauf
+  ans Ende.
+- GIVEN der Nutzer hat nach oben gelesen WHEN eine neue Zeile erscheint THEN bleibt der Verlauf an
+  seiner Position stehen.

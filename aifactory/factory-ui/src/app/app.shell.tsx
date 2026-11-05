@@ -1,41 +1,49 @@
 import { useState } from 'react'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 
-import { AppTabs, type ViewName } from './app.tabs'
-import { ChatPage } from '../chat/chat.page'
-import { ConfigPage } from '../config/config.page'
-import { ProjectFiles } from '../project/project.files'
-import { ProjectPage } from '../project/project.page'
-import type { Project } from '../shared/dto'
+import { AppNav } from './app.nav'
+import { AppUser } from './app.user'
+import { chatPath, projectsPath, settingsPath, viewOfPathname, type ViewName } from './app.paths'
+import type { AppContext } from './app.context'
+import { content } from '../shared/content'
+import { readLastProject } from '../shared/last.project'
+import { readUserName } from '../shared/user.name'
 import '../styles.css'
 
+/**
+ * The frame of the app (R-WP-1): title, the three entries, this browser's name, and the routed view. Which
+ * entry shows is read from the URL and held nowhere else — an address survives a reload that a component's
+ * state would not (UC-WP-43, UC-WP-52).
+ *
+ * "Chat" is the one entry that has no path of its own: it opens the chat of the project this browser last
+ * opened, and with no such project it leads to the list (UC-WP-51). Both answers are a navigation, so the
+ * URL names the result either way.
+ */
 export default function AppShell() {
-  const [view, setView] = useState<ViewName>('projects')
-  const [selected, setSelected] = useState<Project | null>(null)
+  const { pathname } = useLocation()
+  const navigate = useNavigate()
+  // the name is read once at startup and lives in the browser: identity is not per project and not a
+  // login, so the shell only holds it while the page runs (R-WP-17)
+  const [user, setUser] = useState<string | null>(readUserName)
+
+  function open(view: ViewName): void {
+    if (view === 'chat') {
+      const last = readLastProject()
+      navigate(last === null ? projectsPath : chatPath(last))
+      return
+    }
+    navigate(view === 'settings' ? settingsPath : projectsPath)
+  }
 
   return (
     <div className="app">
       <header className="app-header">
-        <span className="app-title">Open AI Factory</span>
-        <AppTabs active={view} onSelect={setView} />
+        <span className="app-title">{content.brand}</span>
+        <AppNav active={viewOfPathname(pathname)} onSelect={open} />
+        <AppUser user={user} onChange={setUser} />
       </header>
-      <main>
-        {view === 'projects' && (
-          <ProjectPage
-            // opening a project opens its chat — the conversation is the project's, not the tab's
-            onOpen={opened => {
-              setSelected(opened)
-              setView('chat')
-            }}
-          />
-        )}
-        {view === 'chat' && (
-          <ChatPage
-            project={selected}
-            // keyed: another project is another checkout, so the file area starts closed at its own root
-            files={selected !== null ? <ProjectFiles key={selected.id} project={selected} /> : undefined}
-          />
-        )}
-        {view === 'settings' && <ConfigPage />}
+      <main className="app-main">
+        <Outlet context={{ user } satisfies AppContext} />
       </main>
     </div>
   )

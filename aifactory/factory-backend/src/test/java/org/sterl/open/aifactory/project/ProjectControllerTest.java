@@ -1,106 +1,75 @@
 package org.sterl.open.aifactory.project;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.endsWith;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
+import java.time.Duration;
 import java.util.List;
 import java.util.stream.Stream;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.boot.test.web.server.LocalServerPort;
 
 import com.jayway.jsonpath.JsonPath;
 
-import org.sterl.open.aifactory.AifactoryApplication;
+import org.sterl.open.aifactory.FactorySpringTest;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
  * The HTTP contract of the registry. No git, no network — a fake {@link GitService} that records
  * <em>when</em> it ran, which is what makes "201 only after the clone" and "reused url never clones"
  * provable. Every test starts from an empty factory home.
+ *
+ * <p>Real HTTP and not a mocked servlet layer: the shared context of {@link FactorySpringTest} runs a
+ * server for the whole build anyway ({@code aifactory/AGENTS.md} — one context per build), so a MOCK
+ * context of its own would buy a second boot for answers this one gives identically — the status, the
+ * {@code ApiError} body and the serialization of {@code localPath} all come from the same handlers and
+ * the same message converters.</p>
  */
-@SpringBootTest(classes = AifactoryApplication.class)
-@Import(FakeGitConfig.class)
-@AutoConfigureMockMvc
-class ProjectControllerTest {
+class ProjectControllerTest extends FactorySpringTest {
 
     private static final String URL = "https://git.example.com/acme/demo.git";
-    private static final Path HOME = createHome();
+    private static final HttpClient CLIENT = HttpClient.newHttpClient();
 
-    @Autowired
-    MockMvc mvc;
-
-    @Autowired
-    FakeGitConfig fakeGit;
+    @LocalServerPort
+    int port;
 
     /** Anything outside {@code <home>/projects} that a poisoned registry must not reach. */
     @TempDir
     Path victim;
 
-    @DynamicPropertySource
-    static void isolateHome(DynamicPropertyRegistry registry) {
-        registry.add("aifactory.home", () -> HOME.toString());
-    }
-
-    @BeforeEach
-    void emptyHome() {
-        deleteTree(HOME);
-        createDirectories(HOME);
-        fakeGit.cloneTargets.clear();
-        fakeGit.failWith = null;
-    }
-
-    @AfterAll
-    static void removeHome() {
-        deleteTree(HOME);
-    }
-
     @Test
     void listIsEmptyOnFreshHome() throws Exception {
-        mvc.perform(get("/api/projects"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isEmpty());
+        HttpResponse<String> list = get("/api/projects");
+
+        assertThat(list.statusCode()).isEqualTo(200);
+        assertThat(rows(list)).isEmpty();
     }
 
     @Test
     // UC-WP-2
     void addProjectClonesBeforeListing() throws Exception {
-        mvc.perform(post("/api/projects")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"gitUrl\":\"" + URL + "\"}"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value("demo"))
-                .andExpect(jsonPath("$.state").value("READY"))
-                .andExpect(jsonPath("$.localPath").value(endsWith("projects/demo")));
+        HttpResponse<String> created = post("/api/projects", "{\"gitUrl\":\"" + URL + "\"}");
+
+        assertThat(created.statusCode()).isEqualTo(201);
+        assertThat(text(created, "$.name")).isEqualTo("demo");
+        assertThat(text(created, "$.state")).isEqualTo("READY");
+        String localPath = text(created, "$.localPath");
+        assertThat(localPath).endsWith("projects/demo");
 
         // the 201 was only reached after the checkout existed — the clone ran exactly once, into home
         assertThat(fakeGit.cloneTargets).singleElement().isEqualTo(projectsDir().resolve("demo"));
 
-        mvc.perform(get("/api/projects"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("demo"));
+        assertThat(text(get("/api/projects"), "$[0].name")).isEqualTo("demo");
     }
 
     @Test
@@ -109,15 +78,17 @@ class ProjectControllerTest {
         String id = createdId(URL);
 
         // trailing slash is the same repository: 200, the existing project, and no second clone
-        mvc.perform(post("/api/projects").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"gitUrl\":\"https://git.example.com/acme/demo/\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(id))
-                .andExpect(jsonPath("$.name").value("demo"));
+        HttpResponse<String> reused = post("/api/projects",
+                "{\"gitUrl\":\"https://git.example.com/acme/demo/\"}");
+
+        assertThat(reused.statusCode()).isEqualTo(200);
+        assertThat(text(reused, "$.id")).isEqualTo(id);
+        assertThat(text(reused, "$.name")).isEqualTo("demo");
 
         assertThat(fakeGit.cloneTargets).hasSize(1);
-        mvc.perform(get("/api/projects")).andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$[0].id").value(id));
+        HttpResponse<String> list = get("/api/projects");
+        assertThat(rows(list)).isNotEmpty();
+        assertThat(text(list, "$[0].id")).isEqualTo(id);
     }
 
     @Test
@@ -127,18 +98,17 @@ class ProjectControllerTest {
         fakeGit.failWith = new CloneFailedException("https://git.example.com/acme/gone.git", target,
                 "fatal: repository 'https://git.example.com/acme/gone.git' not found");
 
-        mvc.perform(post("/api/projects")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"gitUrl\":\"https://git.example.com/acme/gone.git\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value(400))
-                .andExpect(jsonPath("$.error").value("Bad Request"))
-                .andExpect(jsonPath("$.message").value(containsString("fatal: repository")));
+        HttpResponse<String> refused = post("/api/projects",
+                "{\"gitUrl\":\"https://git.example.com/acme/gone.git\"}");
 
-        mvc.perform(get("/api/projects"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$").isEmpty());
+        assertThat(refused.statusCode()).isEqualTo(400);
+        assertThat(number(refused, "$.status")).isEqualTo(400);
+        assertThat(text(refused, "$.error")).isEqualTo("Bad Request");
+        assertThat(text(refused, "$.message")).contains("fatal: repository");
+
+        HttpResponse<String> list = get("/api/projects");
+        assertThat(list.statusCode()).isEqualTo(200);
+        assertThat(rows(list)).isEmpty();
         assertThat(projectFolders()).isEmpty(); // this proof does not depend on git being installed
     }
 
@@ -147,14 +117,14 @@ class ProjectControllerTest {
     void sameNameDifferentUrlRejected() throws Exception {
         createdId("https://git.example.com/a/demo.git");
 
-        mvc.perform(post("/api/projects").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"gitUrl\":\"https://git.example.com/b/demo.git\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(containsString("demo")));
+        HttpResponse<String> refused = post("/api/projects",
+                "{\"gitUrl\":\"https://git.example.com/b/demo.git\"}");
+
+        assertThat(refused.statusCode()).isEqualTo(400);
+        assertThat(text(refused, "$.message")).contains("demo");
 
         assertThat(fakeGit.cloneTargets).hasSize(1);
-        mvc.perform(get("/api/projects")).andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(1));
+        assertThat(rows(get("/api/projects"))).hasSize(1);
         assertThat(projectFolders()).singleElement().isEqualTo(projectsDir().resolve("demo"));
     }
 
@@ -162,18 +132,18 @@ class ProjectControllerTest {
     // UC-WP-27
     void existingNonGitDirectoryIsNeverOverwritten() throws Exception {
         Path checkout = projectsDir().resolve("demo");
-        createDirectories(checkout);
+        Files.createDirectories(checkout);
         Files.writeString(checkout.resolve("sentinel.txt"), "mine");
         fakeGit.failWith = new IllegalStateException(
                 "target folder " + checkout + " exists but is not a git clone");
 
-        mvc.perform(post("/api/projects").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"gitUrl\":\"" + URL + "\"}"))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.message").value(containsString("demo")));
+        HttpResponse<String> refused = post("/api/projects", "{\"gitUrl\":\"" + URL + "\"}");
+
+        assertThat(refused.statusCode()).isEqualTo(409);
+        assertThat(text(refused, "$.message")).contains("demo");
 
         assertThat(checkout.resolve("sentinel.txt")).exists();
-        mvc.perform(get("/api/projects")).andExpect(jsonPath("$").isEmpty());
+        assertThat(rows(get("/api/projects"))).isEmpty();
     }
 
     @Test
@@ -183,42 +153,49 @@ class ProjectControllerTest {
         Path checkout = projectsDir().resolve("demo");
         assertThat(checkout).isDirectory();
 
-        mvc.perform(delete("/api/projects/{id}", id)).andExpect(status().isNoContent());
+        assertThat(delete("/api/projects/" + id).statusCode()).isEqualTo(204);
 
         assertThat(checkout).doesNotExist();
-        mvc.perform(get("/api/projects")).andExpect(jsonPath("$").isEmpty());
+        assertThat(rows(get("/api/projects"))).isEmpty();
     }
 
     @Test
     // UC-WP-29
     void removeNeverDeletesOutsideProjectDir() throws Exception {
         Path outsideCheckout = victim.resolve("checkout");
-        createDirectories(outsideCheckout);
+        Files.createDirectories(outsideCheckout);
         Files.writeString(outsideCheckout.resolve("victim.txt"), "do not delete me");
 
-        // both shapes of a hand-edited path: the absolute one and the relative escape
-        for (String stored : List.of(outsideCheckout.toAbsolutePath().toString(),
-                HOME.relativize(outsideCheckout).toString())) {
-            Files.writeString(HOME.resolve(FactoryHome.PROJECTS_FILE), """
-                    [ {
-                      "id" : "demo-1234567",
-                      "name" : "demo",
-                      "gitUrl" : "https://git.example.com/acme/demo.git",
-                      "localPath" : "%s",
-                      "state" : "READY"
-                    } ]""".formatted(stored));
+        try {
+            // both shapes of a hand-edited path: the absolute one and the relative escape
+            for (String stored : List.of(outsideCheckout.toAbsolutePath().toString(),
+                    HOME.relativize(outsideCheckout).toString())) {
+                Files.writeString(HOME.resolve(FactoryHome.PROJECTS_FILE), """
+                        [ {
+                          "id" : "demo-1234567",
+                          "name" : "demo",
+                          "gitUrl" : "https://git.example.com/acme/demo.git",
+                          "localPath" : "%s",
+                          "state" : "READY"
+                        } ]""".formatted(stored));
 
-            mvc.perform(delete("/api/projects/{id}", "demo-1234567"))
-                    .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.message").value(containsString("demo-1234567")));
+                HttpResponse<String> refused = delete("/api/projects/demo-1234567");
+                assertThat(refused.statusCode()).isEqualTo(409);
+                assertThat(text(refused, "$.message")).contains("demo-1234567");
 
-            // the poisoned row is refused on every call — never served, never silently dropped
-            mvc.perform(get("/api/projects")).andExpect(status().isConflict());
+                // the poisoned row is refused on every call — never served, never silently dropped
+                assertThat(get("/api/projects").statusCode()).isEqualTo(409);
 
-            assertThat(outsideCheckout.resolve("victim.txt")).exists();
+                assertThat(outsideCheckout.resolve("victim.txt")).exists();
+            }
+
+            assertThat(fakeGit.cloneTargets).isEmpty();
+        } finally {
+            // the row above is written by hand and production never writes one like it, but reading it
+            // back is an IllegalStateException — on the shared home that would break the reset of every
+            // following class. This test made the file, this test removes it.
+            Files.deleteIfExists(HOME.resolve(FactoryHome.PROJECTS_FILE));
         }
-
-        assertThat(fakeGit.cloneTargets).isEmpty();
     }
 
     @Test
@@ -226,19 +203,15 @@ class ProjectControllerTest {
     void credentialUrlRejectedAndNothingStored() throws Exception {
         for (String url : List.of("https://user:token@git.example.com/a/demo.git",
                 "https://user@git.example.com/a/demo.git")) {
-            MvcResult response = mvc.perform(post("/api/projects")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"gitUrl\":\"" + url + "\"}"))
-                    .andExpect(status().isBadRequest())
-                    .andReturn();
+            HttpResponse<String> refused = post("/api/projects", "{\"gitUrl\":\"" + url + "\"}");
 
-            String body = response.getResponse().getContentAsString();
-            assertThat(body).contains("credentials").doesNotContain("user").doesNotContain("token");
+            assertThat(refused.statusCode()).isEqualTo(400);
+            assertThat(refused.body()).contains("credentials").doesNotContain("user").doesNotContain("token");
         }
 
         assertThat(fakeGit.cloneTargets).isEmpty();
         assertThat(HOME.resolve(FactoryHome.PROJECTS_FILE)).doesNotExist();
-        mvc.perform(get("/api/projects")).andExpect(jsonPath("$").isEmpty());
+        assertThat(rows(get("/api/projects"))).isEmpty();
     }
 
     @Test
@@ -247,16 +220,15 @@ class ProjectControllerTest {
         for (String url : List.of("git@github.com:acme/demo.git",
                 "ssh://git.example.com/acme/demo.git",
                 "file:///tmp/demo")) {
-            mvc.perform(post("/api/projects")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"gitUrl\":\"" + url + "\"}"))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.message").value(containsString("https")));
+            HttpResponse<String> refused = post("/api/projects", "{\"gitUrl\":\"" + url + "\"}");
+
+            assertThat(refused.statusCode()).as("url %s", url).isEqualTo(400);
+            assertThat(text(refused, "$.message")).contains("https");
         }
 
         assertThat(fakeGit.cloneTargets).isEmpty();
         assertThat(HOME.resolve(FactoryHome.PROJECTS_FILE)).doesNotExist();
-        mvc.perform(get("/api/projects")).andExpect(jsonPath("$").isEmpty());
+        assertThat(rows(get("/api/projects"))).isEmpty();
     }
 
     @Test
@@ -266,33 +238,82 @@ class ProjectControllerTest {
         fakeGit.failWith = new CloneFailedException("https://git.example.com/acme/slow.git", target,
                 "git clone timed out after PT0.02S");
 
-        mvc.perform(post("/api/projects")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"gitUrl\":\"https://git.example.com/acme/slow.git\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(containsString("timed out")));
+        HttpResponse<String> refused = post("/api/projects",
+                "{\"gitUrl\":\"https://git.example.com/acme/slow.git\"}");
 
-        mvc.perform(get("/api/projects")).andExpect(jsonPath("$").isEmpty());
+        assertThat(refused.statusCode()).isEqualTo(400);
+        assertThat(text(refused, "$.message")).contains("timed out");
+
+        assertThat(rows(get("/api/projects"))).isEmpty();
         assertThat(target).doesNotExist();
         assertThat(projectFolders()).isEmpty();
     }
 
     @Test
     void unknownIdReturns404() throws Exception {
-        mvc.perform(delete("/api/projects/{id}", "nope-1234567"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.status").value(404))
-                .andExpect(jsonPath("$.message").value(containsString("nope-1234567")));
+        HttpResponse<String> missing = delete("/api/projects/nope-1234567");
+
+        assertThat(missing.statusCode()).isEqualTo(404);
+        assertThat(number(missing, "$.status")).isEqualTo(404);
+        assertThat(text(missing, "$.message")).contains("nope-1234567");
     }
+
+    // ------------------------------------------------------------------ the wire
 
     /** Registers {@code gitUrl} and returns the id the API handed out. */
     private String createdId(String gitUrl) throws Exception {
-        MvcResult created = mvc.perform(post("/api/projects")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"gitUrl\":\"" + gitUrl + "\"}"))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return JsonPath.read(created.getResponse().getContentAsString(), "$.id");
+        HttpResponse<String> created = post("/api/projects", "{\"gitUrl\":\"" + gitUrl + "\"}");
+        assertThat(created.statusCode()).isEqualTo(201);
+        return text(created, "$.id");
+    }
+
+    private HttpResponse<String> get(String path) throws IOException, InterruptedException {
+        return send(HttpRequest.newBuilder(uri(path)));
+    }
+
+    private HttpResponse<String> post(String path, String body) throws IOException, InterruptedException {
+        return send(HttpRequest.newBuilder(uri(path))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8)));
+    }
+
+    private HttpResponse<String> delete(String path) throws IOException, InterruptedException {
+        return send(HttpRequest.newBuilder(uri(path)).method("DELETE", HttpRequest.BodyPublishers.noBody()));
+    }
+
+    private URI uri(String path) {
+        return URI.create("http://localhost:" + port + path);
+    }
+
+    /**
+     * The JDK client, not RestTemplate: {@code HttpURLConnection} refuses PATCH, so this is the client
+     * the methods of the same resource are asked with ({@code ProjectFilesTest}).
+     */
+    private static HttpResponse<String> send(HttpRequest.Builder request)
+            throws IOException, InterruptedException {
+        return CLIENT.send(request.timeout(Duration.ofSeconds(10)).build(),
+                HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * A field of the answer as text. Typed on purpose — a generic {@code <T>} that lands straight in
+     * {@code assertThat} is ambiguous for javac, and a missing path is a
+     * {@code PathNotFoundException}, never a quiet {@code null}.
+     */
+    private static String text(HttpResponse<String> answer, String jsonPath) {
+        Object value = JsonPath.read(answer.body(), jsonPath);
+        return String.valueOf(value);
+    }
+
+    /** A numeric field of the answer — {@code $.status} of the {@code ApiError} body. */
+    private static int number(HttpResponse<String> answer, String jsonPath) {
+        return ((Number) JsonPath.read(answer.body(), jsonPath)).intValue();
+    }
+
+    /** The list body as rows: the {@code [} is the proof that the answer is an array, not an object. */
+    private static List<?> rows(HttpResponse<String> answer) {
+        assertThat(answer.body()).startsWith("[");
+        return JsonPath.read(answer.body(), "$");
     }
 
     private static Path projectsDir() {
@@ -307,39 +328,6 @@ class ProjectControllerTest {
             return children.toList();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
-        }
-    }
-
-    private static Path createHome() {
-        try {
-            return Files.createTempDirectory("aifactory-api-test");
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
-    private static void createDirectories(Path dir) {
-        try {
-            Files.createDirectories(dir);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
-    private static void deleteTree(Path dir) {
-        if (!Files.exists(dir)) {
-            return;
-        }
-        try (Stream<Path> tree = Files.walk(dir)) {
-            tree.sorted(Comparator.reverseOrder()).forEach(path -> {
-                try {
-                    Files.deleteIfExists(path);
-                } catch (IOException ignored) {
-                    // best effort around the test run
-                }
-            });
-        } catch (IOException ignored) {
-            // best effort around the test run
         }
     }
 }

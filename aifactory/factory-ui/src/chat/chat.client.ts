@@ -1,13 +1,17 @@
 import { request } from '../shared/api.client'
+import type { AgentTile } from './chat.agents.client'
 
 /**
- * One line of the shared history. `origin` names the agent that spoke — set for Jon's own line and
- * for a team member's final answer, absent for the user's line, because a line without an agent
- * relationship carries no name (R-WP-4). It is never guessed: what the server does not name, the
- * screen leaves unnamed.
+ * One line of the shared history. `origin` names who spoke — the agent that spoke for Jon's own line and
+ * a team member's final answer, the person for a user's line (R-WP-25). A user's line without a name
+ * carries none and the screen shows its role label; an agent's line without one stays unnamed, because
+ * the server never guesses and the UI invents nothing (R-WP-4).
+ *
+ * `error` is the third role (R-WP-34): the line a failed turn left in the conversation. It carries no
+ * origin by construction and its text is the server's reason — the UI knows no wording of its own for it.
  */
 export interface ChatMessage {
-  role: 'user' | 'jon'
+  role: 'user' | 'jon' | 'error'
   text: string
   origin?: string | null
 }
@@ -17,12 +21,22 @@ export interface ChatMessage {
  * line, `done` closes one <em>turn</em> — an input that queued up behind a running one is closed by that
  * turn's `done` too — and `error` is a turn failure; the composer stays usable either way. Finished text
  * of anybody, team member included, is never an event: it arrives with the history (`done` reads it).
+ *
+ * `agents` is the one event that is not part of a conversation: the whole tile roster, every time. The UI
+ * <em>replaces</em> its list with it and accumulates nothing, so a snapshot can never become a second
+ * history (R-WP-7) and a lost one costs nothing — the roster is read again on mount.
+ *
+ * `diff` is one file the turn changed: `file` is the project-relative path, `diff` the unified diff the
+ * core computed — never the file's content, and no author, because a change of this project belongs to
+ * everybody watching it (R-WP-36). Live only, exactly like `tool`.
  */
 export type ChatStreamEvent =
   | { kind: 'partial'; thinking: boolean; text: string }
   | { kind: 'tool'; text: string }
+  | { kind: 'diff'; file: string; diff: string }
   | { kind: 'done'; millis: number }
   | { kind: 'error'; message: string }
+  | { kind: 'agents'; tiles: AgentTile[] }
 
 export interface ChatStreamHandlers {
   onEvent: (event: ChatStreamEvent) => void
@@ -40,10 +54,29 @@ export async function listMessages(projectId: string): Promise<ChatMessage[]> {
 /**
  * Fire and forget — the server answers 202 with no body whether or not Jon is busy, because a busy
  * project queues the input instead of refusing it (R-WP-10).
+ *
+ * `user` is the name of this browser (R-WP-25): a label of the sender, never an addressee, and it is left
+ * out of the body entirely when the browser holds none — then the request is exactly `{ text }` and the
+ * server writes no prefix (UC-WP-48).
  */
-export async function sendMessage(projectId: string, text: string): Promise<void> {
+export async function sendMessage(projectId: string, text: string, user?: string | null): Promise<void> {
+  const name = user?.trim()
   return request<void>(`/api/projects/${encodeURIComponent(projectId)}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text, ...(name ? { user: name } : {}) }),
+  })
+}
+
+/**
+ * End the turn that is running (UC-WP-50). It belongs to the conversation's own edge: it writes nothing,
+ * starts nothing and names no addressee — the same single conversation, only shorter.
+ *
+ * 202 means the stop was <em>taken</em>; the end itself arrives as `done` on the live wire. 409 means no
+ * turn was running — the caller treats that as "already over" and shows no message of its own, because a
+ * refusal here denies the user nothing he wanted.
+ */
+export async function stopTurn(projectId: string): Promise<void> {
+  return request<void>(`/api/projects/${encodeURIComponent(projectId)}/messages/stop`, {
+    method: 'POST',
   })
 }

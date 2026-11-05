@@ -4,5 +4,23 @@
   "rules": {
     "react/rules-of-hooks": "error",
     "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["src/chat/**/*.ts", "src/chat/**/*.tsx"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["../project", "../project/*"],
+                "message": "chat does not know project — the file area is a slot from app (aifactory-architektur.md)"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }

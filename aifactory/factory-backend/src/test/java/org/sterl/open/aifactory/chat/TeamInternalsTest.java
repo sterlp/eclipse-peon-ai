@@ -26,10 +26,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.io.TempDir;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -37,8 +34,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
@@ -51,9 +46,9 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.poagent.AiPoAgent;
+import org.sterl.open.aifactory.FactorySpringTest;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
-import org.sterl.open.aifactory.project.FakeGitConfig;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
@@ -73,10 +68,8 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * nobody looked at is red here, and the same turn's history is asserted positively, so a member line that
  * quietly disappeared is red too.</p>
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(FakeGitConfig.class)
-@Timeout(120)
-class TeamInternalsTest {
+@Timeout(90)
+class TeamInternalsTest extends FactorySpringTest {
 
     /** The prompt Jon hands over — it has to stay visible, it names the delegation on his own line. */
     private static final String MEMBER_PROMPT = "MITGLIEDS-AUFGABE: nenne genau eine Frucht";
@@ -96,9 +89,6 @@ class TeamInternalsTest {
             .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(Duration.ofSeconds(5))
             .build();
-
-    @TempDir
-    static Path home;
 
     private MockLlmServer model;
 
@@ -127,11 +117,6 @@ class TeamInternalsTest {
         if (model != null) {
             model.stop();
         }
-    }
-
-    @DynamicPropertySource
-    static void isolateHome(DynamicPropertyRegistry registry) {
-        registry.add("aifactory.home", home::toString);
     }
 
     /**
@@ -189,8 +174,10 @@ class TeamInternalsTest {
                     .as("Jon's answer over two members stays one answer, live (UC-WP-7)")
                     .isEqualTo(JON_ANSWER);
             assertThat(stream.eventNames())
-                    .as("still exactly the three known names — no member line under a fourth")
-                    .containsOnly("partial", "tool", "done");
+                    .as("no member line under a name of its own: the conversation keeps its three names,"
+                            + " the tile snapshot is the one addition and carries no text of anybody (R-WP-7)"
+                            + " — member text stays off every data line, asserted by wireText above")
+                    .containsOnly("partial", "tool", "done", "agents");
             assertThat(stream.countOf("done")).as("two members, one turn, one done").isEqualTo(1);
             assertThat(stream.countOf("error")).isZero();
         }
@@ -319,7 +306,7 @@ class TeamInternalsTest {
         properties.setProperty(LlmConfigKeys.MODEL, model);
         properties.setProperty(LlmConfigKeys.URL, this.model.getUrl());
         properties.setProperty(LlmConfigKeys.API_KEY, "test-key");
-        try (var out = Files.newOutputStream(home.resolve(FactoryHome.CONFIG_FILE))) {
+        try (var out = Files.newOutputStream(HOME.resolve(FactoryHome.CONFIG_FILE))) {
             properties.store(out, "TeamInternalsTest");
         }
     }

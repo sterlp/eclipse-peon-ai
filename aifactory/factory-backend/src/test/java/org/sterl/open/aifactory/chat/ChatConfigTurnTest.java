@@ -1,10 +1,10 @@
 package org.sterl.open.aifactory.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.sterl.open.aifactory.chat.ChatHistoryWaits.awaitAnswer;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -14,12 +14,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -27,8 +23,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
@@ -40,9 +34,9 @@ import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.poagent.AiPoAgent;
+import org.sterl.open.aifactory.FactorySpringTest;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
-import org.sterl.open.aifactory.project.FakeGitConfig;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
@@ -63,16 +57,11 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * {@code updateConfig} against the value it holds, so the file is written by hand <b>first</b> (that is
  * the state the runtime is built in) and the change goes through the settings route afterwards.</p>
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(FakeGitConfig.class)
-@Timeout(120)
-class ChatConfigTurnTest {
+@Timeout(60)
+class ChatConfigTurnTest extends FactorySpringTest {
 
     private static final String FIRST_MODEL = "inc3e-first";
     private static final String SECOND_MODEL = "inc3e-second";
-
-    @TempDir
-    static Path home;
 
     /** Per test: a turn is fire-and-forget, so an orphan of a failing test must not drain the next one. */
     private MockLlmServer llm;
@@ -82,10 +71,6 @@ class ChatConfigTurnTest {
 
     @Autowired
     private ProjectRuntimeRegistry runtimes;
-
-    /** The witness that nothing was restarted: the same running application served every turn. */
-    @Autowired
-    private ApplicationContext context;
 
     private RestTemplate http;
 
@@ -105,11 +90,6 @@ class ChatConfigTurnTest {
         }
     }
 
-    @DynamicPropertySource
-    static void isolateHome(DynamicPropertyRegistry registry) {
-        registry.add("aifactory.home", home::toString);
-    }
-
     @Test
     // UC-WP-24
     void settingsOverrideNeverWritesSharedStore() throws Exception {
@@ -124,7 +104,7 @@ class ChatConfigTurnTest {
 
         llm.queueResponse("erste Antwort");
         assertThat(send(projectId, "erste Frage").getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-        awaitJonAnswer(projectId, "erste Antwort");
+        awaitAnswer(() -> messages(projectId), "erste Antwort");
 
         assertThat(modelOnTheWire())
                 .as("der erste Turn läuft mit dem Modell aus der Datei der Fabrik")
@@ -147,14 +127,14 @@ class ChatConfigTurnTest {
         assertThat(JsonPath.<Boolean>read(saved.getBody(), "$.keySet"))
                 .as("ein nicht eingesandtes Feld bleibt, was es war — der Schlüssel ist noch gesetzt")
                 .isEqualTo(true);
-        assertThat(Files.readString(home.resolve(FactoryHome.CONFIG_FILE)))
+        assertThat(Files.readString(HOME.resolve(FactoryHome.CONFIG_FILE)))
                 .as("gespeichert wurde in die Datei der Fabrik (GIVEN 1, hier nur die Tat selbst)")
                 .contains(SECOND_MODEL);
 
         awaitIdle(runtime);
         llm.queueResponse("zweite Antwort");
         assertThat(send(projectId, "zweite Frage").getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-        awaitJonAnswer(projectId, "zweite Antwort");
+        awaitAnswer(() -> messages(projectId), "zweite Antwort");
 
         assertThat(modelOnTheWire())
                 .as("GIVEN 3: der nächste Turn nutzt den neuen Wert, ohne Neu-Start")
@@ -174,7 +154,7 @@ class ChatConfigTurnTest {
         awaitIdle(runtime);
         llm.queueResponse("dritte Antwort");
         assertThat(send(projectId, "dritte Frage").getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-        awaitJonAnswer(projectId, "dritte Antwort");
+        awaitAnswer(() -> messages(projectId), "dritte Antwort");
 
         assertThat(modelOnTheWire())
                 .as("ein dritter Turn ohne Änderung läuft mit demselben Wert")
@@ -236,12 +216,6 @@ class ChatConfigTurnTest {
         return JsonPath.read(llm.getLastRequestBody(), "$.model");
     }
 
-    private void awaitJonAnswer(String projectId, String answer) {
-        awaitUntil(() -> messages(projectId).stream()
-                .anyMatch(line -> "jon".equals(line.role()) && answer.equals(line.text())),
-                20_000, "Jon hat „" + answer + "“ in den Verlauf geschrieben");
-    }
-
     /**
      * Idle before the next send: a still-running turn would take the input into its queue, and then the
      * config read of that turn is not the one under test (the queue itself is UC-WP-14).
@@ -261,7 +235,7 @@ class ChatConfigTurnTest {
         properties.setProperty(LlmConfigKeys.MODEL, model);
         properties.setProperty(LlmConfigKeys.URL, url);
         properties.setProperty(LlmConfigKeys.API_KEY, "test-key");
-        try (var out = Files.newOutputStream(home.resolve(FactoryHome.CONFIG_FILE))) {
+        try (var out = Files.newOutputStream(HOME.resolve(FactoryHome.CONFIG_FILE))) {
             properties.store(out, "ChatConfigTurnTest");
         }
     }

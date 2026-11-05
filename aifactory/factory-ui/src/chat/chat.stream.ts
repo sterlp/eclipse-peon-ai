@@ -1,11 +1,12 @@
+import { readSseStream } from '../shared/sse.client'
 import type { ChatStreamEvent, ChatStreamHandlers } from './chat.client'
+import type { AgentTile } from './chat.agents.client'
+import { content } from '../shared/content'
 
 /**
  * Reads the SSE wire with `fetch` + `ReadableStream` instead of `EventSource`: the parsing is what
  * R-WP-5 promises, so it has to be observable in a test, and reconnecting stays the view's single
- * rule instead of a browser feature nobody can see. Parsed per spec — event boundary is the empty
- * line, `event:` plus every `data:` line of one event are joined, `:comment` is keep-alive noise,
- * and a chunk may split an event at any byte.
+ * rule instead of a browser feature nobody can see. The protocol itself is `shared/sse.client.ts`.
  */
 export async function openChatStream(
   projectId: string,
@@ -30,91 +31,18 @@ export async function openChatStream(
     return
   }
 
-  const wire: Wire = { event: '', data: [], buffer: '' }
-  const reader = response.body.getReader()
-  const decoder = new TextDecoder()
   try {
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) {
-        break
+    await readSseStream(response.body, message => {
+      const mapped = toEvent(message.event, message.data)
+      if (mapped !== null) {
+        handlers.onEvent(mapped)
       }
-      wire.buffer += decoder.decode(value, { stream: true })
-      for (;;) {
-        const line = takeLine(wire)
-        if (line === null) {
-          break
-        }
-        readLine(line, wire, handlers)
-      }
-    }
+    })
   } catch {
     // an interrupted stream is not the view's problem — it reconnects and reads the history
   }
   if (!signal.aborted) {
     handlers.onEnd(true)
-  }
-}
-
-interface Wire {
-  event: string
-  data: string[]
-  buffer: string
-}
-
-/**
- * Cuts one complete line off the buffer. A lone `\r` at the very end stays: it may be the first half
- * of a CRLF whose second half has not arrived yet — guessing wrong would split an event.
- */
-function takeLine(wire: Wire): string | null {
-  const buffer = wire.buffer
-  for (let index = 0; index < buffer.length; index++) {
-    const char = buffer[index]
-    if (char === '\n') {
-      wire.buffer = buffer.slice(index + 1)
-      return buffer.slice(0, index)
-    }
-    if (char === '\r') {
-      if (index + 1 === buffer.length) {
-        return null
-      }
-      const length = buffer[index + 1] === '\n' ? 2 : 1
-      wire.buffer = buffer.slice(index + length)
-      return buffer.slice(0, index)
-    }
-  }
-  return null
-}
-
-function readLine(line: string, wire: Wire, handlers: ChatStreamHandlers): void {
-  if (line === '') {
-    dispatch(wire, handlers)
-    return
-  }
-  if (line.startsWith(':')) {
-    return
-  }
-  const colon = line.indexOf(':')
-  const field = colon < 0 ? line : line.slice(0, colon)
-  const value = colon < 0 ? '' : trimOneSpace(line.slice(colon + 1))
-  if (field === 'event') {
-    wire.event = value
-  } else if (field === 'data') {
-    wire.data.push(value)
-  }
-  // `id:` and `retry:` stay unread: the wire sets no id and there is no replay to resume from
-}
-
-function dispatch(wire: Wire, handlers: ChatStreamHandlers): void {
-  const { event, data } = wire
-  wire.event = ''
-  wire.data = []
-  if (data.length === 0) {
-    return
-  }
-  const mapped = toEvent(event, data.join('\n'))
-  if (mapped !== null) {
-    handlers.onEvent(mapped)
   }
 }
 
@@ -138,12 +66,24 @@ function toEvent(name: string, payload: string): ChatStreamEvent | null {
     case 'done':
       return { kind: 'done', millis: Number(fields.millis ?? 0) }
     case 'error':
-      return { kind: 'error', message: String(fields.message ?? 'unbekannter Fehler') }
+      return { kind: 'error', message: String(fields.message ?? content.chat.unknownError) }
+    case 'diff': {
+      // the pair or nothing: a block without its file would be a statement without a subject, and a block
+      // without its diff an empty promise of a change (R-WP-36)
+      if (typeof fields.file !== 'string' || typeof fields.diff !== 'string') {
+        return null
+      }
+      return { kind: 'diff', file: fields.file, diff: fields.diff }
+    }
+    case 'agents': {
+      // the whole roster, and the view replaces its list with it — a snapshot never accumulates, so it
+      // cannot grow into a second history (R-WP-7); a payload without a list is not my error to guess
+      if (!Array.isArray(fields.tiles)) {
+        return null
+      }
+      return { kind: 'agents', tiles: fields.tiles as AgentTile[] }
+    }
     default:
       return null
   }
-}
-
-function trimOneSpace(value: string): string {
-  return value.startsWith(' ') ? value.slice(1) : value
 }

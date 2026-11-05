@@ -34,6 +34,9 @@ Module guides (read when working in one):
   removed keys are ignored, never migrated or aliased. No migration chains, no stale state.
 - **Empty means unset.** An empty config value sends *no* parameter — never a default. (Reason:
   GPT-5/o reject any `temperature != 1`; a "harmless default" breaks exactly those models.)
+- **Optional at the façade, null inside.** A public query that can find nothing returns
+  `Optional<T>`; internal state/fields stay plain `null` (`@Nullable`) — never `Optional` fields
+  or params. Incremental only: convert code we touch, no bulk migration.
 - **Every RAM cache is bounded.** A RAM cache without self-truncation is a leak — every new cache
   uses `BoundedLruCache` (or has a finite key-space and says so in its Javadoc).
 - Use a clean component architecture with proper information hiding / deep modules

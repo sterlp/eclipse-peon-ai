@@ -8,12 +8,15 @@ import java.io.UncheckedIOException;
 import java.lang.reflect.RecordComponent;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.env.MockEnvironment;
@@ -23,6 +26,7 @@ import org.sterl.llmpeon.ai.FileLlmConfigStore;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.ai.LlmConfigStore;
+import org.sterl.llmpeon.provider.LlmProviders;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
@@ -153,6 +157,7 @@ class FactoryConfigServiceTest {
                         LlmConfigKeys.API_KEY, KEY));
 
         SettingsSnapshot fromFile = service(environment).snapshot();
+
         assertThat(fromFile.provider()).isEqualTo("OPEN_AI");
         assertThat(fromFile.model()).isEqualTo("file-model");
         assertThat(fromFile.url()).isEqualTo("https://file.example");
@@ -218,7 +223,7 @@ class FactoryConfigServiceTest {
         Map<Path, byte[]> before = treeBytes();
 
         SettingsSnapshot saved = service().update(new SettingsUpdate(null, "new-model", "https://new.example",
-                WRITTEN_KEY, null, null, null));
+                WRITTEN_KEY, null, null, null, false));
 
         // the answer of a save is the stored state, masked — never the submitted body
         assertThat(saved.model()).isEqualTo("new-model");
@@ -246,15 +251,16 @@ class FactoryConfigServiceTest {
         // and the next read sees it without a restart
         assertThat(service().load().getModel()).isEqualTo("new-model");
 
-        // GIVEN 2: a blank key field and nothing else submitted — not one byte moves (the store would
-        // have read that blank as removal, which is exactly why it is never called with one)
+        // GIVEN 2: a blank key field and nothing else submitted — not one byte moves. The key is the one
+        // field for which blank still means unchanged (R-WP-16); a cleared visible field deletes, which is
+        // what aClearedFieldIsRemovedFromTheFile proves.
         byte[] storedBytes = Files.readAllBytes(config());
-        service().update(new SettingsUpdate(null, null, null, "   ", null, null, null));
+        service().update(new SettingsUpdate(null, null, null, "   ", null, null, null, false));
         assertThat(Files.readAllBytes(config())).containsExactly(storedBytes);
         assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.API_KEY, null)).isEqualTo(WRITTEN_KEY);
 
         // submitting the value that is already stored is a no-op on disk as well
-        service().update(new SettingsUpdate(null, "new-model", null, null, null, null, null));
+        service().update(new SettingsUpdate(null, "new-model", null, null, null, null, null, false));
         assertThat(Files.readAllBytes(config())).containsExactly(storedBytes);
         assertThat(differingPaths(before, treeBytes())).containsExactly(config());
     }
@@ -263,7 +269,7 @@ class FactoryConfigServiceTest {
     void updateCannotPinTheConfigDirOrTheDiskTools() {
         // every field the write model can carry, including the two keys the factory pins for itself
         service().update(new SettingsUpdate("OLLAMA", "some-model", "https://example", "sk-some-key",
-                4000, 60L, false));
+                "4000", "60", "false", false));
 
         FileLlmConfigStore stored = new FileLlmConfigStore(config());
         assertThat(stored.get(LlmConfigKeys.MODEL, null)).isEqualTo("some-model");
@@ -280,12 +286,21 @@ class FactoryConfigServiceTest {
         writeConfig("%s=old-model%n".formatted(LlmConfigKeys.MODEL));
         byte[] untouched = Files.readAllBytes(config());
 
-        assertThatThrownBy(() -> service().update(new SettingsUpdate(null, null, null, null, 0, null, null)))
+        assertThatThrownBy(() -> service().update(new SettingsUpdate(null, null, null, null, "0", null, null, false)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("tokenWindow");
-        assertThatThrownBy(() -> service().update(new SettingsUpdate(null, null, null, null, null, -1L, null)))
+        assertThatThrownBy(() -> service().update(new SettingsUpdate(null, null, null, null, null, "-1", null, false)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("timeoutSeconds");
+        // text on the wire means text the core can read back — garbage is refused, never stored
+        assertThatThrownBy(() -> service().update(new SettingsUpdate(null, null, null, null, "many", null, null, false)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("tokenWindow")
+                .hasMessageNotContaining("many");
+        assertThatThrownBy(() -> service().update(new SettingsUpdate(null, null, null, null, null, null, "maybe", false)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("sendThinking")
+                .hasMessageNotContaining("maybe");
 
         // rejected before the first write — and the message carries no submitted value
         assertThat(Files.readAllBytes(config())).containsExactly(untouched);
@@ -298,7 +313,7 @@ class FactoryConfigServiceTest {
 
         // AiProvider.parse would have answered 200 and stored OLLAMA — garbage accepted, typo invisible
         assertThatThrownBy(() -> service().update(new SettingsUpdate("NOPE", null, null, WRITTEN_KEY,
-                null, null, null)))
+                null, null, null, false)))
                         .isInstanceOf(IllegalArgumentException.class)
                         .hasMessageContaining("provider")
                         .hasMessageNotContaining(WRITTEN_KEY)
@@ -322,6 +337,166 @@ class FactoryConfigServiceTest {
         Files.delete(doomed);
 
         assertThat(differingPaths(before, treeBytes())).containsExactly(doomed);
+    }
+
+    /**
+     * UC-WP-63 GIVEN 1: "Remove key" is the only way the page can delete a key. Before it, a key set once
+     * could never be removed through the UI — the write path only ever stored what arrived.
+     */
+    @Test
+    // UC-WP-63
+    void removeKeyDeletesTheKeyFromTheFile() throws IOException {
+        writeConfig("""
+                %s=OPEN_AI
+                %s=gpt-demo
+                %s=%s
+                """.formatted(LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.MODEL, LlmConfigKeys.API_KEY, KEY));
+
+        SettingsSnapshot saved = service(new MockEnvironment())
+                .update(new SettingsUpdate(null, null, null, null, null, null, null, true));
+
+        assertThat(saved.keySet()).isFalse();
+        assertThat(saved.keySource()).isEqualTo(KeySource.NONE);
+        FileLlmConfigStore stored = new FileLlmConfigStore(config());
+        assertThat(stored.get(LlmConfigKeys.API_KEY, null)).isNull();
+        // only the key went: everything the request did not name is untouched
+        assertThat(stored.get(LlmConfigKeys.PROVIDER_TYPE, null)).isEqualTo("OPEN_AI");
+        assertThat(stored.get(LlmConfigKeys.MODEL, null)).isEqualTo("gpt-demo");
+
+        // the rewritten file still carries a model line, so it stays owner-only (R-WP-9, R-WP-16)
+        Assumptions.assumeTrue(config().getFileSystem().supportedFileAttributeViews().contains("posix"),
+                "no posix view on this file system — the mode is the operating system's promise there");
+        assertThat(Files.getPosixFilePermissions(config())).isEqualTo(
+                EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
+
+        // removing what is already gone is a no-op — the page may ask again without touching the bytes
+        byte[] removed = Files.readAllBytes(config());
+        service(new MockEnvironment()).update(new SettingsUpdate(null, null, null, null, null, null, null, true));
+        assertThat(Files.readAllBytes(config())).containsExactly(removed);
+    }
+
+    /** UC-WP-24 GIVEN 2 / UC-WP-63: the key field is write-only, so clearing it is never a deletion. */
+    @Test
+    // UC-WP-63
+    void anEmptyKeyFieldLeavesTheKeyUntouched() throws IOException {
+        writeConfig("%s=%s%n".formatted(LlmConfigKeys.API_KEY, KEY));
+        byte[] untouched = Files.readAllBytes(config());
+
+        service().update(new SettingsUpdate(null, null, null, "", null, null, null, false));
+
+        assertThat(Files.readAllBytes(config())).containsExactly(untouched);
+        assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.API_KEY, null)).isEqualTo(KEY);
+        assertThat(service().snapshot().keySet()).isTrue();
+    }
+
+    /**
+     * A body that both writes a key and asks to delete it has no honest meaning: applied in order it
+     * deletes the key this same request set, so the request is refused rather than guessed at.
+     */
+    @Test
+    // UC-WP-63
+    void aKeyIsNeverSetAndRemovedAtOnce() throws IOException {
+        writeConfig("%s=%s%n".formatted(LlmConfigKeys.API_KEY, KEY));
+        byte[] untouched = Files.readAllBytes(config());
+
+        assertThatThrownBy(() -> service().update(
+                new SettingsUpdate(null, null, null, WRITTEN_KEY, null, null, null, true)))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("apiKey")
+                        .hasMessageNotContaining(WRITTEN_KEY);
+
+        assertThat(Files.readAllBytes(config())).containsExactly(untouched);
+    }
+
+    /**
+     * UC-WP-46 GIVEN 1 (the default level): a cleared visible field is deleted from the file, and what
+     * applies without it applies again. The three states are only proven apart if a field named with a
+     * value survives the same request, so this request names all of them.
+     */
+    @Test
+    // UC-WP-46
+    void aClearedFieldIsRemovedFromTheFile() {
+        writeConfig("""
+                %s=OPEN_AI
+                %s=gpt-demo
+                %s=https://api.example.com/v1
+                %s=64000
+                %s=45
+                %s=false
+                """.formatted(LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.MODEL, LlmConfigKeys.URL,
+                        LlmConfigKeys.TOKEN_WINDOW, LlmConfigKeys.TIMEOUT, LlmConfigKeys.SEND_THINKING_ENABLED));
+
+        SettingsSnapshot saved = service(new MockEnvironment()).update(new SettingsUpdate(
+                "OPEN_AI", "", "", null, "64000", null, "", false));
+
+        FileLlmConfigStore stored = new FileLlmConfigStore(config());
+        assertThat(stored.get(LlmConfigKeys.MODEL, null)).isNull();
+        assertThat(stored.get(LlmConfigKeys.URL, null)).isNull();
+        assertThat(stored.get(LlmConfigKeys.SEND_THINKING_ENABLED, null)).isNull();
+        // named with a value, or not named at all — neither is a deletion
+        assertThat(stored.get(LlmConfigKeys.TOKEN_WINDOW, null)).isEqualTo("64000");
+        assertThat(stored.get(LlmConfigKeys.TIMEOUT, null)).isEqualTo("45");
+        assertThat(stored.get(LlmConfigKeys.PROVIDER_TYPE, null)).isEqualTo("OPEN_AI");
+
+        // the answer is the state that now applies: the core default where the file no longer carries one,
+        // and the untouched value where the request named one
+        assertThat(saved.model()).isNull();
+        assertThat(saved.url()).isNull();
+        assertThat(saved.sendThinking()).isTrue();
+        assertThat(saved.tokenWindow()).isEqualTo(64_000);
+        assertThat(saved.timeoutSeconds()).isEqualTo(45);
+    }
+
+    /**
+     * The page's provider list is the core's enum in the core's order with the core's URL (D-10): a second
+     * list in the factory would drift, and a model default would be an invention (Q2).
+     */
+    @Test
+    // UC-WP-62
+    void providerDefaultsComeFromTheCore() {
+        List<ProviderDefaults> defaults = service().providerDefaults();
+
+        assertThat(defaults).map(ProviderDefaults::name)
+                .containsExactly(Arrays.stream(AiProvider.values()).map(Enum::name).toArray(String[]::new));
+        assertThat(defaults).allSatisfy(entry -> assertThat(entry.defaultUrl())
+                .isEqualTo(LlmProviders.of(AiProvider.valueOf(entry.name())).defaultBaseUrl()));
+        // no model default exists, so no field could hold one
+        assertThat(componentNamesOf(ProviderDefaults.class)).containsExactly("name", "defaultUrl",
+                "thinkSupported", "thinkForm", "thinkValues");
+        // the providers whose core class has no think input are exactly the ones the page marks as such
+        assertThat(defaults).filteredOn(entry -> !entry.thinkSupported())
+                .map(ProviderDefaults::name).containsExactly("GOOGLE_GEMINI", "MISTRAL");
+        // and the form the field takes is the core class's own answer, provider by provider (UC-WP-67)
+        assertThat(theDefaultFor(defaults, "OLLAMA").thinkForm()).isEqualTo(ThinkForm.TOGGLE);
+        assertThat(theDefaultFor(defaults, "LM_STUDIO").thinkForm()).isEqualTo(ThinkForm.FREE);
+        assertThat(theDefaultFor(defaults, "ANTHROPIC").thinkForm()).isEqualTo(ThinkForm.VALUES);
+        assertThat(defaults).filteredOn(entry -> entry.thinkForm() == ThinkForm.NONE)
+                .map(ProviderDefaults::name).containsExactly("GOOGLE_GEMINI", "MISTRAL");
+        // only a VALUES form names the list it offers; every other form answers with an empty one
+        assertThat(theDefaultFor(defaults, "ANTHROPIC").thinkValues()).containsExactly("adaptive", "enabled");
+        assertThat(theDefaultFor(defaults, "OLLAMA").thinkValues()).isEmpty();
+        // a provider that needs a configured URL carries none — the page leaves the field empty
+        assertThat(theDefaultFor(defaults, "OPEN_AI").defaultUrl()).isNull();
+        assertThat(theDefaultFor(defaults, "OLLAMA").defaultUrl()).isNotBlank();
+        // and reading the defaults never touches the config file
+        assertThat(home.resolve(FactoryHome.CONFIG_FILE)).doesNotExist();
+    }
+
+    private static ProviderDefaults theDefaultFor(List<ProviderDefaults> defaults, String name) {
+        return defaults.stream().filter(entry -> entry.name().equals(name)).findFirst().orElseThrow();
+    }
+
+    /** UC-WP-20 with R-WP-16: the refusal of a turn names the page that solves it and the provider. */
+    @Test
+    // UC-WP-20
+    void theMissingKeyMessageNamesTheSettings() {
+        writeConfig("%s=OPEN_AI%n%s=gpt-demo%n".formatted(LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.MODEL));
+
+        assertThatThrownBy(() -> service(new MockEnvironment()).loadForTurn())
+                .isInstanceOf(TurnNotConfiguredException.class)
+                .hasMessageContaining("apiKey")
+                .hasMessageContaining("Settings")
+                .hasMessageContaining("OPEN_AI");
     }
 
 

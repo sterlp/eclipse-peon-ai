@@ -137,6 +137,26 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
         return "No eclipse file found for '" + filePath + "'." + EclipseUtil.unresolvedHint(filePath);
     }
 
+    public static final String READ_ECLIPSE_PICTURE_TOOL = "eclipseReadPicture";
+    @Tool(name = READ_ECLIPSE_PICTURE_TOOL, value = "Load a picture from the Eclipse workspace; you see it in the next user message. png, jpg, jpeg, gif, webp, max 4 MB.")
+    public String eclipseReadPicture(
+            @P(description = "workspace-relative path", name = "filePath") String filePath) {
+
+        ArgsUtil.requireNonBlank(filePath, "filePath");
+
+        var file = EclipseUtil.resolveInEclipse(filePath, Optional.ofNullable(currentProject));
+        if (file.isPresent() && file.get() instanceof IFile f) {
+            var location = f.getLocation();
+            if (location == null) {
+                onProblem("No local file for " + filePath);
+                return "Cannot load picture: '" + filePath + "' has no local file.";
+            }
+            return attachPicture(location.toFile().toPath(), JdtUtil.pathOf(f));
+        }
+        onProblem("No eclipse file found for " + filePath);
+        return "No eclipse file found for '" + filePath + "'." + EclipseUtil.unresolvedHint(filePath);
+    }
+
     @Tool("Find any files workspace-wide by name (*, ? wildcard supported). Default file-path finder.")
     public String eclipseSearchFiles(
             @P(description = "file name query - only *, ? wildcard is supported.", name = "query")

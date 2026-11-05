@@ -17,11 +17,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -29,8 +26,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -39,9 +34,9 @@ import com.jayway.jsonpath.JsonPath;
 
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
+import org.sterl.open.aifactory.FactorySpringTest;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
-import org.sterl.open.aifactory.project.FakeGitConfig;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
@@ -53,17 +48,12 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * <p>The runtime is reached through the package-private seam of the registry, which is the whole point:
  * a caller over HTTP cannot see a runtime, only the 404 of a project that is gone.</p>
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(FakeGitConfig.class)
-@Timeout(90)
-class ProjectRemovalTest {
+@Timeout(60)
+class ProjectRemovalTest extends FactorySpringTest {
 
     private static final String GIT_URL = "https://git.example.com/acme/removed-runtime.git";
     private static final String QUESTION = "frage vor dem entfernen";
     private static final String ANSWER = "die Antwort vor dem entfernen";
-
-    @TempDir
-    static Path home;
 
     private MockLlmServer model;
 
@@ -95,11 +85,6 @@ class ProjectRemovalTest {
         if (model != null) {
             model.stop();
         }
-    }
-
-    @DynamicPropertySource
-    static void isolateHome(DynamicPropertyRegistry registry) {
-        registry.add("aifactory.home", home::toString);
     }
 
     @Test
@@ -236,7 +221,7 @@ class ProjectRemovalTest {
         properties.setProperty(LlmConfigKeys.MODEL, model);
         properties.setProperty(LlmConfigKeys.URL, this.model.getUrl());
         properties.setProperty(LlmConfigKeys.API_KEY, "test-key");
-        try (var out = Files.newOutputStream(home.resolve(FactoryHome.CONFIG_FILE))) {
+        try (var out = Files.newOutputStream(HOME.resolve(FactoryHome.CONFIG_FILE))) {
             properties.store(out, "ProjectRemovalTest");
         }
     }

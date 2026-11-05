@@ -1,145 +1,360 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 
-import { readFiles, type FileRoot, type FilesResponse } from './files.client'
+import { readFiles, type DirectoryResponse, type FileEntry, type FileResponse, type FileRoot } from './files.client'
 import { errorMessage } from '../shared/api.client'
+import { CodeView } from '../shared/code'
+import { languageOf } from '../shared/code.language'
+import { content } from '../shared/content'
 import type { Project } from '../shared/dto'
 
 interface Props {
+  /**
+   * The addressed project — only its id is used. The panel never names the project, because the chat head
+   * beside it already does (R-WP-33). The area owns its state and resets none of it on its own, so the
+   * caller keys this component per project (`key={project.id}`): unkeyed, the second project would open
+   * inside the tree of the one before it.
+   */
   project: Project
 }
 
-const ROOTS: { value: FileRoot; label: string }[] = [
-  { value: 'checkout', label: 'Checkout' },
-  { value: 'tmp', label: 'TMP' },
+/** One directory read as it stands: asked for, answered, or refused. */
+type Branch =
+  | { status: 'loading' }
+  | { status: 'ready'; read: DirectoryResponse | FileResponse }
+  | { status: 'error'; message: string }
+
+/** What the viewer holds: one file of one root, read once and shown until it is closed. */
+interface Viewed {
+  root: FileRoot
+  path: string
+  file: FileResponse
+}
+
+/** The two roots as cards — a card says what it is, which a switch between two words would not. */
+const ROOTS: { value: FileRoot; label: string; hint: string }[] = [
+  { value: 'checkout', label: content.files.roots.checkout, hint: content.files.roots.checkoutHint },
+  { value: 'tmp', label: content.files.roots.tmp, hint: content.files.roots.tmpHint },
 ]
 
+/** A branch is told apart by root and relative path — the pair the edge is asked with. */
+function branchKey(root: FileRoot, path: string): string {
+  return `${root}|${path}`
+}
+
+/** A directory below the root of the tree, or the root itself when the path is still empty. */
+function childPathOf(path: string, name: string): string {
+  return path === '' ? name : `${path}/${name}`
+}
+
 /**
- * The file area (R-WP-14, UC-WP-19): a read-only slide-over over the two roots the project may write
- * to — its checkout and the system TMP. It owns its state and its open button, so `chat` can carry it
- * as an opaque slot without knowing what a root is.
+ * The suffix behind a name. A symlink is a name and nothing else — the server sends no metadata of its
+ * target, so `link` is the honest label and `0 B` would read as an empty file (UC-WP-42).
+ */
+function suffixOf(entry: FileEntry): string {
+  if (entry.directory) {
+    return '/'
+  }
+  return entry.symlink ? content.files.linkSuffix : ` (${entry.size} B)`
+}
+
+/** An icon is decoration: the row keeps its name as the whole label. */
+function Icon({ name }: { name: string }) {
+  return <i className={`bi bi-${name}`} aria-hidden="true" />
+}
+
+interface LevelProps {
+  root: FileRoot
+  path: string
+  branches: Record<string, Branch>
+  expanded: string[]
+  onToggle(root: FileRoot, path: string): void
+  onOpenFile(root: FileRoot, path: string): void
+}
+
+/**
+ * One level of the tree: the rows of one listing, every directory carrying its own level while it is
+ * open. A level is asked for when it is opened and never before — the tree is a directory at a time
+ * (UC-WP-19), and a refused level prints its line where it stands (UC-WP-42).
+ */
+function FilesLevel({ root, path, branches, expanded, onToggle, onOpenFile }: LevelProps) {
+  const branch = branches[branchKey(root, path)]
+
+  if (branch === undefined || branch.status === 'loading') {
+    return <p className="hint">{content.common.loading}</p>
+  }
+  if (branch.status === 'error') {
+    return (
+      <p className="files-error" role="alert" data-testid="files-error">
+        {branch.message}
+      </p>
+    )
+  }
+  if (branch.read.kind !== 'directory') {
+    // the listing called this a directory and the read disagrees: the row stays closed and asks again
+    return null
+  }
+
+  return (
+    <ul className="files-level">
+      {branch.read.entries.map(entry => {
+        const childPath = childPathOf(path, entry.name)
+        // a row is open by its own key, never by the key of the level it stands in
+        const open = expanded.includes(branchKey(root, childPath))
+        return (
+          <li key={childPath}>
+            {entry.directory ? (
+              <button
+                type="button"
+                className="files-row directory"
+                data-testid="files-entry"
+                aria-expanded={open}
+                onClick={() => onToggle(root, childPath)}
+              >
+                <Icon name={open ? 'folder2-open' : 'folder'} />
+                {entry.name}
+                {suffixOf(entry)}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="files-row"
+                data-testid="files-entry"
+                onClick={() => onOpenFile(root, childPath)}
+              >
+                <Icon name="file-earmark" />
+                {entry.name}
+                {suffixOf(entry)}
+              </button>
+            )}
+            {entry.directory && open && (
+              <FilesLevel
+                root={root}
+                path={childPath}
+                branches={branches}
+                expanded={expanded}
+                onToggle={onToggle}
+                onOpenFile={onOpenFile}
+              />
+            )}
+          </li>
+        )
+      })}
+      {branch.read.entries.length === 0 && <li className="empty-state">{content.files.emptyFolder}</li>}
+      {branch.read.truncated && <li className="hint">{content.files.truncated}</li>}
+    </ul>
+  )
+}
+
+interface ViewerProps {
+  viewed: Viewed
+  onClose(): void
+}
+
+/**
+ * The opened file (R-WP-33): highlighted, left aligned, and closable — closing it returns to the tree of
+ * the root it came from, so the way back is one named control and not a guess.
+ */
+function FileViewer({ viewed, onClose }: ViewerProps) {
+  return (
+    <section className="files-viewer" aria-label={content.files.viewer} data-testid="files-viewer">
+      <header className="files-viewer-head">
+        <span className="files-viewer-path" data-testid="files-viewer-path">
+          {viewed.root} · /{viewed.path}
+        </span>
+        <button type="button" className="files-viewer-close" data-testid="files-viewer-close" onClick={onClose}>
+          <Icon name="x-lg" />
+          {content.files.backToTree}
+        </button>
+      </header>
+      {viewed.file.binary ? (
+        <p className="hint" data-testid="files-binary">
+          {content.files.binary(viewed.file.size)}
+        </p>
+      ) : (
+        <CodeView
+          className="files-viewer-code"
+          testId="files-text"
+          language={languageOf(viewed.path)}
+          code={viewed.file.text ?? ''}
+        />
+      )}
+      {viewed.file.truncated && (
+        <p className="hint" data-testid="files-viewer-truncated">
+          {content.files.truncated}
+        </p>
+      )}
+    </section>
+  )
+}
+
+/**
+ * The file area (R-WP-33, R-WP-14, UC-WP-60/61): a vertical tab at the right edge that slides a panel of
+ * the same edge open. The panel is a column beside the chat and not an overlay over it — reading a file
+ * never hides the conversation, which is why `app.routes.tsx` puts both in one row.
  *
- * Reading is one level per request; going deeper is another read. There is nothing here that could
- * write, upload or create, because the edge behind it has no such method (UC-WP-42).
+ * Inside: the two roots the project may write to as cards, their contents as a tree that is read one
+ * level per click, and the opened file as a highlighted viewer. Nothing here can write, upload or create,
+ * because the edge behind it has no such method (UC-WP-42).
+ *
+ * Closing the area forgets the position in it: the next open starts at the cards again, because the tree
+ * of a checkout is not a place worth returning to once the panel is shut.
  */
 export function ProjectFiles({ project }: Props) {
   const [open, setOpen] = useState(false)
-  const [root, setRoot] = useState<FileRoot>('checkout')
-  const [path, setPath] = useState('')
-  const [content, setContent] = useState<FilesResponse | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [shownRoot, setShownRoot] = useState<FileRoot | null>(null)
+  const [branches, setBranches] = useState<Record<string, Branch>>({})
+  const [expanded, setExpanded] = useState<string[]>([])
+  const [viewed, setViewed] = useState<Viewed | null>(null)
+  /** A refused file read: a line where the viewer would have stood, no dialog, no retry. */
+  const [fileError, setFileError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!open) {
-      return
-    }
-    let mounted = true
-    readFiles(project.id, root, path)
-      .then(loaded => {
-        if (mounted) {
-          setContent(loaded)
-          setError(null)
-        }
-      })
-      // a rejected path is a line of text where the content would have stood — no dialog, no retry
-      .catch(reason => {
-        if (mounted) {
-          setContent(null)
-          setError(errorMessage(reason))
-        }
-      })
-    return () => {
-      mounted = false
-    }
-  }, [open, project.id, root, path])
-
-  const selectRoot = useCallback((next: FileRoot) => {
-    // a path of one root says nothing about the other, so switching starts at the root itself
-    setRoot(next)
-    setPath('')
+  const remember = useCallback((key: string, branch: Branch) => {
+    setBranches(previous => ({ ...previous, [key]: branch }))
   }, [])
 
-  function enter(name: string) {
-    setPath(path === '' ? name : `${path}/${name}`)
+  const loadBranch = useCallback(
+    (root: FileRoot, path: string) => {
+      const key = branchKey(root, path)
+      remember(key, { status: 'loading' })
+      readFiles(project.id, root, path)
+        .then(read => remember(key, { status: 'ready', read }))
+        // a rejected path is the server's own sentence, printed where the level would have been
+        .catch(reason => remember(key, { status: 'error', message: errorMessage(reason) }))
+    },
+    [project.id, remember],
+  )
+
+  /** A root is asked for once and then kept: clicking back to it shows the tree that was already read. */
+  const showRoot = useCallback(
+    (next: FileRoot) => {
+      setShownRoot(next)
+      setExpanded([])
+      setViewed(null)
+      setFileError(null)
+      if (branches[branchKey(next, '')]?.status !== 'ready') {
+        loadBranch(next, '')
+      }
+    },
+    [branches, loadBranch],
+  )
+
+  /**
+   * The tab and the icon inside the panel both do this. Closing resets the whole area, so nothing of the
+   * last visit — no expanded folder, no opened file — is on the screen the next time it opens.
+   */
+  const closeArea = useCallback(() => {
+    setOpen(false)
+    setShownRoot(null)
+    setBranches({})
+    setExpanded([])
+    setViewed(null)
+    setFileError(null)
+  }, [])
+
+  function toggleArea(): void {
+    if (open) {
+      closeArea()
+      return
+    }
+    setOpen(true)
+    showRoot('checkout')
   }
 
-  function back() {
-    setPath(path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '')
+  function toggleDirectory(root: FileRoot, path: string): void {
+    const key = branchKey(root, path)
+    if (expanded.includes(key)) {
+      setExpanded(previous => previous.filter(item => item !== key))
+      return
+    }
+    setExpanded(previous => [...previous, key])
+    // a level is read once; a refused one is asked again, because the refusal is a line to read and not
+    // a verdict the area has to keep
+    if (branches[key]?.status !== 'ready') {
+      loadBranch(root, path)
+    }
+  }
+
+  function openFile(root: FileRoot, path: string): void {
+    readFiles(project.id, root, path)
+      .then(answer => {
+        if (answer.kind === 'file') {
+          setViewed({ root, path, file: answer })
+          setFileError(null)
+        }
+      })
+      .catch(reason => {
+        setViewed(null)
+        setFileError(errorMessage(reason))
+      })
   }
 
   return (
     <>
-      <button type="button" className="chat-files-open" data-testid="files-open" onClick={() => setOpen(true)}>
-        Dateien
+      <button
+        type="button"
+        className="files-tab"
+        data-testid="files-open"
+        data-open={open}
+        data-wide={viewed !== null}
+        aria-expanded={open}
+        aria-label={open ? content.files.collapseArea : content.files.openArea}
+        onClick={toggleArea}
+      >
+        <Icon name={open ? 'chevron-right' : 'chevron-left'} />
+        <span className="files-tab-label">{content.files.open}</span>
       </button>
-      {open && (
-        <aside className="chat-files" aria-label="Dateien" data-testid="files-panel">
-          <header className="chat-files-head">
-            <span className="chat-files-project">{project.name}</span>
-            <div className="chat-files-roots" role="group" aria-label="Wurzel">
-              {ROOTS.map(option => (
+      {open && shownRoot !== null && (
+        <aside
+          className="files-panel"
+          aria-label={content.files.title}
+          data-testid="files-panel"
+          data-wide={viewed !== null}
+        >
+          <header className="files-head">
+            <div className="files-roots" role="group" aria-label={content.files.root}>
+              {ROOTS.map(card => (
                 <button
-                  key={option.value}
+                  key={card.value}
                   type="button"
-                  className={root === option.value ? 'active' : ''}
-                  aria-pressed={root === option.value}
-                  data-testid={`files-root-${option.value}`}
-                  onClick={() => selectRoot(option.value)}
+                  className="files-root-card"
+                  data-testid={`files-root-${card.value}`}
+                  aria-pressed={shownRoot === card.value}
+                  onClick={() => showRoot(card.value)}
                 >
-                  {option.label}
+                  <span className="files-root-name">{card.label}</span>
+                  <span className="files-root-hint">{card.hint}</span>
                 </button>
               ))}
             </div>
-            <button type="button" data-testid="files-close" onClick={() => setOpen(false)}>
-              Schließen
+            <button
+              type="button"
+              className="files-collapse"
+              data-testid="files-close"
+              aria-label={content.files.collapseArea}
+              onClick={closeArea}
+            >
+              <Icon name="chevron-right" />
             </button>
           </header>
-          <p className="chat-files-path" data-testid="files-path">
-            {root} · /{path}
-          </p>
-          {error !== null && (
-            <p className="chat-files-error" role="alert" data-testid="files-error">
-              {error}
+          <div className="files-tree" data-testid="files-tree">
+            <p className="files-path" data-testid="files-path">
+              {shownRoot} · /
+            </p>
+            <FilesLevel
+              root={shownRoot}
+              path=""
+              branches={branches}
+              expanded={expanded}
+              onToggle={toggleDirectory}
+              onOpenFile={openFile}
+            />
+          </div>
+          {fileError !== null && (
+            <p className="files-error" role="alert" data-testid="files-file-error">
+              {fileError}
             </p>
           )}
-          {content === null && error === null && <p className="hint">Lädt…</p>}
-          {content?.kind === 'directory' && (
-            <ul className="chat-files-list" data-testid="files-list">
-              {content.entries.map(entry => (
-                <li key={entry.name}>
-                  <button
-                    type="button"
-                    className={entry.directory ? 'directory' : ''}
-                    data-testid="files-entry"
-                    onClick={() => enter(entry.name)}
-                  >
-                    {entry.name}
-                    {entry.directory ? '/' : ` (${entry.size} B)`}
-                  </button>
-                </li>
-              ))}
-              {content.entries.length === 0 && <li className="empty-state">Leerer Ordner</li>}
-            </ul>
-          )}
-          {content?.kind === 'file' &&
-            (content.binary ? (
-              <p className="hint" data-testid="files-binary">
-                Binäre Datei ({content.size} B) — Inhalt wird nicht angezeigt.
-              </p>
-            ) : (
-              <pre className="chat-files-text" data-testid="files-text">
-                {content.text}
-              </pre>
-            ))}
-          {content?.truncated && (
-            <p className="hint" data-testid="files-truncated">
-              Abgeschnitten — die Wurzel ist größer als diese Kante liefert.
-            </p>
-          )}
-          {path !== '' && (
-            <button type="button" data-testid="files-back" onClick={back}>
-              Zurück
-            </button>
-          )}
+          {viewed !== null && <FileViewer viewed={viewed} onClose={() => setViewed(null)} />}
         </aside>
       )}
     </>

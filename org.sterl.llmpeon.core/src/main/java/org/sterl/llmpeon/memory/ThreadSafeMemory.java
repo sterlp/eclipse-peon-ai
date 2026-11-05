@@ -218,13 +218,27 @@ public class ThreadSafeMemory {
         tokenIsEstimate = true;
     }
 
-    public synchronized void addResult(ChatResponse response, List<ToolExecutionResultMessage> toolResult) {
+    public void addResult(ChatResponse response, List<ToolExecutionResultMessage> toolResult) {
+        addResult(response, toolResult, List.of());
+    }
+
+    /**
+     * One round, atomic: {@code AI(calls) → results… → [AiMessage("ok") → followUp]*} (R-RP-1,
+     * org.sterl.llmpeon.core/docs/read-picture-tool.md). Deliberately NOT built on {@link #add}: that
+     * joins two user messages into one (a picture each is required) and warns on the
+     * result→user path (which is the error path of issue #87, not this one).
+     */
+    public synchronized void addResult(ChatResponse response, List<ToolExecutionResultMessage> toolResult,
+            List<UserMessage> followUps) {
         var appended = new ArrayList<ChatMessage>();
         var aiMessage = response.aiMessage();
-        memory.add(aiMessage);
-        memory.addAll(toolResult);
         appended.add(aiMessage);
         appended.addAll(toolResult);
+        for (var followUp : followUps) {
+            appended.add(AiMessage.from("ok"));
+            appended.add(followUp);
+        }
+        memory.addAll(appended);
         if (providerUsageStale) {
             // R-CC-18 (D3): this response's provider value describes the PRE-compact context —
             // keep the small post-compact estimate; lastProviderInputTokens stays cleared

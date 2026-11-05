@@ -1,50 +1,85 @@
-/* Prototype styling — plain and narrow on purpose (see the "Look" note in the docs). */
+/* The app's own layer over Bootstrap: full width, one small gutter, compact top bar (R-WP-1, R-WP-27). */
 
 .app {
-  max-width: 52rem;
-  margin: 0 auto;
-  padding: 1.5rem 1rem 3rem;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 1rem 2rem;
 }
 
 .app-header {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 1rem;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 -1rem 1rem;
+  padding: 0.4rem 1rem;
   border-bottom: 1px solid var(--border);
-  padding-bottom: 0.75rem;
-  margin-bottom: 1.25rem;
+  background: var(--bg);
 }
 
 .app-title {
   font-weight: 650;
   color: var(--text-h);
+  white-space: nowrap;
 }
 
-.tabs {
-  display: flex;
-  gap: 0.25rem;
+/* The browser's own name, at the end of the header — small, because it is a label and not a workspace. */
+.app-user {
+  margin-left: auto;
+  width: 9rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background: var(--bg);
+  color: var(--text-h);
 }
 
-.tab {
-  background: none;
+/* Top navigation (R-WP-1): three entries, the active one marked — it is a menu, not a tab strip. */
+.app-nav {
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-nav .nav-link {
   border: 1px solid transparent;
   border-radius: 0.4rem;
-  padding: 0.3rem 0.7rem;
+  padding: 0.2rem 0.6rem;
+  font: inherit;
   color: var(--text);
   cursor: pointer;
+
+  &:hover {
+    color: var(--text-h);
+    background: var(--code-bg);
+  }
 
   &.active {
     border-color: var(--border);
     background: var(--code-bg);
     color: var(--text-h);
+    font-weight: 600;
   }
 }
 
-.view h1 {
-  font-size: 1.25rem;
-  margin: 0 0 0.75rem;
-  color: var(--text-h);
+.app-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* A view scrolls in its own area, never the page (R-WP-35). The chat view replaces this with a column of
+   its own further down, because its scroll belongs to the log and not to the view. */
+.view {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  min-width: 0;
 }
 
 .add-project {
@@ -71,7 +106,7 @@ button {
 }
 
 .form-error {
-  color: #b3261e;
+  color: var(--problem);
   border: 1px solid currentColor;
   border-radius: 0.4rem;
   padding: 0.4rem 0.6rem;
@@ -87,6 +122,15 @@ button {
 
 .hint {
   color: var(--text);
+}
+
+/* A card in the app's own language, taken from the chat's cards (`.files-root-card`,
+   `.chat-insight-line`): the border names the block, the surface stays the page's. Named `ui-card` and not
+   `card` because Bootstrap paints `.card` as well, and its flex column would move these blocks. */
+.ui-card {
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.75rem;
 }
 
 .project-list {
@@ -121,76 +165,699 @@ button {
     overflow-wrap: anywhere;
   }
 
+  /* The live state of the row (R-WP-24) — the agent's green for work, the tool's grey for idle. */
+  .project-work {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    border-left: 3px solid var(--tool);
+    padding-left: 0.45rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--tool);
+    white-space: nowrap;
+
+    &[data-working='true'] {
+      border-left-color: var(--agent);
+      color: var(--agent);
+    }
+  }
+
+  .project-queued {
+    color: var(--text);
+  }
+
   .remove {
     font-size: 0.85rem;
   }
 }
 
+/* Head of the chat view: the project names it, there is no second "Chat" heading (R-WP-1). */
+.chat-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0 0 0.6rem;
+}
 
+.chat-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+  color: var(--text-h);
+  overflow-wrap: anywhere;
+}
+
+/* Tiles: eine je Agent, in einer Reihe am Kopf des Chat-Views — Name als Titel, Zahl, Status und Knöpfe
+   darunter (R-WP-7, R-WP-32). Das Listenelement bleibt die Liste, die Fläche darin ist die Kachel. */
+.chat-tiles {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+
+  .chat-tile {
+    display: flex;
+  }
+
+  .chat-tile-face {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.82rem;
+  }
+
+  /* nur eine Kachel, die etwas öffnen kann, darf auch so aussehen — der Hover ist das Versprechen */
+  .chat-tile-open {
+    cursor: pointer;
+  }
+
+  .chat-tile-open:hover {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+  }
+
+  .chat-tile-open:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .chat-tile-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .chat-tile-actions {
+    display: flex;
+    gap: 0.3rem;
+  }
+
+  .chat-tile-name {
+    font-weight: 600;
+    color: var(--text-h);
+  }
+
+  .chat-tile-context {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--text);
+  }
+
+  .chat-tile-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--text);
+
+    &::before {
+      content: '';
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      background: var(--border);
+    }
+
+    &.working::before {
+      background: var(--accent);
+    }
+
+    &.compacting::before {
+      background: var(--question);
+    }
+
+    &.error::before {
+      background: var(--problem);
+    }
+  }
+
+  /* Knopfmaße wie die Wurzel-Umschalter des Datei-Bereichs — dieselbe Zeile, derselbe Takt. */
+  button {
+    border: 1px solid transparent;
+    border-radius: 0.4rem;
+    padding: 0.2rem 0.5rem;
+    background: none;
+    color: var(--text);
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  }
+}
+
+/* The log is the scroll area of the chat: the tiles above and the input below keep their place while the
+   conversation runs past them (R-WP-35, UC-WP-66). */
 .chat-log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   list-style: none;
   margin: 0 0 1rem;
   padding: 0;
   display: grid;
   gap: 0.4rem;
+}
 
-  .chat-line {
-    border: 1px solid var(--border);
-    border-radius: 0.4rem;
-    padding: 0.45rem 0.6rem;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
+/* A row is speech, not a card: the accent line names the voice, the surface stays the app's one (R-WP-29). */
+.chat-log .chat-line {
+  border-left: 3px solid transparent;
+  padding: 0.15rem 0 0.35rem 0.6rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 
-    &.jon {
-      background: var(--code-bg);
-    }
+/* Jon's and the team's answer carry the green of chat.html, and nothing else. */
+.chat-log .chat-line.agent {
+  border-left-color: var(--agent);
+}
 
-    &.pending,
-    &.live {
-      color: var(--text);
-      border-style: dashed;
-    }
+/* The person's line is blue the way the agent's is green: the same accent, the same side, in the flow of
+   the text — no right edge and no second line of its own (R-WP-29). The 3px it paints come from the line
+   rule above, so the base rule stays the one owner of the accent's width. */
+.chat-log .chat-line.user {
+  border-left-color: var(--user);
+}
+
+/* A failed turn is a line of the conversation and nobody's speech: the problem colour, no name above it,
+   no surface of its own — the lesson of UC-WP-55 is that a grey block reads as a card, not as a line. */
+.chat-log .chat-line.error {
+  border-left-color: var(--problem);
+  color: var(--problem);
+}
+
+
+/* Tool activity is not a voice of the conversation: the grey italic of chat.html, small, no name of its
+   own; the lines of one run share this one box (R-WP-28). */
+.chat-log .chat-line.tool {
+  border-left-color: var(--tool-line);
+  padding-top: 0.1rem;
+  padding-bottom: 0.2rem;
+  color: var(--tool);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-style: italic;
+}
+
+/* The word above the trace, as chat.html sets it — upright, so the italic stays with the reports. */
+.chat-log .chat-line.tool .chat-tools-label {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-style: normal;
+}
+
+.chat-log .chat-line.tool .chat-tool-line {
+  display: block;
+}
+
+/* A file the turn changed (R-WP-36) is a block of the log and neither a voice nor a trace line: the accent
+   stays the trace grey, the colours are the ones the app already has — an addition is what the agent did
+   (the agent token), a removal the problem token, the headers and context dimmed. Flat rules, one selector
+   each: the colour contract is read off this sheet in a test, and a grouped rule is only readable at its
+   last selector. */
+.chat-log .chat-line.diff {
+  border-left-color: var(--tool-line);
+  padding-top: 0.1rem;
+  padding-bottom: 0.25rem;
+}
+
+/* the path above the diff — the block names its own file, so the headers below can stay dimmed */
+.chat-diff .chat-diff-file {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text);
+  margin-bottom: 0.15rem;
+}
+
+.chat-diff .chat-diff-body {
+  margin: 0;
+  padding: 0.4rem 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* one span per line and each of them a box: the text carries no line break, so a second one here would
+   double every line of the diff (the trap `.code-view .line` fell into) */
+.chat-log .chat-diff .chat-diff-line {
+  display: block;
+  color: var(--tool);
+}
+
+.chat-log .chat-diff .diff-added {
+  color: var(--agent);
+}
+
+.chat-log .chat-diff .diff-removed {
+  color: var(--problem);
+}
+
+.chat-log .chat-diff .diff-context {
+  color: var(--tool);
+}
+
+.chat-log .chat-diff .diff-meta {
+  color: var(--text);
+}
+
+/* An answer is Markdown (R-WP-28): the renderer's own type classes carry no sheet here, the app's
+   compact measure does — and the line's pre-wrap ends where a rendered block begins. */
+.chat-log .chat-markdown {
+  white-space: normal;
+  color: var(--text-h);
+}
+
+.chat-log .chat-markdown p,
+.chat-log .chat-markdown ul,
+.chat-log .chat-markdown ol,
+.chat-log .chat-markdown blockquote {
+  margin: 0 0 0.35rem;
+}
+
+.chat-log .chat-markdown ul,
+.chat-log .chat-markdown ol {
+  padding-left: 1.2rem;
+}
+
+/* A heading of an answer is part of a line, not the head of a page (R-WP-29 keeps the chat flat). */
+.chat-log .chat-markdown h1,
+.chat-log .chat-markdown h2,
+.chat-log .chat-markdown h3,
+.chat-log .chat-markdown h4 {
+  font-size: 0.95rem;
+  margin: 0.15rem 0 0.3rem;
+}
+
+/* react-shiki paints the colours and states both themes inline; which one shows is the theme layer's
+   call, so the switch reads the same `data-theme` the tokens of index.css read. The values sit in the
+   style attribute, so only !important can outvote them. `.code-view` is the hook of every highlighted
+   block — a fenced answer and the file viewer are the same component (R-WP-28, R-WP-33). */
+.chat-code {
+  margin: 0.35rem 0;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background: var(--code-bg);
+  overflow-x: auto;
+}
+
+.code-view pre {
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  background: none;
+}
+
+/* No `.code-view .line` rule on purpose: shiki already separates its line spans with a literal `\n`
+   (@shikijs/core, classic structure), so `display: block` on a line adds an empty line box after every
+   line — the doubled line height Paul reported (R-WP-33). The `\n` is the line break; `white-space: pre`
+   of the `<pre>` keeps it one. */
+
+[data-theme='dark'] .code-view .shiki {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+}
+
+[data-theme='dark'] .code-view .shiki span,
+[data-theme='dark'] .code-view .shiki code {
+  color: var(--shiki-dark) !important;
+  background-color: transparent !important;
+}
+
+/* … and the same switch the colour tokens make on the OS preference (index.css states both). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .code-view .shiki {
+    color: var(--shiki-dark) !important;
+    background-color: var(--shiki-dark-bg) !important;
   }
 
-  .chat-line-author {
-    display: block;
-    font-size: 0.75rem;
-    color: var(--text);
-  }
-
-  .chat-tool-line {
-    font-family: var(--mono);
-    font-size: 0.78rem;
-    color: var(--text);
-    padding-left: 0.6rem;
-    overflow-wrap: anywhere;
+  :root:not([data-theme='light']) .code-view .shiki span,
+  :root:not([data-theme='light']) .code-view .shiki code {
+    color: var(--shiki-dark) !important;
+    background-color: transparent !important;
   }
 }
 
-.chat-composer {
-  display: flex;
-  gap: 0.5rem;
+/* The name above a line, in the colour of its voice (chat.html: uppercase, letterspaced, smaller). */
+.chat-log .chat-role {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--agent);
+}
 
-  input {
-    flex: 1;
+.chat-log .chat-line.user .chat-role {
+  color: var(--user);
+}
+
+/* One rule where the voice changes, and nowhere else (R-WP-29). */
+.chat-log .chat-rule {
+  border: 0;
+  border-top: 1px solid var(--tool-line);
+  margin: 0 0 0.45rem;
+}
+
+/* An own line the history has not confirmed yet: the accent is not a fact yet — last, so it outvotes
+   the voice's own line on the border it shares with it. */
+.chat-log .chat-line.pending {
+  border-style: dashed;
+  color: var(--text);
+}
+
+/* Das Feld ist eine Textarea: Enter ist ihr Umbruch, Cmd/Ctrl+Enter ist der Send, den die Tastatur zum
+   Knopf hinzufügt (R-WP-30). Die Knöpfe stehen darunter, damit eine lange Frage ihre Breite behält. */
+.chat-composer {
+  display: grid;
+  gap: 0.5rem;
+  flex: none;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+
+  textarea {
+    width: 100%;
+    min-height: 4.5rem;
     padding: 0.4rem 0.6rem;
     border: 1px solid var(--border);
     border-radius: 0.4rem;
     background: var(--bg);
     color: var(--text-h);
+    font: inherit;
+    resize: vertical;
+  }
+}
+
+.chat-composer-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Die Warte-Leiste eines Turns (R-WP-31) — die Zeile des Plugins: in beiden Themen dunkel, Mono, mit dem
+   Cursor, der während des Turns blinkt. Das Grün ist das Agenten-Grün von chat.html. Sie steht als Block
+   über dem Feld: der Chat scrollt in seiner eigenen Fläche, also hängt nichts mehr am Seiten-Scroll
+   (R-WP-35). */
+.chat-waiting {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.6rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.4rem;
+  background: #1c2128;
+  color: #7ee787;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+
+/* Vorschau, nicht Verlauf: was der Stream zuletzt meldete, auf einer Zeile. */
+.chat-waiting-text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chat-waiting-caret {
+  flex: none;
+  inline-size: 0.5rem;
+  block-size: 0.95rem;
+  background: currentColor;
+  animation: chat-waiting-blink 1s steps(2, start) infinite;
+}
+
+@keyframes chat-waiting-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-waiting-caret {
+    animation: none;
   }
 }
 
 .chat-error {
-  color: #b3261e;
+  color: var(--problem);
   margin: 0 0 0.75rem;
 }
 
+/* The row a chat view sits in: the conversation and the file panel side by side, so an open file keeps
+   the chat on the screen instead of covering it (R-WP-33). The row is the positioned box the file tab
+   hangs on, and it is the height the chat's own scroll measures against (R-WP-35). */
+.chat-workspace {
+  --files-width: clamp(17rem, 28vw, 24rem);
+  --files-wide: clamp(32rem, 56vw, 52rem);
 
-/* Datei-Bereich: Slide-Over über Checkout und TMP — lesen, sonst nichts (R-WP-14). */
-.chat-files {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+/* The chat is a column whose middle scrolls: tiles and head keep their place on top, the input and the
+   wait below, and only the log runs past them (R-WP-35, UC-WP-66). */
+.chat-workspace > .view {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* The tab at the right edge, written sideways: the visible promise that this side opens (R-WP-33). Out
+   of the flow, because a panel that slides in must not move the edge of the chat, and hung on the row
+   (`.chat-workspace` is the positioned box) instead of on the viewport — only so do tab and panel share
+   one top edge at every window height, and only so does the closed tab sit at the chat's edge. */
+.files-tab {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.3rem;
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: 0.5rem 0 0 0.5rem;
+  background: var(--bg);
+  color: var(--text);
+  writing-mode: vertical-rl;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: right 0.15s ease-out;
+
+  &:hover {
+    color: var(--accent);
+    background: var(--code-bg);
+  }
+
+  /* the tab rides the edge of the panel it belongs to, so the two never drift apart */
+  &[data-open='true'] {
+    right: var(--files-width);
+  }
+}
+
+/* an open file widens the panel, and the tab moves to the new edge with it */
+.files-tab[data-open='true'][data-wide='true'] {
+  right: var(--files-wide);
+}
+
+/* The panel is a column of the row and not an overlay, and it reads from the left — code and a tree are
+   never centred (R-WP-33). It keeps the height the row gives it: the shell is a fixed frame, so the panel
+   stretches with it and scrolls on its own (R-WP-35) — a viewport-based cap would cut it below the frame. */
+.files-panel {
+  flex: 0 0 var(--files-width);
+  max-width: var(--files-width);
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-height: 0;
+  padding: 0.4rem 0 1rem 0.75rem;
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  text-align: left;
+
+  &[data-wide='true'] {
+    flex-basis: var(--files-wide);
+    max-width: var(--files-wide);
+  }
+}
+
+.files-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+/* The two roots as cards: a card names what it holds, which a switch of two words would not. */
+.files-roots {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+  flex: 1;
+}
+
+.files-root-card {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--code-bg);
+  }
+
+  &[aria-pressed='true'] {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+  }
+}
+
+.files-root-name {
+  font-weight: 650;
+  color: var(--text-h);
+}
+
+.files-root-hint {
+  font-size: 0.7rem;
+  color: var(--text);
+}
+
+/* The way out of the panel is an icon: the tab beside it already says what the area is. */
+.files-collapse {
+  padding: 0.2rem 0.45rem;
+  background: none;
+  color: var(--text);
+}
+
+.files-tree {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+.files-path {
+  margin: 0 0 0.3rem;
+  color: var(--text);
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+/* A level is indented against a rail, so the depth of the tree is visible without a word about it. */
+.files-level {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  .files-level {
+    margin-left: 0.55rem;
+    padding-left: 0.5rem;
+    border-left: 1px solid var(--border);
+  }
+}
+
+.files-row {
+  border: none;
+  background: none;
+  padding: 0.1rem 0;
+  font: inherit;
+  color: var(--text-h);
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+
+  &:hover {
+    color: var(--accent);
+    text-decoration: underline;
+  }
+
+  &.directory {
+    color: var(--accent);
+  }
+
+  .bi {
+    margin-right: 0.3rem;
+    color: var(--text);
+  }
+}
+
+/* The viewer stands under the tree of its own panel — a split with the chat beside it, not a dialog over
+   it (R-WP-33). */
+.files-viewer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+  text-align: left;
+}
+
+.files-viewer-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.files-viewer-path {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.files-viewer-close {
+  margin-left: auto;
+  padding: 0.2rem 0.5rem;
+  background: none;
+  color: var(--text-h);
+}
+
+.files-viewer-code {
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  background: var(--code-bg);
+  padding: 0.5rem 0.6rem;
+  overflow-x: auto;
+  text-align: left;
+}
+
+.files-error {
+  color: var(--problem);
+  overflow-wrap: anywhere;
+}
+
+/* Blick in das Gespräch eines Agenten: dieselbe Geometrie wie der Datei-Bereich, eine Ebene darüber (R-WP-26). */
+.chat-insight {
   position: fixed;
   inset: 0 0 0 auto;
+  z-index: 1;
   width: min(24rem, 92vw);
   padding: 1rem 1.25rem 2rem;
   overflow-y: auto;
@@ -198,7 +865,7 @@ button {
   border-left: 1px solid var(--border);
   box-shadow: var(--shadow);
 
-  .chat-files-head {
+  .chat-insight-head {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
@@ -206,77 +873,213 @@ button {
     margin-bottom: 0.5rem;
   }
 
-  .chat-files-project {
+  .chat-insight-agent {
     font-weight: 650;
     color: var(--text-h);
     overflow-wrap: anywhere;
   }
 
-  .chat-files-roots {
-    display: flex;
-    gap: 0.25rem;
-
-    button {
-      border: 1px solid transparent;
-      border-radius: 0.4rem;
-      padding: 0.2rem 0.5rem;
-      background: none;
-      color: var(--text);
-      cursor: pointer;
-
-      &.active {
-        border-color: var(--border);
-        background: var(--code-bg);
-        color: var(--text-h);
-      }
-    }
-  }
-
-  .chat-files-path {
-    font-family: var(--mono);
-    font-size: 0.78rem;
+  .chat-insight-readonly {
+    font-size: 0.75rem;
     color: var(--text);
-    margin: 0 0 0.5rem;
-    overflow-wrap: anywhere;
   }
 
-  .chat-files-list {
+  .chat-insight-head button {
+    margin-left: auto;
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    padding: 0.2rem 0.5rem;
+    background: none;
+    color: var(--text-h);
+    cursor: pointer;
+  }
+
+  .chat-insight-list {
     list-style: none;
     margin: 0 0 0.75rem;
     padding: 0;
+    display: grid;
+    gap: 0.4rem;
+  }
 
-    button {
-      border: none;
-      background: none;
-      padding: 0.15rem 0;
-      color: var(--text-h);
-      cursor: pointer;
-      font-family: var(--mono);
-      font-size: 0.82rem;
-      text-align: left;
-      overflow-wrap: anywhere;
+  .chat-insight-line {
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    padding: 0.4rem 0.55rem;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 
-      &.directory {
-        color: var(--accent);
-      }
+    &.agent {
+      background: var(--code-bg);
     }
   }
 
-  .chat-files-text {
-    font-family: var(--mono);
-    font-size: 0.78rem;
-    background: var(--code-bg);
-    border: 1px solid var(--border);
-    border-radius: 0.4rem;
-    padding: 0.5rem 0.6rem;
-    overflow-x: auto;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
+  .chat-insight-kind {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text);
   }
 
-  .chat-files-error {
-    color: #b3261e;
+  .chat-insight-error {
+    color: var(--problem);
     margin: 0 0 0.75rem;
     overflow-wrap: anywhere;
+  }
+}
+
+/* Stop: der zweite Control des Composers beendet den laufenden Turn — Knopfmaße wie Senden (UC-WP-50). */
+.chat-stop {
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+/* The config page (R-WP-16): one column of labeled fields, the key row carrying its own status. Each area
+   is a card (`.ui-card`) — the chat's border-and-radius language, no geometry of its own here. */
+.settings-form {
+  display: grid;
+  justify-items: start;
+  gap: 0.5rem;
+  max-width: 34rem;
+}
+
+.settings {
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+  margin: 0;
+
+  > div {
+    display: grid;
+    grid-template-columns: 8.5rem 1fr;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  dt {
+    color: var(--text);
+    font-size: 0.8rem;
+    text-align: right;
+  }
+
+  dd {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+  }
+
+  /* the field takes the width the label leaves; what travels beside it wraps after that */
+  input,
+  select {
+    flex: 1 1 12rem;
+  }
+
+  /* A field the provider makes unusable stays readable and says so — it is not hidden (Q3). */
+  input:disabled,
+  select:disabled {
+    color: var(--tool);
+    background: var(--code-bg);
+    cursor: not-allowed;
+  }
+}
+
+/* One measure for every field of the page: the measure of the chat's own input (`.chat-composer`), so the
+   config page reads as the same app rather than as a smaller generation of control. */
+.settings input,
+.settings select,
+.config-agents-field input,
+.config-agents-key input {
+  min-width: 0;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+}
+
+/* The key status is the status line of its row — the mono measure of the chat's tile metadata. */
+.key-set {
+  color: var(--agent);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+
+.key-missing {
+  color: var(--problem);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+
+/*
+ * The agent section under the default form (R-WP-23): one card per slot, the checkbox above the fields it
+ * unlocks. The card tokens are those of the form above (`.ui-card`) — two areas of one page, one language.
+ */
+.config-agents {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 1.5rem;
+  max-width: 34rem;
+}
+
+.config-agents-slot {
+  display: grid;
+  justify-items: start;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.config-agents-name {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.config-agents-override {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+}
+
+.config-agents-fields {
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.config-agents-field {
+  display: grid;
+  grid-template-columns: 8.5rem 1fr;
+  align-items: baseline;
+  gap: 0.5rem;
+
+  label {
+    color: var(--text);
+    font-size: 0.8rem;
+    text-align: right;
+  }
+}
+
+/* the key row keeps the status and its removal beside the field, as the default level does */
+.config-agents-key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+
+  label {
+    width: 8.5rem;
+    color: var(--text);
+    font-size: 0.8rem;
+    text-align: right;
+  }
+
+  input {
+    flex: 1 1 8rem;
   }
 }

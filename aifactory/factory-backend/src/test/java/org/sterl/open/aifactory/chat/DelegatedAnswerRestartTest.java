@@ -61,7 +61,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * <p>Der Urheber wird durchgehend als Feld (<code>origin</code>) geprüft, nie als Text in einer Zeile:
  * ein Name im Text wäre ein geratener Name (R-WP-4).</p>
  */
-@Timeout(120)
+@Timeout(90)
 class DelegatedAnswerRestartTest {
 
     private static final Path HOME = Path.of("target", "inc3f-home").toAbsolutePath().normalize();

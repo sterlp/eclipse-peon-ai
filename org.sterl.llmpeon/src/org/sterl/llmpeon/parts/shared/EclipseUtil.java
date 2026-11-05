@@ -715,13 +715,9 @@ public class EclipseUtil {
         return Optional.empty();
     }
 
-    /**
-     * Extracts the project from a resource selection.
-     */
-    public static IProject resolveProject(IResource selection) {
-        if (selection == null)
-            return null;
-        return selection.getProject();
+    /** Dumb accessor (R-SEL-5, org.sterl.llmpeon/docs/user-context.md): the phantom check lives in the binding, never here. */
+    public static Optional<IProject> resolveProject(IResource selection) {
+        return Optional.ofNullable(selection).map(IResource::getProject);
     }
 
     /**

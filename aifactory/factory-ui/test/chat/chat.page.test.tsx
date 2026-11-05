@@ -1,10 +1,13 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
-import AppShell from '../../src/app/app.shell'
+import { renderApp } from '../shared/app.harness'
+import { baseDeclarations, declarations, declares, tokenValues } from '../shared/sheets'
 import { ChatPage } from '../../src/chat/chat.page'
 import { project } from '../shared/fixtures'
+import { content } from '../../src/shared/content'
 import type { ChatMessage } from '../../src/chat/chat.client'
+import type { AgentTile, AgentTileState } from '../../src/chat/chat.agents.client'
 
 interface Chat {
   calls: { method: string; path: string; body?: string }[]
@@ -12,16 +15,41 @@ interface Chat {
   countOf(pathEnd: string, method: string): number
   /** The answer of the next history read, so a test can hand back what the turn wrote. */
   setMessages(messages: ChatMessage[]): void
+  /** Every `POST …/agents` answers this instead of 202 — the refusal a running turn produces. */
+  refuseActions(status: number, message: string): void
+  /** Every `POST …/messages` answers this instead of 202 — the send that never landed. */
+  refuseSend(status: number, message: string): void
+  /** Every `POST …/messages/stop` answers this instead of 202 — the refusal of an ended turn. */
+  setStopAnswer(status: number, message: string): void
   /** Writes bytes onto the open stream — may stop in the middle of an event. */
   push(text: string): Promise<void>
   closeStream(): Promise<void>
 }
 
 const QUESTION: ChatMessage = { role: 'user', text: 'wo liegen die Dateien?' }
+/** A user line the server named — the shape of R-WP-25: the author is a person, not an agent. */
+const ANNAS_QUESTION: ChatMessage = { role: 'user', text: 'bitte X', origin: 'Anna' }
 const ANSWER: ChatMessage = { role: 'jon', text: 'Im Root liegen: pom.xml und README.md' }
 /** A team member's final answer — role `jon` with an author, never a third role (UC-WP-39). */
 const TEAM_ANSWER: ChatMessage = { role: 'jon', text: 'Eine Banane.', origin: 'Dev' }
 const JONS_ANSWER: ChatMessage = { role: 'jon', text: 'Dev nennt eine Banane.', origin: 'Jon' }
+
+/** The unified diff the wire carries for one written file (R-WP-36) — as the core's `SimpleDiff` writes it. */
+const DIFF = '--- a/src/App.java\n+++ b/src/App.java\n@@ -1,2 +1,3 @@\n a\n+b\n \n'
+
+/** One roster entry as the server sends it — the tile family of R-WP-7. */
+function tile(name: string, state: AgentTileState): AgentTile {
+  return {
+    name,
+    context: '3k',
+    tokens: 3_400,
+    estimate: false,
+    contextPercent: 3,
+    budget: 100_000,
+    state,
+    capabilities: ['CONTEXT', 'CLEAR', 'COMPACT'],
+  }
+}
 
 let active: Chat | undefined
 
@@ -36,13 +64,22 @@ async function flush(): Promise<void> {
 }
 
 /**
- * `fetch` stand-in for the three chat edges. The stream body is a `ReadableStream` the test writes
- * into byte by byte, so a chunk may end anywhere — including inside one event's JSON.
+ * `fetch` stand-in for the chat edges: the conversation edges (send, stop, events) and the tile family
+ * (R-WP-7). The stream body is a `ReadableStream` the test writes into byte by byte, so a chunk may end
+ * anywhere — including inside one event's JSON.
  */
-function stubChat(initial: { messages?: ChatMessage[]; projects?: unknown[] } = {}): Chat {
+function stubChat(
+  initial: { messages?: ChatMessage[]; projects?: unknown[]; agents?: AgentTile[] } = {},
+): Chat {
   const calls: Chat['calls'] = []
   const encoder = new TextEncoder()
-  const state = { messages: initial.messages ?? [] }
+  const state = {
+    messages: initial.messages ?? [],
+    agents: initial.agents ?? [],
+    refusal: undefined as { status: number; message: string } | undefined,
+    sendRefusal: undefined as { status: number; message: string } | undefined,
+    stopAnswer: undefined as { status: number; message: string } | undefined,
+  }
   let controller: ReadableStreamDefaultController<Uint8Array> | undefined
 
   vi.stubGlobal(
@@ -62,7 +99,37 @@ function stubChat(initial: { messages?: ChatMessage[]; projects?: unknown[] } = 
           { status: 200, headers: { 'content-type': 'text/event-stream' } },
         )
       }
+      if (path.endsWith('/agents') && method === 'POST') {
+        if (state.refusal !== undefined) {
+          return json(state.refusal.status, {
+            status: state.refusal.status,
+            error: 'conflict',
+            message: state.refusal.message,
+          })
+        }
+        return new Response(null, { status: 202 })
+      }
+      if (path.endsWith('/agents')) {
+        return json(200, state.agents)
+      }
+      if (path.endsWith('/messages/stop')) {
+        if (state.stopAnswer !== undefined) {
+          return json(state.stopAnswer.status, {
+            status: state.stopAnswer.status,
+            error: 'conflict',
+            message: state.stopAnswer.message,
+          })
+        }
+        return new Response(null, { status: 202 })
+      }
       if (path.endsWith('/messages') && method === 'POST') {
+        if (state.sendRefusal !== undefined) {
+          return json(state.sendRefusal.status, {
+            status: state.sendRefusal.status,
+            error: 'unavailable',
+            message: state.sendRefusal.message,
+          })
+        }
         return new Response(null, { status: 202 })
       }
       if (path.endsWith('/messages')) {
@@ -79,6 +146,15 @@ function stubChat(initial: { messages?: ChatMessage[]; projects?: unknown[] } = 
     setMessages: messages => {
       state.messages = messages
     },
+    refuseActions: (status, message) => {
+      state.refusal = { status, message }
+    },
+    refuseSend: (status, message) => {
+      state.sendRefusal = { status, message }
+    },
+    setStopAnswer: (status, message) => {
+      state.stopAnswer = { status, message }
+    },
     push: async (text: string) => {
       await act(async () => {
         controller?.enqueue(encoder.encode(text))
@@ -87,7 +163,12 @@ function stubChat(initial: { messages?: ChatMessage[]; projects?: unknown[] } = 
     },
     closeStream: async () => {
       await act(async () => {
-        controller?.close()
+        try {
+          controller?.close()
+        } catch {
+          // the test closed its own stream — the tear-down of every test closes it once more, and an
+          // already closed stream is the end of the story, not a failure of this one
+        }
         await new Promise(resolve => setTimeout(resolve, 0))
       })
     },
@@ -125,26 +206,40 @@ afterEach(async () => {
 test('chatAsksForAProjectWhenNoneIsOpen', () => {
   render(<ChatPage project={null} />)
 
-  expect(screen.getByText('Kein Projekt geöffnet')).toBeInTheDocument()
+  expect(screen.getByText(content.chat.noProject)).toBeInTheDocument()
   expect(screen.queryByTestId('chat-input')).toBeNull()
 })
 
 // UC-WP-5
 test('openProjectBindsWorkDir', async () => {
   const chat = stubChat({ messages: [QUESTION], projects: [project()] })
-  render(<AppShell />)
-  expect(await screen.findByLabelText('Git-URL')).toBeInTheDocument()
+  renderApp()
+  expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
 
   fireEvent.click(await screen.findByRole('button', { name: 'demo' }))
 
-  expect(screen.getByTestId('chat-log')).toBeInTheDocument()
+  // the address names the project now, so the chat appears with the read that resolves that address
+  expect(await screen.findByTestId('chat-log')).toBeInTheDocument()
   await flush()
   expect(screen.getByText('wo liegen die Dateien?')).toBeInTheDocument()
   expect(screen.getByTestId('chat-input')).toHaveFocus()
   // the project list is gone — opening a project opens its chat, it does not only remember it
-  expect(screen.queryByLabelText('Git-URL')).toBeNull()
+  expect(screen.queryByLabelText(content.projects.gitUrl)).toBeNull()
   const reads = chat.calls.filter(call => call.path.endsWith('/messages'))
   expect(reads.map(call => call.path)).toEqual(['/api/projects/demo-1a2b3c4/messages'])
+})
+
+test('theChatHeaderNamesTheProjectOnly', async () => {
+  stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  const chat = await screen.findByRole('region', { name: content.chat.title })
+  await flush()
+
+  // the view IS the chat of a project, so its head names the project and nothing else — a second "Chat"
+  // heading would only repeat the menu entry the user just clicked (R-WP-1)
+  expect(within(chat).getByRole('heading', { name: 'demo' })).toBeInTheDocument()
+  expect(within(chat).queryByRole('heading', { name: content.chat.title })).toBeNull()
+  expect(within(chat).queryByText(/^Projekt:/)).toBeNull()
 })
 
 // UC-WP-6
@@ -207,24 +302,55 @@ test('streamingUpdatesChatWithoutReload', async () => {
   expect(screen.getByTestId('chat-line-jon')).toHaveTextContent(ANSWER.text)
   expect(chat.countOf('/messages', 'GET')).toBe(readsBefore + 1)
   expect(screen.queryByTestId('chat-live')).toBeNull()
-  expect(screen.queryByTestId('chat-tool-line')).toBeNull()
+  // the trace of the turn is not lost by the read: it stays where it happened, while the streaming text
+  // gives way to the history that carries it now (R-WP-28, UC-WP-54)
+  expect(screen.getByTestId('chat-tool-line')).toHaveTextContent('Running: `ls`')
   // the own input lives in the history only now — the pending copy is gone, no line twice
   expect(screen.getAllByTestId('chat-line-user')).toHaveLength(2)
 })
 
-test('turnFailureIsALineAndTheComposerStaysUsable', async () => {
+// UC-WP-64
+test('failedTurnIsALineInTheHistory', async () => {
   const chat = stubChat({ messages: [QUESTION] })
   render(<ChatPage project={project()} />)
   await flush()
 
-  await chat.push(event('error', { message: 'Es fehlt ein Modellschlüssel für OPEN_AI' }))
+  const reason = 'Es fehlt ein Modellschlüssel für OPEN_AI'
+  // the server writes the failure into the conversation before it reports it, so the read that answers the
+  // event is what makes the line outlive a reload and every other browser (R-WP-34)
+  chat.setMessages([QUESTION, { role: 'error', text: reason }])
 
-  expect(screen.getByTestId('chat-error')).toHaveTextContent('Es fehlt ein Modellschlüssel für OPEN_AI')
+  await chat.push(event('error', { message: reason }))
+  await flush()
+
+  // the line stands in the log — once, never twice: the live notice gives way to the history that carries it
+  const failures = screen.getAllByTestId('chat-line-error')
+  expect(failures).toHaveLength(1)
+  expect(screen.getByTestId('chat-log')).toContainElement(failures[0])
+  expect(failures[0]).toHaveTextContent(reason)
+  // no notice beside the log: a failed turn is a line of the conversation, not a message about it
+  expect(screen.queryByTestId('chat-error')).toBeNull()
   // no alarm dialog, no dead input: the next turn is one line away (Q1)
   expect(screen.getByTestId('chat-input')).toBeEnabled()
   expect(screen.getByTestId('chat-send')).toBeDisabled()
   fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'und jetzt mit Schlüssel' } })
   expect(screen.getByTestId('chat-send')).toBeEnabled()
+})
+
+// UC-WP-64
+test('turnErrorFromTheHistoryIsRenderedWithoutAnAuthor', async () => {
+  // the wire text of the server, marker and all it makes of it: the UI knows no wording of its own for a
+  // failure and adds none (R-WP-27)
+  const reason = 'turn needs a model — set model in the factory config'
+  stubChat({ messages: [QUESTION, { role: 'error', text: reason }] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  const failure = screen.getByTestId('chat-line-error')
+  expect(failure.className).toContain('error')
+  expect(failure.textContent).toBe(reason)
+  // nobody spoke this line, so no name stands above it (R-WP-4)
+  expect(within(failure).queryByTestId('chat-line-author')).toBeNull()
 })
 
 test('droppedStreamReopensAndReadsHistory', async () => {
@@ -245,30 +371,64 @@ test('droppedStreamReopensAndReadsHistory', async () => {
 
 // UC-WP-16
 test('oneChatPerProject', async () => {
-  const chat = stubChat({ messages: [QUESTION, ANSWER], projects: [project()] })
-  render(<AppShell />)
-  expect(await screen.findByLabelText('Git-URL')).toBeInTheDocument()
+  const chat = stubChat({
+    messages: [QUESTION, ANSWER],
+    projects: [project()],
+    // Plan carries TRANSCRIPT, so this guard also covers the third affordance Inc 5c adds to a member's
+    // tile — what a tile offers is the server's set, never a name (D-14)
+    agents: [
+      tile('Jon', 'IDLE'),
+      { ...tile('Plan', 'IDLE'), capabilities: ['CONTEXT', 'CLEAR', 'COMPACT', 'TRANSCRIPT'] },
+    ],
+  })
+  renderApp()
+  expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
 
   fireEvent.click(await screen.findByRole('button', { name: 'demo' }))
-  const opened = await screen.findByRole('region', { name: 'Chat' })
-  await screen.findByText(ANSWER.text)
+  const opened = await screen.findByRole('region', { name: content.chat.title })
+  await waitFor(() => expect(agentLinesSaying(ANSWER.text)).toHaveLength(1))
 
-  // the only control the chat has is the one that writes into THIS conversation
+  // the controls the chat has: one writes into THIS conversation, one sends the last accepted text again
+  // (R-WP-30), one ends its running turn (UC-WP-50) — none names an addressee and none starts a conversation.
+  // The tile actions of Inc 5b sit beside them and are asserted separately below (R-WP-7)
   const controls = within(opened)
     .queryAllByRole('button')
+    .filter(control => control.closest('.chat-tiles') === null)
     .map(control => control.textContent?.trim() ?? '')
-  expect(controls).toEqual(['Senden'])
-  expect(controls.filter(label => /neue|gespräch|dialog|verlauf|wechseln|öffnen|clear|lösch/i.test(label))).toEqual(
-    [],
+  expect(controls).toEqual([content.chat.send, content.chat.resend, content.chat.stop])
+  expect(
+    controls.filter(label =>
+      /neue|gespräch|dialog|verlauf|wechseln|öffnen|lösch|new|conversation|history|switch|open|delete|remove|clear/i.test(
+        label,
+      ),
+    ),
+  ).toEqual([])
+  // the positive replacement: what the tiles add is exactly the two actions and, for the one tile that
+  // offers it, the read-only Blick — and nothing that selects a conversation: the roster is the only
+  // thing a tile can address (UC-WP-49 adds a read, not a second conversation). R-WP-32 moved that Blick
+  // onto the tile itself, so the door is the tile and no longer a button beside it.
+  const tileActions = [...opened.querySelectorAll('.chat-tile-actions button')]
+    .map(control => control.textContent?.trim() ?? '')
+    .filter(label => label !== '')
+  expect([...new Set(tileActions)].sort()).toEqual([content.tiles.clear, content.tiles.compact])
+  const tileDoors = [...opened.querySelectorAll('.chat-tile-face[role="button"]')].map(
+    door => door.getAttribute('aria-label') ?? '',
   )
+  expect(tileDoors, 'only the tile with TRANSCRIPT opens a conversation').toEqual([
+    content.tiles.open('Plan'),
+  ])
 
-  fireEvent.click(screen.getByRole('tab', { name: 'Projekte' }))
+  fireEvent.click(
+    within(screen.getByRole('navigation', { name: content.nav.views })).getByRole('button', {
+      name: content.nav.projects,
+    }),
+  )
   expect(screen.queryByTestId('chat-log')).toBeNull()
 
   // the list re-reads itself on mount, so the project has to be found again before it can be opened
   fireEvent.click(await screen.findByRole('button', { name: 'demo' }))
-  const again = await screen.findByRole('region', { name: 'Chat' })
-  await screen.findByText(ANSWER.text)
+  const again = await screen.findByRole('region', { name: content.chat.title })
+  await waitFor(() => expect(agentLinesSaying(ANSWER.text)).toHaveLength(1))
 
   // the same conversation, not a second one: one log, both lines once, one single read path
   expect(screen.getAllByTestId('chat-log')).toHaveLength(1)
@@ -288,13 +448,77 @@ test('everyLineCarriesItsAuthor', async () => {
   render(<ChatPage project={project()} />)
   await flush()
 
-  // exactly two lines have an agent relationship, and exactly those two carry a name (R-WP-4)
-  expect(authorsOnScreen()).toEqual(['Dev', 'Jon'])
+  // exactly two lines have an agent relationship, and exactly those two carry an agent name (R-WP-4)
+  expect(agentAuthorsOnScreen()).toEqual(['Dev', 'Jon'])
 
-  // the own input has no agent relationship: no label, and nothing standing in for one
-  const own = screen.getByTestId('chat-line-user')
-  expect(within(own).queryAllByTestId('chat-line-author')).toHaveLength(0)
+  // the own input has no agent relationship, so it names no agent — what it names is the role label the
+  // doc gives a nameless user line (R-WP-25); the named case is UC-WP-48 below
+  expect(userAuthorsOnScreen()).toEqual([content.chat.you])
   expect(screen.queryByText(/System|Peon|Unbekannt/i)).toBeNull()
+})
+
+// UC-WP-48
+test('theSharedChatShowsWhoWroteIt', async () => {
+  stubChat({ messages: [ANNAS_QUESTION, TEAM_ANSWER, JONS_ANSWER] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  // the server names the person, so a viewer who never typed anything reads the same author (R-WP-25)
+  expect(userAuthorsOnScreen()).toEqual(['Anna'])
+  expect(within(screen.getByTestId('chat-line-user')).getByText('Anna')).toBeInTheDocument()
+  expect(within(screen.getByTestId('chat-line-user')).getByText(ANNAS_QUESTION.text)).toBeInTheDocument()
+  // and the person never becomes an agent of the conversation
+  expect(agentAuthorsOnScreen()).toEqual(['Dev', 'Jon'])
+})
+
+// UC-WP-48
+test('withoutANameTheLineSaysYOU', async () => {
+  const chat = stubChat({ messages: [QUESTION, ANSWER] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  // GIVEN no name set THEN the line says YOU — the doc's role label, not a guessed author
+  expect(userAuthorsOnScreen()).toEqual([content.chat.you])
+  // a line the server left without an agent stays nameless (R-WP-4)
+  const jonsLine = screen.getByTestId('chat-line-jon')
+  expect(within(jonsLine).queryAllByTestId('chat-line-author')).toHaveLength(0)
+  expect(agentAuthorsOnScreen()).toEqual([])
+
+  // the own, still unconfirmed line carries the same label, so it does not jump when the history arrives
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'und ohne Namen' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  expect(chat.countOf('/messages', 'POST')).toBe(1)
+  expect(userAuthorsOnScreen()).toEqual([content.chat.you, content.chat.you])
+})
+
+// UC-WP-48
+test('theSendCarriesTheName', async () => {
+  const chat = stubChat({ messages: [] })
+  render(<ChatPage project={project()} user=" Anna " />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'bitte X' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+
+  // the name travels as its own field, trimmed: the server owns the prefix of the memory (R-WP-25), and
+  // a field that is only spaces is no name — the browser sends exactly what a nameless one sends
+  const post = chat.calls.find(call => call.method === 'POST')
+  expect(JSON.parse(post?.body ?? '{}')).toEqual({ text: 'bitte X', user: 'Anna' })
+  expect(Object.keys(JSON.parse(post?.body ?? '{}'))).toEqual(['text', 'user'])
+})
+
+// UC-WP-48
+test('theOwnLineShowsTheName', async () => {
+  stubChat({ messages: [] })
+  render(<ChatPage project={project()} user="Anna" />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'bitte X' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+
+  // before the history confirms the line, it already carries his name — otherwise it jumps on the read
+  expect(userAuthorsOnScreen()).toEqual(['Anna'])
 })
 
 // UC-WP-40
@@ -317,7 +541,7 @@ test('onlyFinalAnswersFromTheTeam', async () => {
   chat.setMessages([QUESTION, TEAM_ANSWER, JONS_ANSWER])
   await chat.push(event('done', { millis: 4321 }))
 
-  expect(authorsOnScreen()).toEqual(['Dev', 'Jon'])
+  expect(agentAuthorsOnScreen()).toEqual(['Dev', 'Jon'])
   expect(screen.getAllByTestId('chat-line-jon')).toHaveLength(2)
   expect(screen.getAllByText('Eine Banane.')).toHaveLength(1)
   expect(screen.getByTestId('chat-log').textContent).not.toContain('DENKTEXT-AUS-MITGLIED')
@@ -339,11 +563,645 @@ test('reconnectReadsTeamAnswerFromTheHistory', async () => {
   await waitFor(() => expect(chat.countOf('/events', 'GET')).toBe(2), { timeout: 1500 })
 
   expect(screen.getAllByText('Eine Banane.')).toHaveLength(1)
-  expect(authorsOnScreen()).toEqual(['Dev', 'Jon'])
+  expect(agentAuthorsOnScreen()).toEqual(['Dev', 'Jon'])
   expect(screen.queryByTestId('chat-live')).toBeNull()
 })
 
-/** The author labels on the screen, in reading order — the shape of R-WP-4's claim. */
-function authorsOnScreen(): (string | null)[] {
-  return screen.getAllByTestId('chat-line-author').map(label => label.textContent)
+// UC-WP-11
+test('tileStateFollowsTheStream', async () => {
+  const chat = stubChat({ messages: [QUESTION], agents: [tile('Jon', 'IDLE'), tile('Dev', 'IDLE')] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.IDLE)
+  const historyReads = chat.countOf('/messages', 'GET')
+  const rosterReads = chat.countOf('/agents', 'GET')
+
+  // the snapshot arrives on the wire and replaces the list — no second read of anything (R-WP-7)
+  await chat.push(event('agents', { tiles: [tile('Jon', 'WORKING'), tile('Dev', 'COMPACTING')] }))
+
+  expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.WORKING)
+  expect(screen.getByTestId('tile-state-Dev')).toHaveTextContent(content.tiles.state.COMPACTING)
+  expect(chat.countOf('/messages', 'GET')).toBe(historyReads)
+  expect(chat.countOf('/agents', 'GET')).toBe(rosterReads)
+  // and a tile that is not idle offers nothing any more (UC-WP-12's guard, seen from the screen)
+  expect(screen.getByTestId('tile-clear-Jon')).toBeDisabled()
+})
+
+// UC-WP-12
+test('clearOnATileNamesThatTileAndARefusalIsALine', async () => {
+  const chat = stubChat({ messages: [QUESTION], agents: [tile('Jon', 'IDLE'), tile('Dev', 'IDLE')] })
+  chat.refuseActions(409, 'a turn or another action is still running')
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.click(screen.getByTestId('tile-clear-Dev'))
+  await waitFor(() => expect(screen.getByTestId('chat-error')).toHaveTextContent(/still running/))
+
+  // one POST, and it addresses exactly the tile that was clicked — name and action, nothing else
+  expect(chat.countOf('/agents', 'POST')).toBe(1)
+  const post = chat.calls.find(call => call.method === 'POST')
+  expect(post?.path).toBe('/api/projects/demo-1a2b3c4/agents')
+  expect(JSON.parse(post?.body ?? '{}')).toEqual({ name: 'Dev', action: 'clear' })
+  // the refusal changed nothing: no re-read of the chat and no new roster
+  expect(chat.countOf('/messages', 'GET')).toBe(1)
+  expect(chat.countOf('/agents', 'GET')).toBe(1)
+  expect(screen.getByTestId('chat-log')).toBeInTheDocument()
+})
+
+// UC-WP-50
+test('stopKeepsTheShownLines', async () => {
+  const chat = stubChat({ messages: [QUESTION], agents: [tile('Jon', 'IDLE')] })
+  render(<ChatPage project={project()} />)
+  await flush()
+  // nothing runs, so nothing can be stopped
+  expect(screen.getByTestId('chat-stop')).toBeDisabled()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'schlaf drei sekunden' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+  const historyReads = chat.countOf('/messages', 'GET')
+
+  await chat.push(event('partial', { kind: 'answer', text: 'Ich schlafe gerade' }))
+  expect(screen.getByTestId('chat-live')).toHaveTextContent('Ich schlafe gerade')
+  expect(screen.getByTestId('chat-stop')).toBeEnabled()
+
+  fireEvent.click(screen.getByTestId('chat-stop'))
+  await flush()
+
+  // exactly one call, on the stop edge, and it starts nothing: no second send, no history read
+  const stops = chat.calls.filter(call => call.path.endsWith('/messages/stop'))
+  expect(stops.map(call => call.method)).toEqual(['POST'])
+  expect(stops[0]?.path).toBe('/api/projects/demo-1a2b3c4/messages/stop')
+  expect(chat.countOf('/messages', 'POST')).toBe(1)
+  expect(chat.countOf('/messages', 'GET')).toBe(historyReads)
+
+  // the turn ends: what he was shown stays on the screen, because the history kept less than that
+  chat.setMessages([QUESTION])
+  await chat.push(event('done', { millis: 5 }))
+
+  expect(screen.getByTestId('chat-live')).toHaveTextContent('Ich schlafe gerade')
+  expect(screen.getByText('schlaf drei sekunden')).toBeInTheDocument()
+  expect(chat.countOf('/messages', 'GET')).toBe(historyReads)
+  expect(screen.getByTestId('chat-stop')).toBeDisabled()
+})
+
+// UC-WP-50
+test('stopOnAFinishedTurnIsSilent', async () => {
+  // a roster that says WORKING is enough to offer the stop — another user's turn is stoppable too (UC-WP-22)
+  const chat = stubChat({ messages: [QUESTION], agents: [tile('Jon', 'WORKING')] })
+  chat.setStopAnswer(409, 'no turn is running')
+  render(<ChatPage project={project()} />)
+  await flush()
+  expect(screen.getByTestId('chat-stop')).toBeEnabled()
+  const rosterReads = chat.countOf('/agents', 'GET')
+
+  fireEvent.click(screen.getByTestId('chat-stop'))
+  await waitFor(() => expect(chat.countOf('/agents', 'GET')).toBe(rosterReads + 1))
+
+  // 409 says the turn was already over — that is what the click wanted, so it is not an error line
+  expect(screen.queryByTestId('chat-error')).toBeNull()
+  expect(chat.countOf('/messages', 'POST')).toBe(0)
+  expect(chat.countOf('/messages', 'GET')).toBe(1)
+})
+
+// UC-WP-50
+test('aCompactingTileOffersNoStop', async () => {
+  // a half Compact is not something a turn's stop may cut — so it is not a turn to stop (D-17)
+  stubChat({ messages: [QUESTION], agents: [tile('Jon', 'COMPACTING')] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.COMPACTING)
+  expect(screen.getByTestId('chat-stop')).toBeDisabled()
+})
+
+// UC-WP-55
+test('userLineCarriesTheBlueAccentOnTheLeft', async () => {
+  stubChat({ messages: [QUESTION, ANSWER] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  const line = screen.getByTestId('chat-line-user')
+  expect(line.className).toContain('user')
+  expect(line.className).not.toContain('agent')
+
+  // what colour a line has is no fact of the DOM: the sheet paints it. The class the row carries has to be
+  // the class the sheet paints, and the token it paints has to be the blue of chat.html (R-WP-29). The doc
+  // line that asked for the right edge was the source of F2 — the two assertions that pinned it now pin
+  // its opposite, so the old contract is inverted here and not dropped.
+  const painted = declarations('.chat-log .chat-line.user')
+  expect(painted, 'the accent of the person is the user token').toContain('var(--user)')
+  expect(painted, 'the accent sits on the left, like the agent accent').toContain('border-left')
+  expect(painted, 'no second accent on the right edge').not.toContain('border-right')
+  expect(painted, 'the line reads in the flow, not against it').not.toContain('text-align: right')
+  expect(declarations('.chat-log .chat-line'), 'and the width of the accent stays with the line rule')
+    .toContain('border-left: 3px solid transparent')
+  expect(tokenValues('--user')[0], 'the blue of chat.html, not a lookalike').toBe('#0969da')
+})
+
+// UC-WP-55
+test('agentLineIsGreenAndNamedByItsAgent', async () => {
+  stubChat({ messages: [QUESTION, TEAM_ANSWER, JONS_ANSWER] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  const lines = screen.getAllByTestId('chat-line-jon')
+  expect(lines).toHaveLength(2)
+  for (const line of lines) {
+    expect(line.className).toContain('agent')
+    expect(line.className).not.toContain('user')
+    // the label of an agent line is the agent that spoke, and it is the label the sheet colours (R-WP-4)
+    expect(line.querySelector('.chat-role')).not.toBeNull()
+  }
+  expect(lines.map(line => within(line).getByTestId('chat-line-author').textContent)).toEqual(['Dev', 'Jon'])
+
+  expect(declarations('.chat-log .chat-line.agent'), 'the accent of an answer is the agent token')
+    .toContain('var(--agent)')
+  expect(declarations('.chat-log .chat-role'), 'the name above the line is set in caps like chat.html')
+    .toContain('text-transform: uppercase')
+  expect(declarations('.chat-log .chat-line.user .chat-role'), 'and the name of a person in their blue')
+    .toContain('var(--user)')
+  expect(tokenValues('--agent')[0], 'the green of chat.html, not a lookalike').toBe('#1a7f37')
+})
+
+// UC-WP-55
+test('roleChangeDrawsARule', async () => {
+  stubChat({ messages: [QUESTION, TEAM_ANSWER, JONS_ANSWER, { role: 'user', text: 'und im Root?' }] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  // user, agent, agent, user: one rule where the voice changes and none within a voice, and the rule is
+  // the plain hr of the doc — carried by the line that begins the new voice, so the list stays a list
+  const shape = screen.getAllByTestId(/chat-line-(user|jon)/).map(line => {
+    const ruled = [...line.children].some(child => child.tagName === 'HR')
+    return `${ruled ? 'rule ' : ''}${line.classList.contains('user') ? 'user' : 'agent'}`
+  })
+  expect(shape).toEqual(['user', 'rule agent', 'agent', 'rule user'])
+})
+
+// UC-WP-55
+test('agentLineHasNoGrayBlock', async () => {
+  stubChat({ messages: [QUESTION, ANSWER] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  expect(screen.getByTestId('chat-line-jon').className).toContain('agent')
+
+  // an answer is a line in the flow: no surface of its own, no card, no code-background block (R-WP-29)
+  for (const selector of [
+    '.chat-log .chat-line',
+    '.chat-log .chat-line.user',
+    '.chat-log .chat-line.agent',
+    '.chat-log .chat-line.tool',
+    '.chat-log .chat-line.pending',
+  ]) {
+    expect(declarations(selector), `${selector} paints no surface`).not.toMatch(/background|--code-bg/)
+  }
+  expect(declares('.chat-line.jon'), 'the gray block of the jon line is gone').toBe(false)
+  // and the same rule keeps the chat in the flow: the log is no centred column, a line is no centred card
+  // (R-WP-29, UC-WP-55 — Paul: nothing centred, nothing framed)
+  expect(declarations('.chat-log'), 'the log centres nothing').not.toMatch(
+    /justify-content: center|place-items: center/,
+  )
+  expect(declarations('.chat-log .chat-line'), 'a line centres nothing of itself').not.toMatch(
+    /text-align: center|margin: 0 auto/,
+  )
+})
+
+// UC-WP-54
+test('toolLinesStayInlineInOrder', async () => {
+  const chat = stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  // the answer is interrupted twice: what the screen shows is the order it arrived in, not one text
+  // plus a list of everything the turn reported (R-WP-28)
+  await chat.push(event('partial', { kind: 'answer', text: 'Der Anfang. ' }))
+  await chat.push(event('tool', { text: 'step 1' }))
+  await chat.push(event('partial', { kind: 'answer', text: 'Der Schluss.' }))
+  await chat.push(event('tool', { text: 'step 2' }))
+
+  const shape = screen.getAllByTestId(/chat-(live|tool-line)/).map(entry =>
+    entry.getAttribute('data-testid') === 'chat-live'
+      ? `text ${entry.textContent?.trim() ?? ''}`
+      : `tool ${[...entry.querySelectorAll('.chat-tool-line')].map(line => line.textContent).join('|')}`,
+  )
+  expect(shape).toEqual(['text Der Anfang.', 'tool step 1', 'text Der Schluss.', 'tool step 2'])
+})
+
+// UC-WP-54
+test('toolLinesSurviveTheDoneRefresh', async () => {
+  const chat = stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await chat.push(event('tool', { text: 'ls in the checkout' }))
+  expect(screen.getByTestId('chat-tool-line')).toHaveTextContent('ls in the checkout')
+
+  // the turn ends and the history is read: the trace exists on the wire only, so this read is the moment
+  // it would be lost — it is not (UC-WP-54)
+  chat.setMessages([QUESTION, { role: 'user', text: 'zähl die Dateien' }, ANSWER])
+  await chat.push(event('done', { millis: 7 }))
+
+  const entries = [...screen.getByTestId('chat-log').children]
+  const tool = screen.getByTestId('chat-tool-line')
+  expect(tool).toHaveTextContent('ls in the checkout')
+  // and it stands where it happened: after the input it belongs to, before the answer that followed it
+  const answerAt = entries.findIndex(entry => entry.getAttribute('data-testid') === 'chat-line-jon')
+  expect(entries.indexOf(tool)).toBeGreaterThanOrEqual(0)
+  expect(answerAt).toBeGreaterThan(entries.indexOf(tool))
+  // the streaming text gave way to the history and is not shown twice
+  expect(screen.queryByTestId('chat-live')).toBeNull()
+  expect(agentLinesSaying(ANSWER.text)).toHaveLength(1)
+})
+
+test('consecutiveToolLinesAreMerged', async () => {
+  const chat = stubChat({ messages: [] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  for (const step of Array.from({ length: 12 }, (_, index) => index + 1)) {
+    await chat.push(event('tool', { text: `step ${step}` }))
+  }
+
+  // one box for a run of tool activity, and only its tail — what a turn reports is a trace beside the
+  // answer and never a list that pushes the answer away (chat.html keeps ten lines)
+  const boxes = screen.getAllByTestId('chat-tool-line')
+  expect(boxes).toHaveLength(1)
+  const lines = [...boxes[0].querySelectorAll('.chat-tool-line')].map(line => line.textContent)
+  expect(lines).toHaveLength(10)
+  expect(lines[0]).toBe('step 3')
+  expect(lines[9]).toBe('step 12')
+})
+
+// UC-WP-68
+test('aFileChangeIsLiveAndDoesNotOutliveTheReload', async () => {
+  const chat = stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  // the turn writes a file: the trace names the tool, the block names the file and shows what changed
+  await chat.push(event('tool', { text: 'write src/App.java' }))
+  await chat.push(event('diff', { file: 'src/App.java', diff: DIFF }))
+  expect(screen.getByTestId('chat-diff-file')).toHaveTextContent('src/App.java')
+  expect(screen.getByTestId('chat-diff')).toHaveTextContent('+b')
+  // beside the trace and not inside it — a box is one place of the trace, a diff is a block
+  expect(within(screen.getByTestId('chat-tool-line')).queryByTestId('chat-diff')).toBeNull()
+
+  // the turn ends and the history is read: the block has no line in that history and keeps its place on
+  // the screen, exactly like the trace of the same turn (R-WP-11, R-WP-36)
+  chat.setMessages([QUESTION, ANSWER])
+  await chat.push(event('done', { millis: 9 }))
+  expect(screen.getByTestId('chat-diff')).toHaveTextContent('+b')
+  expect(screen.getByTestId('chat-tool-line')).toHaveTextContent('write src/App.java')
+
+  // a dropped connection is the reload's stand-in: what the wire will not send back leaves the screen,
+  // and the history that comes back with the new connection carries no diff (R-WP-11)
+  await chat.closeStream()
+  await waitFor(() => expect(chat.countOf('/events', 'GET')).toBe(2), { timeout: 1500 })
+  expect(screen.queryByTestId('chat-diff')).toBeNull()
+  expect(screen.queryByTestId('chat-tool-line')).toBeNull()
+  expect(agentLinesSaying(ANSWER.text)).toHaveLength(1)
+})
+
+// UC-WP-57
+test('resendSendsTheLastMessageAgain', async () => {
+  const chat = stubChat({ messages: [] })
+  render(<ChatPage project={project()} />)
+  await flush()
+  // nothing has been sent yet, so nothing can be sent again
+  expect(screen.getByTestId('chat-resend')).toBeDisabled()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+  expect(chat.countOf('/messages', 'POST')).toBe(1)
+  expect(screen.getByTestId('chat-resend')).toBeEnabled()
+
+  fireEvent.click(screen.getByTestId('chat-resend'))
+  await flush()
+
+  // the same text, twice, on the same edge — and the field was not touched a second time (R-WP-30)
+  expect(sentTexts(chat)).toEqual(['zähl die Dateien', 'zähl die Dateien'])
+  expect(screen.getByTestId('chat-input')).toHaveValue('')
+})
+
+// UC-WP-57
+test('aSendThatNeverLandedIsNotOfferedAgain', async () => {
+  const chat = stubChat({ messages: [] })
+  chat.refuseSend(503, 'the factory is not reachable')
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+
+  expect(screen.getByTestId('chat-error')).toHaveTextContent('the factory is not reachable')
+  // 202 is what makes a text "the last one": a text the queue never got is not something to send twice
+  expect(screen.getByTestId('chat-resend')).toBeDisabled()
+  expect(sentTexts(chat)).toEqual(['zähl die Dateien'])
+})
+
+// UC-WP-57
+test('resendWorksAfterAnError', async () => {
+  const chat = stubChat({ messages: [] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+  // the server already wrote the failure into the conversation when it reports it (R-WP-34)
+  chat.setMessages([{ role: 'error', text: 'Es fehlt ein Modellschlüssel für OPEN_AI' }])
+  await chat.push(event('error', { message: 'Es fehlt ein Modellschlüssel für OPEN_AI' }))
+  expect(screen.getByTestId('chat-line-error')).toHaveTextContent('Es fehlt ein Modellschlüssel')
+
+  // the answer to a failed turn needs no new typing, and what he writes in the meantime stays (R-WP-30)
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'und jetzt mit Schlüssel' } })
+  fireEvent.click(screen.getByTestId('chat-resend'))
+  await flush()
+
+  expect(sentTexts(chat)).toEqual(['zähl die Dateien', 'zähl die Dateien'])
+  expect(screen.getByTestId('chat-input')).toHaveValue('und jetzt mit Schlüssel')
+})
+
+// UC-WP-58
+test('waitingBarShowsTheLivePreview', async () => {
+  const chat = stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  await flush()
+  // no turn, no wait
+  expect(screen.queryByTestId('chat-waiting')).toBeNull()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+
+  // GIVEN a turn that has delivered nothing THEN the words of the plugin
+  expect(screen.getByTestId('chat-waiting')).toHaveTextContent(content.chat.waitingForAi)
+
+  // GIVEN the stream delivers THEN the bar shows what it last reported, on one line — a preview beside
+  // the log and never a second copy of the answer (R-WP-31)
+  await chat.push(event('tool', { text: 'Running: `ls` in /home/me' }))
+  expect(screen.getByTestId('chat-waiting')).toHaveTextContent('Running: `ls`')
+
+  await chat.push(event('partial', { kind: 'answer', text: 'Im Root liegen:\npom.xml' }))
+  expect(screen.getByTestId('chat-waiting')).toHaveTextContent('pom.xml')
+  expect(screen.getByTestId('chat-waiting').textContent).not.toContain('Im Root liegen')
+
+  // and it is the plugin's line: mono, with a caret that blinks (R-WP-31). Where the bar stands is the
+  // layout's call and not this rule's: the log scrolls in its own area, so the bar is a block directly
+  // above the field and hangs on nothing any more (R-WP-35) — the `position: sticky` clause measured the
+  // page scroll this increment took away, so it became its opposite.
+  const painted = declarations('.chat-waiting')
+  expect(painted, 'the wait keeps the plugin mono').toContain('font-family: var(--mono)')
+  expect(painted, 'nothing sticks to a scroll the chat no longer has').not.toContain('position:')
+  expect(declarations('.chat-waiting-caret')).toContain('animation')
+  expect(declarations('.chat-log'), 'the log is the scroll area now').toContain('overflow-y: auto')
+  expect(
+    screen.getByTestId('chat-waiting').nextElementSibling?.className,
+    'the wait sits directly above the field',
+  ).toContain('chat-composer')
+})
+
+// UC-WP-58
+test('waitingBarEndsWithTheTurn', async () => {
+  const chat = stubChat({ messages: [] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+  await chat.push(event('partial', { kind: 'answer', text: 'Im Root liegen: pom.xml' }))
+  expect(screen.getByTestId('chat-waiting')).toBeInTheDocument()
+
+  chat.setMessages([ANSWER])
+  await chat.push(event('done', { millis: 12 }))
+
+  // the answer stays, the wait goes with the turn (R-WP-31)
+  expect(screen.queryByTestId('chat-waiting')).toBeNull()
+  expect(screen.getByTestId('chat-log')).toHaveTextContent('Im Root liegen: pom.xml')
+})
+
+// UC-WP-58
+test('waitingBarEndsWithAFailedTurn', async () => {
+  const chat = stubChat({ messages: [] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+  expect(screen.getByTestId('chat-waiting')).toBeInTheDocument()
+
+  // a failed turn is an ended turn: no wait line left standing above the reason (UC-WP-58), and the reason
+  // is a line of the conversation, not a notice beside it (R-WP-34)
+  chat.setMessages([{ role: 'error', text: 'Es fehlt ein Modellschlüssel für OPEN_AI' }])
+  await chat.push(event('error', { message: 'Es fehlt ein Modellschlüssel für OPEN_AI' }))
+
+  expect(screen.getByTestId('chat-line-error')).toHaveTextContent('Es fehlt ein Modellschlüssel')
+  expect(screen.queryByTestId('chat-error')).toBeNull()
+  expect(screen.queryByTestId('chat-waiting')).toBeNull()
+})
+
+// UC-WP-65
+test('pendingFrameExistsWhileTheTurnRuns', async () => {
+  stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  await flush()
+  // a line the history carries is a fact: before a turn starts, nothing is framed
+  expect(framedLines()).toHaveLength(0)
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+
+  // the positive half of the rule, so "never painted" can never pass for it: while this browser's turn is
+  // open, its own input — the one the history does not carry yet — wears the waiting frame (R-WP-31)
+  expect(framedLines()).toHaveLength(1)
+  expect(framedLines()[0]).toHaveTextContent('zähl die Dateien')
+})
+
+// UC-WP-65
+test('stopLeavesNoPendingFrame', async () => {
+  const chat = stubChat({ messages: [QUESTION], agents: [tile('Jon', 'IDLE')] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'schlaf drei sekunden' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+  await chat.push(event('partial', { kind: 'answer', text: 'Ich schlafe gerade' }))
+  expect(framedLines().length, 'the frame stands while the turn runs').toBeGreaterThan(0)
+
+  fireEvent.click(screen.getByTestId('chat-stop'))
+  await flush()
+
+  // the accepted stop IS the end of the wait — the frame goes with the click, not with a later read, and
+  // everything he was shown stays on the screen (UC-WP-50, D-16)
+  expect(framedLines()).toHaveLength(0)
+  expect(screen.getByTestId('chat-live')).toHaveTextContent('Ich schlafe gerade')
+  expect(screen.getByTestId('chat-log')).toHaveTextContent('schlaf drei sekunden')
+
+  chat.setMessages([QUESTION])
+  await chat.push(event('done', { millis: 5 }))
+
+  expect(framedLines()).toHaveLength(0)
+  expect(screen.getByTestId('chat-live')).toHaveTextContent('Ich schlafe gerade')
+})
+
+// UC-WP-65
+test('failedTurnLeavesNoPendingFrame', async () => {
+  const chat = stubChat({ messages: [] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'und die Ordner' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+  expect(framedLines(), 'both of his own inputs wait on the turn').toHaveLength(2)
+
+  // the turn fails with one input confirmed by the conversation and the other still waiting: the frame ends
+  // with the turn either way, while the text of the waiting one stays where it was shown (R-WP-34, UC-WP-64)
+  chat.setMessages([
+    { role: 'user', text: 'zähl die Dateien', origin: 'Paul' },
+    { role: 'error', text: 'Es fehlt ein Modellschlüssel für OPEN_AI' },
+  ])
+  await chat.push(event('error', { message: 'Es fehlt ein Modellschlüssel für OPEN_AI' }))
+
+  expect(framedLines()).toHaveLength(0)
+  expect(screen.getByTestId('chat-log')).toHaveTextContent('und die Ordner')
+  expect(screen.getAllByTestId('chat-line-error')).toHaveLength(1)
+})
+// UC-WP-66
+test('theLogIsTheScrollArea', () => {
+  // jsdom lays out nothing, so "the chat scrolls in its own area" is read where it is written: the log owns
+  // the scroll, the row owns the position, and the shell is a frame that never scrolls as a whole (R-WP-35)
+  expect(declarations('.chat-log'), 'the log carries the scroll').toContain('overflow-y: auto')
+  expect(declarations('.chat-log'), 'and it is the flexible part of the column').toContain('flex: 1')
+  // without the zeroed floor a flex item keeps its content height and never scrolls — the line that looks
+  // like a leftover is the one that makes the scroll work
+  expect(declarations('.chat-log'), 'and may shrink below its own content').toContain('min-height: 0')
+  expect(declarations('.chat-workspace'), 'the row is the box the file tab hangs on').toContain(
+    'position: relative',
+  )
+  expect(declarations('.chat-workspace'), 'the row gives the chat its height, head to input').toContain(
+    'align-items: stretch',
+  )
+  expect(declarations('.chat-workspace > .view'), 'the chat is a column').toContain(
+    'flex-direction: column',
+  )
+  expect(declarations('.chat-workspace > .view'), 'and only its log scrolls').toContain(
+    'overflow: hidden',
+  )
+  expect(declarations('.view'), 'every view scrolls for itself, so none of them is clipped').toContain(
+    'overflow-y: auto',
+  )
+  expect(baseDeclarations('#root'), 'the shell is the fixed frame').toContain('height: 100dvh')
+  expect(baseDeclarations('#root'), 'and it never scrolls as a whole').toContain('overflow: hidden')
+})
+
+/**
+ * A scroll to measure: jsdom knows no layout, so the log gets its geometry from the test and keeps
+ * `scrollTop` writable — the page's numbers stay what the test states (R-WP-35).
+ */
+function mockScrollOf(area: HTMLElement, scrollHeight: number, clientHeight: number): void {
+  let scrollTop = 0
+  Object.defineProperty(area, 'scrollHeight', { configurable: true, value: scrollHeight })
+  Object.defineProperty(area, 'clientHeight', { configurable: true, value: clientHeight })
+  Object.defineProperty(area, 'scrollTop', {
+    configurable: true,
+    get: () => scrollTop,
+    set: (value: number) => {
+      scrollTop = value
+    },
+  })
+}
+
+// UC-WP-66
+test('newLinesScrollToTheEnd', async () => {
+  const chat = stubChat({ messages: [QUESTION, ANSWER] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  const log = screen.getByTestId('chat-log')
+  mockScrollOf(log, 1_000, 300)
+  expect(log.scrollTop, 'the test starts at the top of a long log').toBe(0)
+
+  // GIVEN he reads the newest line WHEN the stream adds one THEN the log follows it to its end
+  await chat.push(event('partial', { kind: 'answer', text: 'noch eine Zeile' }))
+  expect(log.scrollTop, 'a log at its end keeps following the stream').toBe(1_000)
+})
+
+// UC-WP-66
+test('readingUpIsNotRippedDown', async () => {
+  const chat = stubChat({ messages: [QUESTION, ANSWER] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  const log = screen.getByTestId('chat-log')
+  mockScrollOf(log, 1_000, 300)
+
+  // GIVEN he has read up WHEN the next line arrives THEN the log stays where he left it
+  log.scrollTop = 120
+  fireEvent.scroll(log)
+  await chat.push(event('partial', { kind: 'answer', text: 'noch eine Zeile' }))
+  expect(log.scrollTop, 'a line he reads above the end is his place, not the stream\'s').toBe(120)
+
+  // GIVEN he stands within the last few pixels of the end WHEN the stream adds THEN it follows again —
+  // those pixels still count as "reading the newest line", so the log does not stop a hair too early
+  log.scrollTop = 990
+  fireEvent.scroll(log)
+  await chat.push(event('partial', { kind: 'answer', text: 'und noch eine' }))
+  expect(log.scrollTop, 'the end of the log is where the stream keeps him').toBe(1_000)
+})
+
+
+
+
+/**
+ * The lines wearing the waiting frame — the dashed accent of R-WP-31, whatever voice they speak with. The
+ * frame is a class the page hands down, so the screen is the place to ask for it (UC-WP-65).
+ */
+function framedLines(): Element[] {
+  return Array.from(document.querySelectorAll('.chat-line.pending'))
+}
+
+/** The author labels of the agent lines, in reading order — the shape of R-WP-4's claim. */
+function agentAuthorsOnScreen(): (string | null)[] {
+  return authorsOfLines('chat-line-jon')
+}
+
+/** The texts the queue got, in the order they were posted — what a resend really put on the wire. */
+function sentTexts(chat: Chat): string[] {
+  return chat.calls
+    .filter(call => call.method === 'POST' && call.path.endsWith('/messages'))
+    .map(call => String(JSON.parse(call.body ?? '{}').text))
+}
+
+/**
+ * The agent lines that say exactly this. An answer reads as Markdown (R-WP-28) and the renderer paints a
+ * sentence in its own tokens, so the row is the unit a test asks for — never one span of it.
+ */
+function agentLinesSaying(text: string): HTMLElement[] {
+  return screen.getAllByTestId('chat-line-jon').filter(line => line.textContent === text)
+}
+
+/** The author labels of the user lines, in reading order — what every viewer reads (R-WP-25, UC-WP-48). */
+function userAuthorsOnScreen(): (string | null)[] {
+  return authorsOfLines('chat-line-user')
+}
+
+function authorsOfLines(lineTestId: string): (string | null)[] {
+  return screen
+    .getAllByTestId(lineTestId)
+    .flatMap(line => within(line).queryAllByTestId('chat-line-author').map(label => label.textContent))
 }

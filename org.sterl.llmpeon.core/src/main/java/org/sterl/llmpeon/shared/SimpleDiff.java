@@ -3,22 +3,26 @@ package org.sterl.llmpeon.shared;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
+
+import org.jspecify.annotations.Nullable;
 
 /**
  * Generates a unified diff string from two texts using LCS (longest common subsequence).
  *
- * <p>Two guards keep the diff honest and bounded (open-points 2026-09-16: a corrupted
- * 7.3M-line file took down the whole Eclipse process):
+ * <p>Rules: R-SD-1…3, org.sterl.llmpeon.core/docs/file-update-diff.md. Only the invariants the doc
+ * cannot carry live here:
  * <ul>
- * <li>identical prefix/suffix lines are trimmed away first, so only the changed region
- *     feeds the LCS matrix (standard LCS optimization);</li>
- * <li>{@link #MAX_LCS_CELLS} bounds the matrix size on the trimmed arrays — above it the
- *     diff is skipped with a summary;</li>
- * <li>{@link #MAX_DIFF_LINES} bounds the changed region itself (trimmed old + new lines) —
- *     trimming bounds the matrix, not the diff output, so a 7.3M-line file vs a 100-line
- *     file sharing the 100-line prefix trims to 0 cells but would still build a 7M-line
- *     result; above the cap the diff is skipped with a summary naming this bound.</li>
+ * <li>identical prefix/suffix lines are trimmed away first, so only the changed region feeds the LCS
+ *     matrix (standard LCS optimization) — the context regions stay virtual, they are never
+ *     materialized because the prefix can be millions of lines;</li>
+ * <li>{@link #MAX_CHANGED_LINES} is the single bound: 500 changed lines keep the matrix at
+ *     ≤ 250×250 ints ≈ 1 MB, which is what made the old separate matrix guard redundant
+ *     (open-points 2026-09-16: a corrupted 7.3M-line file took down the whole Eclipse process);</li>
+ * <li>a truncated region prints no trailing suffix context — those lines would claim the real file
+ *     end follows the cut directly; the marker counts the lines actually shown, never the cap
+ *     constant (a tool never lies about its limit);</li>
+ * <li>lines are split without a trailing empty element: a file ending in "\n" has no extra line, so a
+ *     create diff never opens with a phantom removal.</li>
  * </ul>
  */
 public class SimpleDiff {
@@ -26,33 +30,30 @@ public class SimpleDiff {
     private static final int CONTEXT = 3;
 
     /**
-     * Maximum size of the LCS matrix (rows x cols, 4 bytes per cell, ~5 MB at the limit),
-     * computed on the prefix/suffix-trimmed line arrays. Above this the diff is skipped
-     * with a summary instead of risking an OOM
-     * (open-points 2026-09-16: a corrupted 7.3M-line file took down the whole Eclipse process).
+     * Cap on the changed region (trimmed old + new lines) — above it the diff is truncated, not
+     * skipped. Deliberately a constant, no configuration surface (doc "Offene Punkte").
      */
-    private static final long MAX_LCS_CELLS = 1_250_000L;
+    private static final int MAX_CHANGED_LINES = 500;
 
-    /**
-     * Maximum total number of lines in the trimmed (changed) region — trimmed old + new.
-     * Trimming bounds the matrix, not the diff output, so this second guard keeps the
-     * OOM protection honest (see class javadoc).
-     */
-    private static final int MAX_DIFF_LINES = 100_000;
+    /** NUL sniff window; the tools hand over a String, so there is no byte layer to check. */
+    private static final int BINARY_SNIFF_CHARS = 8 * 1024;
 
     /**
      * Produces a unified diff string with compact hunks (3 lines of contextFile) suitable for diff2html rendering.
-     * @return empty string if no changes; a string starting with "--- a/" if the diff was
-     *         computed; otherwise a human-readable summary naming the file when the trimmed
-     *         input exceeds {@link #MAX_LCS_CELLS} or the changed region exceeds
-     *         {@link #MAX_DIFF_LINES} (diff skipped, both line counts and the bound exposed)
+     * @return empty string if no changes; a string starting with "--- a/" if the diff was computed
+     *         (truncated with a trailing marker line above {@link #MAX_CHANGED_LINES} changed lines);
+     *         otherwise a human-readable summary naming the file and both line counts
      */
-    public static String unifiedDiff(String fileName, String oldText, String newText) {
-        String[] oldLines = (oldText == null ? "" : oldText).split("\n", -1);
-        String[] newLines = (newText == null ? "" : newText).split("\n", -1);
+    public static String unifiedDiff(String fileName, @Nullable String oldText, @Nullable String newText) {
+        String[] oldLines = splitLines(oldText);
+        String[] newLines = splitLines(newText);
 
-        // Trim identical head and tail (standard LCS optimization) — the guards and the LCS
-        // run on the trimmed region only; identical inputs trim to nothing.
+        if (isBinary(oldText) || isBinary(newText)) {
+            return skippedSummary(fileName, oldLines.length, newLines.length, "binary content");
+        }
+
+        // Trim identical head and tail — the cap and the LCS run on the trimmed region only;
+        // identical inputs trim to nothing.
         int minLen = Math.min(oldLines.length, newLines.length);
         int prefix = 0;
         while (prefix < minLen && oldLines[prefix].equals(newLines[prefix])) prefix++;
@@ -64,29 +65,27 @@ public class SimpleDiff {
         String[] trimmedNew = Arrays.copyOfRange(newLines, prefix, newLines.length - suffix);
         if (trimmedOld.length == 0 && trimmedNew.length == 0) return "";
 
-        long cells = (long) trimmedOld.length * trimmedNew.length;
-        if (cells > MAX_LCS_CELLS) {
-            long bytes = cells * 4L;
-            String size = bytes >= 1_000_000_000L
-                ? String.format(Locale.ROOT, "%.1f GB", bytes / 1_000_000_000.0)
-                : (bytes / 1_000_000) + " MB";
-            return skippedSummary(fileName, oldLines.length, newLines.length,
-                "LCS matrix would be ~" + size + ", limit " + MAX_LCS_CELLS + " cells");
-        }
         int changedLines = trimmedOld.length + trimmedNew.length;
-        if (changedLines > MAX_DIFF_LINES) {
-            return skippedSummary(fileName, oldLines.length, newLines.length,
-                "changed region spans " + changedLines + " lines, cap " + MAX_DIFF_LINES);
+        boolean truncated = changedLines > MAX_CHANGED_LINES;
+        // the cut region must not show the identical tail — adjacency to the real file end would lie
+        int outSuffix = truncated ? 0 : suffix;
+        int shownLines = changedLines;
+        if (truncated) {
+            int shownOld = trimmedOld.length == 0 ? 0
+                : Math.clamp(Math.round((float) MAX_CHANGED_LINES * trimmedOld.length / changedLines), 1, trimmedOld.length);
+            int shownNew = Math.min(trimmedNew.length, MAX_CHANGED_LINES - shownOld);
+            trimmedOld = Arrays.copyOf(trimmedOld, shownOld);
+            trimmedNew = Arrays.copyOf(trimmedNew, shownNew);
+            shownLines = shownOld + shownNew;
         }
 
-        // LCS on the trimmed region only. The full diff is prefix context + trimmed diff
-        // + suffix context; the context regions stay virtual (never materialized — the
-        // prefix can be millions of lines).
+        // LCS on the (possibly capped) trimmed region. The full diff is prefix context + trimmed diff
+        // + suffix context, all coordinates are full-diff coordinates.
         List<String> diffLines = lcsDiff(trimmedOld, trimmedNew);
-        int fullEnd = prefix + diffLines.size() - 1 + suffix;
+        int fullEnd = prefix + diffLines.size() - 1 + outSuffix;
 
         // Find indices of changed lines (non-context), grouped into hunks: merge if the
-        // gap between changes is <= 2*CONTEXT. All coordinates are full-diff coordinates.
+        // gap between changes is <= 2*CONTEXT.
         List<Integer> changes = changeIndices(diffLines);
         int firstFull = prefix + changes.get(0);
         List<int[]> hunkRanges = new ArrayList<>(); // [startIdx, endIdx] inclusive
@@ -150,10 +149,34 @@ public class SimpleDiff {
                 sb.append(diffLines.get(k - prefix)).append('\n');
             }
             for (int k = suffixStart; k <= end; k++) {
-                sb.append(' ').append(newLines[newLines.length - suffix + k - prefix - diffLines.size()]).append('\n');
+                sb.append(' ').append(newLines[newLines.length - outSuffix + k - prefix - diffLines.size()]).append('\n');
             }
         }
+        if (truncated) {
+            // a context line, so both renderers keep it inside the block — it must stay the last line
+            sb.append(' ').append("… diff truncated — showing ")
+              .append(shownLines).append(" of ").append(changedLines).append(" changed lines").append('\n');
+        }
         return sb.toString();
+    }
+
+    /**
+     * One line per line of the text: no trailing empty element after "\n", no element at all for an
+     * absent or empty file (the shape of a create diff, R-SD-1).
+     */
+    private static String[] splitLines(@Nullable String text) {
+        if (text == null || text.isEmpty()) return new String[0];
+        String body = text.endsWith("\n") ? text.substring(0, text.length() - 1) : text;
+        return body.split("\n", -1);
+    }
+
+    private static boolean isBinary(@Nullable String text) {
+        if (text == null) return false;
+        int end = Math.min(text.length(), BINARY_SNIFF_CHARS);
+        for (int i = 0; i < end; i++) {
+            if (text.charAt(i) == '\0') return true;
+        }
+        return false;
     }
 
     private static List<String> lcsDiff(String[] a, String[] b) {
@@ -195,8 +218,8 @@ public class SimpleDiff {
     }
 
     /**
-     * Human-readable replacement for a skipped diff — names the file and exposes why it was
-     * skipped (both line counts + the bound that hit), never a lie, never a silent loss.
+     * Human-readable replacement for a change we do not diff — names the file and both line counts,
+     * never a lie, never a silent loss. Both renderers show it as a plain tool line.
      */
     private static String skippedSummary(String fileName, int oldLineCount, int newLineCount, String reason) {
         return "file updated, diff skipped for " + fileName + ": " + oldLineCount + " → " + newLineCount

@@ -21,6 +21,8 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 
+import org.sterl.open.aifactory.project.ProjectStatusStream;
+
 /**
  * The runtime on its own, without a server and without a model: what building it costs, and what the
  * conversation is made of. Both are R-WP-11 statements — one chat per project, no second store — so the
@@ -83,7 +85,7 @@ class ProjectRuntimeTest {
         memory.add(AiMessage.from("second answer"));
 
         assertThat(runtime.history()).containsExactly(
-                ChatLine.user("first question"),
+                ChatLine.user("first question", null),
                 // the member line is its tool result verbatim, statistics line included: shortening it
                 // would be the factory's guess about what matters (R-WP-11)
                 ChatLine.jon(answered, "Dev"),
@@ -92,7 +94,7 @@ class ProjectRuntimeTest {
                 ChatLine.jon(withoutAnswer, "Dev"),
                 ChatLine.jon(failure, "Dev"),
                 ChatLine.jon("the answer", AiPoAgent.NAME),
-                ChatLine.user("[Queued Message] (10:15): later question"),
+                ChatLine.user("[Queued Message] (10:15): later question", null),
                 ChatLine.jon("second answer", AiPoAgent.NAME));
     }
 
@@ -105,7 +107,8 @@ class ProjectRuntimeTest {
         createDirectories(checkout);
         return new ProjectRuntime("project-1", checkout, stateDir,
                 ProjectRuntimeTest::config, ProjectRuntimeTest::config,
-                new ChatStreamRegistry(), Executors.newVirtualThreadPerTaskExecutor());
+                new ChatStreamRegistry(), new ProjectStatusStream(),
+                Executors.newVirtualThreadPerTaskExecutor());
     }
 
     /** A config that would be accepted for a turn — no request ever goes out in this class. */

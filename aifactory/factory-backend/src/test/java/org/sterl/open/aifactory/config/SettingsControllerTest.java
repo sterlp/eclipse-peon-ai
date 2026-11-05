@@ -8,32 +8,32 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
 import com.jayway.jsonpath.JsonPath;
 
+import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.FileLlmConfigStore;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
+import org.sterl.llmpeon.provider.LlmProviders;
+import org.sterl.open.aifactory.FactorySpringTest;
+import org.sterl.open.aifactory.config.dto.ProviderDefaultsDto;
 import org.sterl.open.aifactory.config.dto.SettingsDto;
 import org.sterl.open.aifactory.config.dto.SettingsUpdateRequest;
 import org.sterl.open.aifactory.shared.FactoryHome;
@@ -41,43 +41,30 @@ import org.sterl.open.aifactory.shared.FactoryHome;
 /**
  * The HTTP contract of the settings view, over real HTTP: masking has to hold in the bytes on the wire,
  * which is what a started server and the raw response body can prove and an in-process mapper cannot.
- * Every test runs against a throwaway home.
+ * Every test runs against the shared throwaway home of {@link FactorySpringTest}, empty per method.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class SettingsControllerTest {
+class SettingsControllerTest extends FactorySpringTest {
 
     private static final String KEY = "sk-file-secret-0123456789";
     private static final String ENV_KEY = "sk-env-secret-9876543210";
-
-    /**
-     * The start values of this run. A {@link DynamicPropertySource} supplier is resolved on every
-     * lookup, so a test can switch one environment value on and off without a restart — the same
-     * {@code Environment} the running server reads.
-     */
-    private static final Map<String, String> START_VALUES = new ConcurrentHashMap<>();
-
-    @TempDir
-    static Path home;
 
     @LocalServerPort
     int port;
 
     private RestTemplate http;
 
-    @DynamicPropertySource
-    static void homeAndStartValues(DynamicPropertyRegistry registry) {
-        registry.add("aifactory.home", () -> home.toString());
-        EnvFallbackLlmConfigStore.ENV_NAMES.values()
-                .forEach(name -> registry.add(name, () -> START_VALUES.get(name)));
-    }
-
     @BeforeEach
-    void emptyHomeWithoutStartValues() {
-        START_VALUES.clear();
-        deleteConfig();
+    void withoutStartValues() {
+        clearStartValues();
         this.http = new RestTemplate();
         // the status IS the assertion — a client that throws would hide what the app answers
         this.http.setErrorHandler(new NoOpResponseErrorHandler());
+    }
+
+    /** System properties reach the whole JVM: a start value of this class never outlives its own test. */
+    @AfterEach
+    void forgetTheStartValues() {
+        clearStartValues();
     }
 
     @Test
@@ -158,7 +145,7 @@ class SettingsControllerTest {
 
         // GIVEN neither carries anything — the documented core defaults, and the key is not set
         deleteConfig();
-        START_VALUES.clear();
+        clearStartValues();
 
         String fromDefaults = bodyOfSettings();
         assertThat(field(fromDefaults, "$.provider")).isEqualTo("OLLAMA");
@@ -222,14 +209,21 @@ class SettingsControllerTest {
         assertThat(Files.getPosixFilePermissions(config())).isEqualTo(
                 EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
 
-        // GIVEN 2: an empty field is no value — the file keeps every byte it had
+        // GIVEN 2: an empty key field is no value — the file keeps every byte it had. The key is the one
+        // field for which the page still cannot clear anything by leaving it empty (R-WP-16).
         byte[] unchanged = Files.readAllBytes(config());
-        ResponseEntity<String> emptied = put("{\"model\":\"\"}");
+        ResponseEntity<String> emptied = put("{\"apiKey\":\"\"}");
         assertThat(emptied.getStatusCode()).isEqualTo(HttpStatus.OK);
         // an empty field did not clear the stored value — the answer re-read it instead of echoing
         assertThat(field(emptied.getBody(), "$.model")).isEqualTo("put-model");
         assertThat(Files.readAllBytes(config())).containsExactly(unchanged);
         assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.API_KEY, null)).isEqualTo(KEY);
+
+        // a cleared visible field is the opposite: an empty string is the value "delete" (UC-WP-46), so
+        // the same request shape on the model field does remove it
+        ResponseEntity<String> cleared = put("{\"model\":\"\"}");
+        assertThat(field(cleared.getBody(), "$.model")).isNull();
+        assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.MODEL, null)).isNull();
 
         // a wire field the request model does not know stays unreachable, whatever it is called
         assertThat(put("""
@@ -242,7 +236,7 @@ class SettingsControllerTest {
 
         // the request model has no component for the two pinned values either
         assertThat(componentNamesOf(SettingsUpdateRequest.class)).containsExactly("provider", "model", "url",
-                "apiKey", "tokenWindow", "timeoutSeconds", "sendThinking");
+                "apiKey", "tokenWindow", "timeoutSeconds", "sendThinking", "removeApiKey");
 
         // and the home still holds exactly the one file — no temp file survived the atomic move
         assertThat(fileNames()).isEqualTo(filesBefore);
@@ -267,6 +261,141 @@ class SettingsControllerTest {
         assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.PROVIDER_TYPE, null)).isEqualTo("OLLAMA");
     }
 
+    /**
+     * UC-WP-62 over HTTP: the list the page follows is the core's own, so the page needs no second list
+     * and no invented model default (D-10, Q2). Reading it never writes the config file.
+     */
+    @Test
+    // UC-WP-62
+    @SuppressWarnings("unchecked")
+    void providerDefaultsAnswerAsTheCoreKnowsThem() {
+        assertThat(config()).doesNotExist();
+
+        ResponseEntity<String> response = http.getForEntity(url("/api/settings/providers"), String.class);
+        String body = response.getBody();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<String> names = (List<String>) field(body, "$[*].name");
+        assertThat(names).containsExactly(
+                Arrays.stream(AiProvider.values()).map(Enum::name).toArray(String[]::new));
+
+        // the URL is the core's own value — the factory maintains no list of its own
+        assertThat(field(body, "$[" + names.indexOf("OLLAMA") + "].defaultUrl"))
+                .isEqualTo(LlmProviders.of(AiProvider.OLLAMA).defaultBaseUrl());
+        // a provider that requires a URL gets none: the page leaves the field empty instead of guessing
+        assertThat(field(body, "$[" + names.indexOf("OPEN_AI") + "].defaultUrl")).isNull();
+        // the providers without a think input are answered as such — that is what disables the field
+        assertThat(field(body, "$[" + names.indexOf("GOOGLE_GEMINI") + "].thinkSupported")).isEqualTo(false);
+        assertThat(field(body, "$[" + names.indexOf("MISTRAL") + "].thinkSupported")).isEqualTo(false);
+        assertThat(field(body, "$[" + names.indexOf("OLLAMA") + "].thinkSupported")).isEqualTo(true);
+
+        // a model default would be an invention, so there is no field that could hold one
+        assertThat(componentNamesOf(ProviderDefaultsDto.class)).containsExactly("name", "defaultUrl",
+                "thinkSupported", "thinkForm", "thinkValues");
+        assertThat(config()).doesNotExist();
+    }
+
+    /**
+     * UC-WP-67 over HTTP: the agent slots build their think field from the base provider, so the answer
+     * carries the core's own form and, for a fixed list, the list itself. Nothing here is the factory's
+     * guess — every value is read off {@code LlmProvider.thinkSupport()}.
+     */
+    @Test
+    // UC-WP-67
+    @SuppressWarnings("unchecked")
+    void providerDefaultsCarryTheThinkForm() {
+        String body = http.getForEntity(url("/api/settings/providers"), String.class).getBody();
+        List<String> names = (List<String>) field(body, "$[*].name");
+
+        // a fixed list arrives as a list, in the core's own order — the page must not sort or replace it
+        assertThat(field(body, "$[" + names.indexOf("ANTHROPIC") + "].thinkForm")).isEqualTo("VALUES");
+        assertThat((List<String>) field(body, "$[" + names.indexOf("ANTHROPIC") + "].thinkValues"))
+                .containsExactly("adaptive", "enabled");
+        // a toggle names no list; the page offers unset/true/false itself
+        assertThat(field(body, "$[" + names.indexOf("OLLAMA") + "].thinkForm")).isEqualTo("TOGGLE");
+        assertThat((List<String>) field(body, "$[" + names.indexOf("OLLAMA") + "].thinkValues")).isEmpty();
+        // free text is a form of its own, not a missing list
+        assertThat(field(body, "$[" + names.indexOf("LM_STUDIO") + "].thinkForm")).isEqualTo("FREE");
+        // no input at all is answered as such — the page then shows no control, only the hint
+        assertThat(field(body, "$[" + names.indexOf("GOOGLE_GEMINI") + "].thinkForm")).isEqualTo("NONE");
+        assertThat(field(body, "$[" + names.indexOf("MISTRAL") + "].thinkForm")).isEqualTo("NONE");
+        // thinkSupported keeps its old meaning: it disables the field, the form says how it looks
+        assertThat(field(body, "$[" + names.indexOf("MISTRAL") + "].thinkSupported")).isEqualTo(false);
+        assertThat(field(body, "$[" + names.indexOf("OLLAMA") + "].thinkSupported")).isEqualTo(true);
+        // reading the form stays a read
+        assertThat(config()).doesNotExist();
+    }
+
+    /**
+     * UC-WP-63 over HTTP: "Remove key" empties the file and the answer says so. A key the environment
+     * still supplies stays effective and is named as ENV — removing it is not the page's to do.
+     */
+    @Test
+    // UC-WP-63
+    void removeKeyDeletesItAndRefreshesTheStatus() throws IOException {
+        writeConfig("%s=OPEN_AI%n%s=gpt-demo%n%s=%s%n".formatted(
+                LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.MODEL, LlmConfigKeys.API_KEY, KEY));
+
+        ResponseEntity<String> saved = put("{\"removeApiKey\":true}");
+        String body = saved.getBody();
+
+        assertThat(saved.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(field(body, "$.keySet")).isEqualTo(false);
+        assertThat(field(body, "$.keySource")).isEqualTo("NONE");
+        // the answer is the stored state: what the request never named is still there
+        assertThat(field(body, "$.model")).isEqualTo("gpt-demo");
+        assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.API_KEY, null)).isNull();
+
+        // GIVEN the environment supplies a key — the file is empty of it, the source says ENV, and no
+        // character of the key leaves the server (R-WP-16)
+        useStartValues("OPEN_AI", "env-model", "https://env.example", ENV_KEY);
+        writeConfig("%s=%s%n".formatted(LlmConfigKeys.API_KEY, KEY));
+
+        String withStartValue = put("{\"removeApiKey\":true}").getBody();
+        assertThat(field(withStartValue, "$.keySource")).isEqualTo("ENV");
+        assertThat(withStartValue).doesNotContain(ENV_KEY, "sk-");
+        assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.API_KEY, null)).isNull();
+
+        // and asking again for a key that is already gone changes not one byte
+        byte[] untouched = Files.readAllBytes(config());
+        put("{\"removeApiKey\":true}");
+        assertThat(Files.readAllBytes(config())).containsExactly(untouched);
+    }
+
+    /**
+     * UC-WP-46 GIVEN 1 over HTTP: an empty string is the value "delete" — the file loses the field and
+     * the answer shows what applies without it, while a field named with a value survives the same body.
+     */
+    @Test
+    // UC-WP-46
+    void aClearedFieldIsAnsweredWithWhatAppliesWithoutIt() {
+        writeConfig("""
+                %s=OLLAMA
+                %s=gpt-demo
+                %s=64000
+                %s=45
+                """.formatted(LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.MODEL, LlmConfigKeys.TOKEN_WINDOW,
+                        LlmConfigKeys.TIMEOUT));
+
+        ResponseEntity<String> saved = put("""
+                {"provider":"OLLAMA","model":"","url":"","tokenWindow":"64000","timeoutSeconds":"45","sendThinking":""}
+                """.trim());
+        String body = saved.getBody();
+
+        assertThat(saved.getStatusCode()).isEqualTo(HttpStatus.OK);
+        FileLlmConfigStore stored = new FileLlmConfigStore(config());
+        assertThat(stored.get(LlmConfigKeys.MODEL, null)).isNull();
+        assertThat(stored.get(LlmConfigKeys.URL, null)).isNull();
+        assertThat(stored.get(LlmConfigKeys.SEND_THINKING_ENABLED, null)).isNull();
+        assertThat(stored.get(LlmConfigKeys.TOKEN_WINDOW, null)).isEqualTo("64000");
+        assertThat(stored.get(LlmConfigKeys.TIMEOUT, null)).isEqualTo("45");
+
+        assertThat(field(body, "$.model")).isNull();
+        assertThat(field(body, "$.tokenWindow")).isEqualTo(64000);
+        // the think line is gone from the file, so the core default applies again — R-WP-16 "was ohne ihn gilt"
+        assertThat(field(body, "$.sendThinking")).isEqualTo(true);
+    }
+
     /** The raw wire is the point: the body is sent exactly as written here, unknown fields included. */
     private ResponseEntity<String> put(String json) {
         HttpHeaders headers = new HttpHeaders();
@@ -275,7 +404,7 @@ class SettingsControllerTest {
     }
 
     private static List<String> fileNames() throws IOException {
-        try (var files = Files.list(home)) {
+        try (var files = Files.list(HOME)) {
             return files.map(file -> file.getFileName().toString()).sorted().toList();
         }
     }
@@ -292,11 +421,21 @@ class SettingsControllerTest {
         return JsonPath.read(body, path);
     }
 
+    /**
+     * The start values of this run, as <em>system properties</em> (plan D-6): {@code Environment} answers
+     * from {@code System.getProperties()} on every lookup, so a test switches one value on and off without
+     * a restart — exactly what the {@code DynamicPropertyRegistry} used to do here, only without a dynamic
+     * property of its own, which is what used to give this class a context of its own.
+     */
     private void useStartValues(String provider, String model, String url, String key) {
-        START_VALUES.put(EnvFallbackLlmConfigStore.ENV_NAMES.get(LlmConfigKeys.PROVIDER_TYPE), provider);
-        START_VALUES.put(EnvFallbackLlmConfigStore.ENV_NAMES.get(LlmConfigKeys.MODEL), model);
-        START_VALUES.put(EnvFallbackLlmConfigStore.ENV_NAMES.get(LlmConfigKeys.URL), url);
-        START_VALUES.put(EnvFallbackLlmConfigStore.ENV_NAMES.get(LlmConfigKeys.API_KEY), key);
+        System.setProperty(EnvFallbackLlmConfigStore.ENV_NAMES.get(LlmConfigKeys.PROVIDER_TYPE), provider);
+        System.setProperty(EnvFallbackLlmConfigStore.ENV_NAMES.get(LlmConfigKeys.MODEL), model);
+        System.setProperty(EnvFallbackLlmConfigStore.ENV_NAMES.get(LlmConfigKeys.URL), url);
+        System.setProperty(EnvFallbackLlmConfigStore.ENV_NAMES.get(LlmConfigKeys.API_KEY), key);
+    }
+
+    private static void clearStartValues() {
+        EnvFallbackLlmConfigStore.ENV_NAMES.values().forEach(System::clearProperty);
     }
 
     private String url(String path) {
@@ -304,7 +443,7 @@ class SettingsControllerTest {
     }
 
     private static Path config() {
-        return home.resolve(FactoryHome.CONFIG_FILE);
+        return HOME.resolve(FactoryHome.CONFIG_FILE);
     }
 
     private static void writeConfig(String content) {

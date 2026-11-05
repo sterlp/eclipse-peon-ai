@@ -2,8 +2,81 @@
 
 Status: ❓ offen · ⏳ selbst entschieden (Rückversicherung steht aus) · 🔒 geklärt.
 Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entfällt.
+## Runde 3 — Pauls Smoke-Test-Befunde (2026-11-03, Backlog)
+
+Positiv bestätigt: **(1)** Chat-Restore geht. **(2)** Gemeinsam ein RAG-Chat gebaut
+(`/Users/sterlp/dev/workset/ai-schulung`) — die Fabrik ist damit erstmals real produktiv gewesen.
+
+Defekte/Fragen, je eine Story je Punkt erst nach Klärung (❓ = präzisieren, bevor geplant wird):
+
+* **❓ F3 · Agent-Arbeit unsichtbar in den Status-Kacheln** — läuft ein Team-Mitglied, zeigt die Kachel
+  oben keinen Fortschritt/Zustand. Welche Anzeige gewünscht ist (läuft-Status wie der Jon-Kachel?),
+  klären, dann Regel + UC in [chat.md](chat.md).
+* **❓ F5 · Optik im Detail** (u. a. Config-Seite) — Totalschaden-Einschätzung von Paul; Detail-Liste
+  fehlt noch. Erst sammeln, dann eigenes Look-Inkrement.
+* **❓ F8 · Config-Umfang fehlt** — `reasoning_effort` nicht einstellbar, Header-Einstellungen und
+  weitere Plugin-Einstellungen fehlen. Gehört zu [config.md](config.md)/[R-WP-23](config.md) — Umfang
+  mit dem Core-Bestand abgleichen, dann UCs ziehen. (Verwandt: ⏳ Dev-Slot oben.)
+* **❓ F9 · „Clear" hinterlässt Tool-Zeilen mit zerstörtem Layout** — nach Clear bleiben Tool-Messages
+  im Chat, Layout kaputt. Verhalten von Clear klären (was sollClear entfernen?) → Regel in
+  [chat.md](chat.md).
+* **❓ F10 · Bootstrap „docs laden einmal zu Beginn" greift nicht zuverlässig** — Fabrik-Jon fragte nach
+  `docs/index.md`, statt es beim Start geladen zu haben. Bootstrap-/Prompt-Defekt der Fabrik-Agenten —
+  prüfen, wo die Regel stehen muss (Agent-Prompt vs. Factory-Bootstrap).
+
+## Runde 3 — Live-Befunde aus der Nutzung (2026-11-03, zweiter Schwung)
+
+* **❓ C-1 · TurnClaim-Timeout** — `ERROR ProjectRuntime: turn ... never got the project back from a
+  claimed action` — `TurnClaim.awaitNoAction` wirft nach 10 000 ms (`ProjectRuntime.java:348`).
+  Aufgetreten beim Compact. Verwandt zur ⏳ TurnClaim-Lücke; Ursache im Code klären (Dev), bevor eine
+  Regel steht.
+* **❓ C-2 · Compact-Ergebnis im UI** — (a) live: nur „error" in der Agent-Karte, weder Ergebnis noch
+  Fehlermeldung sichtbar; (b) nach Reload: Ergebnis da, aber **ohne Markdown** (nur Text). Regel in
+  [chat.md](chat.md) fehlt: wie Compact live + im Verlauf erscheint.
+* **❓ C-3 · URL mit Hash-Suffix** — `/ui/chat/spring-persistent-tasks-071d14a` statt
+  `/ui/chat/spring-persistent-tasks`. Paul will den klaren Namen. Prüfen, ob die Registry-ID den Hash
+  braucht (Namens-Kollision) — wenn Namen eindeutig sind, URL auf den Namen legen.
+* **❓ C-5 · Verlauf out of order / Antwort weg** — bei langer Konversation total defekt; eine
+  gestreamte Antwort verschwindet (Reload repariert). Chat-Log-Defekt: Reihenfolge/Live-Fragment-
+  Ersetzung. Im Umfeld von [R-WP-34](chat.md); Ursache im SSE-/Log-Merge klären. Referenz (Paul):
+  Chat-Log/Input in `/Users/sterlp/dev/workset/ai-schulung/app/frontend` funktioniert — dort abschauen.
+* **🔒 C-6 · hr raus, Linien treffen sich seitlich wie in Eclipse** — F4 bestätigt und präzisiert:
+  keine `hr`, die Voices-Trennung läuft über die seitlichen Akzentlinien. In R-WP-29 nachziehen.
+* **❓ C-7 · Agent-Chat ist ein anderes Widget** — der aufgeklappte Blick auf ein Team-Mitglied nutzt
+  ein eigenes Chat-Widget: anderes Look&Feel, aktualisiert nicht während der Agent arbeitet, zieht
+  alle Daten erneut (= Totalschaden). SOLL: dasselbe Chat-Widget wie der Haupt-Chat, an den
+  Agent-Stream gehängt, **read-only** (keine Eingabe). Im Umfeld von [R-WP-26](chat.md).
+
+
+
 
 ## ⏳ selbst entschieden (2026-10-25/26) — bitte überfliegen
+
+* **⏳ Dev-Modell/URL/Key werden gespeichert, aber vom Core nicht angewandt** (2026-11-02, aus dem
+  7a/7b-Bau) — [R-WP-23](config.md) zeigt je Agent Modell, URL und Key; für den Slot `dev` liest der
+  Core nur das Basismodell (`devAgentConfig()`) — gespeicherte Überschreibungen von Modell, URL und
+  Key wirken nicht (der UI-Status `keySet` für Dev ist also nur Anzeige). Decision: Felder bleiben und
+  speichern doc-konform (`agents/dev/AGENT.md`); kein UI-Hinweis, kein Core-Workaround. Dev-**Think**
+  ist ausgenommen: es wirkt nicht nur, es ist im Core der Base-Default für alle anderen Agenten
+  ([R-THINK-10](../../org.sterl.llmpeon.core/docs/per-agent-think.md)) — die Seite beschriftet das Feld
+  im Dev-Slot deshalb `Think (Default)` ([R-WP-23/UC-WP-67](config.md)). *Andersfall:*
+  sollen Devs Werte wirklich wirken, ist das eine Core-Story (Proposal mit WARUM) — dann UC in
+  config.md nachziehen.
+* **⏳ „Chat" öffnet das zuletzt aktive Projekt** (2026-11-02, meine Empfehlung, Rückversicherung
+  ausstehend) — [R-WP-1](ui.md): Top-Menü „Chat" ohne aktives Projekt → Projekte; mit aktivem Projekt
+  → dessen Chat. *Andersfall:* „Chat" führt immer auf die Projektliste (keine Abkürzung) oder es
+  braucht eine Chat-Auswahl.
+* **⏳ Provider-Wechsel setzt Modell/URL auf die Defaults des Providers** (2026-11-02) — wie der
+  Provider-Dialog im Plugin ([R-WP-16/UC-WP-62](config.md)). *Andersfall:* Felder nur leeren statt
+  Defaults einzutragen.
+* **⏳ Die Fehlerzeile eines gescheiterten Turns liegt im Core-Memory** (2026-11-02, Runde 2, aus
+  [R-WP-34/UC-WP-64](chat.md)) — die Fabrik schreibt bei einem Fehlschlag den Nutzer-Text und
+  „`[Turn failed]: <Grund>`" in Jons Memory (`ThreadSafeMemory.add`, Core-API, kein Core-Eingriff):
+  **kein** zweiter Speicher, und das Modell liest die Zeile im nächsten Turn (Verwandtschaft zu
+  R-AEM-1). Eine in der Core-Queue wartende Eingabe ist bis zu ihrem Turnstart **nicht** persistiert —
+  sie taucht im Verlauf erst mit diesem Turn auf. *Andersfall:* soll eine wartende Eingabe schon vor
+  dem Turn reload-fest sichtbar sein, braucht es einen eigenen Speicher (widerspricht R-WP-11) oder
+  einen Core-Mechanismus.
 
 * **⏳ Fehler-Ergebnis einer Delegation erscheint wörtlich als Mitglieder-Zeile** (2026-10-30,
   Da-Dok-Befund B4) — [UC-WP-40](chat.md) hat den Fall jetzt ausdrücklich; abgeleitet aus „wie es ist"
@@ -90,9 +163,11 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
   Startwert für den ersten Start, die Datei der gepflegte Stand (sonst könnte die UI nie etwas ändern).
   *Andersfall:* Deployment-Diktat („was der Operator setzt, gilt") ⇒ Reihenfolge umdrehen und das Feld
   im View sperren.
-* **⏳ Leeres Feld löscht nichts, Key löschen geht im MVP nicht** ([R-WP-16](config.md)) —
-  abgeleitet: ein leeres Formularfeld ist kein Löschbefehl, und ein versehentlich gelöschter Key wäre
-  für alle Nutzer weg. *Andersfall:* eigener „Key löschen"-Knopf mit Rückfrage.
+* **⏳ Key über die UI entfernen** (2026-11-02, Paul-Szenario: erster Request lieferte „turn needs an
+  api key", ein gesetzter Key war im UI nicht erkennbar und nicht löschbar) — Decision: R-WP-16
+  geschärft — „Remove key" schreibt den Key aus der Datei, ENV-Quelle wird nur gemeldet, der Status
+  wird nach jedem Speichern frisch geliefert. *Andersfall:* soll das UI den Key nicht entfernen
+  können, gilt wieder nur die Datei von Hand — dann aber mit sauberer Anzeige des Status.
 * **⏳ kein globales Temperatur-Feld** ([R-WP-16](config.md)) — im geteilten Bestand existiert
   Temperatur **nur je Agent**; ein globales Feld wäre erfunden. Der View zeigt, was es gibt.
   *Andersfall:* „je Agent" mit ins MVP ⇒ eigener View-Bereich plus Core-Schreibpfad pro Agent.
@@ -118,6 +193,28 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
 
 
 ## ❓ offen
+
+* **⏳ Bild-Support-Tools bleiben** (2026-11-02/03, Paul: „die tools sind von mir — drin lassen") — der
+  Fremd-Commit `eeac8abb` „added picture support" ist Pauls Material auf `web-factory-mvp` (nur
+  Plugin/Core-Pfade, `aifactory` unberührt). Die Fabrik kennt bisher keine Bild-Regel: Backend-Text-Parts
+  erscheinen als `#picture: …`-Textzeile, Core-`ThreadSafeMemory` schreibt `AiMessage.from("ok")` je
+  Follow-up. *Offen bis Pauls Smoke-Test:* wie Bild-Parts im Chat gezeigt werden sollen — dann als
+  Regel + UC in chat.md, oder Verbatim bleibt gewollt und wird festgehalten.
+* **❓ Core: der Abbruch verliert eine bereits gepollte Queue-Eingabe** (2026-11-01, Inc 5d gemessen) —
+  [UC-WP-50](chat.md) verspricht „gequeuete Eingaben bleiben in der Queue"; tatsächlich verliert
+  `AbstractAgent.call` eine Eingabe, die der laufende Turn beim Stop schon gepollt hat (Poll, dann
+  Cancel-Ausstieg, der Drain findet eine leere Queue). Nur noch wartende Eingaben legt
+  `handleAbortAndDrain` als Memory-Zeile ab. Die Fabrik kann das nicht reparieren: sie setzt genau das
+  Flag, das auch der Plugin-Stop setzt. UC-WP-50 bleibt deshalb ❌, und der Test benennt die Lücke.
+  *Fix:* Core-Story — den zuletzt gepollten Eintrag beim Cancel zurücklegen (oder vor dem Verlassen
+  drainen); danach UC-WP-50 ✅.
+* **🔒 UI-Sprache = Englisch** (2026-11-02, Paul bestätigt; löst den „AGENTS.md-Language-Block"-
+  Konflikt von 2026-11-01) — AGENTS.md („UI: English") gilt, [R-WP-27](ui.md) formalisiert: Strings
+  im Catalog (`content.ts`/Locale), keine deutschen Draht-Werte. Umsetzung als eigene Story dieses
+  Zyklus.
+* **❓ Chats-Übersicht links (Vision, Paul 2026-11-02):** jedes Projekt ein „Tree"/Accordion in der
+  linken Navigation, mehrere Paco-Chats je Projekt (**+**), Überblick über alle Chats; Main-Chat
+  immer Jon. Gehört zu [Paco](paco.md) — erst mit der Paco-Story, kein MVP-Mechanismus.
 
 ### Docs-Review gegen Pauls Produktvision (2026-10-27) — eine Frage nach der anderen
 
@@ -148,16 +245,16 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
   Umgebungsvariable — ssh liest das nicht, wirkt nur als `GIT_SSH_COMMAND="ssh -o BatchMode=yes"`. Heute
   folgenlos (SSH-URLs abgelehnt), wird mit SSH ([R-CR-7](config-repo.md)) zum Hänger — Fix gehört in
   dessen Bau (UC-CR-8 Passphrase-Fall).
-* **❓ V10 Inc 4** (Schreib-Pinning, Datei-Bereich) ist gebaut, aber nicht reviewt; Code seit AF-ADR-002 defekt.
+* **🔒 V10 Inc 4** (Schreib-Pinning, Datei-Bereich) — reviewed 2026-11-01 auf `web-factory-mvp`: CONCERNS,
+  kein Blocker; Da-Mek-Pinning, R6 und alle Inc-4-Tests halten dem Origin-Umbau stand. Die vier CONCERNS
+  (Symlink-Listing-Metadaten, Paritäts-Pin selbst-referentiell — Core-Test, `chat ↛ project` im UI
+  unmechanisch, Schreib-/Lesewurzeln an zwei Stellen) werden in Inc 5 gehärtet; die Core-Test-Anmerkung
+  braucht Pauls Freigabe.
 
 * **❓ Rollen und Rechte** (Vision: Admin = Config/Keys, User = alles außer Config, Reader = nur lesen +
   „Read Jon") — der MVP hat keinen Login (R-WP-17) und kann deshalb nicht unterscheiden: jeder darf
   alles. Empfehlung: Rollen **nicht** im MVP, sondern als eigene Story mit OAuth2 (Vision sagt dasselbe);
   bis dahin ist der Betrieb ein vertrauenswürdiger Kreis (Prototyp kennt nur einen Nutzernamen, R-WP-17).
   *Andersfall:* schon im MVP ein Admin-Passwort = halbherzige Authentifizierung, die ich nicht bauen würde.
-* **❓ Kachel → Chat-Slide-out je Team-Mitglied** (Vision: Klick auf eine Agenten-Kachel öffnet rechts
-  den Chat dieses Agenten, **nur lesbar**) — [R-WP-7](chat.md) kennt die Kachel mit Kontext,
-  Status, Clear, Compact, aber keinen Slide-out. Empfehlung: Inkrement 5 baut die Kacheln wie spezifiziert,
-  der Slide-out folgt direkt danach als eigenes Inkrement (er braucht die History-Zugriffe je Agent).
 * **❓ Story-Import** — wer holt `stories/` und `proposals/` in die Feature-Docs und wann? Bewusst außerhalb des
   Paco-Features ([Paco, Offene Punkte](paco.md)).

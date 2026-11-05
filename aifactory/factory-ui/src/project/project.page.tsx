@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { addProject, listProjects, removeProject } from './project.client'
+import { openProjectStatusStream } from './project.status.client'
 import { errorMessage } from '../shared/api.client'
-import type { Project } from '../shared/dto'
+import { content } from '../shared/content'
+import type { Project, ProjectWork } from '../shared/dto'
+
+/** The same pause the conversation uses: long enough not to hammer, short enough to be noticed. */
+const RECONNECT_MS = 500
 
 interface Props {
   onOpen: (project: Project) => void
@@ -10,6 +15,7 @@ interface Props {
 
 export function ProjectPage({ onOpen }: Props) {
   const [projects, setProjects] = useState<Project[]>([])
+  const [work, setWork] = useState<Record<string, ProjectWork>>({})
   const [gitUrl, setGitUrl] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -28,6 +34,46 @@ export function ProjectPage({ onOpen }: Props) {
     // mount = synchronize with the registry, an external system; the update lands after the await
     listProjects().then(setProjects).catch(showError)
   }, [showError])
+
+  useEffect(() => {
+    // what the server is working on arrives by itself (R-WP-24): the snapshot of a new connection
+    // replaces what this view holds, every change afterwards merges into it, and nothing of it is kept
+    // past the row it belongs to — the states are a picture of the runtimes and never a store
+    const controller = new AbortController()
+    let reconnect: ReturnType<typeof setTimeout> | undefined
+    let mounted = true
+
+    const connect = () => {
+      void openProjectStatusStream(
+        {
+          onEvent: event => {
+            if (event.kind === 'snapshot') {
+              setWork(Object.fromEntries(event.work.map(state => [state.projectId, state])))
+              return
+            }
+            setWork(current => ({ ...current, [event.work.projectId]: event.work }))
+          },
+          // a stream that ended is re-opened, and the new connection is answered with a fresh snapshot —
+          // so a viewer that lost the wire is back on the current state without reading the list again
+          onEnd: retry => {
+            if (mounted && retry) {
+              reconnect = setTimeout(connect, RECONNECT_MS)
+            }
+          },
+        },
+        controller.signal,
+      )
+    }
+
+    connect()
+    return () => {
+      mounted = false
+      controller.abort()
+      if (reconnect !== undefined) {
+        clearTimeout(reconnect)
+      }
+    }
+  }, [])
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -49,7 +95,7 @@ export function ProjectPage({ onOpen }: Props) {
   }
 
   async function remove(project: Project) {
-    if (!window.confirm(`${project.name} entfernen? Der Clone-Ordner wird gelöscht.`)) {
+    if (!window.confirm(content.projects.removeQuestion(project.name))) {
       return
     }
     setMessage(null)
@@ -62,18 +108,18 @@ export function ProjectPage({ onOpen }: Props) {
   }
 
   return (
-    <section className="view" aria-label="Projekte">
-      <h1>Projekte</h1>
+    <section className="view" aria-label={content.projects.title}>
+      <h1>{content.projects.title}</h1>
       <form className="add-project" onSubmit={event => void submit(event)}>
         <input
           type="url"
-          placeholder="https://git.example.com/org/repo.git"
-          aria-label="Git-URL"
+          placeholder={content.projects.gitUrlSample}
+          aria-label={content.projects.gitUrl}
           value={gitUrl}
           onChange={event => setGitUrl(event.target.value)}
         />
         <button type="submit" disabled={busy}>
-          {busy ? 'Klone…' : 'Hinzufügen'}
+          {busy ? content.projects.cloning : content.projects.add}
         </button>
       </form>
       {message && (
@@ -82,20 +128,33 @@ export function ProjectPage({ onOpen }: Props) {
         </p>
       )}
       {projects.length === 0 ? (
-        <p className="empty-state">Kein Projekt</p>
+        <p className="empty-state">{content.projects.empty}</p>
       ) : (
         <ul className="project-list">
-          {projects.map(project => (
-            <li key={project.id}>
-              <button type="button" className="project-name" onClick={() => onOpen(project)}>
-                {project.name}
-              </button>
-              <span className="project-url">{project.gitUrl}</span>
-              <button type="button" className="remove" onClick={() => void remove(project)}>
-                Entfernen
-              </button>
-            </li>
-          ))}
+          {projects.map(project => {
+            // a project the server has told nothing about is free — that is what a factory holds no
+            // runtime for means, and it is the same answer a restart gives (R-WP-24)
+            const state = work[project.id]
+            const working = state?.working ?? false
+            const queued = state?.queued ?? 0
+            return (
+              <li key={project.id}>
+                <button type="button" className="project-name" onClick={() => onOpen(project)}>
+                  {project.name}
+                </button>
+                <span className="project-work" data-working={working}>
+                  {working ? content.projects.working : content.projects.free}
+                  {working && queued > 0 && (
+                    <span className="project-queued">{content.projects.queued(queued)}</span>
+                  )}
+                </span>
+                <span className="project-url">{project.gitUrl}</span>
+                <button type="button" className="remove" onClick={() => void remove(project)}>
+                  {content.projects.remove}
+                </button>
+              </li>
+            )
+          })}
         </ul>
       )}
     </section>

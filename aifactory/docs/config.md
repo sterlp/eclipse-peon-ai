@@ -43,7 +43,7 @@ Inhalt erscheint **nirgends** unmaskiert (R-WP-16) — weder in einer Antwort no
   lädt THEN ist das Konfigurationsverzeichnis trotzdem das Verzeichnis der Factory, und es wird nichts
   aus einem anderen Verzeichnis gelesen oder geschrieben.
 
-### R-WP-16 — Config-Seite ❌ (geschärft 2026-10-28: UC-WP-46 offen, Rest gebaut)
+### R-WP-16 — Config-Seite ✅ (geschärft 2026-10-28 + 2026-11-02: Key-Entfernen, dynamische Felder gebaut)
 
 Die globale Seite **Config** ([R-WP-1](ui.md)) zeigt **Provider, Modell, URL, Token-Fenster, Timeout,
 Think senden** und den **Key-Status** aus der Config der Factory (R-WP-9) und darf diese Werte
@@ -64,14 +64,25 @@ für jeden Betrachter lesbar; ein Key-Auszug ist kein Anzeigefehler, sondern der
 Feld; leert der Nutzer eines und speichert, wird der Wert **aus der Datei gelöscht** — es gilt, was ohne
 ihn gilt (beim Default: Umgebungsvariable oder nichts, „Empty means unset"; beim Agenten: der Default,
 R-WP-23). Die Datei trägt danach nur, was wirklich gesetzt ist. Ein **Key** ist maskiert und nie
-vorbefüllt, sein leeres Feld heißt deshalb **unverändert**; ein Key lässt sich über die Seite nur setzen,
-nicht löschen (Löschen = „überschreiben" abwählen oder Datei von Hand). Eine Datei, die neu geschrieben
+vorbefüllt, sein leeres Feld heißt deshalb **unverändert**; ein Key lässt sich über die Seite **setzen und — via „Remove key" — entfernen**
+(geschärft Paul 2026-11-02: sonst war ein gesetzter Key über das UI nie wieder löschbar); eine
+ENV-Quelle kann die Seite nur melden, nicht löschen. Key setzen und entfernen in einem Zug gibt es
+  nicht: trägt eine Anfrage beides, lehnt die Factory sie als Ganzes ab (400) und speichert nichts;
+  im UI hebt Tippen ins Key-Feld eine vorgemerkte Entfernung auf (2026-11-02, aus dem Bau). Der Fehler „turn needs an api key"
+([UC-WP-20](#configreadfromfactoryownstore)) nennt die Settings-Seite als Ort der Lösung. Eine Datei, die neu geschrieben
 wird, behält ihre Rechte `600` (R-WP-9). Das ist dasselbe Verhalten wie im Plugin — nur speichert die
 Factory direkt in ihre Datei.
 
 **Reihenfolge der Werte:** was in der Datei steht, gewinnt gegen die Umgebungsvariable — die Variable
 ist der Startwert für den ersten Start, die Datei ist der vom Menschen gepflegte Stand. Woher ein
 Wert kommt, zeigt die Seite.
+
+**Dynamische Felder wie im Plugin (Paul 2026-11-02):** der Provider-Wechsel aktualisiert **sofort**
+die abhängigen Felder — die **URL** wird auf den Default des gewählten Providers gesetzt (der Core trägt sie), das
+**Modell-Feld wird geleert** (das Modell gilt pro Provider; ein übernommener Wert des alten Providers
+wäre falsch) und **Think** folgt der Vorgabe des Providers: bei Providern ohne Think-Unterstützung
+zeigt die Form das an. Ohne erneutes Speichern; die Form verhält sich wie der
+Provider-Dialog im Eclipse-Plugin, nicht wie eine statische Form.
 
 **WEIL** (User 2026-10-25): „der Rest kann aus der config kommen von den files — aber ich mag die im
 UI später auch bearbeiten können". Eine eigene Datei statt Rückschreiben hält den Bestand des
@@ -99,23 +110,42 @@ Plugins unberührt, den die Factory weder liest noch schreibt (R-WP-9).
 - GIVEN die Datei trägt keinen Wert WHEN die Umgebungsvariable gesetzt ist THEN gilt der Wert aus der
   Umgebungsvariable und die Quelle wird als solche angezeigt.
 
-#### UC-WP-46 — clearedFieldIsRemovedFromFile ❌
+#### UC-WP-46 — clearedFieldIsRemovedFromFile ✅
 - GIVEN die Datei trägt beim Default `think: high` WHEN der Nutzer das Think-Feld leert und speichert
   THEN steht in der Datei kein `think` mehr und es wird kein Think-Parameter gesendet.
 - GIVEN Compact mit Haken und `model: gpt-5`, `think: medium` WHEN der Nutzer das Modell-Feld leert und
   speichert THEN trägt Compacts Eintrag nur noch `think: medium`; das Modell erbt Compact vom Default.
 
-### R-WP-23 — Agenten auf der Config-Seite: Default für alle, „überschreiben" je Agent ❌
+#### UC-WP-62 — providerChangeUpdatesDependentFields ✅
+- GIVEN die Config-Seite WHEN der Nutzer den Provider wechselt THEN aktualisieren sich Modell und URL
+  sofort auf die Defaults des gewählten Providers (URL), geleert (Modell) bzw. auf dessen Vorgabe
+  (Think) — ohne erneutes Speichern.
 
-Die Config-Seite listet **alle Agenten** (Jon, Plan, Dev, Review, Search, Paco, Custom Agents) und den
-Config-Slot **Compact** (kein Agent, gleiche Bedienung) unter dem Default. Je Agent gibt es genau eine
+#### UC-WP-63 — keyCanBeRemovedAndStatusRefreshes ✅
+- GIVEN ein gesetzter Key aus der Datei WHEN der Nutzer „Remove key" wählt und speichert THEN steht
+  in der Datei kein Key mehr, und der Status zeigt „nicht gesetzt".
+- GIVEN ein Key aus einer Umgebungsvariable WHEN die Seite geladen wird THEN meldet sie die Quelle
+  ENV — entfernen über die Seite ist dann nicht möglich.
+
+### R-WP-23 — Agenten auf der Config-Seite: Default für alle, „überschreiben" je Agent ✅ (Dev-Slot-Lücke: ⏳ in [Open Points](open-points.md))
+
+Die Config-Seite listet die **sechs Slots, die die Factory fährt** — die Agenten Jon, Plan, Dev,
+Review, Search und den Config-Slot **Compact** (kein Agent, gleiche Bedienung) unter dem Default. Je Agent gibt es genau eine
 Checkbox **„überschreiben"** — reine Bedienhilfe; nur bei gesetztem Haken werden die
 Config-Felder dieses Agenten eingeblendet. Der Haken ist **kein gespeicherter Wert**: er ist gesetzt,
-sobald die Agent-Datei mindestens ein Config-Feld trägt (Provider, Modell, URL, Key, Think, Temperatur …
-— nicht id/name/description) ([Agent-Dateien](../../org.sterl.llmpeon.core/docs/builtin-agent-prompt-tracked.md), V2).
+sobald die Agent-Datei mindestens ein Config-Feld trägt (Modell, URL, Key, Think, Temperatur …
+— nicht id/name/description; der Provider ist kein Agent-Feld) ([Agent-Dateien](../../org.sterl.llmpeon.core/docs/builtin-agent-prompt-tracked.md), V2).
 
 - Haken gesetzt: ein leeres Feld erbt den Default (Feld für Feld, wie R-DEF-1/2 im Plugin); Keys bleiben
   maskiert wie in R-WP-16.
+- **Think ist die Form des Basis-Providers**, nie Freitext: **Toggle** (leer / `true` / `false`) ·
+  **Values** (die feste Liste des Providers) · **FreeString** (Text) · **None** (kein Feld, nur der
+  Hinweis) — dieselbe Form, die das Think-Feld im Plugin hat. Einen Provider je Agent gibt es nicht
+  (oben), also entscheidet immer die Basis. Ein gespeicherter Wert außerhalb der Liste **bleibt
+  verbatim** erhalten — die Auswahl bietet ihn als zusätzlichen Eintrag an, sie ersetzt ihn nicht
+  (ADR-0064); leer erbt den Default ([R-THINK-10](../../org.sterl.llmpeon.core/docs/per-agent-think.md)).
+  Im **Dev-Slot** heißt das Feld **`Think (Default)`**, weil der Dev-Record im Core die Basis-Semantik
+  für alle anderen Agenten trägt (R-THINK-10).
 - Haken entfernt + Speichern: alle Config-Werte dieses Agenten werden **aus seiner Datei gelöscht** —
   der Agent ist wieder „Default". Der Prompt-Rumpf bleibt unberührt. Bewusst anders als R-DEF-11 im
   Plugin (dort bleibt ein versteckter Wert erhalten).
@@ -124,14 +154,26 @@ sobald die Agent-Datei mindestens ein Config-Feld trägt (Provider, Modell, URL,
 alle Agenten. Die Seite zeigt nur die Agenten, die man wirklich anders will, statt aller Felder aller
 Agenten; was nicht sichtbar ist, wirkt auch nicht.
 
-#### UC-WP-44 — overrideCheckboxShowsAgentFields ❌
+#### UC-WP-44 — overrideCheckboxShowsAgentFields ✅
 - GIVEN die Config-Seite und Dev ohne Config-Felder in seiner Datei WHEN sie geöffnet wird THEN ist
   Devs Haken „überschreiben" leer und keine Dev-Felder sind sichtbar; Dev nutzt den Default.
 - GIVEN Dev WHEN der Nutzer den Haken setzt, nur das Modell `gpt-5` einträgt und speichert THEN trägt
   Devs Datei nur `model: gpt-5`, alle übrigen Werte erbt Dev vom Default, und beim nächsten Öffnen ist
   der Haken gesetzt.
 
-#### UC-WP-45 — uncheckOverrideDeletesAgentValues ❌
+#### UC-WP-45 — uncheckOverrideDeletesAgentValues ✅
 - GIVEN Devs Datei trägt `model: gpt-5` und einen Prompt-Rumpf WHEN der Nutzer den Haken entfernt und
   speichert THEN trägt die Datei kein Config-Feld mehr, der Rumpf ist unverändert, Dev nutzt den Default
   und der Haken ist beim nächsten Öffnen leer.
+
+#### UC-WP-67 — agentThinkFollowsTheProviderForm ✅
+- GIVEN die Config-Seite mit Basis-Provider `OLLAMA` WHEN ein Slot überschreibt THEN ist Think eine
+  Auswahl aus leer / `true` / `false` — kein Freitext-Feld.
+- GIVEN ein Basis-Provider mit fester Werte-Liste (z. B. `ANTHROPIC` → `adaptive`, `enabled`) WHEN der
+  Slot trägt bereits `ultra` THEN zeigt die Auswahl `ultra` als zusätzlichen Eintrag, und Speichern
+  schreibt `ultra` unverändert in die Datei (kein stiller Ersatz, ADR-0064).
+- GIVEN ein Provider ohne Think-Eingang (`GOOGLE_GEMINI`, `MISTRAL`) WHEN ein Slot überschreibt THEN
+  steht kein Think-Feld, nur der Hinweis; der gespeicherte Wert bleibt erhalten und wird mitgesendet.
+- GIVEN der Dev-Slot WHEN seine Felder sichtbar THEN heißt das Think-Feld `Think (Default)`, weil Devs
+  Record die Basis für alle anderen ist (R-THINK-10).
+

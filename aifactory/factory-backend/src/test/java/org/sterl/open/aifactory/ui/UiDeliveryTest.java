@@ -9,7 +9,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,18 +18,16 @@ import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
+
+import org.sterl.open.aifactory.FactorySpringTest;
 
 /**
  * Delivery is part of the increment, not of the deployment (R-WP-22): a UI that answers 500 in the
@@ -39,25 +36,16 @@ import org.springframework.web.client.RestTemplate;
  * path) only surfaces as a {@code StackOverflowError} over real HTTP, so everything here runs against
  * a started server on a random port.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class UiDeliveryTest {
+class UiDeliveryTest extends FactorySpringTest {
 
     /** The hashed names change with every build, so they are read from the html, never hardcoded. */
     private static final Pattern ASSET = Pattern.compile("assets/(index-[\\w-]+\\.(?:js|css))");
     private static final String INDEX = "static/ui/index.html";
 
-    @TempDir
-    static Path home;
-
     @LocalServerPort
     int port;
 
     private RestTemplate http;
-
-    @DynamicPropertySource
-    static void isolateHome(DynamicPropertyRegistry registry) {
-        registry.add("aifactory.home", () -> home.toString());
-    }
 
     @BeforeEach
     void talkToTheRunningServer() {
@@ -112,6 +100,87 @@ class UiDeliveryTest {
             assertThat(body).isNotNull().hasSize(built.length)
                     .startsWith(Arrays.copyOf(built, Math.min(32, built.length)));
             assertThat(res.getHeaders().getContentLength()).isEqualTo(built.length);
+        }
+    }
+
+    /**
+     * An address of the client's own routing has no file behind it (UC-WP-43): the browser app is what the
+     * server answers, so a deep link and a reload of it are the app and not a {@code 404}. Asserted over
+     * real HTTP because the fallback is a resource handler, and MockMvc would hide the handler order that
+     * keeps {@code /ui/assets/**} out of it.
+     */
+    @Test
+    // UC-WP-43
+    void deepLinksAnswerTheApp() {
+        String built = read(INDEX);
+
+        for (String path : List.of("/ui/chat/demo-1a2b3c4", "/ui/settings")) {
+            ResponseEntity<String> res = http.getForEntity(url(path), String.class);
+
+            assertThat(res.getStatusCode())
+                    .as("%s is a route of the app, not a missing file", path)
+                    .isEqualTo(HttpStatus.OK);
+            assertThat(res.getHeaders().getContentType()).isEqualTo(MediaType.TEXT_HTML);
+            assertThat(res.getBody())
+                    .as("%s answers the app itself, so the client can route it", path)
+                    .isEqualTo(built);
+        }
+    }
+
+    @Test
+    // UC-WP-43
+    void aReloadOfThePathAnswersTheApp() throws Exception {
+        String path = "/ui/chat/demo-1a2b3c4";
+        String opened = http.getForObject(url(path), String.class);
+
+        // a reload is a plain GET at the same address — a client that follows redirects could not tell a
+        // reload from a forward chain, so this one does not follow
+        HttpResponse<String> reloaded = sendNeverFollowingRedirects(path);
+
+        assertThat(reloaded.statusCode())
+                .as("the answer is the app, not a redirect onto something else")
+                .isEqualTo(HttpStatus.OK.value());
+        assertThat(reloaded.headers().firstValue("Location"))
+                .as("nothing redirects here, so no request can end in a chain of them (R-WP-22)")
+                .isEmpty();
+        assertThat(reloaded.body()).isEqualTo(opened).contains("<div id=\"root\">");
+    }
+
+    @Test
+    // UC-WP-43
+    void anUnknownPathServesTheApp() throws Exception {
+        String path = "/ui/no/such/route";
+
+        HttpResponse<String> first = sendNeverFollowingRedirects(path);
+        HttpResponse<String> second = sendNeverFollowingRedirects(path);
+
+        assertThat(first.statusCode())
+                .as("an address nobody mapped is the app's problem to route, not a 500 and not a 404")
+                .isEqualTo(HttpStatus.OK.value());
+        assertThat(first.headers().firstValue("Location")).as("no redirect, so no loop").isEmpty();
+        assertThat(first.body()).contains("<div id=\"root\">");
+        assertThat(second.body()).as("the answer is stable, not a bounce").isEqualTo(first.body());
+    }
+
+    /**
+     * The other half of the same rule (UC-WP-43, R-WP-22): the fallback may only rescue a route. A file
+     * address that is missing stays an error — HTML where a module was expected is something a browser
+     * cannot read, and a silent fallback would hide a broken build.
+     */
+    @Test
+    // UC-WP-43
+    void aMissingAssetStaysAnError() {
+        for (String path : List.of("/ui/assets/index-does-not-exist.js", "/ui/no-such-file.map")) {
+            ResponseEntity<byte[]> res = http.getForEntity(url(path), byte[].class);
+
+            assertThat(res.getStatusCode())
+                    .as("%s is shaped like a file, so it is missing and not a route", path)
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(res.getHeaders().getContentType())
+                    .as("%s is never answered with the app", path)
+                    .isNotEqualTo(MediaType.TEXT_HTML);
+            assertThat(new String(res.getBody() == null ? new byte[0] : res.getBody(), StandardCharsets.UTF_8))
+                    .doesNotContain("<div id=\"root\">");
         }
     }
 

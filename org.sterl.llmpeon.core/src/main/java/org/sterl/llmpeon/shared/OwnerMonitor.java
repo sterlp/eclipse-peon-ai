@@ -30,6 +30,9 @@ import dev.langchain4j.model.output.TokenUsage;
  * <b>{@link #onFileUpdate(AiFileUpdate)} passes through untouched</b> — it is a content event, not a
  * chat line, and the plugin turns it into the unified diff of the chat view. Rebuilding it here
  * would silently replace every diff block with a one-line notice.
+ * <p>
+ * <b>{@link #unwrap(Class)} reaches through the wrapper</b> — a capability of the delegate (e.g. the
+ * plugin's Eclipse progress monitor) stays reachable, nested chains included.
  */
 public final class OwnerMonitor implements AiMonitor {
 
@@ -90,6 +93,11 @@ public final class OwnerMonitor implements AiMonitor {
     @Override
     public void onCompactCompleted(String agentName, CompactResult result) {
         delegate.onCompactCompleted(agentName, result);
+    }
+
+    @Override
+    public <T> @Nullable T unwrap(Class<T> type) {
+        return type.isInstance(this) ? type.cast(this) : delegate.unwrap(type);
     }
 
     @Override

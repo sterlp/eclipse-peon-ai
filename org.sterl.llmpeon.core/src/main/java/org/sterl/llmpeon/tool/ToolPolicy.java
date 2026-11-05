@@ -4,22 +4,24 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
 
+import org.sterl.llmpeon.shared.RegexUtils;
+
 /**
  * Decides whether a tool is enabled for an agent based on an allowlist of name prefixes.
  *
  * <p>Ported from the ai-schulung project. Each non-blank allowlist entry is matched against the
- * tool name:</p>
+ * tool name. A token containing {@code *} is a <b>glob over the whole name</b> (R-ATC-11, case-insensitive,
+ * {@code *} = any run of characters); a token without {@code *} is a prefix:</p>
  * <ul>
  *   <li>{@code *} — enables every tool.</li>
  *   <li>a {@code !}-prefix — <b>negation</b>: after the allowlist evaluation it excludes every
- *       tool whose name starts with the rest of the token (deny wins); a trailing {@code *} on
- *       the token is a wildcard suffix ({@code !debugJava*} excludes the whole {@code debugJava}
- *       family).</li>
+ *       tool matching the rest of the token (deny wins); {@code !debugJava*} excludes the whole
+ *       {@code debugJava} family, {@code !*ReadPicture} every tool ending in {@code ReadPicture}.
+ *       A rest that is empty or only {@code *} ({@code !}, {@code !*}, {@code !**}) matches never.</li>
  *   <li>otherwise a <b>prefix</b> match: {@code document_} enables {@code document_read},
  *       {@code document_write}, ...; an exact tool name enables only that tool. A trailing
- *       {@code *} on an allow token is a wildcard suffix with the same meaning as in negations
- *       (R-ATC-10): {@code eclipse*} ≡ {@code eclipse} (prefix match); {@code *} alone stays
- *       the All-Token.</li>
+ *       {@code *} behaves like the prefix ({@code eclipse*} ≡ {@code eclipse}, R-ATC-10); an inner
+ *       {@code *} is a glob ({@code *Read*}); {@code *} and {@code **} are the All-Token.</li>
  * </ul>
  *
  * <p>Three-tier allow semantics:</p>
@@ -47,23 +49,22 @@ public final class ToolPolicy {
         var tokens = allowlist.stream().filter(t -> t != null && !t.isBlank()).toList();
         if (tokens.isEmpty()) return false;
 
-        boolean allowed = tokens.stream()
-                .anyMatch(t -> isAllowToken(t) && (t.equals("*") || toolName.startsWith(stripWildcard(t))));
+        boolean allowed = tokens.stream().anyMatch(t -> isAllowToken(t) && matches(t, toolName));
         if (!allowed && tokens.stream().noneMatch(ToolPolicy::isAllowToken)) allowed = true; // negations only = all (list NOT empty!)
         if (!allowed) return false;
-        // (F1a) a negation with an empty effective prefix (bare `!`) matches NEVER
         return tokens.stream().noneMatch(t -> isNegationToken(t) && matchesNegation(t, toolName));
     }
 
-    /** Strips a single trailing {@code *} wildcard suffix; unchanged when absent. */
-    private static String stripWildcard(String token) {
-        return token.endsWith("*") ? token.substring(0, token.length() - 1) : token;
+    private static boolean matches(String token, String toolName) {
+        if (token.equals("*")) return true;
+        if (token.indexOf('*') >= 0) return RegexUtils.globToPattern(token).matcher(toolName).matches();
+        return toolName.startsWith(token);
     }
 
-    /** Deny step: prefix match on the token after {@code !}; a trailing {@code *} is a wildcard suffix. */
+    /** Deny step: the rest after {@code !} — empty or only {@code *} never matches (R-ATC-9, R-ATC-11). */
     private static boolean matchesNegation(String token, String toolName) {
-        var prefix = stripWildcard(token.substring(1));
-        return !prefix.isEmpty() && toolName.startsWith(prefix);
+        var rest = token.substring(1);
+        return !rest.replace("*", "").isEmpty() && matches(rest, toolName);
     }
 
     /**

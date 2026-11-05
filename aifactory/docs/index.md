@@ -9,7 +9,7 @@ Kein Protokoll, kein Code-Bestand.
 
 Status: ✅ done · ◐ teilweise gebaut (Regeln mit ✅/❌ darunter) · 🚧 in design · ❌ specified (nicht
 gebaut) · ⏳ geparkt · 📝 Studie.
-Backlog = jedes ❌/🚧/◐.
+Backlog = jedes ❌/🚧/◐/❓.
 
 ## Wo das Wissen liegt
 
@@ -48,16 +48,16 @@ Nicht hier: alles Eclipse-/OSGi-spezifische (SWT-Views, Widgets, Preference-Page
 
 ## Features
 
-MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabil). **Code nach
-Core-Aufräumen 2026-10-27 bewusst defekt.**
+MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabil).
 
-* [UI](ui.md) — vier Seiten unter `/ui/`, Reload bleibt auf der Seite, Look. ◐ (Auslieferung ✅, Seiten/Router ❌)
+* [UI](ui.md) — Top-Navigation (Projekte, Chat, Settings), URL-stabil, Bootstrap + eigenes Theme, Look. ◐ (Auslieferung ✅, Navigation/Look ❌)
 * [Projekte](project.md) — Git-Checkout als Projekt: klonen, eindeutig, entfernen, nie interaktiv, Live-Status. ◐
 * [Jon-Chat](chat.md) — ein Jon, ein Gespräch je Projekt: Streaming, Queue, Neustart, Tools, Kacheln. ◐
-  (Herkunft je Zeile ❌, [AF-ADR-002](adr/002-origin-in-core-display-in-factory.md); Kacheln 🚧)
-* [Dateien](files.md) — Schreiben nur in Projekt + TMP, Datei-Bereich lesend. ❌ (gebaut, nicht reviewt)
+  (Herkunft je Zeile ✅ UC-WP-39/40; Kacheln ✅ R-WP-7, Blick je Agent ✅ R-WP-26)
+* [Dateien](files.md) — Schreiben nur in Projekt + TMP, Datei-Bereich lesend. ◐ (gebaut, reviewed 2026-11-01)
 * [Config](config.md) — eigene Datei der Factory, Config-Seite maskiert, „überschreiben" je Agent. ◐
-* [Nutzer](user.md) — Name statt Login, `[User Name]:` an Jon und Paco. ❌
+* [Nutzer](user.md) — Name statt Login, `[User Name]:` an Jon und Paco.
+  ◐ (Name, Präfix, Anzeige ✅ R-WP-17/R-WP-25; Paco ❌)
 * [Paco](paco.md) — fachlicher PO je Nutzer (grillt Vision/Ziele/SOLL), Stories/Proposals in `stories|proposals/<nutzer>/`,
   konfliktfrei oder mit benanntem Konflikt. ❌ specified (nach dem MVP)
 * [Config-Repo](config-repo.md) — Fabrik-Config (Agenten, Skills, `projects.yml`) aus einem Git-Repo beim

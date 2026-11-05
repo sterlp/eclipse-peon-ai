@@ -154,7 +154,9 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
 
         var inFile = EclipseUtil.resolveInEclipse(filePath, Optional.ofNullable(currentProject));
         if (inFile.isPresent() && inFile.get() instanceof IFile eclipseFile) {
+            String old = readFile(eclipseFile);
             IoUtils.writeFile(eclipseFile, content, getProgressMonitor());
+            monitor.onFileUpdate(new AiFileUpdate(JdtUtil.pathOf(eclipseFile), old, content));
             onTool("Overwrite file " + JdtUtil.pathOf(eclipseFile));
             return;
         }
@@ -181,6 +183,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         }
 
         IFile file = writeFileToProject(targetProject.get(), projectRelativePath, content);
+        monitor.onFileUpdate(new AiFileUpdate(JdtUtil.pathOf(file), "", content));
         onTool("Created file " + JdtUtil.pathOf(file));
     }
 

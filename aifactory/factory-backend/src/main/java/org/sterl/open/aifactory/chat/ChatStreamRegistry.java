@@ -167,8 +167,8 @@ public class ChatStreamRegistry {
      * the field set of a live line is visible here and cannot grow by accident — a key would reach the
      * browser through this map and nothing else (R-WP-16).
      *
-     * <p>Exhaustive switch over the sealed {@link ChatEvent}, deliberately without {@code default}: a
-     * fifth event type has to fail the build here. An {@code if}-chain ending in a thrown
+     * <p>Exhaustive switch over the sealed {@link ChatEvent}, deliberately without {@code default}:
+     * an added event type has to fail the build here. An {@code if}-chain ending in a thrown
      * IllegalStateException compiled either way, and at runtime that exception ended the delivery thread
      * of every watching connection mid-turn — from then on not even {@code done} got through (measured by
      * 3f-3's mutation battery, and the reason the chain is gone).</p>
@@ -183,6 +183,10 @@ public class ChatStreamRegistry {
                     .data(payload("millis", done.millis()), MediaType.APPLICATION_JSON);
             case ChatEvent.Failed failed -> SseEmitter.event().name("error")
                     .data(payload("message", failed.message()), MediaType.APPLICATION_JSON);
+            case ChatEvent.Agents agents -> SseEmitter.event().name("agents")
+                    .data(payload("tiles", agents.tiles()), MediaType.APPLICATION_JSON);
+            case ChatEvent.Diff diff -> SseEmitter.event().name("diff")
+                    .data(payload("file", diff.file(), "diff", diff.diff()), MediaType.APPLICATION_JSON);
         };
     }
 

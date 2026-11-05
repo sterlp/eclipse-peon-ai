@@ -235,6 +235,7 @@ The **Tools** field restricts which tools the **Dev agent** — the default agen
 
 - **Prefix / `*` / exact:** `eclipse` enables every `eclipse*` tool, `*` enables all tools, an exact name enables just that tool. A trailing `*` on any token is an optional wildcard suffix — the same meaning in allow and deny tokens: `eclipse*` ≡ `eclipse` (prefix match); `*` alone stays the All-Token.
 - **`!` negation (allow-then-deny):** a `!` prefix removes tools *after* the allowlist is applied, and the **exclusion always wins** — `eclipse, !eclipseWriteFile` keeps the `eclipse*` family except the write tool. A list of **negations only** means *all tools minus the exclusions* (`!debugJava*` = everything except the debug family).
+- **Glob:** a token containing `*` is matched against the whole tool name — `*, !*ReadPicture` switches off `eclipseReadPicture` and `diskReadPicture` for a model without vision (see [custom agents](./custom-agents.md#tool-allowlist)).
 - **Empty = all tools.**
 - **Bare `!`** (no prefix) is a validation error: Peon **refuses to save** and leaves the field unchanged.
 

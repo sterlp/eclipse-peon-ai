@@ -74,10 +74,8 @@ public class DiskFileWriteTool extends AbstractTool {
             Files.createDirectories(resolved.getParent());
             Files.writeString(resolved, content);
 
-            if (existed) {
-                monitor.onFileUpdate(new AiFileUpdate(workingDir.relativize(resolved).toString(), oldContent, content));
-            }
-            
+            monitor.onFileUpdate(new AiFileUpdate(workingDir.relativize(resolved).toString(), oldContent, content));
+
             onTool((existed ? "Updated" : "Created") + " file: " + resolved);
             fireAfterWrite();
         } catch (IOException e) {
