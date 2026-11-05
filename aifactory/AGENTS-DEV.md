@@ -754,3 +754,29 @@
   `tsc` + oxlint 0/0 (60 Dateien), Doc-Lint **68/68 UCs, 258 Test-Ids, 0 Findings** (UC-WP-68 belegt).
   `R-WP-36`/`UC-WP-68` bleiben ❌ im Commit — flippt Jon.
 
+
+## Toolchain corepack/pnpm (2026-11-05) — warum `pnpm` im ganzen Repo tot war
+
+- **Ursache ist corepacks Bin-Map, kein partieller Download**: corepack **0.33.0** (in Node 22.12.0
+  gebündelt) kennt für pnpm nur die Range `>=6.0.0` und schreibt die Bin-Map beim Prepare fest in
+  `~/.cache/node/corepack/v1/pnpm/<v>/.corepack` → `pnpm: ./bin/pnpm.cjs`. **pnpm ≥ 11 liefert
+  `bin/pnpm.mjs`** (Wrapper um das Native-Binary, Manifest-`bin` zeigt auf Shell-Platzhalter) →
+  `MODULE_NOT_FOUND`. Bewiesen: Cache-Ordner gelöscht + `corepack prepare pnpm@12.16.1 --activate` gegen
+  das Registry-Netz schreibt exakt dieselbe falsche Map. Auslöser war `corepack use pnpm@12.16.1`, das
+  zusätzlich ein **ungetracktes Root-`package.json`** (`packageManager: pnpm@12.16.1+sha512…`) erzeugt hat —
+  corepack läuft walk-up, das Feld gilt damit auch für `factory-ui` — und `lastKnownGood.json` auf 12.16.1
+  stellte.
+- **Ein corepack-Upgrade allein hilft nicht**: die Map des **aktiven** corepack gewinnt (der Shim
+  `~/.nvm/versions/node/v22.12.0/bin/pnpm` → `lib/node_modules/corepack`). corepack 0.36 hat die Range
+  `>=11.0.0 → ./bin/pnpm.mjs`, verlangt aber Node `^22.22.2 || ^24.15.0 || >=26` (hier 22.12.0; der
+  `node` außerhalb von nvm ist 18.12.1 aus `/usr/local/bin`).
+- **pnpm 12 ist kein Drop-in**: der erste Install will `node_modules/.pnpm` vollständig entfernen (neue
+  Modules-Dir) und scheitert auf macOS mit `ERR_PNPM_PACKAGE_MANAGER_REMOVE_MODULES_DIR … Directory not
+  empty (os error 66)`; `node_modules` bleibt halbvoll zurück und muss mit 10.28.0 neu installiert werden.
+  Lauffähig ist pnpm 12 nur **am corepack vorbei** (`npm i -g pnpm@12.16.1 --prefix <dir>` →
+  Native-Binary, Node 22.12 genügt).
+- **Zustand nach der Reparatur**: `lastKnownGood` zurück auf **pnpm 10.28.0** (liegt im Cache, passt zum
+  `lockfileVersion: '9.0'`), Root-`package.json` unangetastet — Entscheidung beim Docs-Besitzer. Solange es
+  bleibt, ist `pnpm` in `factory-ui` **nur** mit `COREPACK_ENABLE_PROJECT_SPEC=0` erreichbar (ignoriert das
+  `packageManager`-Feld); dieselbe Variable braucht jeder `mvn`-Lauf, dessen exec-maven-plugin `pnpm` aufruft.
+
