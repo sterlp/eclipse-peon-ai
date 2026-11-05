@@ -283,10 +283,12 @@ public class AIChatView implements EclipseAiMonitor {
         if (aiService.getUserContext().setSelectedResource(selection)) {
             EclipseUtil.runInUiThread(parent, this::refreshStatusLine);
         }
-        updateSelectedProject(EclipseUtil.resolveProject(selection));
+        EclipseUtil.resolveProject(selection).ifPresent(this::updateSelectedProject);
     }
 
     private void updateSelectedProject(IProject project) {
+        // the guard is not dead: EclipseUtil.firstOpenOrSelectedProject() hands out null on a
+        // workspace without an open project — the selection path can no longer do so
         if (project != null && !aiService.getUserContext().isProjectPinned()) {
             var changed = aiService.setProject(project);
             if (changed) refreshStatusLine();
@@ -716,8 +718,8 @@ public class AIChatView implements EclipseAiMonitor {
     private void onPinChange(boolean pinned) {
         aiService.getUserContext().setProjectPinned(pinned);
         if (!pinned && aiService.getUserContext().getSelectedResource() != null) {
-            var project = EclipseUtil.resolveProject(aiService.getUserContext().getSelectedResource());
-            if (project != null)  aiService.setProject(project);
+            EclipseUtil.resolveProject(aiService.getUserContext().getSelectedResource())
+                    .ifPresent(project -> aiService.setProject(project));
         }
         statusLine.setPinned(pinned);
         refreshStatusLine();

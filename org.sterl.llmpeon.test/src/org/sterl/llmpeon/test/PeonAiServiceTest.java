@@ -2634,6 +2634,68 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         }
     }
 
+    /**
+     * R-SEL-5 (org.sterl.llmpeon/docs/user-context.md): the phantom handle an externally opened file
+     * resolves to must never become state. The planRef assertion is what pins the guard as the FIRST
+     * statement of setProject: moved behind clearPlan() it would leave the reference null here, because
+     * a phantom is never re-preloaded.
+     */
+    // UC-SEL-5
+    @Test
+    public void phantomProjectHandleIsRejected() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN: fixture project bound, plan agent active, its plan reference live
+        var planFile = "/" + PeonTestFixture.PROJECT_NAME + "/" + PlanTool.OVERVIEW_FILE;
+        eclipseWriteFile(planFile, "# plan\nmust survive the phantom\n");
+        aiService.setActiveAgent(AiPlanAgent.NAME);
+        var agentContext = (AgentContextComponent) readField(aiService, "agentContext");
+        var planRef = agentContext.planRef();
+        assertNotNull("the fixture needs a live plan reference, otherwise this is not the case under test",
+                planRef);
+
+        // AND: a handle for a project the workspace does not know
+        var phantom = ResourcesPlugin.getWorkspace().getRoot().getProject("phantom_selection_project");
+        assertFalse("fixture must be a phantom handle", phantom.exists());
+
+        // WHEN
+        assertFalse("a phantom handle must be rejected", aiService.setProject(phantom));
+
+        // THEN: the previous project stays bound and its plan reference is the SAME instance —
+        // no clearPlan, no tool wiring, no plan I/O for the phantom
+        assertEquals("the fixture project must stay bound", project, aiService.getProject());
+        assertSame("the guard has to run before clearPlan()", planRef, agentContext.planRef());
+    }
+
+    /**
+     * UC-SEL-5 BDD line 2: only exists() decides. A closed but real project is bound as before —
+     * isOpen() as the criterion would break the ordinary selection in a closed project.
+     */
+    // UC-SEL-5
+    @Test
+    public void closedButExistingProjectIsStillAccepted() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN: a project that exists but is closed
+        var closed = ResourcesPlugin.getWorkspace().getRoot().getProject("aaa_closed");
+        if (closed.exists()) closed.delete(true, true, new NullProgressMonitor());
+        closed.create(new NullProgressMonitor());
+        closed.open(new NullProgressMonitor());
+        closed.close(new NullProgressMonitor());
+        assumeTrue("fixture needs a closed but existing project", closed.exists() && !closed.isOpen());
+        try {
+            // WHEN
+            assertTrue("exists() and not isOpen() decides", aiService.setProject(closed));
+
+            // THEN
+            assertEquals(closed, aiService.getProject());
+        } finally {
+            aiService.setProject(project);
+            closed.open(new NullProgressMonitor());
+            closed.delete(true, true, new NullProgressMonitor());
+        }
+    }
+
     /** A second service for the same workspace — the restart, built from what the wire key holds. */
     private PeonAiService newServiceWithRememberedAgent() {
         var ccm = new ConfiguredChatModel(LlmConfig.builder()

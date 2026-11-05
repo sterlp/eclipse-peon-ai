@@ -125,6 +125,32 @@ Dev/Jon); andere Agenten behalten das leere Referenz-Verhalten.
 - GIVEN ein anderer Agent als Plan ist aktiv WHEN das Projekt gebunden wird THEN bleibt die
   Plan-Referenz leer (kein Plan-I/O).
 
+### R-PT-6 — Die Plan-Query nutzt den nicht-öffnenden Projektzugriff ✅ done (2026-11-05)
+
+`visiblePlan` verspricht R-PT-2a/R-PT-3 („eine Query wirft nie") — ruft aber intern das
+private `getProject()` auf, das bedingungslos `project.open()` macht. Ein Phantom- oder
+geschlossenes Projekt lässt die Exception so **vor** dem `CoreException`-Catch der Query
+explodieren (UI-Crash bei der Selektions-Injection, Fall „/home", 2026-11-03). **SOLL:**
+`visiblePlan` reicht `peonAiService.getProject()` (null-geprüft, ohne `open()`) direkt an die
+`PlanFileView` durch — das Projekt wird dort nie geöffnet, ein Fehler endet im ehrlichen
+„kein Plan" (`onProblem` + `null`).
+
+#### UC-PT-6 — planQueryNeverOpensTheProject ✅
+- GIVEN das Projekt-Handle ist ein Phantom (`exists() == false`, z. B. Selektion einer externen
+  Datei) WHEN `hasPlan()`/`visiblePlan()` THEN keine Exception — die Query antwortet `false`/`null`
+  (+ `onProblem`), der UI-Event-Loop bleibt intakt.
+
+### R-PT-7 — `getProject()` prüft `exists()`, bevor es öffnet ✅ done (2026-11-05)
+
+Der Tool-Pfad (`planSave`/`planUpdate`/`planImplemented`) darf ein **geschlossenes, echtes**
+Projekt weiterhin öffnen (Feature) — aber nie mehr ohne Vorprüfung: `project.exists() == false`
+wirft eine saubere `IllegalStateException` mit Projektnamen, statt eine `ResourceException`
+(„Resource '/home' does not exist") blind aus `open()` durchzureichen.
+
+#### UC-PT-7 — projectOpenOnlyForExistingProjects ✅
+- GIVEN ein Projekt-Handle mit `exists() == false` WHEN ein Plan-Tool (`planSave` o. ä.) `getProject()`
+  ruft THEN eine verständliche Fehlermeldung mit Projektnamen (kein roher `ResourceException`-Wrap).
+
 ## Offene Punkte
 
 - ⏳ ~~`AgentContextComponent.readPlan`-Stale-Risiko~~ — im externen Review (2026-10-24) verifiziert:

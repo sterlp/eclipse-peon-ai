@@ -716,12 +716,12 @@ public class EclipseUtil {
     }
 
     /**
-     * Extracts the project from a resource selection.
+     * Extracts the project from a resource selection — a dumb accessor (R-SEL-5,
+     * org.sterl.llmpeon/docs/user-context.md): no validation here, the only project binding
+     * ({@code PeonAiService.setProject}) rejects a phantom handle.
      */
-    public static IProject resolveProject(IResource selection) {
-        if (selection == null)
-            return null;
-        return selection.getProject();
+    public static Optional<IProject> resolveProject(IResource selection) {
+        return Optional.ofNullable(selection).map(IResource::getProject);
     }
 
     /**

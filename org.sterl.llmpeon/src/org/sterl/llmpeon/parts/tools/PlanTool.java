@@ -113,10 +113,15 @@ public class PlanTool extends AbstractEclipseTool {
      * refresh, and {@code null} when no project is selected. That makes it usable as the per-turn
      * plan supplier of {@link org.sterl.llmpeon.parts.ai.component.AgentContextComponent}, so the
      * turn context and {@link #hasPlan()} cannot drift apart (same view, same depth).
+     * <p>
+     * R-PT-6 (org.sterl.llmpeon/docs/plan-tool.md): the query hands the bound project straight to
+     * {@link PlanFileView} and never opens it — a query must not mutate the workspace, and opening a
+     * phantom handle would surface an exception the turn path cannot report as "no plan".
      */
     public IFile visiblePlan() {
-        if (peonAiService.getProject() == null) return null;
-        return view.visible(getProject(), getProgressMonitor(), this::onProblem);
+        var project = peonAiService.getProject(); // R-PT-6: never open() — a query must not mutate
+        if (project == null) return null;
+        return view.visible(project, getProgressMonitor(), this::onProblem);
     }
 /*
     @Tool("Call this method to indicate that the plan is ready. Call only after all design decisions are resolved.")
@@ -150,10 +155,19 @@ public class PlanTool extends AbstractEclipseTool {
         }
     }
 
+    /**
+     * The tool path may open a project — R-PT-7 (org.sterl.llmpeon/docs/plan-tool.md) only ever one
+     * that exists: a phantom handle (an externally opened file resolves to e.g. "/home") has no
+     * .project, and {@code open()} on it answers with a raw ResourceException the agent cannot act on.
+     */
     private IProject getProject() {
         var project = peonAiService.getProject();
         if (project == null) {
             throw new IllegalStateException("No Eclipse project selected. Ask user to select a project!");
+        }
+        if (!project.exists()) {
+            throw new IllegalStateException("Project '" + project.getName()
+                    + "' does not exist in the workspace. Ask user to select a project!");
         }
         try {
             project.open(getProgressMonitor());
