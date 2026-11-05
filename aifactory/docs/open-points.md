@@ -12,8 +12,6 @@ Defekte/Fragen, je eine Story je Punkt erst nach Klärung (❓ = präzisieren, b
 * **❓ F3 · Agent-Arbeit unsichtbar in den Status-Kacheln** — läuft ein Team-Mitglied, zeigt die Kachel
   oben keinen Fortschritt/Zustand. Welche Anzeige gewünscht ist (läuft-Status wie der Jon-Kachel?),
   klären, dann Regel + UC in [chat.md](chat.md).
-* **❓ F4 · hr-Linien im Verlauf ganz raus** — die Trennlinien bei Rollenwechsel (R-WP-29, Runde 2)
-  sollen weg. Konsequenz für die Abgrenzung der Voices klären (nur Rahmen links?) — R-WP-29 anfassen.
 * **❓ F5 · Optik im Detail** (u. a. Config-Seite) — Totalschaden-Einschätzung von Paul; Detail-Liste
   fehlt noch. Erst sammeln, dann eigenes Look-Inkrement.
 * **❓ F8 · Config-Umfang fehlt** — `reasoning_effort` nicht einstellbar, Header-Einstellungen und
@@ -38,15 +36,23 @@ Defekte/Fragen, je eine Story je Punkt erst nach Klärung (❓ = präzisieren, b
 * **❓ C-3 · URL mit Hash-Suffix** — `/ui/chat/spring-persistent-tasks-071d14a` statt
   `/ui/chat/spring-persistent-tasks`. Paul will den klaren Namen. Prüfen, ob die Registry-ID den Hash
   braucht (Namens-Kollision) — wenn Namen eindeutig sind, URL auf den Namen legen.
-* **🔒 C-4 · Diffs im Chat (entschieden 2026-11-03, Paul)** — Ursache gemessen: der Core feuert je
-  Schreib-Tool `AiMonitor.onFileUpdate(file, old, new)` (plugin-seitig rendert `SimpleDiff.unifiedDiff`
-  den Unified-Diff in den Chat, `AIChatView.java:371`); die Fabrik überschreibt `onFileUpdate` nicht
-  (`SseTurnMonitor`), der Default reduziert ihn auf `Updated: <file>`. SOLL: `SseTurnMonitor` →
-  `ChatEvent.Diff(file, diff)` → Chat-Widget rendert den Diff (+/− gefärbt), **live only** (Pauls
-  Entscheidung; Nach-review über `git diff` im Files-Bereich), kein Core-Eingriff, Diffs des ganzen
-  Teams sichtbar (AiFileUpdate trägt keinen Urheber — „sehen und mitlesen"). Regel + UC bei der Story
-  nach [chat.md](chat.md) ziehen; Referenz für das Chat-Verhalten:
-  `/Users/sterlp/dev/workset/ai-schulung/app/frontend` (Paul: Chat dort funktioniert, hier defekt).
+* **❓ Core-Proposal: „Anlegen = +Diff" und partzieller Diff statt Skip** (Paul 2026-11-03, aus dem
+  C-4-Review) — zwei verbundene Core-Erweiterungen, beide nur per Proposal mit WARUM:
+  1. `DiskFileWriteTool.diskWriteFile` feuert `AiMonitor.onFileUpdate` auch beim **Anlegen** einer
+     Datei (`oldContent = ""`) ⇒ neue Datei erscheint als voller `+`-Diff statt nur „Created file: …".
+     Heute feuert das Tool nur `if (existed)` (`DiskFileWriteTool.java:73-81`); Löschen/Umbenennen/
+     Kopieren/Shell bleiben auch dann Werkzeug-Zeilen. Plugin profitiert mit (PR-3).
+  2. `SimpleDiff` gibt oberhalb der Grenzen (`MAX_LCS_CELLS`, `MAX_DIFF_LINES`) den Diff **komplett
+     auf** (nur Summary, `SimpleDiff.java:67-80`). Pauls Idee: **lieber ein partzieller Diff als
+     gar keiner** — Changed-Region cappen (z. B. 500 Zeilen / 500×120 ≈ 60k Zeichen) und abgeschnitten
+     ausgeben (Ende-Marker mit Grund) statt skippen. Kein Byte-Buffer im Spiel: `String[]`-Zeilen +
+     `int[][]`-LCS-Matrix (4 Bytes/Zelle, ~5 MB am Limit) + `StringBuilder`. Der Cap mildert zugleich
+     das Review-Risiko „mehrere MB Diff an alle Browser" (S1) und den Binary-Fall `webGet` →
+     `onFileUpdate` (UTF-8-Müll als Diff) — dort zusätzlich prüfen, ob binärer Inhalt gar kein Diff
+     bekommen sollte.
+     Core-Fakt für den nächsten Plan (gehört nach `AGENTS-DEV.md`): `onFileUpdate` feuert NUR bei
+     `diskEditFile`/`diskReplaceLines`/`diskInsertLines` und `diskWriteFile` auf bestehender Datei.
+  Gebaut ist davon nichts; [R-WP-36](chat.md) ist auf den heutigen Core-Umfang geschärft (Bestandsdatei).
 * **❓ C-5 · Verlauf out of order / Antwort weg** — bei langer Konversation total defekt; eine
   gestreamte Antwort verschwindet (Reload repariert). Chat-Log-Defekt: Reihenfolge/Live-Fragment-
   Ersetzung. Im Umfeld von [R-WP-34](chat.md); Ursache im SSE-/Log-Merge klären. Referenz (Paul):

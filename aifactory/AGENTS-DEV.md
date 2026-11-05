@@ -645,6 +645,14 @@
   schon beim **Lesen** `IllegalStateException` (`StoredProject.toProject`); auf dem geteilten Home zerlegt
   das den Reset **aller** folgenden Klassen (Messprobe ohne `finally`: 10 Fehler in drei Klassen).
   Geräumt wird im Test, nicht mit Milde im Basis-Reset — sonst verschwindet jeder echte Remove-Fehler.
+- **Core-Fakt Diff-Draht (C-4)**: `AiMonitor.onFileUpdate` feuert NUR bei `diskEditFile` /
+  `diskReplaceLines` / `diskInsertLines` und `diskWriteFile` auf einer **bestehenden** Datei —
+  Anlegen, Löschen, Umbenennen, Kopieren und Shell-Schreibvorgänge liefern kein Event (nur
+  Werkzeug-Zeile). `SseTurnMonitor` rechnet den Unified-Diff serverseitig (`SimpleDiff.unifiedDiff`),
+  leerer Diff ⇒ kein Event, Guard-Zusammenfassung ⇒ ToolLine. Nie einen Diff-Algorithmus in die UI
+  legen und nie `oldContent`/`newContent` über den Draht schicken. Geplante Core-Erweiterungen
+  (Anlegen = `+`-Diff, partzieller Diff statt Skip) stehen in `docs/open-points.md` (Core-Proposal).
+
 - **MockMvc ist ein zweiter Kontext**: Registry-Tests fahren `java.net.http.HttpClient` +
   `@LocalServerPort` (`RestTemplate` kann kein PATCH, s. oben). Die 405-Methoden-Matrix bleibt
   `ProjectFilesTest`; `jsonPath("$").isArray()` gibt es über HTTP nicht — die Array-Form am Body beweisen.

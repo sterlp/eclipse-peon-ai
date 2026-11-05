@@ -204,6 +204,37 @@ kompakt (klein, grau, Tool-Zeilen gemerged wie in `chat.html`).
 - GIVEN Tool-Aktivität WHEN Zeilen erscheinen THEN stehen sie im Verlauf an ihrer Stelle, kompakt,
   und bleiben nach dem Turn sichtbar.
 
+### R-WP-36 — Datei-Änderungen erscheinen live als Diff im Chat ✅ (Paul 2026-11-03, C-4)
+
+Jede **Inhalts-Änderung einer Bestandsdatei** eines Agenten-Turns erscheint **im Chat als Unified-Diff**
+(vorher/nachher, +/− gefärbt, mit Dateinamen) — wie im Eclipse-Plugin (`AIChatView` →
+`SimpleDiff.unifiedDiff`). Der Umfang ist der der Core-Oberfläche: `onFileUpdate` feuert bei
+`diskEditFile`/`diskReplaceLines`/`diskInsertLines` und bei `diskWriteFile` auf eine **bestehende**
+Datei — **Anlegen, Löschen, Umbenennen, Kopieren und Shell-Schreibvorgänge** erscheinen als
+Werkzeug-Zeile („Created file: …"), nicht als Diff (Plugin-Parität, Review 2026-11-03). Die Erweiterung
+„Anlegen = voller +Diff" ist eine Core-Story (Proposal, Paul 2026-11-03 — siehe
+[Open Points](open-points.md)).
+
+Der Diff gilt für **Jon und sein Team** gleichermaßen: das Write-Event des Cores
+(`AiMonitor.onFileUpdate`) trägt keinen Urheber — „sehen und mitlesen" heißt, der Nutzer sieht jede
+Änderung am Projekt ([PR-3](index.md): der Core liefert das Ereignis, die Fabrik rendert — kein
+Core-Eingriff). Der Diff ist **live-only** wie die Werkzeug-Zeilen ([R-WP-11](chat.md)): er gehört nicht
+zum Verlaufs-Bestand und übersteht weder Reload noch Neustart; zum Nach-reviewen dient der Git-Stand im
+Datei-Bereich ([Dateien](files.md)).
+
+#### UC-WP-68 — fileChangesShowAsLiveDiff ✅
+- GIVEN ein laufender Turn WHEN ein Agent eine **bestehende** Datei inhaltlich ändert THEN erscheint im
+  Chat ein Diff-Block mit Dateinamen und den geänderten Zeilen (+/− gefärbt), live und ohne manuelles
+  Aktualisieren ([R-WP-5](chat.md)).
+- GIVEN ein Agent legt eine Datei **neu** an (oder schreibt per Shell) WHEN der Turn läuft THEN erscheint
+  **kein** Diff-Block, sondern die Werkzeug-Zeile — bis die Core-Story „Anlegen = +Diff" gebaut ist.
+- GIVEN dieselbe Änderung WHEN ein anderer Nutzer dasselbe Projekt betrachtet THEN sieht er denselben
+  Diff — ein Chat für alle ([R-WP-15](chat.md)).
+- GIVEN der Turn ist vorbei WHEN der Verlauf nach Reload/Neustart gelesen wird THEN erscheint der
+  Diff-Block **nicht** im wiederhergestellten Verlauf (live-only, R-WP-11); die geänderte Datei selbst
+  ist im Datei-Bereich sichtbar.
+
+
 ### R-WP-29 — Farben und Fließtext der Chat-Zeilen ✅ (Paul 2026-11-02; Korrektur auf Akzent-links in Runde 2, Inc 4)
 
 Beide Stimmen stehen **im Fluss** und tragen ihre Farbkante **links** — die Kante ist der **Akzent der
