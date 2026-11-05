@@ -22,10 +22,11 @@ sondern wird partziell und ehrlich gekappt ausgegeben.
 
 `DiskFileWriteTool.diskWriteFile` feuert `AiMonitor.onFileUpdate` **auch beim Anlegen** einer
 Datei (`oldContent = ""`) — die neue Datei erscheint als voller `+`-Diff im Chat, statt nur als
-„Created file: …"-Zeile. Heute feuert das Tool nur `if (existed)`
-(`DiskFileWriteTool.java:73-81`). Ein Löschen/Umbenennen/Kopieren/Shell bleibt Werkzeug-Zeile
+„Created file: …"-Zeile. Bis R-SD-1 (2026-11-05) feuerte das Tool nur bei bestehender
+Datei. Ein Löschen/Umbenennen/Kopieren/Shell bleibt Werkzeug-Zeile
 (kein Inhalt, kein Diff). Die `eclipse*`-Familie folgt demselben Vertrag (Parität,
-„one behaviour, one implementation") — ein `eclipseWriteFile`-Anlegen feuert genauso.
+„one behaviour, one implementation") — `eclipseWriteFile` feuert bei Anlegen **und** Überschreiben
+(Überschreiben mit dem vorherigen Inhalt als `oldContent`).
 
 **Begründung:** Paul sieht bei neu angelegten Dateien heute nur die Werkzeug-Zeile und muss die
 Datei manuell öffnen, um zu prüfen, was der Agent da hingelegt hat; der Diff ist genau die
@@ -33,12 +34,14 @@ Review-Fläche des Chat.
 
 ### R-SD-2 — Partzieller Diff statt Skip: ein Cap auf die Changed-Region ✅
 
-`SimpleDiff` gibt oberhalb der Grenzen den Diff **nicht mehr komplett auf** (heute nur Summary,
-`SimpleDiff.java:67-80`). Statt der zwei Guards (`MAX_LCS_CELLS`-Matrix-Limit +
-`MAX_DIFF_LINES`-Changed-Region-Limit) gilt **ein Cap**: umfasst die Changed-Region (nach
-Prefix/Suffix-Trim) mehr als **500 Zeilen**, diffed der Guard nur die **ersten 500 Zeilen** der
-Changed-Region und hängt einen Ende-Marker mit Grund an
-(`… diff truncated — showing 500 of N changed lines`). Bei ≤ 500 Zeilen ändert sich nichts.
+`SimpleDiff` gibt oberhalb der Grenzen den Diff **nicht mehr komplett auf** — bis R-SD-2
+(2026-11-05) oberhalb von `MAX_LCS_CELLS`/`MAX_DIFF_LINES` nur eine Skip-Summary. Statt der zwei
+Guards gilt **ein Cap**: umfasst die Changed-Region (nach Prefix/Suffix-Trim) mehr als
+**500 Zeilen**, diffed der Guard einen **partziellen** Diff — beide Seiten proportional gekürzt,
+zusammen maximal 500 Changed-Zeilen — und hängt einen Ende-Marker an. Der Marker nennt die
+**tatsächlich gezeigte** Changed-Zeilenmenge und die vorgestellte Gesamtmenge
+(`… diff truncated — showing <gezeigt> von N changed lines`) — nie die Cap-Zahl selbst
+(AGENTS.md: ein Tool lügt nie über sein Limit). Bei ≤ 500 Zeilen ändert sich nichts.
 
 **Begründung:** Pauls Idee aus dem C-4-Review — „lieber ein partzieller Diff als gar keiner".
 Die Vereinfachung ist der eigentliche Punkt: 500 × 500 Zellen ≈ 1 MB LCS-Matrix macht das
@@ -63,8 +66,9 @@ Update eine Summary-Zeile statt eines Diffs — UTF-8-Müll (z. B. `webGet`-Bin�
 
 #### UC-SD-2 — oversizedChangedRegionIsPartiallyDiffed ✅
 - GIVEN eine Änderung mit > 500 Zeilen Changed-Region WHEN der Diff gebaut wird THEN der Output
-  enthält einen partziellen Unified-Diff der ersten 500 Zeilen **plus** Ende-Marker mit der
-  abgeschnittenen Restmenge — keine reine Skip-Summary.
+  enthält einen partziellen Unified-Diff (zusammen ≤ 500 Changed-Zeilen) **plus** Ende-Marker, der
+  die **tatsächlich gezeigte** Menge und die Restmenge nennt — keine reine Skip-Summary, die
+  gezeigte Menge stimmt mit der Marker-Zahl überein.
 - GIVEN eine Änderung mit ≤ 500 Zeilen Changed-Region WHEN der Diff gebaut wird THEN der Diff ist
   vollständig, ohne Marker (Bestandsverhalten unverändert).
 
@@ -74,5 +78,5 @@ Update eine Summary-Zeile statt eines Diffs — UTF-8-Müll (z. B. `webGet`-Bin�
 
 ## Offene Punkte
 
-- ❓ Ausbau der `<input>`-Länge: bleibt der 500-Zeilen-Cap konfigurierbar? Nein — Konstante, keine
-  Konfigurationsfläche (Muster der Bounded Caches, Paul).
+- 🔒 500-Zeilen-Cap als Konstante, keine Konfigurationsfläche (Muster der Bounded Caches, Paul
+  2026-11-03).

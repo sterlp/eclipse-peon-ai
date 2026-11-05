@@ -115,6 +115,22 @@ class SimpleDiffTest {
         assertFalse(diff.contains("same"));
     }
 
+    // UC-SD-2
+    @Test
+    void truncationMarkerCountsTheShownLines() {
+        // GIVEN 999 changed lines per side between an identical head and tail — 1998 changed lines,
+        // split proportionally to 250 + 250
+        // WHEN
+        String diff = SimpleDiff.unifiedDiff("both.txt", aroundShared("old-", 999), aroundShared("new-", 999));
+        // THEN the marker names the count actually shown, measured on the block itself — never the
+        // cap value, which would be a coincidence and a lie as soon as the split shows less
+        long shown = countChanged(diff, "-") + countChanged(diff, "+");
+        assertEquals(250, countChanged(diff, "-"));
+        assertEquals(250, countChanged(diff, "+"));
+        assertTrue(diff.endsWith(TRUNCATION_MARKER + shown + " of 1998 changed lines\n"), diff);
+    }
+
+
     // UC-SD-1
     @Test
     void createdFileIsAPurePlusDiff() {
@@ -191,5 +207,14 @@ class SimpleDiffTest {
             sb.append('\n').append("same").append(i);
         }
         return sb.toString();
+    }
+
+    /** One shared head line, `changed` lines of one side, one shared tail line. */
+    private static String aroundShared(String prefix, int changed) {
+        var sb = new StringBuilder("head");
+        for (int i = 0; i < changed; i++) {
+            sb.append('\n').append(prefix).append(i);
+        }
+        return sb.append('\n').append("tail").toString();
     }
 }

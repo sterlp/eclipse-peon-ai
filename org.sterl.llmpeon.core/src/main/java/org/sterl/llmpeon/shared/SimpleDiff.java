@@ -19,7 +19,8 @@ import org.jspecify.annotations.Nullable;
  *     ≤ 250×250 ints ≈ 1 MB, which is what made the old separate matrix guard redundant
  *     (open-points 2026-09-16: a corrupted 7.3M-line file took down the whole Eclipse process);</li>
  * <li>a truncated region prints no trailing suffix context — those lines would claim the real file
- *     end follows the cut directly;</li>
+ *     end follows the cut directly; the marker counts the lines actually shown, never the cap
+ *     constant (a tool never lies about its limit);</li>
  * <li>lines are split without a trailing empty element: a file ending in "\n" has no extra line, so a
  *     create diff never opens with a phantom removal.</li>
  * </ul>
@@ -68,12 +69,14 @@ public class SimpleDiff {
         boolean truncated = changedLines > MAX_CHANGED_LINES;
         // the cut region must not show the identical tail — adjacency to the real file end would lie
         int outSuffix = truncated ? 0 : suffix;
+        int shownLines = changedLines;
         if (truncated) {
             int shownOld = trimmedOld.length == 0 ? 0
                 : Math.clamp(Math.round((float) MAX_CHANGED_LINES * trimmedOld.length / changedLines), 1, trimmedOld.length);
             int shownNew = Math.min(trimmedNew.length, MAX_CHANGED_LINES - shownOld);
             trimmedOld = Arrays.copyOf(trimmedOld, shownOld);
             trimmedNew = Arrays.copyOf(trimmedNew, shownNew);
+            shownLines = shownOld + shownNew;
         }
 
         // LCS on the (possibly capped) trimmed region. The full diff is prefix context + trimmed diff
@@ -152,7 +155,7 @@ public class SimpleDiff {
         if (truncated) {
             // a context line, so both renderers keep it inside the block — it must stay the last line
             sb.append(' ').append("… diff truncated — showing ")
-              .append(MAX_CHANGED_LINES).append(" of ").append(changedLines).append(" changed lines").append('\n');
+              .append(shownLines).append(" of ").append(changedLines).append(" changed lines").append('\n');
         }
         return sb.toString();
     }
