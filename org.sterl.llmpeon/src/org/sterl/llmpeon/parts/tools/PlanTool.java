@@ -44,10 +44,10 @@ public class PlanTool extends AbstractEclipseTool {
     
     @Tool("Reads the current saved plan, if one exists.")
     public String planRead() {
-        var plan = visiblePlan();
+        var project = getProject(); // R-PT-7: tool path — may open a closed, existing project
+        var plan = view.visible(project, getProgressMonitor(), this::onProblem);
         if (plan == null) {
-            // getProject() keeps the existing contract: no project selected stays an error
-            return "No plan exists yet for project: " + JdtUtil.pathOf(getProject().getFile(OVERVIEW_FILE));
+            return "No plan exists yet for project: " + JdtUtil.pathOf(project.getFile(OVERVIEW_FILE));
         }
         return IoUtils.readString(plan);
     }
@@ -155,11 +155,7 @@ public class PlanTool extends AbstractEclipseTool {
         }
     }
 
-    /**
-     * The tool path may open a project — R-PT-7 (org.sterl.llmpeon/docs/plan-tool.md) only ever one
-     * that exists: a phantom handle (an externally opened file resolves to e.g. "/home") has no
-     * .project, and {@code open()} on it answers with a raw ResourceException the agent cannot act on.
-     */
+    /** R-PT-7 (org.sterl.llmpeon/docs/plan-tool.md): the tool path may open the bound project — the query may not (R-PT-6). */
     private IProject getProject() {
         var project = peonAiService.getProject();
         if (project == null) {

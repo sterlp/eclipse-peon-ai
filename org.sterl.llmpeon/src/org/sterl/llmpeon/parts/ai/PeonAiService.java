@@ -310,10 +310,8 @@ public class PeonAiService {
      *         project (R-SEL-5) — nothing was bound and nothing was read
      */
     public boolean setProject(IProject project) {
-        // R-SEL-5 (org.sterl.llmpeon/docs/user-context.md): an externally opened file resolves to a
-        // phantom handle ("/home/...", segment 1 becomes the project name). Reject it before ANY side
-        // effect — the previous project keeps its tools, skills dir and plan reference. exists() only:
-        // a closed but real project is bound as before (isOpen() is not the criterion).
+        // R-SEL-5 (org.sterl.llmpeon/docs/user-context.md): must remain the first statement — before
+        // clearPlan() and any wiring, so a rejected handle leaves no state behind.
         if (project != null && !project.exists()) return false;
 
         agentContext.clearPlan(); // stale reference — re-established below if a plan agent is active (R-PT-5)

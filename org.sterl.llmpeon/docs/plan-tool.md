@@ -48,6 +48,9 @@ nicht). Der tote `plan == null`-Guard entfällt (`IProject.getFile` liefert nie 
   Refresh — `IoUtils.writeFile` ist eine Workspace-Operation (`IFile.setContents`/`create`,
   Resource-Events feuern), kein Stale-State bleibt zurück (Klarstellung 2026-10-24, externes
   Review Punkt 3 — verifiziert, kein Fix nötig).
+- GIVEN ein geschlossenes, existierendes Projekt mit `peon-plan/overview.md` WHEN `planRead()` THEN der
+  Inhalt wird geliefert (nie „No plan exists yet") und das Projekt ist danach offen — `planRead` ist
+  Tool-Pfad (R-PT-7-Präzisierung 2026-11-05).
 
 **Nachschärfung ✅ done (2026-10-24, externes Review, Punkt 1):** die Query-Pfade
 (`planRead`/`hasPlan`) refreshen **nur die Plan-Datei mit DEPTH_ZERO** — nicht den `peon-plan`-Ordner
@@ -137,8 +140,10 @@ explodieren (UI-Crash bei der Selektions-Injection, Fall „/home", 2026-11-03).
 
 #### UC-PT-6 — planQueryNeverOpensTheProject ✅
 - GIVEN das Projekt-Handle ist ein Phantom (`exists() == false`, z. B. Selektion einer externen
-  Datei) WHEN `hasPlan()`/`visiblePlan()` THEN keine Exception — die Query antwortet `false`/`null`
-  (+ `onProblem`), der UI-Event-Loop bleibt intakt.
+  Datei) WHEN `hasPlan()`/`visiblePlan()` THEN keine Exception — die Query antwortet `false`/`null`;
+  der UI-Event-Loop bleibt intakt. Ein `onProblem` gibt es hier **nicht**: `refreshLocal` auf ein
+  nicht erreichbares Projekt ist ein stiller No-op, nur ein **fehlgeschlagener** Refresh meldet
+  (R-PT-2a-Semantik).
 
 ### R-PT-7 — `getProject()` prüft `exists()`, bevor es öffnet ✅ done (2026-11-05)
 
@@ -150,6 +155,26 @@ wirft eine saubere `IllegalStateException` mit Projektnamen, statt eine `Resourc
 #### UC-PT-7 — projectOpenOnlyForExistingProjects ✅
 - GIVEN ein Projekt-Handle mit `exists() == false` WHEN ein Plan-Tool (`planSave` o. ä.) `getProject()`
   ruft THEN eine verständliche Fehlermeldung mit Projektnamen (kein roher `ResourceException`-Wrap).
+
+**Präzisierung (Review 2026-11-05, B1):** R-PT-6 gilt für die **Query** (`hasPlan`/`visiblePlan` —
+Turn-Pfad). `planRead`/`planUpdate` sind **Tool**-Pfade: sie nutzen weiterhin `getProject()` und
+dürfen ein geschlossenes, existierendes Projekt öffnen (R-PT-7) — R-PT-2 hält dadurch auch für
+geschlossene Projekte, kein False-Negative am Tool.
+
+### R-PT-8 — Die Query nennt ein geschlossenes Projekt statt still zu leugnen ✅ done (2026-11-05)
+
+Ein geschlossenes, echtes Projekt mit vorhandenem Plan ist für die Query-Pfade (`hasPlan`/
+`visiblePlan`) ohne `open()` nicht erkennbar — still „kein Plan" wäre ein False-Negative (die
+teuerste Fehlerklasse dieser Codebasis). **SOLL:** erkennt die Query ein gebundenes Projekt mit
+`isOpen() == false`, meldet sie `onProblem` („Project '<Name>' is closed") und antwortet
+`false`/`null` — ehrlich statt still. Ein Phantom (`exists() == false`) bleibt ohne `onProblem`
+(stiller No-op, R-PT-2a).
+
+#### UC-PT-8 — closedProjectIsNamedByTheQuery ✅
+- GIVEN ein geschlossenes, existierendes Projekt mit `peon-plan/overview.md` WHEN
+  `hasPlan()`/`visiblePlan()` THEN `false`/`null` **plus** `onProblem` mit Projektnamen und dem
+  Hinweis „closed".
+- GIVEN ein Phantom-Handle WHEN `hasPlan()`/`visiblePlan()` THEN `false`/`null` **ohne** `onProblem`.
 
 ## Offene Punkte
 

@@ -47,9 +47,18 @@ public class PlanFileView {
      * A {@link CoreException} is reported to {@code problem} with path and cause and answered with
      * {@code null} — an honest "no plan", never a silent one. A user Stop is not covered by that:
      * {@code OperationCanceledException} is a RuntimeException and runs through untouched (R-PT-1).
+     * <p>
+     * R-PT-8: a bound but closed project shows no plan without {@code open()} — it is named via
+     * {@code problem}, never silently denied. A phantom (no resource behind the handle) stays silent.
      */
     public IFile visible(IProject project, IProgressMonitor monitor, Consumer<String> problem) {
         if (project == null) return null;
+        // exists() before isOpen(): the API answers isOpen() == false for a phantom too, and that
+        // one must stay silent (R-PT-2a) — reporting it as "closed" would be a false positive.
+        if (project.exists() && !project.isOpen()) {
+            problem.accept("Project '" + project.getName() + "' is closed — reporting no plan");
+            return null;
+        }
         var plan = project.getFile(PlanTool.OVERVIEW_FILE);
         try {
             refresh.apply(plan, IResource.DEPTH_ZERO, IProgressMonitor.nullSafe(monitor));

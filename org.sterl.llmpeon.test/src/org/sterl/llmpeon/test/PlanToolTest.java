@@ -30,6 +30,7 @@ import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.parts.ai.PeonAiService;
+import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.PlanFileView;
 import org.sterl.llmpeon.parts.tools.PlanTool;
@@ -390,9 +391,117 @@ public class PlanToolTest extends AbstractIntegrationTest {
     }
 
     /**
-     * A handle for a project the workspace does not know — what {@code IResource#getProject()} hands
-     * out for an externally opened file ("/home/…" → segment 1 becomes the project name).
+     * R-PT-7 Präzisierung (Review 2026-11-05, B1): {@code planRead} is a TOOL path, so it opens the
+     * bound project — a query-only read would answer "No plan exists yet" for a plan that exists.
      */
+    // UC-PT-2
+    @Test
+    public void planReadSeesThePlanOfAClosedProject() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN a closed, real project with the plan already in place
+        var closed = closedProjectWithPlan("aaa_closed_read", "# closed plan\n");
+        aiService.setProject(closed);
+        try {
+            // WHEN
+            var read = planTool().planRead();
+
+            // THEN the tool path reads the plan instead of denying it — and opened the project for it
+            assertContains(read, "closed plan");
+            assertFalse("must never deny an existing plan: " + read, read.contains("No plan exists"));
+            assertTrue("the tool path must open the closed project", closed.isOpen());
+        } finally {
+            aiService.setProject(project);
+            deleteProject(closed);
+        }
+    }
+
+    /**
+     * R-PT-8 (org.sterl.llmpeon/docs/plan-tool.md): the query may not open, so it cannot see the plan
+     * of a closed project — it names the project instead of silently denying it (a false negative is
+     * the most expensive answer in this codebase).
+     */
+    // UC-PT-8
+    @Test
+    public void closedProjectIsNamedByTheQuery() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN the same closed fixture, bound as the plan project
+        var closed = closedProjectWithPlan("aaa_closed_query", "# closed plan\n");
+        aiService.setProject(closed);
+        var problems = new ArrayList<String>();
+        try {
+            var planTool = planTool(IResource::refreshLocal, problems);
+
+            // WHEN the query runs with the production refresh
+            assertFalse("a closed project must not claim a plan", planTool.hasPlan());
+
+            // THEN it reports instead of denying silently, and names the project
+            assertEquals(problems.toString(), 1, problems.size());
+            assertContains(problems.get(0), "aaa_closed_query");
+            assertContains(problems.get(0), "closed");
+
+            // AND the second query path answers the same way
+            assertNull("a closed project must not hand out a plan file", planTool.visiblePlan());
+            assertEquals(problems.toString(), 2, problems.size());
+            for (var problem : problems) {
+                assertContains(problem, "aaa_closed_query");
+                assertContains(problem, "closed");
+            }
+            // AND naming it is all the query may do — opening stays the tool path (R-PT-6)
+            assertFalse("the query must not open the project", closed.isOpen());
+        } finally {
+            aiService.setProject(project);
+            deleteProject(closed);
+        }
+    }
+
+    /**
+     * UC-PT-8 second BDD point: the closed report must not swallow the phantom case — a handle
+     * without a resource has nothing closed about it and stays silent (R-PT-2a).
+     */
+    // UC-PT-8
+    @Test
+    public void phantomHandleStaysSilentInTheQuery() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN a phantom bound straight on the user context, past the admission guard (R-SEL-5)
+        var phantom = phantomHandle("phantom_query_silent");
+        aiService.getUserContext().setCurrentProject(phantom);
+        var problems = new ArrayList<String>();
+        try {
+            var planTool = planTool(IResource::refreshLocal, problems);
+
+            // WHEN both query paths run
+            assertFalse("a phantom must never claim a plan", planTool.hasPlan());
+            assertNull("a phantom must never hand out a plan file", planTool.visiblePlan());
+
+            // THEN no plan and no report — "closed" would be a lie for a phantom
+            assertEquals(problems.toString(), 0, problems.size());
+        } finally {
+            aiService.getUserContext().setCurrentProject(project);
+        }
+    }
+
+    /** A real project that exists but is closed, with a plan already in place. */
+    private static IProject closedProjectWithPlan(String name, String planContent) throws CoreException {
+        var p = ResourcesPlugin.getWorkspace().getRoot().getProject(name);
+        if (p.exists()) p.delete(true, true, new NullProgressMonitor());
+        p.create(new NullProgressMonitor());
+        p.open(new NullProgressMonitor());
+        IoUtils.writeProjectFile(p, PlanTool.OVERVIEW_FILE, planContent, new NullProgressMonitor());
+        p.close(new NullProgressMonitor());
+        assumeTrue("fixture needs a closed but existing project", p.exists() && !p.isOpen());
+        return p;
+    }
+
+    private static void deleteProject(IProject p) throws CoreException {
+        if (!p.exists()) return;
+        p.open(new NullProgressMonitor());
+        p.delete(true, true, new NullProgressMonitor());
+    }
+
+    /** A handle for a project that is not in the workspace tree. */
     private static IProject phantomHandle(String name) {
         var phantom = ResourcesPlugin.getWorkspace().getRoot().getProject(name);
         assertFalse("fixture must be a phantom handle without a project", phantom.exists());
