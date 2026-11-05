@@ -23,9 +23,14 @@ Base: `AGENTS.md`. System prompt: `developer.md`.
   12 `// UC-CG-*`-Marker ohne die IDs im Doc liefen durch sechs grüne Gates). `R-*` sind keine
   UC-IDs → `idPattern` **UC-only** (`UC-[A-Z]+-\d+[a-z]?`); ein Pattern, das auch `R-*` matcht,
   liefert eine Masse Schein-VERWAIST statt der kleinen Baseline aus UNBELEGT- und MANUELL-Findings
-  (`org.sterl.llmpeon.core/docs/docs-linter.md` R-DL-14). `docRoots` **gar nicht** übergeben
-  (Auto-Discovery findet alle `docs`-Bäume, R-DL-26) oder alle — eine teilweise explizite Liste
-  gewinnt und blendet den Rest still aus (hit 2026-10-23: 84 Schein-VERWAIST zu enger Scope).
+  (`org.sterl.llmpeon.core/docs/docs-linter.md` R-DL-14). `docRoots` und `testRoots` **gar nicht**
+  übergeben (Auto-Discovery findet alle `docs`- und Test-Bäume, R-DL-26) oder alle — eine teilweise
+  explizite Liste gewinnt und blendet den Rest still aus (hit 2026-10-23: 84 Schein-VERWAIST zu
+  enger Scope). Dieselbe Falle an der Test-Seite: eine teilweise `testRoots`-Liste verengt nur die
+  Testseite, nicht die Doc-Seite, und meldet für die IDs der ausgeschlossenen Module
+  Massen-UNBELEGT_ERLEDIGT (hit 2026-11-05: 253 Findings gegenüber der Auto-Discovery-Baseline 38,
+  weil `org.sterl.llmpeon.core` fehlte) — `findings: N` ist deshalb nur innerhalb vollständiger
+  Auto-Discovery über Inkremente hinweg vergleichbar.
   Melden: die echte `findings: N`-Zeile, nie `Scanned: N doc file(s)` (hit 2026-10-24, R-OD-8 F3).
 - **Never widen scope silently.** Fixes outside the released plan — even correct ones, even
   one-liners — get reported to the PO first. TABU lists in a plan are binding.
