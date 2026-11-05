@@ -32,7 +32,12 @@ F10 Bootstrap docs-Laden · C-1 TurnClaim-Timeout · C-2 Compact-Anzeige · C-3 
 C-5 Verlauf out of order (Referenz: `/Users/sterlp/dev/workset/ai-schulung/app/frontend`) ·
 C-7 Agent-Chat = Haupt-Widget read-only. **C-4 Diffs 🔒 entschieden (live only)** — als nächstes
 Inkrement mit Regel+UC in chat.md. Bild-Support-Anzeige weiter ⏳.
-**Nächster Schritt: C-4 bauen** (SseTurnMonitor → ChatEvent.Diff → Chat-Widget, kein Core-Eingriff).
+**✅ C-4 Diffs gebaut + reviewt (2026-11-03):** [R-WP-36/UC-WP-68](chat.md) ✅ — Diff live im Chat
+(Bestandsdatei-Inhalts-Änderungen; Anlegen/Löschen/Shell = Werkzeug-Zeile, Doc auf Core-Umfang geschärft
+nach Review-BUG-1). Commits `32bb05fd`/`d7ca61b3`/`5e0956dd`. **Core-Proposal geparkt** (open-points):
+1. Anlegen = +Diff (`diskWriteFile` feuert auch bei Neuanlage), 2. SimpleDiff partzieller Diff statt
+Skip (Cap ~500 Zeilen/60k Zeichen — kein Byte-Buffer, String[]+int[][]-LCS; mildert S1 MB-Diff- und
+Binary-Risiko). Pauls Freigabe per Proposal nötig.
 Arbeitsregel (Paul): Nur-UI-Änderung ⇒ nur UI-Tests; Backend anfassen ⇒ Backend-Tests.
 Trailer-Regel: kein Modellname. Commit nur `aifactory/`-Pfade scopen (Core im selben Repo).
 
