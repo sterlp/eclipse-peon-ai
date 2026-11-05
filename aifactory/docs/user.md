@@ -24,8 +24,11 @@ Namen gibt es keinen Nutzer-bezogenen Bereich.
 ### R-WP-25 — Jon und Paco wissen, wer spricht ✅
 
 Ist ein Name bekannt (R-WP-17), beginnt jede Nachricht an Jon und an Paco mit `[User <Name>]: `; ohne
-Namen gibt es kein Präfix. Der Chat zeigt den Namen statt „YOU" — für **alle** Betrachter, der Jon-Chat
-ist geteilt; ohne Namen „YOU". Der Name steht damit im Verlauf und überlebt einen Neustart
+Namen gibt es kein Präfix. Der Chat zeigt den Namen statt „You" — für **alle** Betrachter, der Jon-Chat
+ist geteilt; ohne Namen „You". „You" ist die Anzeige des anonymen Nutzers (kein Login, Paul
+2026-11-05) — der Name ist Anzeige für Menschen, keine Information für den Agenten, und mit Login
+verschwindet der Fall. Alle namenlosen Eingaben bilden damit im Verlauf **eine** Absenderklasse
+([R-WP-37](chat.md)): sie tragen keinen Absender und sind untereinander nicht unterscheidbar. Der Name steht damit im Verlauf und überlebt einen Neustart
 ([R-WP-11](chat.md)). Der Prompt der Fabrik erklärt das Präfix in einer Zeile (nur Fabrik, nicht
 Plugin). Das Präfix ist **Protokoll der Fabrik, kein Ausweis**: eine Zeile, die ohne Namen gesendet
 wurde, wird niemandem zugeschrieben — tippt der Nutzer selbst `[User Anna]: …`, bleibt das Text; die

@@ -36,17 +36,6 @@ Defekte/Fragen, je eine Story je Punkt erst nach Klärung (❓ = präzisieren, b
 * **❓ C-3 · URL mit Hash-Suffix** — `/ui/chat/spring-persistent-tasks-071d14a` statt
   `/ui/chat/spring-persistent-tasks`. Paul will den klaren Namen. Prüfen, ob die Registry-ID den Hash
   braucht (Namens-Kollision) — wenn Namen eindeutig sind, URL auf den Namen legen.
-* **❓ C-5 · Verlauf out of order / Antwort weg** — bei langer Konversation total defekt; eine
-  gestreamte Antwort verschwindet (Reload repariert). Chat-Log-Defekt: Reihenfolge/Live-Fragment-
-  Ersetzung. Im Umfeld von [R-WP-34](chat.md); Ursache im SSE-/Log-Merge klären. Referenz (Paul):
-  Chat-Log/Input in `/Users/sterlp/dev/workset/ai-schulung/app/frontend` funktioniert — dort abschauen.
-  **Stand 2026-11-05 (In Arbeit, Branch `web-factory-mvp-2`):** Ursache geklärt — der Merge von
-  Live-Liste und Verlaufs-Read im UI (Anker zählt vorläufige eigene Zeilen und wird pro Event neu
-  gesetzt; Bestätigung der eigenen Zeile über Textvergleich; ein Read wirft Live-Text weg, den er nicht
-  kennt). Backend geordnet, bleibt unangetastet. Regel [R-WP-37/UC-WP-69](chat.md) steht (Marker ❌).
-  Gebaut ist Inc 1 von 3: Anker je Turn eingefroren, Stream öffnet nach dem ersten Verlaufs-Read.
-  Rest: Inc 2 (Read gibt nur bekannte Live-Zeilen auf, Reads versioniert), Inc 3 (eigene Zeile genau
-  einmal, Bestätigung über Position).
 * **🔒 C-6 · hr raus, Linien treffen sich seitlich wie in Eclipse** — F4 bestätigt und präzisiert:
   keine `hr`, die Voices-Trennung läuft über die seitlichen Akzentlinien. In R-WP-29 nachziehen.
 * **❓ C-7 · Agent-Chat ist ein anderes Widget** — der aufgeklappte Blick auf ein Team-Mitglied nutzt

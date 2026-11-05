@@ -110,21 +110,31 @@ Jons, nie in eine private Kopie. Andere Projekte laufen unabhängig und parallel
   Queue genau dieses Jons — kein zweiter paralleler Turn auf derselben Memory.
 
 
-### R-WP-37 — Die eigene Eingabe steht genau einmal im Verlauf ❌ (Paul 2026-11-03, C-5)
+### R-WP-37 — Die eigene Eingabe steht genau einmal im Verlauf ✅ (Paul 2026-11-03, C-5)
 
 Solange der Verlauf die Eingabe nicht trägt, zeigt der Chat sie als **vorläufige Zeile**; sobald der
-Verlaufs-Read sie liefert, ersetzt die Verlaufszeile die vorläufige **an ihrer Stelle** — auch dann,
-wenn der Core sie als gequeuete Eingabe mit seinem Marker `[Queued Message] (hh:mm): ` abgelegt hat.
-Der Marker bleibt sichtbar: er ist der Realitätsstand im Verlauf, die Fabrik parst und kürzt nichts
-([AF-ADR-002](adr/002-origin-in-core-display-in-factory.md)). Die Bestätigung erfolgt über die
-**Position** im Verlauf, nie über Textvergleich — ein gequeueter Marker wäre sonst nie erkennbar.
-Dieselbe Eingabe zweimal ist **zwei** Zeilen.
+Verlaufs-Read sie liefert, ersetzt die Verlaufszeile die vorläufigen **an ihrer Stelle**. Die
+Bestätigung erfolgt über die **Position** im Verlauf, nie über Textvergleich — ein gequeueter Marker
+wäre sonst nie erkennbar. Bestätigt wird je **Absender**: eine Verlaufs-Nutzerzeile ersetzt die
+vorläufigen Zeilen **desselben Absenders**, die vor ihr gesendet wurden (Wasserlinie je Absender);
+Absender ist die Herkunft der Zeile — ohne Namen tragen alle Eingaben keinen Absender und bilden
+**eine** Absenderklasse ([R-WP-25](user.md)). Der Bündel-Fall ist die Realität im Verlauf: sendet
+derselbe Absender mehrfach innerhalb des Bündel-Fensters des Cores, liefert der Verlauf **eine**
+gebündelte Zeile — sie ersetzt alle vorläufigen Zeilen dieses Absenders. Außerhalb des Fensters ist
+dieselbe Eingabe zweimal **zwei** Zeilen. Der Marker bleibt sichtbar: er ist der Realitätsstand im
+Verlauf, die Fabrik parst und kürzt nichts
+([AF-ADR-002](adr/002-origin-in-core-display-in-factory.md)).
 
-#### UC-WP-69 — ownInputStandsExactlyOnce ❌
-- GIVEN eine Eingabe wurde während eines laufenden Turns gesendet WHEN `done` den Verlauf liest THEN
-  steht sie **genau einmal** im Log, und die vorläufige Zeile ist weg.
-- GIVEN dieselbe Eingabe zweimal gesendet WHEN der Verlauf beide Zeilen trägt THEN sind beide
-  bestätigt — zwei Zeilen, keine Dublette der vorläufigen.
+#### UC-WP-69 — ownInputStandsExactlyOnce ✅
+- GIVEN ein Turn läuft und derselbe Absender sendet zweimal innerhalb des Bündel-Fensters WHEN der
+  Verlauf die gebündelte Zeile liefert THEN verschwinden **beide** vorläufigen Zeilen und die
+  gebündelte Zeile steht an ihrer Stelle — Verbatim inklusive Marker und Zeilenumbruch, Zeit des
+  ersten Eintrags (R9 des Cores).
+- GIVEN ein Turn läuft und Nutzer A sendet vor Nutzer B WHEN der Verlauf A-s Zeile zuerst liefert
+  THEN ersetzt sie nur A-s vorläufige Zeile; B-s vorläufige bleibt sichtbar, bis B-s eigene
+  Verlaufszeile kommt — eine fremde Zeile bestätigt nie eine fremde vorläufige.
+- GIVEN derselbe Text zweimal außerhalb des Bündel-Fensters gesendet WHEN der Verlauf beide Zeilen
+  trägt THEN stehen zwei Zeilen, beide bestätigt — keine Dublette der vorläufigen.
 - GIVEN der Verlauf trägt die Eingabe als gequeuete Zeile mit Marker WHEN der Log gezeichnet wird
   THEN zeigt die Zeile den Wortlaut des Verlaufs inklusive Marker — kein Abgleich über den Text.
 
