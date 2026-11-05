@@ -148,10 +148,12 @@ export function ChatLog({ messages, outgoing, user, live, pending, logRef, onScr
 
 /**
  * The rows and the live items in the order the screen shows them: a run of live items is placed after the
- * number of rows it was anchored at, and inside the run the arrival order holds. Consecutive tool lines
- * become one box, a diff block stands beside it as a block of its own; the rule between two voices is
- * decided over the rows and the live answers only, because tool activity and a diff are neither voice
- * (R-WP-29).
+ * number of rows its turn was anchored at, and inside the run the arrival order holds. The anchor counts
+ * what stood at that moment — the history plus the inputs that were still pending then — so it names the
+ * same place before and after the read that confirms those inputs, and a run pointing past the rows that
+ * stand today falls to the end (D-A, UC-WP-54). Consecutive tool lines become one box, a diff block stands
+ * beside it as a block of its own; the rule between two voices is decided over the rows and the live answers
+ * only, because tool activity and a diff are neither voice (R-WP-29).
  */
 function entriesOf(rows: Row[], live: LiveItem[]): Entry[] {
   const entries: Entry[] = []

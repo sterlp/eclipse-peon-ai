@@ -15,6 +15,11 @@ interface Chat {
   countOf(pathEnd: string, method: string): number
   /** The answer of the next history read, so a test can hand back what the turn wrote. */
   setMessages(messages: ChatMessage[]): void
+  /**
+   * Holds the next history read open until the test resolves it — a read in flight, without a sleep, so a
+   * test can say what the screen looks like <em>while</em> the server is still answering.
+   */
+  deferNextHistoryRead(): { resolve(): void }
   /** Every `POST …/agents` answers this instead of 202 — the refusal a running turn produces. */
   refuseActions(status: number, message: string): void
   /** Every `POST …/messages` answers this instead of 202 — the send that never landed. */
@@ -81,6 +86,8 @@ function stubChat(
     stopAnswer: undefined as { status: number; message: string } | undefined,
   }
   let controller: ReadableStreamDefaultController<Uint8Array> | undefined
+  // set while the next history read is to be held open by the test
+  let heldRead: Promise<void> | undefined
 
   vi.stubGlobal(
     'fetch',
@@ -133,7 +140,10 @@ function stubChat(
         return new Response(null, { status: 202 })
       }
       if (path.endsWith('/messages')) {
-        return json(200, state.messages)
+        const held = heldRead
+        heldRead = undefined
+        // read at answer time, not at request time: the test decides what the conversation holds
+        return held === undefined ? json(200, state.messages) : held.then(() => json(200, state.messages))
       }
       return json(200, initial.projects ?? [])
     }),
@@ -145,6 +155,17 @@ function stubChat(
       calls.filter(call => call.method === method && call.path.endsWith(pathEnd)).length,
     setMessages: messages => {
       state.messages = messages
+    },
+    deferNextHistoryRead: () => {
+      let settle: (() => void) | undefined
+      heldRead = new Promise<void>(done => {
+        settle = done
+      })
+      return {
+        resolve: () => {
+          settle?.()
+        },
+      }
     },
     refuseActions: (status, message) => {
       state.refusal = { status, message }
@@ -368,6 +389,25 @@ test('droppedStreamReopensAndReadsHistory', async () => {
   expect(screen.getByText('wo liegen die Dateien?')).toBeInTheDocument()
 })
 
+// UC-WP-54
+test('theStreamOpensAfterTheFirstHistoryRead', async () => {
+  const chat = stubChat({ messages: [QUESTION, ANSWER] })
+  const read = chat.deferNextHistoryRead()
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  // the conversation is asked for and has not answered: no stream is open yet, because the anchor of the
+  // first live line is a statement about the rows that stand, and an event in front of the read would be
+  // drawn above the whole history that the read brings (D-E)
+  expect(chat.countOf('/messages', 'GET')).toBe(1)
+  expect(chat.countOf('/events', 'GET')).toBe(0)
+
+  read.resolve()
+  await flush()
+
+  expect(chat.countOf('/events', 'GET')).toBe(1)
+  expect(agentLinesSaying(ANSWER.text)).toHaveLength(1)
+})
 
 // UC-WP-16
 test('oneChatPerProject', async () => {
@@ -816,6 +856,36 @@ test('toolLinesSurviveTheDoneRefresh', async () => {
   // the streaming text gave way to the history and is not shown twice
   expect(screen.queryByTestId('chat-live')).toBeNull()
   expect(agentLinesSaying(ANSWER.text)).toHaveLength(1)
+})
+
+// UC-WP-54
+test('aLiveAnswerKeepsItsAnchorWhenAnInputIsQueuedMidTurn', async () => {
+  const chat = stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await chat.push(event('partial', { kind: 'answer', text: 'Im Root liegen ' }))
+
+  // he sends while the turn works, so the input queues (R-WP-10). The answer that is already streaming
+  // belongs to the turn above it: it neither breaks into a second block nor slides below this input
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'und die Tests?' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await chat.push(event('partial', { kind: 'answer', text: 'pom.xml und README.md' }))
+
+  const answers = screen.getAllByTestId('chat-live')
+  expect(answers).toHaveLength(1)
+  expect(answers[0]).toHaveTextContent('Im Root liegen pom.xml und README.md')
+  const shape = [...screen.getByTestId('chat-log').children].map(line =>
+    line.getAttribute('data-testid'),
+  )
+  expect(shape, 'the answer stands between its own input and the one queued behind it').toEqual([
+    'chat-line-user',
+    'chat-line-user',
+    'chat-live',
+    'chat-line-user',
+  ])
 })
 
 test('consecutiveToolLinesAreMerged', async () => {

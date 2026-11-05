@@ -1,0 +1,8 @@
+# Resolved Points — AI Factory
+
+Durchgangslager-Ablauf: hier bleibt nur, was ein Wiederaufmachen verhindert (Punkt · Entscheidung ·
+Begründung · Datum); wertlose Zeilen werden gelöscht.
+
+| Punkt | Entscheidung | Gegen Wieder-Aufmachen | Datum |
+|---|---|---|---|
+| C-4 Core-Erweiterung: „Anlegen = +Diff" & partzieller Diff statt Skip | **Core-Umbau gebaut** (Paul ließ ihn einbauen, gegen Jons Empfehlung „erst nur Doc schärfen"): `diskWriteFile` feuert `onFileUpdate` auch bei Neuanlage (`oldContent = ""`, reiner `+`-Diff), `SimpleDiff` kappt ab **500 Changed-Zeilen** partziell mit End-Marker statt zu skippen, **binärer Inhalt → Werkzeug-Zeile**; Core-Regeln: `org.sterl.llmpeon.core/docs/file-update-diff.md` (R-SD-1…3), Commit `2cac0d6f` | Der Diff-Umfang ist die Core-Oberfläche — kein zweiter Diff-Algorithmus und kein zweiter Cap in der Fabrik ([R-WP-36](chat.md)); Fabrik-Nachweis `aCreatedFileIsAPurePlusDiffOnTheWire` (`49571dc4`) | 2026-11-05 |

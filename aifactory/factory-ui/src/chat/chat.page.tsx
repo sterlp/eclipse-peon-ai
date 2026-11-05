@@ -60,9 +60,10 @@ const SCROLL_END_SLOP = 24
  * (R-WP-11), and the reconnect path needs no second buffer and no event memory.
  *
  * What the turn reports while it runs lives in one list — the answer's text and the tool lines in the
- * order they arrived, each anchored at the rows already shown (D-7). The anchor is what lets the tool
- * lines of a finished turn survive the history read of {@code done}: the answer gives way to the history,
- * the trace has no place there and keeps its place on the screen (R-WP-28, UC-WP-54).
+ * order they arrived, each anchored at the rows that stood when the turn reported its first line (D-7, D-A).
+ * The anchor is frozen per turn and is what lets both survive a history read: an input the user queues
+ * mid-turn does not move the answer that is still streaming, and the trace of a finished turn keeps its
+ * place while the answer gives way to the history that carries it (R-WP-28, UC-WP-54).
  *
  * The team's tiles ({@link ChatTiles}) follow the same rule in their own family: read on mount, replaced
  * by every `agents` snapshot, never merged — and re-read after an action, because 202 only said
@@ -110,10 +111,22 @@ export function ChatPage({ project, files, user }: Props) {
   const stoppedTurn = useRef<string | null>(null)
   const input = useRef<HTMLTextAreaElement>(null)
   /**
-   * The rows the log shows — a live line is anchored at this count, so it keeps the place it happened at
-   * even when the history read of `done` replaces the lines around it (D-7, UC-WP-54).
+   * The rows the history carries — the coordinates every live line anchors in. A ref because the event
+   * handler has to read the count <em>now</em>: the state of a render is one render behind, and an anchor
+   * that is one render behind is an anchor that names the wrong place (D-B, UC-WP-54).
    */
-  const shownRows = useRef(0)
+  const historyRows = useRef(0)
+  /**
+   * The own inputs the history does not carry yet. Their count is part of the anchor on purpose: an answer
+   * that started below them stays below them when one of them becomes a history line (D-A).
+   */
+  const pendingLines = useRef<string[]>([])
+  /**
+   * The rows that stood when this turn reported its first line — frozen for the whole turn. Recomputing the
+   * count per event would let an input queued mid-turn move every later chunk of the running answer to a
+   * new anchor: the answer would break into blocks and stand below the question typed after it (D-A, UC-WP-54).
+   */
+  const turnAnchor = useRef<number | null>(null)
   /**
    * The scroll area of the chat and whether the user stands at its end (R-WP-35): a new line follows him
    * while he does, and leaves him reading while he does not. A ref and not a state, because the answer to
@@ -124,10 +137,6 @@ export function ChatPage({ project, files, user }: Props) {
   const projectId = project?.id ?? null
 
   useEffect(() => {
-    shownRows.current = messages.length + outgoing.length
-  }, [messages, outgoing])
-
-  useEffect(() => {
     const area = log.current
     if (area !== null && atBottom.current) {
       area.scrollTop = area.scrollHeight
@@ -135,15 +144,45 @@ export function ChatPage({ project, files, user }: Props) {
   }, [messages, live, outgoing])
 
   /**
+   * One write place per list: the ref and the state of a fact change together and nowhere else. The screen
+   * reads the state, the event handler reads the ref, so the two can never disagree about a row count (D-B).
+   */
+  const writeHistory = useCallback((loaded: ChatMessage[]) => {
+    historyRows.current = loaded.length
+    setMessages(loaded)
+  }, [])
+
+  const writePending = useCallback((lines: string[]) => {
+    pendingLines.current = lines
+    setOutgoing(lines)
+  }, [])
+
+  /**
+   * The anchor of the running turn, fixed by its first live line and reused by every later one. Frozen
+   * <em>including</em> the own pending lines, because the history read turns exactly those into history
+   * lines at the same indices — so the same number names the same place before and after the read, which is
+   * what keeps one answer one block (D-A, UC-WP-54).
+   */
+  const anchorOf = useCallback((): number => {
+    if (turnAnchor.current === null) {
+      turnAnchor.current = historyRows.current + pendingLines.current.length
+    }
+    return turnAnchor.current
+  }, [])
+
+  /**
    * The finished text arrives here, never as an event — so the live answer gives way to it (§3.3.3). What
    * gives way is nothing else: the tool lines of the turn exist on the wire only and stay where they were
    * placed, because a finished turn without its trace is not what UC-WP-54 asks for.
    */
-  const applyHistory = useCallback((loaded: ChatMessage[]) => {
-    setMessages(loaded)
-    setLive(liveLinesAfterHistory)
-    setOutgoing(previous => withoutSent(previous, loaded))
-  }, [])
+  const applyHistory = useCallback(
+    (loaded: ChatMessage[]) => {
+      writeHistory(loaded)
+      writePending(withoutSent(pendingLines.current, loaded))
+      setLive(liveLinesAfterHistory)
+    },
+    [writeHistory, writePending],
+  )
 
   const refresh = useCallback((): Promise<void> => {
     if (projectId === null) {
@@ -168,18 +207,27 @@ export function ChatPage({ project, files, user }: Props) {
         case 'partial':
           // thinking deltas stay invisible: the chat shows the answer, and R-WP-5 promises that text
           if (!event.thinking) {
-            setLive(previous => appendLiveText(previous, event.text, shownRows.current))
+            // the anchor is read outside the updater: the updater must stay pure and the turn's anchor is
+            // frozen on first use, so a second read would be the same number anyway (D-A)
+            const at = anchorOf()
+            setLive(previous => appendLiveText(previous, event.text, at))
           }
           break
-        case 'tool':
-          setLive(previous => appendLiveTool(previous, event.text, shownRows.current))
+        case 'tool': {
+          const at = anchorOf()
+          setLive(previous => appendLiveTool(previous, event.text, at))
           break
-        case 'diff':
+        }
+        case 'diff': {
           // the change itself, live, for every browser watching this project — the block names its own file,
           // so no author is needed and none is shown (R-WP-36, UC-WP-68)
-          setLive(previous => appendLiveDiff(previous, event.file, event.diff, shownRows.current))
+          const at = anchorOf()
+          setLive(previous => appendLiveDiff(previous, event.file, event.diff, at))
           break
+        }
         case 'done':
+          // the turn is over: the next one anchors at the rows that stand when it reports, not at these
+          turnAnchor.current = null
           // one reload per turn — the turn that drained a queued input closes that input too, and the
           // history that lands carries every finished line, the team's own answer among them
           if (stoppedTurn.current === projectId) {
@@ -193,22 +241,25 @@ export function ChatPage({ project, files, user }: Props) {
           void refreshTiles()
           setRunningTurn(null)
           break
-        case 'error':
+        case 'error': {
           // shown where it happened — a line of the log, not a notice beside it — and the composer stays
           // usable (Q1). The read that follows brings the same line as a line of the conversation, so it
           // survives a reload and every other browser (R-WP-34, UC-WP-64)
-          setLive(previous => appendLiveError(previous, event.message, shownRows.current))
+          const at = anchorOf()
+          turnAnchor.current = null
+          setLive(previous => appendLiveError(previous, event.message, at))
           setRunningTurn(null)
           setError(null)
           void refresh()
           break
+        }
         case 'agents':
           // replace, never merge — a snapshot that accumulated would become a second history (R-WP-7)
           setTiles(event.tiles)
           break
       }
     },
-    [projectId, refresh, refreshTiles],
+    [anchorOf, projectId, refresh, refreshTiles],
   )
 
   useEffect(() => {
@@ -231,6 +282,7 @@ export function ChatPage({ project, files, user }: Props) {
             // a dropped stream loses the live lines and nothing else (R-WP-11): the history that follows
             // is read again, and what the wire will not send back is dropped from the screen
             setLive([])
+            turnAnchor.current = null
             void refresh()
             reconnect = setTimeout(connect, RECONNECT_MS)
           },
@@ -239,9 +291,15 @@ export function ChatPage({ project, files, user }: Props) {
       )
     }
 
-    void refresh()
+    // the stream opens only once the history has been read: the anchor of the first live line is a
+    // statement about the rows that stand, and an event that anchored in front of the read would later be
+    // drawn above the whole conversation (D-E)
+    void refresh().then(() => {
+      if (mounted) {
+        connect()
+      }
+    })
     void refreshTiles()
-    connect()
     input.current?.focus()
     return () => {
       mounted = false
@@ -262,7 +320,7 @@ export function ChatPage({ project, files, user }: Props) {
     }
     // shown before the server has it: a turn writes the user line into the memory only when it starts,
     // so a queued input would vanish from the screen until the next history read
-    setOutgoing(previous => [...previous, text])
+    writePending([...pendingLines.current, text])
     setError(null)
     // the send is what opens the turn, so the flag follows the intent and not the answer (D-13): 202 only
     // says "taken", and a stop that comes one moment later must already address this turn
@@ -274,7 +332,7 @@ export function ChatPage({ project, files, user }: Props) {
       // 202 is the moment this text becomes "the last one": a refusal never earns the Resend button
       setLastSent(text)
     } catch (reason) {
-      setOutgoing(previous => previous.slice(0, -1))
+      writePending(pendingLines.current.slice(0, -1))
       setRunningTurn(null)
       setError(errorMessage(reason))
     }

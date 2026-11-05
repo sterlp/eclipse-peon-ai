@@ -1,13 +1,16 @@
 import { render, screen } from '@testing-library/react'
 
 import { ChatLog } from '../../src/chat/chat.log'
-import { appendLiveError } from '../../src/chat/chat.live'
+import { appendLiveError, appendLiveTool } from '../../src/chat/chat.live'
 import { declarations } from '../shared/sheets'
 import type { ChatMessage } from '../../src/chat/chat.client'
 
 const QUESTION: ChatMessage = { role: 'user', text: 'wo liegen die Dateien?', origin: 'Paul' }
 /** The wire text of a failed turn — the server's reason, which the log shows as it is (R-WP-27). */
 const FAILURE: ChatMessage = { role: 'error', text: 'turn needs a model — set model in the factory config' }
+/** The input the trace belongs to, read back from the history — the anchor of the trace counts it (D-A). */
+const SENTENCE: ChatMessage = { role: 'user', text: 'zähl die Dateien', origin: 'Paul' }
+const ANSWER: ChatMessage = { role: 'jon', text: 'Zwei: pom.xml und README.md' }
 
 /**
  * The failure is a voice of the log (R-WP-34): it takes the rule of a voice change and the colour of the
@@ -47,4 +50,31 @@ test('aLiveFailureIsALineAndNotAWaitingFrame', () => {
   // the turn is over, so nothing about this line is "not a fact yet"
   expect(failure.className).not.toContain('pending')
   expect(screen.queryByTestId('chat-live')).toBeNull()
+})
+
+/**
+ * The trace of a finished turn keeps its place in the history that arrived with `done`: the anchor counts
+ * the rows of its own moment — the question plus the input that was still pending then — and the read has
+ * made that input the history line above it. So the box stands between the input and the answer, which is
+ * what the page's own read cannot show (D-A, UC-WP-54).
+ */
+// UC-WP-54
+test('aLiveTraceStaysBetweenItsInputAndTheAnswer', () => {
+  render(
+    <ChatLog
+      messages={[QUESTION, SENTENCE, ANSWER]}
+      outgoing={[]}
+      live={appendLiveTool(appendLiveTool([], 'ls in the checkout', 2), 'wc -l', 2)}
+      pending={false}
+    />,
+  )
+
+  const shape = [...screen.getByTestId('chat-log').children].map(line =>
+    line.getAttribute('data-testid'),
+  )
+  expect(shape).toEqual(['chat-line-user', 'chat-line-user', 'chat-tool-line', 'chat-line-jon'])
+  // one box for the run, and both of its lines
+  expect([
+    ...screen.getByTestId('chat-tool-line').querySelectorAll('.chat-tool-line'),
+  ]).toHaveLength(2)
 })

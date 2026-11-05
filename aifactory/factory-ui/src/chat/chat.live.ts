@@ -2,12 +2,15 @@
  * The live lines of the running turn (D-7): one list instead of the old streaming text plus a separate
  * tool list, because the order in which the two arrive IS the conversation.
  *
- * An item carries the number of rows the log already showed when it arrived — its anchor. The anchor is a
- * count and not a text, so it survives the history read that `done` triggers: the finished line lands in
- * the log, and the tool lines of that turn stay where they happened (UC-WP-54).
+ * An item carries its anchor: the number of rows the log showed when its <em>turn</em> reported its first
+ * line — one number for every item of one turn, not one per item. The anchor is a count and not a text, so
+ * it survives the history read that `done` triggers: the finished line lands in the log, the tool lines of
+ * that turn stay where they happened, and an input the user queues mid-turn cannot move the answer that is
+ * still streaming (UC-WP-54).
  */
 export type LiveItem =
-  /** `afterLines` — rows of the log (history plus the own, unconfirmed inputs) when this item arrived. */
+  /** `afterLines` — the anchor of the item's turn: rows of the log (history plus the own, unconfirmed
+   *  inputs) that stood when that turn reported its first line. Same number for every item of one turn. */
   | { kind: 'text' | 'tool' | 'error'; text: string; afterLines: number }
   /** One file the turn changed: `text` is its unified diff, `file` the path the block names. */
   | { kind: 'diff'; file: string; text: string; afterLines: number }

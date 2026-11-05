@@ -109,6 +109,25 @@ Jons, nie in eine private Kopie. Andere Projekte laufen unabhängig und parallel
 - GIVEN im Projekt läuft ein Turn WHEN ein anderer Nutzer sendet THEN geht die Nachricht in die
   Queue genau dieses Jons — kein zweiter paralleler Turn auf derselben Memory.
 
+
+### R-WP-37 — Die eigene Eingabe steht genau einmal im Verlauf ❌ (Paul 2026-11-03, C-5)
+
+Solange der Verlauf die Eingabe nicht trägt, zeigt der Chat sie als **vorläufige Zeile**; sobald der
+Verlaufs-Read sie liefert, ersetzt die Verlaufszeile die vorläufige **an ihrer Stelle** — auch dann,
+wenn der Core sie als gequeuete Eingabe mit seinem Marker `[Queued Message] (hh:mm): ` abgelegt hat.
+Der Marker bleibt sichtbar: er ist der Realitätsstand im Verlauf, die Fabrik parst und kürzt nichts
+([AF-ADR-002](adr/002-origin-in-core-display-in-factory.md)). Die Bestätigung erfolgt über die
+**Position** im Verlauf, nie über Textvergleich — ein gequeueter Marker wäre sonst nie erkennbar.
+Dieselbe Eingabe zweimal ist **zwei** Zeilen.
+
+#### UC-WP-69 — ownInputStandsExactlyOnce ❌
+- GIVEN eine Eingabe wurde während eines laufenden Turns gesendet WHEN `done` den Verlauf liest THEN
+  steht sie **genau einmal** im Log, und die vorläufige Zeile ist weg.
+- GIVEN dieselbe Eingabe zweimal gesendet WHEN der Verlauf beide Zeilen trägt THEN sind beide
+  bestätigt — zwei Zeilen, keine Dublette der vorläufigen.
+- GIVEN der Verlauf trägt die Eingabe als gequeuete Zeile mit Marker WHEN der Log gezeichnet wird
+  THEN zeigt die Zeile den Wortlaut des Verlaufs inklusive Marker — kein Abgleich über den Text.
+
 ### R-WP-11 — Projekte und ihr Chat überleben einen Neustart auf demselben Node ✅
 
 Projekt-Registry, Clone und **genau ein** Chat je Projekt sind persistent, solange die Platte des Nodes
@@ -227,8 +246,7 @@ Datei-Bereich ([Dateien](files.md)).
 #### UC-WP-68 — fileChangesShowAsLiveDiff ✅
 - GIVEN ein laufender Turn WHEN ein Agent eine Datei (bestehende oder neu angelegte) inhaltlich ändert
   THEN erscheint im Chat ein Diff-Block mit Dateinamen und den geänderten Zeilen (+/− gefärbt), live
-  und ohne manuelles
-  Aktualisieren ([R-WP-5](chat.md)).
+  und ohne manuelles Aktualisieren ([R-WP-5](chat.md)).
 - GIVEN ein Agent legt eine Datei **neu** an (oder überschreibt sie) WHEN der Turn läuft THEN erscheint
   ein Diff-Block — beim Anlegen aus reinen `+`-Zeilen, zusätzlich zur Werkzeug-Zeile (R-SD-1); per
   **Shell** geschriebene Dateien erscheinen weiterhin nur als Werkzeug-Zeile.

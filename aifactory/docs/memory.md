@@ -32,13 +32,17 @@ F10 Bootstrap docs-Laden · C-1 TurnClaim-Timeout · C-2 Compact-Anzeige · C-3 
 C-5 Verlauf out of order (Referenz: `/Users/sterlp/dev/workset/ai-schulung/app/frontend`) ·
 C-7 Agent-Chat = Haupt-Widget read-only. **C-4 Diffs 🔒 entschieden (live only)** — als nächstes
 Inkrement mit Regel+UC in chat.md. Bild-Support-Anzeige weiter ⏳.
-**✅ C-4 Diffs gebaut + reviewt (2026-11-03):** [R-WP-36/UC-WP-68](chat.md) ✅ — Diff live im Chat
-(Bestandsdatei-Inhalts-Änderungen; Anlegen/Löschen/Shell = Werkzeug-Zeile, Doc auf Core-Umfang geschärft
-nach Review-BUG-1). Commits `32bb05fd`/`d7ca61b3`/`5e0956dd`. **Core-Proposal geparkt** (open-points):
-1. Anlegen = +Diff (`diskWriteFile` feuert auch bei Neuanlage), 2. SimpleDiff partzieller Diff statt
-Skip (Cap ~500 Zeilen/60k Zeichen — kein Byte-Buffer, String[]+int[][]-LCS; mildert S1 MB-Diff- und
-Binary-Risiko). Pauls Freigabe per Proposal nötig.
+**✅ C-4 Diffs gebaut + reviewt (2026-11-03):** [R-WP-36/UC-WP-68](chat.md) ✅. Commits
+`32bb05fd`/`d7ca61b3`/`5e0956dd`. **Core-Erweiterung von Paul einbauen lassen (2026-11-05, `2cac0d6f`
+auf main):** Anlegen = reiner `+`-Diff, `SimpleDiff` cappt bei 500 Changed-Zeilen partziell statt zu
+skippen, Binary → Werkzeug-Zeile; Docs bereits nachgezogen (Core-Agent), Fabrik-Test nachgeholt
+(`49571dc4`, Backend 222/0, missCount 1). Entscheidung in [resolved-points.md](resolved-points.md).
+**Branch `web-factory-mvp-2`** (von `origin/main` `2cac0d6f`, Commit `796cd8b9` Toolchain-Fakten).
+**pnpm-Fix (2026-11-05):** corepack 0.33 kann pnpm ≥11 nicht starten (`bin/pnpm.mjs` vs `pnpm.cjs`);
+läuft wieder mit **pnpm 10.28.0**, Root-`package.json`-Kollateral gelöscht, Lockfile drift-frei.
 Arbeitsregel (Paul): Nur-UI-Änderung ⇒ nur UI-Tests; Backend anfassen ⇒ Backend-Tests.
+Vor Fabrik-Build nach Core-Änderung: Kern `clean test` → `install -DskipTests` (Core-Artefakt in
+`~/.m2` kann älter sein als der Branch-Stand).
 Trailer-Regel: kein Modellname. Commit nur `aifactory/`-Pfade scopen (Core im selben Repo).
 
 Runde 1/2-Befundlisten und die Design-Entscheidungen vom 2026-11-02 sind verarbeitet und leben in den

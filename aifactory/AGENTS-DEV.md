@@ -780,3 +780,27 @@
   bleibt, ist `pnpm` in `factory-ui` **nur** mit `COREPACK_ENABLE_PROJECT_SPEC=0` erreichbar (ignoriert das
   `packageManager`-Feld); dieselbe Variable braucht jeder `mvn`-Lauf, dessen exec-maven-plugin `pnpm` aufruft.
 
+## C-5 Inc 1 (Zyklus 2026-11-05) — Live-Anker je Turn eingefroren, Stream nach dem ersten Read
+
+- **Der Live-Anker ist eine Turn-Größe, keine Event-Größe** (`chat.page.tsx`): `turnAnchor`-Ref friert
+  `historyRows + pendingLines` beim ersten Live-Item ein und wird bei `done`, `error` und `setLive([])`
+  zurückgesetzt. Die alte Zeilenzahl `messages.length + outgoing.length` pro Event zerlegt eine Antwort in
+  mehrere `chat-live`-Blöcke, sobald der Nutzer **während** des Turns eine zweite Eingabe sendet (Test
+  `aLiveAnswerKeepsItsAnchorWhenAnInputIsQueuedMidTurn` — auf HEAD rot wegen genau dieser Fragmentierung).
+  Refs (`historyRows`, `pendingLines`) schreiben **nur in Handlern/Read-Callbacks** über `writeHistory`/
+  `writePending`; ein Effekt-Ref hinkt einen Render nach, und ein Ref-Write im State-Updater ist bei
+  doppeltem Aufruf (StrictMode/Compiler) eine Seite, die der Render nicht sieht.
+- **Plan-Skizze `entriesOf(rows, live, confirmed)` ist widerlegt**: die Klammer
+  `afterLines >= confirmed ? rows.length : afterLines` setzt die laufende Antwort **hinter** die eben
+  getippte zweite Frage und widerspricht §7 Test 1 wie der eigenen Begründung in D-A. Richtig bleibt
+  `Math.min(afterLines, rows.length)`; ein `confirmed`-Parameter hat damit keine unterscheidbare Wirkung und
+  ist nicht gebaut. Probe (Platzierung ignoriert den Anker): `aLiveTraceStaysBetweenItsInputAndTheAnswer`,
+  `toolLinesSurviveTheDoneRefresh`, `aLiveAnswerKeepsItsAnchorWhenAnInputIsQueuedMidTurn` rot.
+- **`stubChat.deferNextHistoryRead()`** hält den nächsten `GET …/messages` offen (Promise, das der Test
+  auflöst — kein `sleep`); der Stub liest `state.messages` erst beim Auflösen. So ist D-E beweisbar
+  (`theStreamOpensAfterTheFirstHistoryRead`: `/events` = 0, während der Read offen ist; Mutation
+  `connect()` sofort ⇒ genau der Test rot). **Reihenfolge im Mount-Effekt ist die Assertion**: `refresh()`
+  vor `connect()`, sonst ist die Anker-Aussage des ersten Events eine Lüge.
+- **„An update to ChatPage was not wrapped in act(...)" in `chat.page.test.tsx` ist vorbestehend**
+  (gemessen 2026-11-05 gegen HEAD derselbe Stand, 3 Meldungen pro Lauf) — kein Anzeichen eines neuen Fehlers.
+
