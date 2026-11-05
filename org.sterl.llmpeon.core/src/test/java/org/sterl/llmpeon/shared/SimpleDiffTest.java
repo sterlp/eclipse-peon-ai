@@ -168,6 +168,16 @@ class SimpleDiffTest {
         assertFalse(diff.contains("diff skipped"));
     }
 
+    @Test
+    void minimalDiff_usesTheLongestCommonSubsequence() {
+        // GIVEN c,a,b,d → b,c,a,b,d,a,d: the LCS c,a,b,d leaves exactly 3 insertions
+        // WHEN
+        String diff = SimpleDiff.unifiedDiff("a.txt", "c\na\nb\nd", "b\nc\na\nb\nd\na\nd");
+        // THEN 3 changed lines, not the 5 a broken DP table produces
+        assertEquals(3, countChanged(diff, "+") + countChanged(diff, "-"));
+    }
+
+
     /** Diff lines of one side, the file headers excluded. */
     private static long countChanged(String diff, String sign) {
         return diff.lines()

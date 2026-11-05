@@ -298,8 +298,7 @@ public class ToolService {
         var monitor = req.getMonitor();
         String result;
         var mcpGroupService = executor == null ? findMcpService(tr.name()) : null;
-        var isMcpTool = mcpGroupService != null;
-        if (isMcpTool) {
+        if (mcpGroupService != null) {
             monitor.onTool("Running MCP: " + tr.name() + " - " + tr.arguments());
             result = mcpGroupService.executeTool(tr);
             monitor.onTool("MCP " + tr.name() + " done. " + StringUtil.charsSuffix(result));
@@ -359,12 +358,12 @@ public class ToolService {
      * Registers any object that has methods annotated with {@link Tool}.
      * Existing tools with the same name trigger an error.
      */
-    public void addTool(SmartTool toolObject) {
+    public void addTool(@NonNull SmartTool toolObject) {
         var old = replaceTool(toolObject);
         if (old != null) throw new RuntimeException("Tool " + old.getSpec().name() + " already registered ...");
     }
     
-    public SmartToolExecutor replaceTool(SmartTool toolObject) {
+    public SmartToolExecutor replaceTool(@NonNull SmartTool toolObject) {
         SmartToolExecutor result = null;
         for (Method method : toolObject.getClass().getDeclaredMethods()) {
             if (method.isAnnotationPresent(Tool.class)) {

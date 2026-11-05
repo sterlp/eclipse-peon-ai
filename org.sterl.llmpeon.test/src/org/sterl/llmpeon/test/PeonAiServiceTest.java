@@ -780,8 +780,10 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         assertTrue("memoryAdd (write) expected", names.contains("memoryAdd"));
         assertTrue("planRead expected", names.contains("planRead"));
         assertTrue("hasPlan expected", names.contains("hasPlan"));
+        assertTrue("planImplemented expected", names.contains("planImplemented"));
         // Jon delegates planning — he must not be able to write the plan himself
         assertFalse("planSave must not be Jon's tool", names.contains("planSave"));
+        assertFalse("planUpdate must not be Jon's tool", names.contains("planUpdate"));
     }
 
     /** Slaves may READ the shared memory (injected) but must NOT be able to write it. */

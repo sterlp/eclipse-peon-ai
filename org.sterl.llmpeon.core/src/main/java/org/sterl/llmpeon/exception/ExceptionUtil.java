@@ -5,6 +5,8 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 
+import org.jspecify.annotations.Nullable;
+
 import dev.langchain4j.exception.RateLimitException;
 
 /**
@@ -19,6 +21,7 @@ public final class ExceptionUtil {
      * {@link CompletionException} are future envelopes, everything else is the real cause.
      * Cycle-safe, null-safe; returns {@code null} for a pure envelope chain without bottom cause.
      */
+    @Nullable
     public static Throwable unwrap(Throwable throwable) {
         if (throwable == null) return null;
         var seen = new IdentityHashMap<Throwable, Boolean>();
@@ -35,7 +38,7 @@ public final class ExceptionUtil {
      * Returns the first throwable of the given type anywhere in the cause chain — the throwable
      * itself or one of its nested causes. Cycle-safe, null-safe; {@code null} when absent.
      */
-    @SuppressWarnings("null")
+    @Nullable
     public static <T extends Throwable> T findCause(Throwable throwable, Class<T> type) {
         if (throwable == null) return null;
         var seen = new IdentityHashMap<Throwable, Boolean>();

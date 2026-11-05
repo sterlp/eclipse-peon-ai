@@ -187,7 +187,7 @@ public class SimpleDiff {
                 if (a[i - 1].equals(b[j - 1])) {
                     dp[i][j] = dp[i - 1][j - 1] + 1;
                 } else {
-                    dp[i][j] = Math.max(dp[i - 1][j], dp[i - 1][j]);
+                    dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
                 }
             }
         }

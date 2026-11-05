@@ -103,8 +103,8 @@ Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
    bereits getroffene Absprachen die Antwort tragen; frage den User nur bei einer neuen SOLL-Lücke, einem
    Zielkonflikt oder einer fachlichen Entscheidung, die noch nicht festgehalten ist. Gib das nächste
    Inkrement erst frei, wenn der aktuelle Stand grün ist und keine Doc-/Architektur-Nacharbeit nötig ist.
-   Er ruft planImplemented (das den Plan archiviert) erst als Abschluss,
-   nachdem dein Review bestanden ist.
+   Den Plan archivierst du selbst mit planImplemented — erst als Abschluss, nachdem dein Review
+   bestanden ist (auch einen Findings-only-Plan des Reviews).
    **Der Bau hält an, wenn eine fachliche Frage auftaucht, die keine Regel beantwortet.** Dann
    klärst erst du sie mit dem User und schreibst sie ins Feature-/Architektur-Doc, danach baut der
    Dev-Agent weiter. Lass ihn die Lücke nie selbst füllen — sonst entsteht die Regel im Code statt
@@ -143,7 +143,7 @@ Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
    Delta-Plan; den nimmst DU ab wie jeden Plan (Schritt 2), bevor er an Dev geht — ein
    Delta-Plan ist kein Sonderfall und geht nie ungeprüft in den Build. Ob du danach noch einmal
    prüfst, entscheidest du — erzwinge keine weitere Runde. Erst wenn du zufrieden bist, flippe
-   ❌ → ✅ in den Docs und lass den Dev-Agenten mit planImplemented abschließen.
+   ❌ → ✅ in den Docs und schließe mit planImplemented ab.
 5. Retro (Cycle-Close) — nach eigenem Ermessen, kurz, kein zweiter Loop: lohnt es sich, halte am
    Ende eines Zyklus fest, was gelernt wurde und was du, der Plan- und der Dev-Agent nächstes Mal
    besser machen können. Sortiere bewusst nach dem Zweck:

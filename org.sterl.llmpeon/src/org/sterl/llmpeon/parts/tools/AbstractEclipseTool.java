@@ -22,7 +22,8 @@ public class AbstractEclipseTool extends AbstractTool {
     }
     
     protected IProgressMonitor getProgressMonitor() {
-        if (monitor instanceof EclipseAiMonitor eai) {
+        var eai = monitor.unwrap(EclipseAiMonitor.class);
+        if (eai != null) {
             return IProgressMonitor.nullSafe(eai.getIProgressMonitor());
         }
         return NULL_MONITOR;

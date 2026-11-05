@@ -126,6 +126,21 @@ class OwnerMonitorTest {
         assertThat(capture.chunks).extracting(OnPartialAiResponse::origin).containsOnlyNulls();
     }
 
+    @Test
+    void unwrapReachesTheDelegateThroughNestedOwners() {
+        // GIVEN — a capability monitor behind two wrappers, as a member turn sees its caller's view
+        var marker = new MarkerMonitor();
+        var nested = new OwnerMonitor("Dev", new OwnerMonitor("Jon", marker));
+
+        // THEN — the capability is found; an unrelated type is not
+        assertThat(nested.unwrap(MarkerMonitor.class)).isSameAs(marker);
+        assertThat(nested.unwrap(Runnable.class)).isNull();
+    }
+
+    private static class MarkerMonitor implements AiMonitor {
+        @Override public void onChatResponse(SimpleMessage message) {}
+    }
+
     /** Records every channel apart, so a channel lost in the wrapper cannot hide as another one. */
     private static class Capture implements AiMonitor {
         final List<SimpleMessage> lines = new ArrayList<>();
