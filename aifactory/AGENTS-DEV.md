@@ -833,3 +833,25 @@
   doppelt steht. **Nach Inc 2: UI 139 Tests / 17 Dateien** (137/17), `tsc` + oxlint 0/0, Doc-Lint 69/69 UCs,
   265 Test-Ids, 1 Finding.
 
+## C-5 Inc 3 (Zyklus 2026-11-05) — Bestätigung über Position: `chat.pending.ts`
+
+- **Die vorläufige eigene Zeile wird über Position bestätigt, nie über Text** (`chat.pending.ts`,
+  R-WP-37/UC-WP-69): `PendingLine{text, afterHistory}` — `afterHistory` = Verlaufszeilen beim Senden;
+  bestätigt wird sie von der ersten noch ungebrauchten `role === 'user'`-Zeile ab
+  `max(used, afterHistory)`. Zwei Zeiger sind tragend: `used` (ein Verlauf-Zeile bestätigt **genau eine**
+  vorläufige — ohne ihn greift Zeile 2 twice, und `aLaterTurnKeepsStreamingWhileAnEarlierReadInFlight`
+  fällt, weil die zweite Pending-Zeile zu früh verschwindet) und das **Anheben der Wasserlinie** der
+  behaltenen Zeile auf `from` (Lese-Wiederholung bestätigt dann nicht dieselbe Zeile zweimal).
+- **Mutationslehre: ein Filter-Mutant ist nicht die alte Semantik.** Die Textvergleich-Sonde als
+  `filter(line => !history.some(textgleich))` gebaut, lässt `theSameTextTwiceIsConfirmedTwice` grün —
+  ohne splice-artiges **Verbrauchen** der Bestigungszeile löscht ein einziger Texttreffer beide
+  vorläufiglichen Zeilen. Sonden für „genau einmal"-Semantik müssen die Verbrauchsschleife reproduzieren
+  ( Probe mit `withoutSent` + `splice`: genau die zwei Inc-3-Tests rot).
+- **`userLineTexts()`-Griff für Zeilenvergleiche**: der `li`-`textContent` hängt den Autor-Label an die
+  Zeile, und „und die Tests?" ist **Substring** der Marker-Zeile `[Queued Message] (14:32): und die
+  Tests?` — Textvergleich über `toContain` ist hier verboten, abzufragen ist
+  `[data-testid="chat-line-user"] .chat-text` als exakte Liste.
+- **Nach Inc 3: UI 145 Tests / 18 Dateien** (139/17), `tsc` + oxlint 0/0 (62 Dateien), Doc-Lint **0
+  Findings** bei UC 69/69, 270 Test-Ids (`// UC-WP-69` in `chat.page.test.tsx` + `chat.pending.test.ts`,
+  `// UC-WP-57` am Zweimal-Fall). Marker `R-WP-37`/`UC-WP-69` bleiben ❌ im Commit — flippt Jon.
+

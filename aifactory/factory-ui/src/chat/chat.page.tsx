@@ -21,6 +21,7 @@ import {
   livePreview,
   type LiveItem,
 } from './chat.live'
+import { withoutConfirmed, type PendingLine } from './chat.pending'
 import { ChatTiles } from './chat.tiles'
 import { ChatWaiting } from './chat.waiting'
 import { openChatStream } from './chat.stream'
@@ -94,7 +95,7 @@ const SCROLL_END_SLOP = 24
 export function ChatPage({ project, files, user }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [tiles, setTiles] = useState<AgentTile[]>([])
-  const [outgoing, setOutgoing] = useState<string[]>([])
+  const [outgoing, setOutgoing] = useState<PendingLine[]>([])
   const [live, setLive] = useState<LiveItem[]>([])
   const [draft, setDraft] = useState('')
   /**
@@ -120,10 +121,12 @@ export function ChatPage({ project, files, user }: Props) {
    */
   const historyRows = useRef(0)
   /**
-   * The own inputs the history does not carry yet. Their count is part of the anchor on purpose: an answer
-   * that started below them stays below them when one of them becomes a history line (D-A).
+   * The own inputs the history does not carry yet, each remembering how many history lines stood when it
+   * was sent — the position its own line cannot precede, which is what confirms it (R-WP-37). Their count
+   * is part of the anchor on purpose: an answer that started below them stays below them when one of them
+   * becomes a history line (D-A).
    */
-  const pendingLines = useRef<string[]>([])
+  const pendingLines = useRef<PendingLine[]>([])
   /**
    * The live lines on the screen, beside their state. The read of the history has to know how many of them
    * stood <em>when it was issued</em>, and a stream event has to continue the list that is really there —
@@ -169,7 +172,7 @@ export function ChatPage({ project, files, user }: Props) {
     setMessages(loaded)
   }, [])
 
-  const writePending = useCallback((lines: string[]) => {
+  const writePending = useCallback((lines: PendingLine[]) => {
     pendingLines.current = lines
     setOutgoing(lines)
   }, [])
@@ -210,7 +213,9 @@ export function ChatPage({ project, files, user }: Props) {
       }
       appliedRead.current = read
       writeHistory(loaded)
-      writePending(withoutSent(pendingLines.current, loaded))
+      // his own lines are confirmed by their position in what the read brings, not by their text: a queued
+      // input stands in the memory with the core's marker and would never be recognised again (R-WP-37)
+      writePending(withoutConfirmed(pendingLines.current, loaded))
       writeLive(liveLinesAfterHistory(liveItems.current, mark))
     },
     [writeHistory, writePending, writeLive],
@@ -360,8 +365,9 @@ export function ChatPage({ project, files, user }: Props) {
       return
     }
     // shown before the server has it: a turn writes the user line into the memory only when it starts,
-    // so a queued input would vanish from the screen until the next history read
-    writePending([...pendingLines.current, text])
+    // so a queued input would vanish from the screen until the next history read. The number of history
+    // lines standing now is where its own line cannot precede — that confirms it later (R-WP-37)
+    writePending([...pendingLines.current, { text, afterHistory: historyRows.current }])
     setError(null)
     // the send is what opens the turn, so the flag follows the intent and not the answer (D-13): 202 only
     // says "taken", and a stop that comes one moment later must already address this turn
@@ -535,24 +541,3 @@ function isAlreadyOver(error: unknown): boolean {
   return error instanceof ApiRequestError && (error.apiError?.status ?? 0) === 409
 }
 
-/**
- * A sent text is dropped as soon as the history carries a user line with it — the screen never shows
- * the same input twice. Repeating an identical text twice in a row is the known limit: the second
- * one appears with the history that contains it, not before.
- */
-function withoutSent(pending: string[], history: ChatMessage[]): string[] {
-  if (pending.length === 0) {
-    return pending
-  }
-  const rest = [...pending]
-  for (const message of history) {
-    if (message.role !== 'user') {
-      continue
-    }
-    const at = rest.indexOf(message.text)
-    if (at >= 0) {
-      rest.splice(at, 1)
-    }
-  }
-  return rest.length === pending.length ? pending : rest
-}

@@ -6,13 +6,15 @@ import { ChatDiff } from './chat.diff'
 import { ChatMarkdown } from './chat.markdown'
 import { ChatTools } from './chat.tools'
 import { liveRuns, type LiveItem } from './chat.live'
+import type { PendingLine } from './chat.pending'
 import { content } from '../shared/content'
 
 interface Props {
   /** The finished lines — the only truth for text a turn has written (R-WP-11). */
   messages: ChatMessage[]
-  /** Inputs the user sent that the history does not carry yet (a queued input is written at turn start). */
-  outgoing: string[]
+  /** Inputs this browser sent that the history does not carry yet — provisional lines, confirmed by their
+   *  position in it and not by their text (a queued input carries the core's marker; R-WP-37). */
+  outgoing: PendingLine[]
   /** The name of this browser (R-WP-25) — the author of its own, not yet confirmed lines; null shows the role label. */
   user?: string | null
   /** The live lines of the running turn, each anchored at the rows that already stood when it arrived. */
@@ -76,12 +78,12 @@ export function ChatLog({ messages, outgoing, user, live, pending, logRef, onScr
       // a line the history carries is a fact — the frame never comes back to it (R-WP-31)
       pending: false,
     })),
-    ...outgoing.map((text): Row => ({
+    ...outgoing.map((line): Row => ({
       voice: 'user',
       handle: 'chat-line-user',
       // his own name, so the line does not jump when the history brings the server's author back
       author: user ?? content.chat.you,
-      text,
+      text: line.text,
       // the frame is the page's call and not a property of the row: it ends with the turn, not with the
       // history read that confirms the text (R-WP-31, UC-WP-65)
       pending,

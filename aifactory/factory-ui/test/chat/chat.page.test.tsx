@@ -458,7 +458,7 @@ test('aLaterTurnKeepsStreamingWhileAnEarlierReadInFlight', async () => {
   expect(after).toEqual(['chat-line-user', 'chat-line-user', 'chat-line-jon', 'chat-live', 'chat-line-user'])
 })
 
-// UC-WP-11
+// R-WP-11
 test('anOlderHistoryReadNeverOverwritesANewerOne', async () => {
   const chat = stubChat({ messages: [QUESTION] })
   render(<ChatPage project={project()} />)
@@ -968,6 +968,67 @@ test('aLiveAnswerKeepsItsAnchorWhenAnInputIsQueuedMidTurn', async () => {
   ])
 })
 
+// UC-WP-69
+test('theQueuedInputStandsOnceInTheLog', async () => {
+  const chat = stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  // one turn works, so this input queues (R-WP-10)
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await chat.push(event('partial', { kind: 'answer', text: 'Im Root liegen ' }))
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'und die Tests?' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+
+  // the core writes a queued input into the memory with its marker — the history line says something else
+  // than what he typed, and only the position recognises them as the same input (R-WP-37). The marker
+  // stays visible: it is the reality of the history, the UI parses and shortens nothing (UC-WP-69)
+  chat.setMessages([
+    QUESTION,
+    { role: 'user', text: 'zähl die Dateien' },
+    { role: 'user', text: '[Queued Message] (14:32): und die Tests?' },
+    ANSWER,
+  ])
+  await chat.push(event('done', { millis: 9 }))
+
+  // his inputs stand exactly once in the log, in the order he sent them — the provisional line gave its
+  // place to the history line that carries it now
+  expect(userLineTexts()).toEqual([
+    QUESTION.text,
+    'zähl die Dateien',
+    '[Queued Message] (14:32): und die Tests?',
+  ])
+  expect(agentLinesSaying(ANSWER.text)).toHaveLength(1)
+  expect(screen.queryByTestId('chat-live')).toBeNull()
+})
+
+// UC-WP-57
+test('theSameTextTwiceIsConfirmedTwice', async () => {
+  const chat = stubChat({ messages: [] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  // the same text twice is two inputs (R-WP-37): one opens the turn, one queues behind it
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'nochmal' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await chat.push(event('partial', { kind: 'answer', text: 'Erledigt. ' }))
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'nochmal' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+
+  // the history carries both — the second one with the marker of the queued input
+  chat.setMessages([
+    { role: 'user', text: 'nochmal' },
+    { role: 'user', text: '[Queued Message] (14:32): nochmal' },
+    ANSWER,
+  ])
+  await chat.push(event('done', { millis: 8 }))
+
+  // both provisional lines are gone: positions are counted, so the same text confirms twice and one
+  // history line is never used for two of them (UC-WP-69)
+  expect(userLineTexts()).toEqual(['nochmal', '[Queued Message] (14:32): nochmal'])
+})
+
 test('consecutiveToolLinesAreMerged', async () => {
   const chat = stubChat({ messages: [] })
   render(<ChatPage project={project()} />)
@@ -1348,6 +1409,18 @@ function agentLinesSaying(text: string): HTMLElement[] {
 /** The author labels of the user lines, in reading order — what every viewer reads (R-WP-25, UC-WP-48). */
 function userAuthorsOnScreen(): (string | null)[] {
   return authorsOfLines('chat-line-user')
+}
+
+/**
+ * The texts of the user lines in reading order — his provisional ones and the history's, without the
+ * author label (R-WP-37 counts lines, so the test counts them the same way).
+ */
+function userLineTexts(): (string | null)[] {
+  return [
+    ...screen
+      .getByTestId('chat-log')
+      .querySelectorAll('[data-testid="chat-line-user"] .chat-text'),
+  ].map(line => line.textContent)
 }
 
 function authorsOfLines(lineTestId: string): (string | null)[] {

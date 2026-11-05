@@ -258,8 +258,17 @@ Doc-Lint 1 Finding (UC-WP-69 unbelegt = Inc 3).
 7. Bestehend: `droppedStreamReopensAndReadsHistory`, `aFileChangeIsLiveAndDoesNotOutliveTheReload`,
    `toolLinesSurviveTheDoneRefresh` bleiben grün.
 
-### Inc 3 — Eine gequeuete Eingabe steht genau einmal (U2 + D-D) — **BLOCKIERT durch §8 Q1**
-Erst nach der Doc-Regel bauen.
+### Inc 3 — Eine gequeuete Eingabe steht genau einmal (U2 + D-D) — **GEBAUT 2026-11-05, grün**
+`chat.pending.ts` (`PendingLine{text, afterHistory}`, `withoutConfirmed` über Position mit zwei Zeigern:
+`used` = eine Verlaufszeile bestätigt genau eine vorläufige; Wasserlinie der behaltenen Zeile wird auf die
+erreichte Suchposition angehoben, damit ein Folge-Read dieselbe Zeile nicht ein zweites Mal verbraucht).
+`outgoing`/`pendingLines` → `PendingLine[]`, `send()` stempelt `afterHistory = historyRows.current`,
+`withoutSent` entfallen, `applyHistory` ruft `withoutConfirmed`. **Abweichungen:** (a) vier reine Tests
+statt drei — der vierte (`aConfirmingLineConfirmsNoSecondPendingLine`) pinnt die Verbrauchs-Semantik über
+zwei Reads; (b) Mutationsprobe: die treue `withoutSent`-Form (splice) macht genau
+`theQueuedInputStandsOnceInTheLog` + `theSameTextTwiceIsConfirmedTwice` rot — ein Filter-Mutant ohne
+Verbrauchen ließe Test 9 grün, die Sonde muss die Verbrauchsschleife reproduzieren. UI 145 Tests /
+18 Dateien, tsc + oxlint 0/0, Doc-Lint **0 Findings** (UC-WP-69 belegt; Marker-Flip bleibt bei Jon).
 - `chat.pending.ts` neu; `chat.page.tsx` hält `PendingLine[]`, `applyHistory` ruft
   `withoutConfirmed`.
 - `chat.log.tsx`/`ChatPage`: `outgoing` wird zu `PendingLine[]` (Text unverändert gezeichnet).
@@ -309,4 +318,4 @@ in der UI wegschneiden.
 zwei Symptome (Reihenfolge, verschwundene Antwort). Empfehlung: **sofort bauen**, Inc 3 nach der
 Regel. Kein Backend-Eingriff.
 
-STATUS: AWAITING_ANSWERS
+STATUS: Inc 1–3 gebaut und grün (2026-11-05) — Review bei Jon; er flippt `R-WP-37`/`UC-WP-69` in `docs/chat.md`.
