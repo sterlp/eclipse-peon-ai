@@ -206,14 +206,16 @@ kompakt (klein, grau, Tool-Zeilen gemerged wie in `chat.html`).
 
 ### R-WP-36 — Datei-Änderungen erscheinen live als Diff im Chat ✅ (Paul 2026-11-03, C-4)
 
-Jede **Inhalts-Änderung einer Bestandsdatei** eines Agenten-Turns erscheint **im Chat als Unified-Diff**
-(vorher/nachher, +/− gefärbt, mit Dateinamen) — wie im Eclipse-Plugin (`AIChatView` →
+Jede **Inhalts-Änderung** (Anlegen **oder** Überschreiben) eines Agenten-Turns erscheint **im Chat als
+Unified-Diff** (vorher/nachher, +/− gefärbt, mit Dateinamen) — wie im Eclipse-Plugin (`AIChatView` →
 `SimpleDiff.unifiedDiff`). Der Umfang ist der der Core-Oberfläche: `onFileUpdate` feuert bei
-`diskEditFile`/`diskReplaceLines`/`diskInsertLines` und bei `diskWriteFile` auf eine **bestehende**
-Datei — **Anlegen, Löschen, Umbenennen, Kopieren und Shell-Schreibvorgänge** erscheinen als
-Werkzeug-Zeile („Created file: …"), nicht als Diff (Plugin-Parität, Review 2026-11-03). Die Erweiterung
-„Anlegen = voller +Diff" ist eine Core-Story (Proposal, Paul 2026-11-03 — siehe
-[Open Points](open-points.md)).
+`diskEditFile`/`diskReplaceLines`/`diskInsertLines` sowie bei `diskWriteFile` **und**
+`eclipseWriteFile` — jeweils Anlegen **und** Überschreiben; nur **Löschen, Umbenennen, Kopieren und
+Shell-Schreibvorgänge** erscheinen als Werkzeug-Zeile („Created file: …"), nicht als Diff
+(Plugin-Parität). Über 500 Changed-Zeilen wird der Diff **partziell** und nennt am Ende die gekappte
+Menge; binärer Inhalt bekommt gar kein Diff, sondern eine Werkzeug-Zeile mit „binary content".
+Gebaut 2026-11-05; Vertrag und Regeln:
+[File Update Diff](../../org.sterl.llmpeon.core/docs/file-update-diff.md) (R-SD-1…3).
 
 Der Diff gilt für **Jon und sein Team** gleichermaßen: das Write-Event des Cores
 (`AiMonitor.onFileUpdate`) trägt keinen Urheber — „sehen und mitlesen" heißt, der Nutzer sieht jede
@@ -223,11 +225,13 @@ zum Verlaufs-Bestand und übersteht weder Reload noch Neustart; zum Nach-reviewe
 Datei-Bereich ([Dateien](files.md)).
 
 #### UC-WP-68 — fileChangesShowAsLiveDiff ✅
-- GIVEN ein laufender Turn WHEN ein Agent eine **bestehende** Datei inhaltlich ändert THEN erscheint im
-  Chat ein Diff-Block mit Dateinamen und den geänderten Zeilen (+/− gefärbt), live und ohne manuelles
+- GIVEN ein laufender Turn WHEN ein Agent eine Datei (bestehende oder neu angelegte) inhaltlich ändert
+  THEN erscheint im Chat ein Diff-Block mit Dateinamen und den geänderten Zeilen (+/− gefärbt), live
+  und ohne manuelles
   Aktualisieren ([R-WP-5](chat.md)).
-- GIVEN ein Agent legt eine Datei **neu** an (oder schreibt per Shell) WHEN der Turn läuft THEN erscheint
-  **kein** Diff-Block, sondern die Werkzeug-Zeile — bis die Core-Story „Anlegen = +Diff" gebaut ist.
+- GIVEN ein Agent legt eine Datei **neu** an (oder überschreibt sie) WHEN der Turn läuft THEN erscheint
+  ein Diff-Block — beim Anlegen aus reinen `+`-Zeilen, zusätzlich zur Werkzeug-Zeile (R-SD-1); per
+  **Shell** geschriebene Dateien erscheinen weiterhin nur als Werkzeug-Zeile.
 - GIVEN dieselbe Änderung WHEN ein anderer Nutzer dasselbe Projekt betrachtet THEN sieht er denselben
   Diff — ein Chat für alle ([R-WP-15](chat.md)).
 - GIVEN der Turn ist vorbei WHEN der Verlauf nach Reload/Neustart gelesen wird THEN erscheint der

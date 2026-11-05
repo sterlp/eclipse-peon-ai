@@ -66,7 +66,7 @@ class SseTurnMonitorDiffTest {
         assertThat(payload.keySet()).as("no third field reaches the browser").containsExactly("file", "diff");
         assertThat(payload).containsEntry("file", DIFF_FILE);
         assertThat((String) payload.get("diff"))
-                .startsWith("--- a/" + DIFF_FILE + "\n+++ b/" + DIFF_FILE + "\n@@ -1,2 +1,3 @@\n")
+                .startsWith("--- a/" + DIFF_FILE + "\n+++ b/" + DIFF_FILE + "\n@@ -1,1 +1,2 @@\n")
                 .contains("\n+b\n");
     }
 
@@ -97,15 +97,31 @@ class SseTurnMonitorDiffTest {
 
     // UC-WP-68
     @Test
-    void aFileTooLargeForADiffIsAToolLine() {
-        // 1200 x 1200 cells is over SimpleDiff's own LCS bound — it answers with a summary, not a diff
+    void aHugeChangeIsAPartialDiffOnTheWire() {
+        // 1200 x 1200 lines sharing nothing — over SimpleDiff's cap, so it caps the block and names
+        // the whole change instead of answering with a summary
         monitor.onFileUpdate(new AiFileUpdate("src/Big.java", lines("old"), lines("new")));
         endTheTurn();
 
-        assertThat(wire.names()).as("a summary is a line, not a coloured block").containsExactly("tool", "done");
+        assertThat(wire.names()).as("a huge change is still a coloured block, not a line").containsExactly("diff", "done");
+        assertThat(wire.payload(0).keySet()).containsExactly("file", "diff");
+        assertThat((String) wire.payload(0).get("diff"))
+                .startsWith("--- a/src/Big.java")
+                .endsWith(" … diff truncated — showing 500 of 2400 changed lines\n");
+    }
+
+    // UC-WP-68
+    @Test
+    void binaryContentIsAToolLine() {
+        char nul = (char) 0;
+        monitor.onFileUpdate(new AiFileUpdate("img/logo.png", "a\n" + nul + "png\n", "a\n" + nul + "png v2\n"));
+        endTheTurn();
+
+        assertThat(wire.names()).as("binary content never becomes a coloured block").containsExactly("tool", "done");
         assertThat(wire.payload(0).keySet()).containsExactly("text");
         assertThat((String) wire.payload(0).get("text"))
-                .startsWith("file updated, diff skipped for src/Big.java");
+                .startsWith("file updated, diff skipped for img/logo.png")
+                .contains("binary content");
     }
 
     private static String lines(String name) {

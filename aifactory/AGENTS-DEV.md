@@ -645,13 +645,15 @@
   schon beim **Lesen** `IllegalStateException` (`StoredProject.toProject`); auf dem geteilten Home zerlegt
   das den Reset **aller** folgenden Klassen (Messprobe ohne `finally`: 10 Fehler in drei Klassen).
   Geräumt wird im Test, nicht mit Milde im Basis-Reset — sonst verschwindet jeder echte Remove-Fehler.
-- **Core-Fakt Diff-Draht (C-4)**: `AiMonitor.onFileUpdate` feuert NUR bei `diskEditFile` /
-  `diskReplaceLines` / `diskInsertLines` und `diskWriteFile` auf einer **bestehenden** Datei —
-  Anlegen, Löschen, Umbenennen, Kopieren und Shell-Schreibvorgänge liefern kein Event (nur
-  Werkzeug-Zeile). `SseTurnMonitor` rechnet den Unified-Diff serverseitig (`SimpleDiff.unifiedDiff`),
-  leerer Diff ⇒ kein Event, Guard-Zusammenfassung ⇒ ToolLine. Nie einen Diff-Algorithmus in die UI
-  legen und nie `oldContent`/`newContent` über den Draht schicken. Geplante Core-Erweiterungen
-  (Anlegen = `+`-Diff, partzieller Diff statt Skip) stehen in `docs/open-points.md` (Core-Proposal).
+- **Core-Fakt Diff-Draht**: `AiMonitor.onFileUpdate` feuert bei `diskEditFile` / `diskReplaceLines` /
+  `diskInsertLines` und bei `diskWriteFile` **und** `eclipseWriteFile` — Anlegen **und** Überschreiben
+  (`oldContent = ""` beim Anlegen). Nur **Löschen, Umbenennen, Kopieren und Shell-Schreibvorgänge**
+  liefern kein Event (nur Werkzeug-Zeile). `SseTurnMonitor` rechnet den Unified-Diff serverseitig
+  (`SimpleDiff.unifiedDiff`), leerer Diff ⇒ kein Event, binärer Inhalt (NUL in den ersten 8 KB) ⇒
+  ToolLine, mehr als 500 Changed-Zeilen ⇒ **partieller Diff** mit Ende-Marker
+  (`… diff truncated — showing 500 of N changed lines`). Nie einen Diff-Algorithmus in die UI legen
+  und nie `oldContent`/`newContent` über den Draht schicken. Vertrag:
+  `org.sterl.llmpeon.core/docs/file-update-diff.md` (R-SD-1…3).
 
 - **MockMvc ist ein zweiter Kontext**: Registry-Tests fahren `java.net.http.HttpClient` +
   `@LocalServerPort` (`RestTemplate` kann kein PATCH, s. oben). Die 405-Methoden-Matrix bleibt

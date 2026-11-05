@@ -36,23 +36,6 @@ Defekte/Fragen, je eine Story je Punkt erst nach Klärung (❓ = präzisieren, b
 * **❓ C-3 · URL mit Hash-Suffix** — `/ui/chat/spring-persistent-tasks-071d14a` statt
   `/ui/chat/spring-persistent-tasks`. Paul will den klaren Namen. Prüfen, ob die Registry-ID den Hash
   braucht (Namens-Kollision) — wenn Namen eindeutig sind, URL auf den Namen legen.
-* **❓ Core-Proposal: „Anlegen = +Diff" und partzieller Diff statt Skip** (Paul 2026-11-03, aus dem
-  C-4-Review) — zwei verbundene Core-Erweiterungen, beide nur per Proposal mit WARUM:
-  1. `DiskFileWriteTool.diskWriteFile` feuert `AiMonitor.onFileUpdate` auch beim **Anlegen** einer
-     Datei (`oldContent = ""`) ⇒ neue Datei erscheint als voller `+`-Diff statt nur „Created file: …".
-     Heute feuert das Tool nur `if (existed)` (`DiskFileWriteTool.java:73-81`); Löschen/Umbenennen/
-     Kopieren/Shell bleiben auch dann Werkzeug-Zeilen. Plugin profitiert mit (PR-3).
-  2. `SimpleDiff` gibt oberhalb der Grenzen (`MAX_LCS_CELLS`, `MAX_DIFF_LINES`) den Diff **komplett
-     auf** (nur Summary, `SimpleDiff.java:67-80`). Pauls Idee: **lieber ein partzieller Diff als
-     gar keiner** — Changed-Region cappen (z. B. 500 Zeilen / 500×120 ≈ 60k Zeichen) und abgeschnitten
-     ausgeben (Ende-Marker mit Grund) statt skippen. Kein Byte-Buffer im Spiel: `String[]`-Zeilen +
-     `int[][]`-LCS-Matrix (4 Bytes/Zelle, ~5 MB am Limit) + `StringBuilder`. Der Cap mildert zugleich
-     das Review-Risiko „mehrere MB Diff an alle Browser" (S1) und den Binary-Fall `webGet` →
-     `onFileUpdate` (UTF-8-Müll als Diff) — dort zusätzlich prüfen, ob binärer Inhalt gar kein Diff
-     bekommen sollte.
-     Core-Fakt für den nächsten Plan (gehört nach `AGENTS-DEV.md`): `onFileUpdate` feuert NUR bei
-     `diskEditFile`/`diskReplaceLines`/`diskInsertLines` und `diskWriteFile` auf bestehender Datei.
-  Gebaut ist davon nichts; [R-WP-36](chat.md) ist auf den heutigen Core-Umfang geschärft (Bestandsdatei).
 * **❓ C-5 · Verlauf out of order / Antwort weg** — bei langer Konversation total defekt; eine
   gestreamte Antwort verschwindet (Reload repariert). Chat-Log-Defekt: Reihenfolge/Live-Fragment-
   Ersetzung. Im Umfeld von [R-WP-34](chat.md); Ursache im SSE-/Log-Merge klären. Referenz (Paul):

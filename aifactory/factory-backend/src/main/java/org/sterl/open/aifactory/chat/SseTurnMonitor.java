@@ -137,7 +137,7 @@ class SseTurnMonitor implements AiMonitor {
     /**
      * The core's diff of one written file, straight to the wire (R-WP-36). Computed here and not in the
      * browser because the core already owns the algorithm and its three answers — empty, a real diff, a
-     * guard summary — and deciding them twice would be a second truth about the same change.
+     * binary summary — and deciding them twice would be a second truth about the same change.
      */
     @Override
     public void onFileUpdate(AiFileUpdate update) {
@@ -149,7 +149,7 @@ class SseTurnMonitor implements AiMonitor {
             streams.publish(projectId, new ChatEvent.Diff(update.file(), diff));
             return;
         }
-        // the guard summary of a file too large to diff — the plugin's own fallback (AIChatView.onFileUpdate)
+        // the summary of content the core will not diff (binary) — same fallback as the plugin (AIChatView.onFileUpdate)
         streams.publish(projectId, new ChatEvent.ToolLine(diff));
     }
 
