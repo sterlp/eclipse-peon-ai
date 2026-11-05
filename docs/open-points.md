@@ -5,10 +5,9 @@ Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.
 
 ## 2026-11-05 — Phantom-Projekt-Crash-Zyklus (Jon, autonom nach Pauls Freigabe)
 
-- ⏳ **R-PT-8 (Query nennt geschlossenes Projekt)**: Jon hat aus R-PT-2a-Ehrlichkeits-Prinzip +
-  AGENTS.md „False Negative = teuerster Bug" abgeleitet, dass die Query ein geschlossenes, echtes
-  Projekt per `onProblem` nennt statt still „kein Plan" (inkl. BDD UC-PT-8). Rückversicherung: Falls
-  Paul das stille „kein Plan" will, Regel streichen + BDD löschen.
+- 🔒 **R-PT-8 (Query nennt geschlossenes Projekt)** — Paul 2026-11-05: „gut so, ist ein User
+  Fehler und so sieht er es" — bestätigt, Regel lebt als **R-PT-8/UC-PT-8 ✅** in
+  `org.sterl.llmpeon/docs/plan-tool.md` (gebaut inc-11, Mutanten belegt).
 - 🔒 **R-SEL-4 stale ❌-Flip (2026-11-05)**: UC-SEL-4-Tests existieren seit 2026-09-16
   (`UserContextTest:279–371`), der ❌ war Doc-Drift — Jon hat auf ✅ geflippt (lint grün, Tests
   belegen die BDDs). Kein Code-Change.
