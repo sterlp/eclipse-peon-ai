@@ -40,16 +40,16 @@ test('roleChangeDrawsNoRule', () => {
 
 /**
  * The sheet is what separates the voices, so its prohibition is read as a whole: **every** rule naming a
- * row — `.chat-line`, each of its voices, a rule a media query adds later — paints no horizontal line and
- * centres nothing, and `.chat-log` itself sets no frame, which would be a line above the first row and
- * below the last (R-WP-29, UC-WP-55). Read through `allDeclarations`: the first block alone would let a
- * later one break the rule with the suite green.
+ * row — `.chat-line`, each of its voices, a rule a media query adds later — paints nothing but the accent on
+ * its left side and centres nothing, and `.chat-log` itself sets no frame, which would be a line above the
+ * first row and below the last (R-WP-29, UC-WP-55). Read through `allDeclarations`: the first block alone
+ * would let a later one, or a longhand of all four sides, break the rule with the suite green.
  */
 // UC-WP-55
 // R-WP-29
 test('noRuleOfTheSheetDrawsALineBetweenTwoRows', () => {
   for (const rule of allDeclarations(/\.chat-line/)) {
-    expect(linesOf(rule.declarations), `${rule.selector} draws a horizontal line`).toEqual([])
+    expect(bordersBeyondLeft(rule.declarations), `${rule.selector} borders beyond its left accent`).toEqual([])
     expect(centringOf(rule.declarations), `${rule.selector} centres a row out of the flow`).toEqual([])
   }
   for (const rule of allDeclarations(/^\.chat-log$/)) {
@@ -65,10 +65,14 @@ function eachDeclaration(declarations: string): string[] {
     .filter(Boolean)
 }
 
-/** A declaration painting a horizontal line: the shorthand or a top/bottom edge, one of `0` or `none` apart. */
-function linesOf(declarations: string): string[] {
+/**
+ * A border declaration that reaches beyond the left accent: the shorthand, an edge by name and every
+ * longhand that sets all sides at once (`border-style` of a waiting row is the case this exists for). Only
+ * the accent on the side of a row may be painted — a radius is no line, so it stays out of the question.
+ */
+function bordersBeyondLeft(declarations: string): string[] {
   return eachDeclaration(declarations).filter(
-    one => /^border(?:-(?:top|bottom))?\s*:/i.test(one) && !/:\s*(?:0|none)$/i.test(one),
+    one => /^border\b/i.test(one) && !/^border-left\b/i.test(one) && !/^border-radius\b/i.test(one),
   )
 }
 

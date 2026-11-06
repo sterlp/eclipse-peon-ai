@@ -488,9 +488,10 @@ button {
 }
 
 /* An own line the history has not confirmed yet: the accent is not a fact yet — last, so it outvotes
-   the voice's own line on the border it shares with it. */
+   the voice's own line on the border it shares with it. The dashed form belongs to the left accent alone:
+   a style on every side would draw a line above and below the row (R-WP-29). */
 .chat-log .chat-line.pending {
-  border-style: dashed;
+  border-left-style: dashed;
   color: var(--text);
 }
 
