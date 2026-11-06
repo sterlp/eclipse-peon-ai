@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { ChatLog } from '../../src/chat/chat.log'
 import { appendLiveError, appendLiveTool } from '../../src/chat/chat.live'
 import { declarations } from '../shared/sheets'
+import { separatorsOf } from '../shared/log.parts'
 import type { ChatMessage } from '../../src/chat/chat.client'
 
 const QUESTION: ChatMessage = { role: 'user', text: 'wo liegen die Dateien?', origin: 'Paul' }
@@ -30,6 +31,33 @@ test('roleChangeToAnErrorDrawsARule', () => {
   const painted = declarations('.chat-log .chat-line.error')
   expect(painted, 'the accent and the text of a failure are the problem token').toContain('var(--problem)')
   expect(painted, 'a grey block would read as a card and not as a line (UC-WP-55)').not.toContain('background')
+})
+
+/**
+ * The separator of two voices and a line the model drew are not the same thing (R-WP-29, UC-WP-55
+ * GIVEN 3): the answer's `---` stands inside the answer, so the separators of the **whole** log stay
+ * exactly the voice changes. A proof that counted only its own class would let a model-drawn rule pass as
+ * ours — which is why the count runs over the log, and through `separatorsOf`, the one definition Inc 4
+ * keeps using.
+ */
+// UC-WP-55
+test('theLogNeverCountsAnAnswersRuleAsItsSeparator', () => {
+  const separating: ChatMessage = { role: 'jon', text: 'zuerst\n\n---\n\nzuletzt' }
+  const { container } = render(
+    <ChatLog messages={[QUESTION, separating, SENTENCE]} outgoing={[]} live={[]} pending={false} />,
+  )
+
+  const separators = separatorsOf(screen.getByTestId('chat-log'))
+  expect(
+    separators.map(rule => rule.closest('li')?.getAttribute('data-testid')),
+    'one separator per voice change, in the order of the voices that begin',
+  ).toEqual(['chat-line-jon', 'chat-line-user'])
+  // three rules on the screen: the two separators and the line inside the answer
+  expect(screen.getByTestId('chat-log').querySelectorAll('hr')).toHaveLength(3)
+
+  const answer = container.querySelector('[data-testid="chat-line-jon"] [data-testid="chat-markdown"]')
+  expect(answer?.querySelector('hr'), 'the answer does draw its line').not.toBeNull()
+  expect(answer?.querySelector('hr.chat-rule'), 'and never with our separator class').toBeNull()
 })
 
 /** The other half of the same rule: the failure shows the moment the stream reports it, in the log. */
@@ -80,18 +108,46 @@ test('aLiveTraceStaysBetweenItsInputAndTheAnswer', () => {
 })
 
 /**
- * Only answers are Markdown (R-WP-28): what a person typed keeps its markers, so an input quoting a command
- * never reads as the agent's formatting — and never becomes markup of the page either.
+ * Only answers are Markdown (R-WP-28, UC-WP-73): the three other kinds of line keep what was typed — a
+ * person's input quoting a command, the server's reason for a failed turn, a tool's report — while the same
+ * characters in an answer become that answer's formatting. Both forms of a failure are read: the line the
+ * history carries and the one the stream brings.
  */
 // UC-WP-73
-test('anInputWithMarkdownCharactersStaysItsWord', () => {
+test('onlyAnswersAreMarkdown', () => {
   const quoted: ChatMessage = { role: 'user', text: 'mach das **fett** und ~~weg~~' }
-  render(<ChatLog messages={[quoted, ANSWER]} outgoing={[]} live={[]} pending={false} />)
+  const marked: ChatMessage = { role: 'jon', text: 'die **Datei** ~~alt~~ ist gemeint' }
+  const failure: ChatMessage = { role: 'error', text: 'model **nicht** erreichbar ~~heute~~' }
+  render(
+    <ChatLog
+      messages={[quoted, marked, failure]}
+      outgoing={[]}
+      live={appendLiveError(appendLiveTool([], 'ls **fett**', 3), 'model **nicht** erreichbar', 3)}
+      pending={false}
+    />,
+  )
 
-  const line = screen.getByTestId('chat-line-user')
-  expect(line.textContent).toContain('**fett**')
-  expect(line.textContent).toContain('~~weg~~')
-  expect(line.querySelector('strong, del, br, table')).toBeNull()
-  // the answer beside it is the line that draws markup
-  expect(screen.getByTestId('chat-line-jon').querySelector('[data-testid="chat-markdown"]')).not.toBeNull()
+  const wordLiteral = [
+    screen.getByTestId('chat-line-user'),
+    ...screen.getAllByTestId('chat-line-error'),
+    screen.getByTestId('chat-tool-line'),
+  ]
+  expect(wordLiteral, 'input, both failures and the tool line are drawn').toHaveLength(4)
+  for (const line of wordLiteral) {
+    const name = line.getAttribute('data-testid')
+    expect(line.querySelector('strong, del, br, table'), `${name} stays its wording`).toBeNull()
+  }
+  expect(wordLiteral[0].textContent).toContain('**fett**')
+  expect(wordLiteral[0].textContent).toContain('~~weg~~')
+  expect(wordLiteral[1].textContent).toContain('**nicht**')
+  expect(wordLiteral[1].textContent).toContain('~~heute~~')
+  expect(wordLiteral[2].textContent).toContain('**nicht**')
+  expect(wordLiteral[3].textContent).toContain('ls **fett**')
+
+  // the answer beside them is the line that does draw — same characters, formatting here
+  const answer = screen.getByTestId('chat-line-jon')
+  expect(answer.querySelector('[data-testid="chat-markdown"]')).not.toBeNull()
+  expect(answer.querySelector('strong')?.textContent).toBe('Datei')
+  expect(answer.querySelector('del')?.textContent).toBe('alt')
+  expect(answer.textContent, 'the markers are gone from an answer').not.toContain('**')
 })

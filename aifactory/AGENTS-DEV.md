@@ -978,8 +978,11 @@
   ist entfallen, und mit ihm das `final`-Prop von `ChatMarkdown` — der letzte Token parst den ganzen Text,
   ein Fertig-Flag hätte keine unterscheidbare Wirkung (Abweichung von der Plan-Skizze; einzige Aufruferin
   `chat.log.tsx`, dort ohne `final={false}`).
-- **`remarkPlugins` und `components` als Modul-Konstante**: der Processor wird über die Identität der
-  Plugins memoisiert, ein frisches Array pro Render hieße bei jedem Token ein Neuaufbau.
+- **`remarkPlugins` und `components` als Modul-Konstante — aber nicht aus dem erwarteten Grund**
+  (nachgemessen 10.1.0): `react-markdown` baut seinen Processor **bei jedem Render** neu
+  (`lib/index.js:175-178` → `createProcessor` `:262-275`, kein Cache); Identitäts-Memoisierung gibt es nur
+  in `MarkdownHooks` (`:214-251`), das die App nicht nutzt. Ein frisches Array pro Render kostet nichts —
+  die Konstanten bleiben als stabile Props, nicht als Optimierung.
 - **`pre` ist der einzige Haken der Code-Ansicht**: der Override reicht sein `code`-Kind an `CodeView`
   weiter (Sprache aus `language-*`, sonst `text`, die Umbruchzeile des Zaunendes abgeschnitten).
   Kein `code`-Override: der trennte Inline und Zaun nicht — deshalb pinnt der Test `chat-code` genau einmal
@@ -1014,6 +1017,10 @@ Codes je Zyklus präfixiert; ein Code in einem Testkommentar verweist auf diese 
   **Wortlaut** und ist erst mit dem letzten Token gerendert; rohes HTML wird nie Markup der Seite (es bleibt
   als Text stehen). Bewiesen in `test/chat/chat.markdown.test.tsx` (`UC-WP-54`, `UC-WP-73`) — die alte
   Zusage „der Renderer schließt offene Syntax" ist mit dem Renderer entfallen.
+- `ANTD-A6` — **Scroll-Kasten um jede Tabelle einer Antwort**: `div.chat-markdown-table` ist eine zusätzliche
+  DOM-Ebene im Antwortblock (R-WP-29: eine breite Tabelle scrollt **im** Antwortblock, nie die Seite breit) —
+  von uns, nicht von der Basis; ein Test benutzt sie als Seam, weil jsdom keine Breite misst (bewiesen wird,
+  *wer* scrollt). Belegt in `test/chat/chat.markdown.test.tsx` (`UC-WP-55`).
 - `INC7B-A1` — **Dev-Label „Think (Default)"** statt `content.agents.think` (Inc 7b, fünf Abnehmer).
 - **`aria-current` — Übergang bis Inc 5a**: die Navigation trägt es seit dem AntD-Umbau nicht mehr; Auswahl
   wird über `.ant-menu-item-selected` bewiesen. Inc 5a stellt es mit der URL-Auswahl wieder her und pinnt es

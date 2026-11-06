@@ -28,12 +28,29 @@ function CodeFence({ children }: { children?: ReactNode }) {
 }
 
 /**
- * One module-scope value on purpose: react-markdown reuses its processor for the identity of these
- * plugins, and a fresh array per render would re-build it on every arriving token.
+ * A wide table of an answer is read inside its own scroll box (R-WP-29): the wrapper is the part that
+ * scrolls horizontally, so the log keeps its vertical scroll and the page its fixed width. The table keeps
+ * its own layout — widening it with `display: block` would redraw every answer's table to keep it from
+ * shrinking instead of scrolling. `ANTD-A6` in the deviation register: this is an extra level of the
+ * answer's DOM that a test uses as its seam, and it comes from us, not from the design basis.
+ */
+function TableBlock({ children }: { children?: ReactNode }) {
+  return (
+    <div className="chat-markdown-table">
+      <table>{children}</table>
+    </div>
+  )
+}
+
+/**
+ * Module scope because those props then never change: react-markdown builds its processor on every
+ * render (`createProcessor` in `react-markdown/lib/index.js`) — the identity-based memoisation sits in
+ * `MarkdownHooks`, which this app does not use. A fresh array per render would cost nothing extra; the
+ * constants stay because they are the same value on every render.
  */
 const REMARK_PLUGINS = [remarkGfm, remarkBreaks]
 
-const COMPONENTS: Components = { pre: CodeFence }
+const COMPONENTS: Components = { pre: CodeFence, table: TableBlock }
 
 interface Props {
   /** The Markdown as it stands — during a turn this is incomplete on purpose. */

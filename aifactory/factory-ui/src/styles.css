@@ -398,6 +398,30 @@ button {
   margin: 0.15rem 0 0.3rem;
 }
 
+/* A line the model drew inside an answer is content of that answer (R-WP-29): ours, short and quiet, in
+   the border grey and at the answer's own left edge — never as wide as the log, and never the separator
+   between two voices, which is the rule of the voice change below it. */
+.chat-log .chat-markdown hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  width: 3rem;
+  margin: 0.55rem 0;
+}
+
+/* The wrapper of a wide table is the part that scrolls (R-WP-29): the log keeps its vertical scroll, the
+   page its fixed frame, and the table its own layout. */
+.chat-log .chat-markdown-table {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 0.35rem;
+}
+
+/* An image of an answer is content of it and never wider than the answer (R-WP-29). */
+.chat-log .chat-markdown img {
+  max-width: 100%;
+  height: auto;
+}
+
 /* react-shiki paints the colours and states both themes inline; which one shows is the theme layer's
    call, so the switch reads the same `data-theme` the tokens of index.css read. The values sit in the
    style attribute, so only !important can outvote them. `.code-view` is the hook of every highlighted
