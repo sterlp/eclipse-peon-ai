@@ -42,6 +42,7 @@ import com.jayway.jsonpath.JsonPath;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 
+import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.poagent.AiPoAgent;
@@ -308,6 +309,98 @@ class ChatQueueTest extends FactorySpringTest {
                     .as("es antwortet weiterhin genau derselbe Jon — kein dritter Turn auf neuer Memory")
                     .isSameAs(runtime);
         }
+    }
+
+    // ------------------------------------------------------------------
+    // the `!` of R-WP-42: the core's prio message, not a turn of the factory
+    // ------------------------------------------------------------------
+
+    /**
+     * UC-WP-75 GIVEN 1 + 3: the same gate as the queue tests above, so the turn is provably inside a tool
+     * when the {@code !} arrives. What separates it from {@code secondInputDuringTurnQueues} is the lane:
+     * the core's urgent entry rides on the running turn's tool result (core R11) and is never written to the
+     * memory (core R8.7) — so the marker of the normal lane stays away and no history line appears.
+     */
+    @Test
+    @Timeout(60)
+    // UC-WP-75
+    void urgentMessageJoinsTheRunningTurn() throws Exception {
+        writeFactoryConfig("inc3b-urgent-75");
+        CreatedProject project = createProject("urgent-75");
+
+        try (ChatStream stream = new ChatStream(project.id())) {
+            model.queueResponse(toolCall("call_gate", "shellRunCommand", GATE_TOOL));
+            model.queueResponse("Antwort mit der Prio am Werkzeug-Ergebnis");
+
+            assertThat(send(project.id(), "frage, die arbeitet").getStatusCode())
+                    .as("die erste Eingabe startet einen Turn")
+                    .isEqualTo(HttpStatus.ACCEPTED);
+            ProjectRuntime runtime = runtimes.runtime(project.id());
+            AiPoAgent jon = runtime.jon();
+            awaitUntil(jon::isWorking, 2_000, "Jon arbeitet an der ersten Eingabe");
+            stream.awaitShellRunning(5_000, "die Shell des ersten Turns läuft");
+
+            assertThat(send(project.id(), "! bitte abbrechen").getStatusCode())
+                    .as("die Prio-Eingabe wird angenommen — als Eingabe, nicht als Turn")
+                    .isEqualTo(HttpStatus.ACCEPTED);
+
+            awaitUntil(() -> jon.getQueuedMessageCount() == 1, 2_000,
+                    "die Prio liegt in der Queue desselben Jon — über beide Lanes gezählt");
+            assertThat(model.getLastRequestBody())
+                    .as("kein zweiter Turn: die Prio war nachweislich nie beim Anbieter")
+                    .doesNotContain("bitte abbrechen");
+
+            TurnGate.release(project.localPath());
+            stream.awaitEvent("done", 1);
+            assertThat(stream.countOf("done"))
+                    .as("ein Turn, ein done — die Prio ist kein zweiter Turn")
+                    .isEqualTo(1);
+            assertThat(jon.getQueuedMessageCount())
+                    .as("der laufende Turn hat sie verbraucht — nichts bleibt für einen Follow-up")
+                    .isZero();
+        }
+
+        assertThat(capturedText())
+                .as("der Core stellt sie als queued_user_message-Block am Werkzeug-Ergebnis zu (R11)")
+                .contains(TaggedResult.PREFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE)
+                .contains("bitte abbrechen")
+                .as("und nicht als normalen Queue-Eintrag mit seinem Marker")
+                .doesNotContain(UserMessageQueue.QUEUED_MARKER_PREFIX);
+
+        assertThat(messages(project.id()))
+                .as("die Prio wird nie in die Memory geschrieben (R8.7) — keine Nutzerzeile damit")
+                .extracting(ChatMessageDto::text)
+                .noneMatch(text -> text.contains("bitte abbrechen"));
+    }
+
+    /** UC-WP-75 GIVEN 3: läuft kein Turn, ist {@code !} schlicht Text (Core R8.1) — ein normaler Turn. */
+    @Test
+    @Timeout(60)
+    // UC-WP-75
+    void exclamationStaysTextWhenNoTurnRuns() throws Exception {
+        writeFactoryConfig("inc3b-idle-75");
+        CreatedProject project = createProject("idle-75");
+
+        model.queueResponse("Antwort auf die Eingabe mit Ausrufezeichen");
+        assertThat(send(project.id(), "! prio").getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+
+        AiPoAgent jon = runtimes.runtime(project.id()).jon();
+        assertThat(jon.getQueuedMessageCount())
+                .as("im Idle gibt es keine Prio-Lane, also auch keinen Eintrag darin")
+                .isZero();
+
+        awaitUntil(() -> messages(project.id()).stream()
+                .map(ChatMessageDto::text)
+                .anyMatch("Antwort auf die Eingabe mit Ausrufezeichen"::equals), 20_000,
+                "die Eingabe lief als normaler Turn durch");
+
+        assertThat(capturedText())
+                .as("das Ausrufezeichen ist Teil der Nachricht, wie getippt (R-WP-37)")
+                .contains("! prio");
+        assertThat(messages(project.id()))
+                .as("und der Verlauf trägt genau die eine Nutzerzeile damit")
+                .extracting(ChatMessageDto::text)
+                .containsExactlyInAnyOrder("! prio", "Antwort auf die Eingabe mit Ausrufezeichen");
     }
 
     // ------------------------------------------------------------------

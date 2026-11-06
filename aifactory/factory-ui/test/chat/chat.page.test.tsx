@@ -323,6 +323,23 @@ test('enterSendsBothLinesInOneTurn', async () => {
   expect(chat.countOf('/messages', 'POST')).toBe(1)
 })
 
+// UC-WP-75
+test('anUrgentLineGoesToTheServerAsTyped', async () => {
+  const chat = stubChat({ messages: [] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  // the `!` is the core's marker, not the view's (R-WP-42): one POST with the text as typed, one line with
+  // it as typed — whether this input is a prio message is decided by the server and by nothing here
+  const field = screen.getByTestId('chat-input') as HTMLTextAreaElement
+  fireEvent.change(field, { target: { value: '! stop now' } })
+  fireEvent.keyDown(field, { key: 'Enter' })
+  await flush()
+
+  expect(sentTexts(chat)).toEqual(['! stop now'])
+  expect(userLineTexts()).toEqual(['! stop now'])
+})
+
 
 // UC-WP-7
 test('streamingUpdatesChatWithoutReload', async () => {

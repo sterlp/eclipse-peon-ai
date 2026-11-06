@@ -4,6 +4,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -17,11 +18,14 @@ import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.AiReviewAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.command.CommandService;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.poagent.AiPoAgent;
 import org.sterl.llmpeon.poagent.tools.PoDelegateTool;
+import org.sterl.llmpeon.queuedmessages.OverrideMessageResolver;
+import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.WriteValidator;
 import org.sterl.llmpeon.tool.tools.SearchAgentTool;
 import org.sterl.open.aifactory.config.TurnNotConfiguredException;
@@ -55,6 +59,14 @@ final class ProjectRuntime {
 
     /** This factory's label for a search result line and for its tile — its own word, not the core's loop stamp ({@code SearchAgentTool.LOOP_NAME}). */
     private static final String SEARCH_AGENT_DISPLAY_NAME = "Search";
+
+    /**
+     * The core's own {@code !}-decision (queued-user-messages R8). The factory has neither commands nor
+     * skills, so the slash lookup of the resolver gets two empty services — {@code null} there is the NPE.
+     */
+    private static final OverrideMessageResolver OVERRIDES = new OverrideMessageResolver();
+    private static final CommandService NO_COMMANDS = new CommandService();
+    private static final SkillService NO_SKILLS = new SkillService();
 
     private final String projectId;
     private final Supplier<LlmConfig> configForTurn;
@@ -302,9 +314,28 @@ final class ProjectRuntime {
     }
 
     /**
+     * R-WP-42: a {@code !} input while Jon works is the core's prio message. The decision, the lane and the
+     * delivery are the core's ({@link OverrideMessageResolver}, {@link AiAgent#queueUrgentMessage}) — nothing
+     * here parses or shortens the text. A present result with a blank body is consumed without an entry (a
+     * lone {@code !}, core R8.6); an empty one is no override and the normal send path takes the message.
+     *
+     * <p>The condition is the core's own truth, {@link AiAgent#isWorking()}, exactly as the plugin applies it
+     * at the same place of its send path
+     * ({@code AIChatView.resolveOutgoingMessage}, org.sterl.llmpeon/src/org/sterl/llmpeon/parts/AIChatView.java:590)
+     * — not this runtime's turn claim: between a claim and the first model call the core treats a {@code !}
+     * as text, and a factory rule of its own there would be a second rule (R-WP-42).</p>
+     */
+    static Optional<String> urgentTextOf(String typed, boolean jonIsWorking) {
+        String trimmed = typed == null ? null : typed.trim();
+        return OVERRIDES.resolve(trimmed, jonIsWorking, NO_COMMANDS, NO_SKILLS)
+                .map(OverrideMessageResolver.OverrideCommand::text);
+    }
+
+    /**
      * Fire and forget: the caller's thread is never a turn's thread, so the POST can answer while Jon is
      * still working (architecture doc "prüft nichts über den Turn hinaus"). A second input while he
-     * works lands in his own queue — the core's serialization is the only one the factory needs (D2).
+     * works lands in his own queue — the core's serialization is the only one the factory needs (D2). An
+     * input the core takes as his prio message is settled before any of this, see {@link #urgentTextOf}.
      *
      * <p>The duration starts <b>inside</b> the runnable — waiting for a worker thread is not part of the
      * turn. One {@code done} per <b>turn</b>, queue drain included: the architecture doc ends a turn when
@@ -318,6 +349,17 @@ final class ProjectRuntime {
      * (UC-WP-50: the stop of that turn must still be accepted).</p>
      */
     void submit(String text, String user) {
+        var urgent = urgentTextOf(text, jon.isWorking());
+        if (urgent.isPresent()) {
+            // the core took it: no turn, no claim, no counter, no done, no tile reset (R8, UC-WP-75 GIVEN 1)
+            String body = urgent.get();
+            if (!body.isBlank()) {
+                jon.queueUrgentMessage(UserName.payload(user, body));
+            }
+            // the plugin hands the line to its own view here; this factory's browser already shows it as the
+            // sender's pending line (R-WP-37), so there is nothing to write and no second store to write it to
+            return;
+        }
         // the name stands in front of the text before the core sees either one: the memory is the one
         // store, so a name written into it needs no field of its own and outlives a restart by itself
         // (R-WP-25, R-WP-11, UC-WP-48 GIVEN 3). Nothing below changes for it — claim, reset, done.
