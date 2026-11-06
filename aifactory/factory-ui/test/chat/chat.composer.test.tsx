@@ -2,8 +2,9 @@ import { afterEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
 
-import { ChatComposer } from '../../src/chat/chat.composer'
+import { ChatComposer, MAX_ROWS } from '../../src/chat/chat.composer'
 import { content } from '../../src/shared/content'
+import { block } from '../shared/sheets'
 
 interface Over {
   draft?: string
@@ -32,7 +33,7 @@ function renderComposer(over: Over = {}) {
     view.rerender(<ChatComposer {...props} />)
   }
 
-  return { ...props, rerender }
+  return { ...props, container: view.container, rerender }
 }
 
 afterEach(() => {
@@ -138,4 +139,77 @@ test('nothingCanBeResentBeforeTheFirstSend', () => {
 
   // the button exists from the first moment — but it offers nothing until a send was accepted
   expect(screen.getByTestId('chat-resend')).toBeDisabled()
+})
+
+// UC-WP-74
+test('onlyTextEnablesTheSendButton', () => {
+  const page = renderComposer()
+  const field = screen.getByTestId('chat-input')
+
+  // an empty draft: the button is there and refuses, it is not hidden (R-WP-41)
+  expect(screen.getByTestId('chat-send')).toBeDisabled()
+
+  // whitespace is not something to send, and the field itself never locks — not here, not in a turn
+  page.rerender({ draft: '   ' })
+  expect(screen.getByTestId('chat-send')).toBeDisabled()
+  page.rerender({ draft: 'x' })
+  expect(screen.getByTestId('chat-send')).toBeEnabled()
+  expect(field).toBeEnabled()
+})
+
+// UC-WP-74
+test('aRunningTurnNeverLocksTheInput', () => {
+  const page = renderComposer({ draft: 'zähl die Dateien', busy: true })
+
+  // the reference app locks its field because it has no queue; ours sends into the core's queue (R-WP-10)
+  expect(screen.getByTestId('chat-input')).toBeEnabled()
+  expect(screen.getByTestId('chat-send')).toBeEnabled()
+
+  fireEvent.click(screen.getByTestId('chat-send'))
+  expect(page.onSubmit).toHaveBeenCalledTimes(1)
+})
+
+// UC-WP-74
+// ANTD-A8
+test('theFieldGrowsWithItsText', () => {
+  // jsdom lays out nothing (no `scrollHeight`, no sheet), so a height is not measurable here and therefore
+  // not assertable: what is proven is the *form* the growth comes in — the basis' own auto-grow field with
+  // its inline artefact and the bound as a constant. The optics ("five lines, then it scrolls") are what
+  // the smoke test looks at.
+  const page = renderComposer({ draft: 'erste\nzweite' })
+
+  expect(MAX_ROWS, 'the bound of the growth is a named constant (UC-WP-74 GIVEN 3)').toBe(5)
+
+  const fields = page.container.querySelectorAll('textarea.chat-composer-field')
+  expect(fields, 'one field, and it is the basis own').toHaveLength(1)
+  const field = fields[0] as HTMLTextAreaElement
+  expect(field, 'no rows: the height belongs to the basis, not the sheet').not.toHaveAttribute('rows')
+  expect(field.style.resize, 'and no handle to fight it with').toBe('none')
+  expect(field.style.overflowY, 'hidden while it fits, auto once it does — autoSize alone writes this').toBe(
+    'hidden',
+  )
+
+  // the same reason the other way round: a `min-height` of our sheet would outvote the inline height
+  const sheet = block('.chat-composer')
+  expect(sheet, 'the height stays with the basis').not.toContain('min-height')
+  expect(sheet, 'and the handle too').not.toContain('resize')
+})
+
+// UC-WP-74
+test('theFocusReturnsWhenTheTurnEnds', () => {
+  const page = renderComposer({ draft: 'noch eine', busy: true })
+  const field = screen.getByTestId('chat-input')
+
+  // the turn ends and nothing has the caret: the field takes it, the user types on without clicking
+  field.blur()
+  page.rerender({ busy: false })
+  expect(field).toHaveFocus()
+
+  // and the turn ending does not steal the caret out of a field he is working in
+  render(<input data-testid="other-input" />)
+  page.rerender({ busy: true })
+  screen.getByTestId('other-input').focus()
+  page.rerender({ busy: false })
+  expect(screen.getByTestId('other-input')).toHaveFocus()
+  expect(field).not.toHaveFocus()
 })
