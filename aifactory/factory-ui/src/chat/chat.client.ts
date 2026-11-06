@@ -32,7 +32,9 @@ export interface ChatMessage {
  */
 export type ChatStreamEvent =
   | { kind: 'partial'; thinking: boolean; text: string }
-  | { kind: 'tool'; text: string }
+  /** `origin` is the core's stamp of the agent that worked — absent, null or a name; the screen names a
+   *  step only where the wire carries one (R-WP-37, R-WP-40). */
+  | { kind: 'tool'; text: string; origin?: string | null }
   | { kind: 'diff'; file: string; diff: string }
   | { kind: 'done'; millis: number }
   | { kind: 'error'; message: string }

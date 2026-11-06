@@ -273,19 +273,21 @@ final class ProjectRuntime {
 
     /** A failed Compact is a live line and no new channel (D-8); {@code SKIPPED_SMALL} is a no-op, not news. */
     private void runAct(AiAgent agent, AgentAction action) {
+        // a tile action is no agent turn, so its line carries no core stamp — the text names its agent, and
+        // the screen adds no name the wire does not carry (R-WP-37, UC-WP-72)
         try {
             if (action == AgentAction.CLEAR) {
                 agent.clear();
             } else {
                 CompactResult result = agent.compact(monitor);
                 if (result.status() == CompactResult.Status.FAILED_EMPTY) {
-                    streams.publish(projectId, new ChatEvent.ToolLine(agent.getName() + ": " + result.resultLine()));
+                    streams.publish(projectId, new ChatEvent.ToolLine(agent.getName() + ": " + result.resultLine(), null));
                 }
             }
         } catch (RuntimeException failure) {
             LOG.error("{} of agent {} of project {} failed", action, agent.getName(), projectId, failure);
             streams.publish(projectId, new ChatEvent.ToolLine(agent.getName() + ": " + action
-                    + " failed — the server log names the reason"));
+                    + " failed — the server log names the reason", null));
         }
     }
 

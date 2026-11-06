@@ -130,7 +130,8 @@ class SseTurnMonitor implements AiMonitor {
             return;
         }
         if (message.role() == SimpleMessage.Type.TOOL || message.role() == SimpleMessage.Type.PROBLEM) {
-            streams.publish(projectId, new ChatEvent.ToolLine(message.message()));
+            // the stamp rides along: a step names its agent only where the core stamped one (R-WP-40, UC-WP-72)
+            streams.publish(projectId, new ChatEvent.ToolLine(message.message(), message.origin()));
         }
     }
 
@@ -150,7 +151,8 @@ class SseTurnMonitor implements AiMonitor {
             return;
         }
         // the summary of content the core will not diff (binary) — same fallback as the plugin (AIChatView.onFileUpdate)
-        streams.publish(projectId, new ChatEvent.ToolLine(diff));
+        // and no stamp to hand out: this callback names no author, so the step stays unnamed (UC-WP-68)
+        streams.publish(projectId, new ChatEvent.ToolLine(diff, null));
     }
 
     /** The core has released its compacting flag here — the end state of UC-WP-13 goes out on this callback. */

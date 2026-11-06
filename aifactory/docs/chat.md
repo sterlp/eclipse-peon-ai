@@ -350,7 +350,7 @@ Datei-Bereich ([Dateien](files.md)).
   ist im Datei-Bereich sichtbar.
 
 
-### R-WP-29 — Farben und Fließtext der Chat-Zeilen ❌ (Paul 2026-11-02; Akzent-links Runde 2; **Trennung ohne `hr`** Paul 2026-11-06, C-6)
+### R-WP-29 — Farben und Fließtext der Chat-Zeilen ✅ (Paul 2026-11-02; Akzent-links Runde 2; **Trennung ohne `hr`** Paul 2026-11-06, C-6)
 
 Beide Stimmen stehen **im Fluss** und tragen ihre Farbkante **links** — die Kante ist der **Akzent der
 Zeile**, kein Rahmen um den Chat (wie `chat.html`: Label „You" blau, Agent-Label grün). Keine Zeile ist
@@ -364,7 +364,7 @@ den Verlauf; ein Beweis für „keine Trennlinie" prüft deshalb den **ganzen Ve
 eigene Klasse. **Breite Kost** verbreitert nie die Seite: eine **Tabelle** scrollt innerhalb des
 Antwortblocks horizontal, ein **Bild** bleibt innerhalb der Antwortbreite.
 
-#### UC-WP-55 — colorsFollowChatHtmlBaseline ❌
+#### UC-WP-55 — colorsFollowChatHtmlBaseline ✅
 - GIVEN eine Nutzer- und eine Agent-Antwort WHEN beide im Verlauf stehen THEN trägt die Nutzer-Zeile
   den blauen Akzent **links** (nicht rechtsbündig), die Agent-Zeile den grünen — ohne grauen
   Hintergrund-Block.

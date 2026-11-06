@@ -11,9 +11,16 @@
 export type LiveItem =
   /** `afterLines` — the anchor of the item's turn: rows of the log (history plus the own, unconfirmed
    *  inputs) that stood when that turn reported its first line. Same number for every item of one turn. */
-  | { kind: 'text' | 'tool' | 'error'; text: string; afterLines: number }
+  | { kind: 'text' | 'error'; text: string; afterLines: number }
+  /** One step of the turn's tool activity. `origin` is the wire's stamp of the agent that worked and `at`
+   *  the moment this browser received it — both per item, so the cap of a long run keeps the times of what
+   *  stays (R-WP-40). Neither is ever guessed: no stamp, no name; no time, no title. */
+  | { kind: 'tool'; text: string; afterLines: number; origin: string | null; at: number | null }
   /** One file the turn changed: `text` is its unified diff, `file` the path the block names. */
   | { kind: 'diff'; file: string; text: string; afterLines: number }
+
+/** One step of a tool run, as the timeline draws it. */
+export type ToolItem = Extract<LiveItem, { kind: 'tool' }>
 
 /** What `chat.html` keeps of a tool block: the tail, so a chatty turn cannot push the answer away. */
 export const MAX_TOOL_LINES = 10
@@ -27,9 +34,40 @@ export function appendLiveText(items: LiveItem[], text: string, afterLines: numb
   return [...items, { kind: 'text', text, afterLines }]
 }
 
-/** Every tool line is its own item; the log merges the ones that stand in a row (R-WP-28). */
-export function appendLiveTool(items: LiveItem[], text: string, afterLines: number): LiveItem[] {
-  return [...items, { kind: 'tool', text, afterLines }]
+/**
+ * Every tool line is its own item; the log merges the ones that stand in a row (R-WP-28). `origin` and `at`
+ * are optional because the wire may carry neither, and the screen invents nothing (R-WP-37, R-WP-40).
+ */
+export function appendLiveTool(
+  items: LiveItem[],
+  text: string,
+  afterLines: number,
+  origin: string | null = null,
+  at: number | null = null,
+): LiveItem[] {
+  return [...items, { kind: 'tool', text, afterLines, origin, at }]
+}
+
+/**
+ * The step that is working: the last thing the wire reported, and only while a turn is open. The core
+ * reports no end of a single tool, so this is the whole meaning of "working" — the next step or the end of
+ * the turn takes the indicator away (R-WP-40, UC-WP-72 GIVEN 2).
+ */
+export function openStep(items: LiveItem[], running: boolean): ToolItem | undefined {
+  const last = items[items.length - 1]
+  return running && last !== undefined && last.kind === 'tool' ? last : undefined
+}
+
+/**
+ * The clock of one step's arrival, from the browser's own local time: the wire carries the moment and
+ * nothing else, never a duration (R-WP-40). Built from the date's own parts and not from a locale format,
+ * so the same instant reads the same on every machine and the proof does not depend on one.
+ */
+export function arrivalTime(at: number): string {
+  const arrived = new Date(at)
+  const hours = String(arrived.getHours()).padStart(2, '0')
+  const minutes = String(arrived.getMinutes()).padStart(2, '0')
+  return `${hours}:${minutes}`
 }
 
 /**

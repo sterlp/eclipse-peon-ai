@@ -261,7 +261,9 @@ export function ChatPage({ project, files, user }: Props) {
           break
         case 'tool': {
           const at = anchorOf()
-          writeLive(appendLiveTool(liveItems.current, event.text, at))
+          // the step keeps the stamp the wire carried and the moment this browser received it — its own, so
+          // the cap of a long run cannot move a time (R-WP-40, UC-WP-72 GIVEN 5)
+          writeLive(appendLiveTool(liveItems.current, event.text, at, event.origin ?? null, Date.now()))
           break
         }
         case 'diff': {
@@ -504,6 +506,9 @@ export function ChatPage({ project, files, user }: Props) {
           outgoing={outgoing}
           live={live}
           pending={pending}
+          // a turn working on this project — another browser's included: its steps are on this stream too,
+          // and one of them is the step being worked on (R-WP-40, UC-WP-72 GIVEN 2)
+          running={busy}
           logRef={log}
           onScroll={onLogScroll}
         />

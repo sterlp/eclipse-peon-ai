@@ -5,7 +5,7 @@ import type { ChatMessage } from './chat.client'
 import { ChatDiff } from './chat.diff'
 import { ChatMarkdown } from './chat.markdown'
 import { ChatTools } from './chat.tools'
-import { liveRuns, type LiveItem } from './chat.live'
+import { liveRuns, openStep, type LiveItem, type ToolItem } from './chat.live'
 import type { PendingLine } from './chat.pending'
 import { content } from '../shared/content'
 
@@ -20,6 +20,8 @@ interface Props {
   live: LiveItem[]
   /** A turn this browser started is still open — the only thing that may paint a waiting frame (R-WP-31). */
   pending: boolean
+  /** A turn is open on this project — the only thing that may paint a working step (R-WP-40, UC-WP-72). */
+  running?: boolean
   /** The scroll area of the chat, handed to the page: it keeps the end of the log in view (R-WP-35). */
   logRef?: Ref<HTMLUListElement>
   /** The page learns from this where the user reads (R-WP-35, UC-WP-66). */
@@ -41,11 +43,12 @@ interface Row {
   pending: boolean
 }
 
-/** One thing the log draws: a line of the conversation, a live answer, one merged box of tool lines, or one diff block. */
+/** One thing the log draws: a line of the conversation, a live answer, one merged box of tool steps, or one diff block. */
 type Entry =
   | { type: 'row'; row: Row }
   | { type: 'live'; item: LiveItem }
-  | { type: 'tools'; lines: string[] }
+  /** The steps of one tool run; `running` marks the box whose last step is the step being worked on. */
+  | { type: 'tools'; items: ToolItem[]; running: boolean }
   | { type: 'diff'; file: string; text: string }
 
 /**
@@ -63,10 +66,11 @@ type Entry =
  * line stays nameless when the server named none: no "System", no "Peon", no invented agent (R-WP-4).
  * A thinking delta never reaches here (§3.3.3, Q7).
  *
- * Tool activity is not a voice: it keeps the grey of `chat.html` and never carries a name. A diff block is
- * of the same family — a fact about the project's files, seen by everybody watching (R-WP-36).
+ * Tool activity is not a voice: it keeps the grey of `chat.html`, and a step names only the agent the wire
+ * stamped on it — never one the log invented (R-WP-37, R-WP-40). A diff block is of the same family — a fact
+ * about the project's files, seen by everybody watching (R-WP-36).
  */
-export function ChatLog({ messages, outgoing, live, pending, logRef, onScroll }: Props) {
+export function ChatLog({ messages, outgoing, live, pending, running = false, logRef, onScroll }: Props) {
   const rows: Row[] = [
     ...messages.map((message): Row => ({
       voice: voiceOf(message),
@@ -89,7 +93,7 @@ export function ChatLog({ messages, outgoing, live, pending, logRef, onScroll }:
     })),
   ]
 
-  const entries = entriesOf(rows, live)
+  const entries = entriesOf(rows, live, running)
 
   return (
     <ul
@@ -101,7 +105,7 @@ export function ChatLog({ messages, outgoing, live, pending, logRef, onScroll }:
     >
       {entries.map((entry, index) => {
         if (entry.type === 'tools') {
-          return <ChatTools key={`tools-${index}`} lines={entry.lines} />
+          return <ChatTools key={`tools-${index}`} items={entry.items} running={entry.running} />
         }
         if (entry.type === 'diff') {
           return <ChatDiff key={`diff-${index}`} file={entry.file} diff={entry.text} />
@@ -153,9 +157,12 @@ export function ChatLog({ messages, outgoing, live, pending, logRef, onScroll }:
  * stand today falls to the end (D-A, UC-WP-54). Consecutive tool lines become one box, a diff block stands
  * beside it as a block of its own (R-WP-36).
  */
-function entriesOf(rows: Row[], live: LiveItem[]): Entry[] {
+function entriesOf(rows: Row[], live: LiveItem[], running: boolean): Entry[] {
   const entries: Entry[] = []
   let shown = 0
+  // one step of the whole live list can be working, and only while a turn is open: the box that holds it
+  // marks itself, so the next step or the end of the turn ends the indicator (R-WP-40, UC-WP-72 GIVEN 2)
+  const open = openStep(live, running)
 
   const pushRows = (until: number) => {
     while (shown < Math.min(until, rows.length)) {
@@ -166,16 +173,20 @@ function entriesOf(rows: Row[], live: LiveItem[]): Entry[] {
 
   for (const run of liveRuns(live)) {
     pushRows(run[0].afterLines)
-    let tools: string[] = []
+    let tools: ToolItem[] = []
+    const pushTools = () => {
+      if (tools.length === 0) {
+        return
+      }
+      entries.push({ type: 'tools', items: tools, running: tools[tools.length - 1] === open })
+      tools = []
+    }
     for (const item of run) {
       if (item.kind === 'tool') {
-        tools.push(item.text)
+        tools.push(item)
         continue
       }
-      if (tools.length > 0) {
-        entries.push({ type: 'tools', lines: tools })
-        tools = []
-      }
+      pushTools()
       if (item.kind === 'diff') {
         // a diff is neither voice nor trace: it ends the tool run before it and stands as a block of its
         // own (R-WP-36)
@@ -184,9 +195,7 @@ function entriesOf(rows: Row[], live: LiveItem[]): Entry[] {
       }
       entries.push({ type: 'live', item })
     }
-    if (tools.length > 0) {
-      entries.push({ type: 'tools', lines: tools })
-    }
+    pushTools()
   }
   pushRows(rows.length)
   return entries

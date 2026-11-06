@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.shared.OwnerMonitor;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
 
 /**
  * The translation of one core callback into one live line — over the real {@link ChatStreamRegistry} and
@@ -35,7 +36,7 @@ import org.sterl.llmpeon.shared.OwnerMonitor;
  * merely observed early.</p>
  */
 @Timeout(30)
-class SseTurnMonitorDiffTest {
+class SseTurnMonitorTest {
 
     private static final String PROJECT = "p1";
     private static final String DIFF_FILE = "src/App.java";
@@ -142,6 +143,25 @@ class SseTurnMonitorDiffTest {
         assertThat((String) wire.payload(0).get("text"))
                 .startsWith("file updated, diff skipped for img/logo.png")
                 .contains("binary content");
+    }
+
+    // UC-WP-72
+    @Test
+    void toolLineCarriesTheStampOfItsAgent() {
+        // the core stamps a tool line on its way to the monitor (OwnerMonitor.onChatResponse, core
+        // OwnerMonitor.java:50) and passes an unstamped one through untouched; the factory hands the stamp
+        // on and never one of its own
+        new OwnerMonitor("Jon", monitor).onChatResponse(new SimpleMessage(SimpleMessage.Type.TOOL, "ls in the checkout"));
+        monitor.onChatResponse(new SimpleMessage(SimpleMessage.Type.TOOL, "read it back"));
+        endTheTurn();
+
+        // one `agents` snapshot per callback is the monitor's own rule (R-WP-7) — the steps are the tool lines
+        assertThat(wire.names()).containsExactly("agents", "tool", "agents", "tool", "done");
+        assertThat(wire.payload(1).keySet()).as("a stamped line names the agent that worked")
+                .containsExactly("text", "origin");
+        assertThat(wire.payload(1)).containsEntry("origin", "Jon");
+        assertThat(wire.payload(3).keySet()).as("an unstamped line keeps the payload it always had")
+                .containsExactly("text");
     }
 
     private static String lines(String name) {

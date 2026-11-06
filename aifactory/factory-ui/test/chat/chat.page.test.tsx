@@ -1176,6 +1176,53 @@ test('consecutiveToolLinesAreMerged', async () => {
   expect(lines[9]).toBe('step 12')
 })
 
+// UC-WP-72
+test('aToolStepShowsTheNameTheCoreStamped', async () => {
+  const chat = stubChat({ messages: [] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  // the stamp arrives on the raw wire and is read as it stands: the page lends no name to a step, and the
+  // one the core left unstamped stays nameless (R-WP-37, R-WP-40, UC-WP-72 GIVEN 1)
+  await chat.push(event('tool', { text: 'ls in the checkout', origin: 'Jon' }))
+  await chat.push(event('tool', { text: 'file updated, diff skipped — binary content' }))
+
+  const steps = [...screen.getByTestId('chat-tool-line').querySelectorAll('.chat-tool-line')]
+  expect(steps).toHaveLength(2)
+  expect(steps[0].querySelector('.chat-step-name')?.textContent).toBe('Jon')
+  expect(steps[1].querySelector('.chat-step-name'), 'an unstamped step names nobody').toBeNull()
+})
+
+// UC-WP-72
+test('theRunningStepEndsWithTheTurn', async () => {
+  const chat = stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await chat.push(event('tool', { text: 'ls in the checkout' }))
+  await chat.push(event('tool', { text: 'wc -l pom.xml' }))
+
+  const steps = [...screen.getByTestId('chat-tool-line').querySelectorAll('.chat-tool-line')]
+  const working = [...screen.getByTestId('chat-tool-line').querySelectorAll('.chat-step-running')]
+  expect(steps).toHaveLength(2)
+  expect(working, 'one open turn has one working step').toHaveLength(1)
+  expect(steps[1].contains(working[0]), 'and it is the step that came last').toBe(true)
+
+  // the turn ends and the history is read: no step works any more, and the one that did keeps its place on
+  // the screen with the clock of its arrival (R-WP-40, UC-WP-54, UC-WP-72 GIVEN 2)
+  chat.setMessages([QUESTION, { role: 'user', text: 'zähl die Dateien' }, ANSWER])
+  await chat.push(event('done', { millis: 12 }))
+
+  expect(
+    [...screen.getByTestId('chat-tool-line').querySelectorAll('.chat-step-running')],
+    'with the turn the indicator ends',
+  ).toEqual([])
+  const finished = [...screen.getByTestId('chat-tool-line').querySelectorAll('.chat-tool-line')]
+  expect(finished[1].getAttribute('title'), 'a finished step carries its arrival clock').toMatch(/^\d{2}:\d{2}$/)
+})
+
 // UC-WP-68
 test('aFileChangeIsLiveAndDoesNotOutliveTheReload', async () => {
   const chat = stubChat({ messages: [QUESTION] })
