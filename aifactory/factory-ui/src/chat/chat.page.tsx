@@ -114,7 +114,6 @@ export function ChatPage({ project, files, user }: Props) {
   const [runningTurn, setRunningTurn] = useState<string | null>(null)
   /** The project whose turn the user asked to end, so its `done` must not read over his lines (D-16). */
   const stoppedTurn = useRef<string | null>(null)
-  const input = useRef<HTMLTextAreaElement>(null)
   /**
    * The rows the history carries — the coordinates every live line anchors in. A ref because the event
    * handler has to read the count <em>now</em>: the state of a render is one render behind, and an anchor
@@ -347,7 +346,6 @@ export function ChatPage({ project, files, user }: Props) {
       }
     })
     void refreshTiles()
-    input.current?.focus()
     return () => {
       mounted = false
       controller.abort()
@@ -520,7 +518,6 @@ export function ChatPage({ project, files, user }: Props) {
         {busy && <ChatWaiting preview={livePreview(live)} />}
         <ChatComposer
           draft={draft}
-          inputRef={input}
           busy={busy}
           lastSent={lastSent}
           onDraftChange={setDraft}

@@ -501,8 +501,10 @@ button {
   color: var(--text);
 }
 
-/* Das Feld ist eine Textarea: Enter ist ihr Umbruch, Cmd/Ctrl+Enter ist der Send, den die Tastatur zum
-   Knopf hinzufügt (R-WP-30). Die Knöpfe stehen darunter, damit eine lange Frage ihre Breite behält. */
+/* Das Feld ist die Auto-Grow-Textarea der Basis: eine Zeile bis fünf, danach scrollt sie (R-WP-41); Enter
+   sendet, Shift und Ctrl/Cmd+Enter brechen um (R-WP-30). Die Höhe gehört der Basis — sie steht inline auf dem
+   Feld, darum hier kein min-height und kein resize. Die Fläche bleibt unsere eine Maß: dieselbe Padding
+   tragen die Konfigurationsfelder. Die Knöpfe stehen darunter, damit eine lange Frage ihre Breite behält. */
 .chat-composer {
   display: grid;
   gap: 0.5rem;
@@ -513,14 +515,12 @@ button {
 
   textarea {
     width: 100%;
-    min-height: 4.5rem;
     padding: 0.4rem 0.6rem;
     border: 1px solid var(--border);
     border-radius: 0.4rem;
     background: var(--bg);
     color: var(--text-h);
     font: inherit;
-    resize: vertical;
   }
 }
 

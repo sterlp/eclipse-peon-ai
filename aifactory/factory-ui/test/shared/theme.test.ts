@@ -184,7 +184,18 @@ test('theBasisIsTheOnlyDesignLibraryOfTheApp', () => {
     builtWithBasis.length,
     'buttons, cards, fields, choices and icons come from the basis',
   ).toBeGreaterThanOrEqual(6)
-  expect(builtWithBasis.map(([path]) => path).filter((path) => path.includes('/chat/')).length).toBe(0)
+  // R-WP-39 / UC-WP-71 GIVEN 4 draws the line where the basis stops: inside the conversation every line
+  // keeps our classes, outside it the basis is the skin of the app — and the field is outside (R-WP-39
+  // names `Input`, R-WP-41 its auto-grow), so the ban is the conversation's files, not the chat folder.
+  const conversation = ['chat.log.tsx', 'chat.tools.tsx', 'chat.diff.tsx', 'chat.markdown.tsx']
+  const insideTheConversation = builtWithBasis
+    .map(([path]) => path)
+    .filter((path) => conversation.some((file) => path.endsWith(`/${file}`)))
+  expect(insideTheConversation, 'no line of the conversation is painted by the basis').toEqual([])
+  expect(
+    builtWithBasis.map(([path]) => path).filter((path) => path.endsWith('/chat.composer.tsx')),
+    'the field beside the conversation is the basis own (R-WP-41)',
+  ).toHaveLength(1)
 
   // the other side of one basis: no second library, no bridge of copied variables, no icon font — in the
   // forms they really take, which is what `design.basis.ts` states and the test below proves
