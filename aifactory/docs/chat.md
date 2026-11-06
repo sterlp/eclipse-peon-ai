@@ -363,7 +363,7 @@ Antwortblocks horizontal, ein **Bild** bleibt innerhalb der Antwortbreite.
   Tabelle **im Antwortblock**, die Seite bleibt ungeändert breit, und das Bild bleibt in der
   Antwortbreite.
 
-### R-WP-41 — Die Eingabe wächst mit und findet ihren Fokus zurück ❌ (Paul 2026-11-06, Muster aus `ai-schulung`)
+### R-WP-41 — Die Eingabe wächst mit und findet ihren Fokus zurück ✅ (Paul 2026-11-06, Muster aus `ai-schulung`)
 
 Das Eingabefeld ist eine **Auto-Grow-Textarea** (von einer Zeile bis ca. fünf, danach scrollt sie) und
 steht **unten seiner Spalte** ([R-WP-35](chat.md)). **Senden kann nur, wer etwas getippt hat**: bei
@@ -375,7 +375,7 @@ Ist der Turn vorbei, **kehrt der Fokus in die Eingabe zurück** (Refocus beim Ü
 zu aktiviert) — der Nutzer tippt weiter, ohne zu klicken. Tastatur und Resend bleiben, wie sie sind
 ([R-WP-30](chat.md)). Sichtbare Texte kommen aus dem String-Catalog ([R-WP-27](ui.md)).
 
-#### UC-WP-74 — inputGrowsAndRefocuses ❌
+#### UC-WP-74 — inputGrowsAndRefocuses ✅
 - GIVEN eine leere Eingabe WHEN die App zeichnet THEN ist der Send-Knopf deaktiviert; WHEN Text
   entsteht THEN wird er aktiv.
 - GIVEN ein Turn läuft WHEN der Nutzer tippt und sendet THEN ist der Knopf **aktiv** und die Eingabe
@@ -385,7 +385,7 @@ zu aktiviert) — der Nutzer tippt weiter, ohne zu klicken. Tastatur und Resend 
 - GIVEN ein Turn war läuft und ist jetzt vorbei WHEN die Eingabe wieder aktiv wird THEN steht der
   Fokus in ihr.
 
-### R-WP-30 — Eingabe: Enter sendet, Shift+Enter macht die neue Zeile ❌ (Paul 2026-11-06, **bedeutet die Umkehrung** von Paul 2026-11-02)
+### R-WP-30 — Eingabe: Enter sendet, Shift+Enter macht die neue Zeile ✅ (Paul 2026-11-06, **bedeutet die Umkehrung** von Paul 2026-11-02)
 
 Im Eingabefeld (Textarea) **sendet Enter**; **Shift+Enter** setzt eine neue Zeile — das ist die
 Bewegung, die der Nutzer aus jedem Chat-Tool mitbringt (Paul 2026-11-06, nach Blick auf die
@@ -398,7 +398,7 @@ gesendete Nachricht erneut senden**, ohne sie neu zu tippen — etwa nach einem 
 („Resend"); sie läuft wie jede Eingabe in die Queue ([R-WP-10](chat.md)), wenn ein Turn läuft.
 *Umsetzung steht aus:* die alte Fassung (Enter = Umbruch) ist gebaut und muss mit umgebaut werden.
 
-#### UC-WP-56 — enterSendsShiftEnterNewlines ❌ (war `enterNewlinesCtrlEnterSends` ✅, Umkehrung Paul 2026-11-06)
+#### UC-WP-56 — enterSendsShiftEnterNewlines ✅ (war `enterNewlinesCtrlEnterSends` ✅, Umkehrung Paul 2026-11-06)
 - GIVEN das Eingabefeld mit Text WHEN der Nutzer Enter drückt THEN wird gesendet und das Feld ist
   danach leer; WHEN er **Shift+Enter** drückt THEN entsteht eine neue Zeile und es wird **nicht**
   gesendet. GIVEN leere Eingabe WHEN Enter THEN passiert nichts (der Knopf ist deaktiviert, die

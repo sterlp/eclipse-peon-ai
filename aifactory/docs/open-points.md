@@ -36,6 +36,11 @@ Reihenfolge, je ein grünes Inkrement:
   (Umschalter + Merkmal über Reload hinweg) — die Umsetzung bliebe kompatibel, nur die Queue der
   Entscheidung wäre eine andere.
 
+* **⏳ Refocus nach dem Turn meidet das andere Feld** (2026-11-06, Ableitung zu
+  [UC-WP-74 GIVEN 4](chat.md), Rückversicherung ausstehend) — der Fokus kehrt in die Eingabe zurück,
+  **außer** der Nutzer tippt inzwischen in einem anderen Feld (Suche, Config). *Andersfall:* Fokus immer
+  in die Eingabe = verlorene Eingabe an der anderen Stelle.
+
 * **⏳ „Jon muss weg" als Navigation LABEL verstanden** (2026-11-06, Paul per Zuruf, Rückversicherung
   ausstehend) — [R-WP-38](ui.md): es gibt **keinen „Jon"-Eintrag** und kein „Jon"-Label im Sider, ein
   Klick aufs Projekt öffnet dessen Chat. Die **Kachel** des Agenten behält ihren Namen

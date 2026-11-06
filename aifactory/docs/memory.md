@@ -21,12 +21,34 @@ Trailer-Regel: kein Modellname.
 
 **Paul seit 12:05 wieder erreichbar** (Fragen wieder möglich). Backlog und Reihenfolge stehen in
 [open-points.md](open-points.md) („Runde 3 — AntD-Umbau der Oberfläche").
-**Inkrement 1 + Nacharbeit 1-N1 gebaut, reviewt, abgenommen** — [R-WP-39/UC-WP-71](ui.md) ✅: AntD
-**6.7.0** gepinnt, Bootstrap vollständig raus (Wache sieht CSS-Import, `.css` und `devDependencies`),
-Theme-Tokens aus einer Quelle, `data-theme` am Dokument aus der Betriebssystem-Vorliebe, `AppRoot`
-selbst gemountet bewiesen. UI **159 Tests/20 Dateien in 8,5 s**, tsc/oxlint 0/0, Diff `src/chat/**`
-= null Zeilen. Commits auf `web-factory-mvp-2`: `cad7f0e6` (Inc 1) · `77b33213` (Docs von Jon) ·
-`49f6a7b6` (1-N1, Spitze = origin).
+**Inkrement 1 (AntD-Basis) ✅ abgenommen** — [R-WP-39/UC-WP-71](ui.md): AntD **6.7.0** gepinnt, Bootstrap
+raus (Wache sieht CSS-Import, `.css`, `devDependencies`), **eine** Dunkel-Tabelle via `data-theme`,
+`AppRoot` selbst gemountet bewiesen. **Inkrement 2 (Markdown) gebaut + nachgearbeitet** —
+[R-WP-28/UC-WP-73](chat.md) ✅: `react-markdown@10.1` + `remark-gfm` + `remark-breaks`, `markstream` raus;
+Review **REJECTED** (1 BUG: falsche Memoisierungs-Begründung · LOWs: modell-gemaltes `hr`, breite Tabelle
+ohne Scroll, Wortlaut nur einteilig bewiesen) → **2-N1**closed (Antwort-`hr` als **unsere** kurze Linie im
+Antwortblock, `div.chat-markdown-table` = Scroll-Kasten [`ANTD-A6`], `separatorsOf(log)` als **einzige**
+Trenner-Definition für Inc 4, `onlyAnswersAreMarkdown` dreiteilig) · **2-N2**: `AGENTS-DEV.md`
+1031 → **225** Zeilen, episodisches Memory nach [`peon-plan/dev-notes-antd.md`](../peon-plan/dev-notes-antd.md)
+(915 Zeilen) — **Pauls Regel: `AGENTS*.md` ist kein Memory, Plan-Dateien sind das Memory.**
+Commits Inc 1/2 auf `web-factory-mvp-2`: `cad7f0e6` · `77b33213` · `49f6a7b6` · `6d7a4bba` · `06a53021`
+(2-N1) · `ed3dc535` (**Pauls** „CallStats listener", SHA gehalten) · `5ad3a69b` · `af977185` (Docs) ·
+`f21f9f1a` (2-N2).
+
+**Inkrement 3 (Eingabe) ✅ abgenommen (2026-11-06)** — [R-WP-41/UC-WP-74](chat.md) und
+[R-WP-30/UC-WP-56](chat.md) ✅: `Input.TextArea autoSize` mit `MAX_ROWS = 5` (Höhe ist in jsdom nicht
+behauptbar → Konstante + Form, Optik = Pauls Smoke-Test), **Enter sendet**, **Shift+Enter und
+Ctrl/Cmd+Enter** setzen die neue Zeile, Send nur bei Text, Fokus bleibt beim Feld
+(`typingElsewhere()`-Guard). Review **REJECTED** → alle Funde closed: Umbruch **am Caret** (mitten im Text
+wie bei Auswahl, Mutationen M12/M13), AntD-Wache **fail-closed** (Bann = ganz `src/chat/`, Allowlist allein
+`chat.composer.tsx`, M14 beweist eine neue Verlaufs-Datei), Seitentest schließt die Kette über echten
+Ctrl+Enter, WHY-Kommentar an der doppelten Sende-Prüfung. Commits `8f6fe18c` · `8284d09d` · `6bad9074` ·
+`0945f1a2` = Spitze = origin. Stand UI **171 Tests/20 Dateien ~8,7 s**, tsc/oxlint 0/0.
+**`AGENTS-DEV.md` neu gefasst: 117 Zeilen, nur Zeitloses** (Paul: Plan-Status hat dort nichts zu suchen;
+Core-`developer.md:55-60` von Paul nachgezogen — „episodic goes to the plan file"). Pauls Umzug hat den
+alten Stand als **Dump in [`peon-plan/overview.md`](../peon-plan/overview.md) ab :447** abgelegt =
+Doppelbestand; wartet auf sein Wort, dann raus. **Doc-Lint: 31 Findings** (PC 14, CR 14, UC-WP-70/72/75 —
+UC-WP-56/74 sind raus). **Immer selbst messen**: Dev und Review melden 3, ihr Lint scopet nur `chat`/`ui`.
 
 **Entschieden (2026-11-06):** AntD wird Design-Basis, **Bootstrap raus** ([R-WP-39](ui.md));
 Navigation = **Projektbaum im Sider**, Klick aufs Projekt öffnet den Chat, **kein „Jon"-Label**
@@ -60,7 +82,12 @@ getroffener Datei (8 Sonden, keine blieb grün). **Merksatz für Reviews:** eine
 bleibt, ist ein Befund — nicht der Test ist zu leise. `matchMedia`-Polyfill **bleibt** (gemessen:
 jsdom 26.1.0 liefert die Property als `undefined`; Inc-1-Behauptung „nicht load-bearing" war falsch).
 
-**Nächste Schritte:** Inc 2 Markdown ([R-WP-28/UC-WP-73](chat.md), hebt C-2b) → Inc 3 Eingabe
+**Nächste Schritte:** **Inc 3b** `!` durchreichen ([R-WP-42/UC-WP-75](chat.md), Backend:
+`ProjectRuntime.urgentTextOf` + Urgent-Lane, kein zweiter Turn) → Inc 4 Timeline + kein `hr`
+([R-WP-40/UC-WP-72](chat.md), hebt F3 zum Teil) → Inc 5a Sider + URL (C-3, bringt `aria-current` mit Test
+zurück) → 5b Files-Unit. Danach Rest-Backlog: C-7 (Agent-Blick read-only live), C-2a/C-1, F8/F10.
+Stagehand ⏳ parked (Node ≥22.18 vs. Bau 22.12). **Nach Inc 3 gilt für die Wache:** neuer Datei im
+Chat-Ordner mit AntD-Import ist rot — Inc 4 (Timeline) muss ihr CSS selbst malen.
 ([R-WP-41/UC-WP-74](chat.md)) — **wartet auf Pauls Tastatur-Entscheidung** (⏳ Enter-Konflikt unten) →
 Inc 4 Timeline + kein `hr` (hebt F3 zum Teil) → Inc 5a Sider + URL (C-3, bringt `aria-current` mit
 Test zurück) → 5b Files-Unit. Danach Rest-Backlog:

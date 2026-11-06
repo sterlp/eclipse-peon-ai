@@ -35,6 +35,10 @@ Entscheidungen nach `docs/`. Bestehenden Eintrag ergänzen statt anhängen, Vera
 - **Lange absolute Pfade erreichen den SSE-Draht nicht**: `SmartToolExecutor.reportProblem` kürzt auf 180
   Zeichen, `allowed roots […]` fällt weg (das Modell sieht sie weiter) → Draht-Verweigerung am Präfix
   `<tool>: Write denied:` prüfen, Wurzeln nur im nächsten Provider-Payload (`getCapturedMessages()`).
+- **AssertJ `assertThat(Optional).contains(x)` ist Gleichheit, nicht Substring** (`" /unbekannt"` fällt gegen
+  `contains("/unbekannt")`). — **Prio-Block am Kopf behaupten**: `TaggedResult.PREFIX + TAG_QUEUED_USER_MESSAGE`;
+  das nackte Tag-Wort steht auch im System-Prompt (`TaggedResult.INFO`) ⇒ als Substring von
+  `getLastRequestBody()` ist es immer drin, die Behauptung liefe offen.
 - **Boot 4**: `ResponseStatusException` läuft **vor** dem `@ControllerAdvice` → eigener Exception-Typ +
   `@ExceptionHandler`, sonst wird 404 zu 500/400. `TestRestTemplate` ist offline unbenutzbar
   (`NoClassDefFoundError` beim Context-Load) → echte HTTP-Tests mit `@SpringBootTest(RANDOM_PORT)` +
