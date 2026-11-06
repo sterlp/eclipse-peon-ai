@@ -18,7 +18,12 @@ const FRAME_GUTTER = '0 1rem'
 /** The light values, as `:root` states them. */
 const LIGHT = blockOf(baseSheet, ':root,')
 
-/** The dark values, as an explicit `data-theme="dark"` states them — the same table the media query repeats. */
+/**
+ * The dark values, as the table the document carries states them: `app/app.root.tsx` puts `data-theme` on the
+ * root element from the operating system's answer, so this is the dark mode a running app is in. The media
+ * rule of `index.css` repeats the table for a browser without script — equal by contract, proven field by
+ * field in `theme.test.ts`.
+ */
 const DARK = blockOf(baseSheet, "[data-theme='dark'] {")
 
 /** One declaration block of the sheet, from its selector to its closing brace. */
@@ -43,7 +48,11 @@ function tokenValue(block: string, name: string): string | undefined {
  */
 export function factoryTheme(dark: boolean): ThemeConfig {
   const tokens = dark ? DARK : LIGHT
-  const read = (name: string): string | undefined => tokenValue(tokens, name)
+  // What the dark table does not state differently keeps the light value: an undefined token would answer
+  // with the library's own default, and in the dark that is a second look (R-WP-39). `--sans` and `--mono`
+  // are stated once in `:root`, for both modes — the sheet's cascade does the same, and the basis has to.
+  const read = (name: string): string | undefined =>
+    tokenValue(tokens, name) ?? (dark ? tokenValue(LIGHT, name) : undefined)
 
   return {
     algorithm: dark ? theme.darkAlgorithm : theme.defaultAlgorithm,

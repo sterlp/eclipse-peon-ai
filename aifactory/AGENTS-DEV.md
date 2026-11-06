@@ -108,9 +108,11 @@
   `import.meta.glob('../../src/**/*.{ts,tsx}', { query: '?raw', import: 'default', eager: true })`.
   `import.meta.url` ist in Vitest **kein** `file:`-URL → `fileURLToPath(import.meta.url)` bringt
   `TypeError: The URL must be of scheme file`.
-- **Catalog-Wert ≠ Feldwert** (UC-WP-53): ein `<select>` zeigt das Label aus `content.ts`, trägt aber den
-  **Draht-Wert** als `value` (`sendThinking`: Label `Yes`/`No`, value `yes`/`no`). Ein Test, der `element.value`
-  liest, darf den Catalog-Wert nicht erwarten — sonst fällt er, obwohl die Oberfläche richtig ist.
+- **Catalog-Wert ≠ Feldwert** (UC-WP-53): ein Choice zeigt das Label aus `content.ts`, reist aber mit dem
+  **Draht-Wert** ab (`sendThinking`: Label `Yes`/`No`, Draht `'true'`/`'false'`). Ein Test, der das Feld liest,
+  darf den Catalog-Wert nicht erwarten — sonst fällt er, obwohl die Oberfläche richtig ist. Seit dem
+  AntD-Umbau liest man das Label an `.ant-select-content[title]`, den Drahtwert nur im Request-Body
+  (`config.page.tsx` `patchOf`); bewiesen in `theChoiceSendsItsWireValue` (UC-WP-24).
 
 
 ## UI-Inkremente (Zyklus 2026-11-02, Inc 1c — URL-Routing)
@@ -501,7 +503,7 @@
   **vor** dem Select steht. Die Probe muss den Früh-Rückgabe-Test selbst treffen
   (`if (form === 'NONE' && props.value === '')`) ⇒ dann genau die zwei NONE-Verbraucher rot.
 - **Das Dev-Label hat fünf Abnehmer**: `FIELDS` in `config.agents.test.tsx` liest die **Dev**-Zeile, trägt
-  deshalb seit A4 `content.agents.thinkDefault` statt `content.agents.think`. Probe „Label immer `think`"
+  deshalb seit `INC7B-A1` `content.agents.thinkDefault` statt `content.agents.think`. Probe „Label immer `think`"
   macht fünf Tests rot (drei davon sind die positiven Begleiter) — das ist die Kostenseite eines Labels,
   das eine Semantik trägt (R-THINK-10).
 - **Ein `<select>` braucht denselben Handler wie ein `<input>`**: `Field.onChange` und
@@ -893,9 +895,13 @@
 - **Versionen gemessen, nicht geraten**: `antd` latest **6.7.0** (keine 7.x vorhanden, latest-5 = 5.29.3),
   `@ant-design/icons` **6.3.4** (`next: 4.0.0-rc.0` ist ein alter Pre-Release, keine neue Major). React
   19.3.1 läuft an v6 nativ — `@ant-design/v5-patch-for-react-19` bleibt unnötig.
-- **`matchMedia` ist unter jsdom 26 NICHT load-bearing** (gemessen): jsdom bringt die API, der Polyfill in
-  `test/shared/setup.ts` läuft wegen seines `typeof`-Guards nie — Mutation „Polyfill raus" bleibt grün.
-  Load-bearing ist **`ResizeObserver`**: ohne ihn 15/16 Tests in `test/app/*` rot mit
+- **jsdom 26.1.0 hat `matchMedia` nicht — die Property existiert, ihr Wert ist `undefined`** (gemessen
+  2026-11-06, Inc 1-N1: `typeof window.matchMedia === 'undefined'`, obwohl der Name in
+  `getOwnPropertyNames(window)` steht). Der Polyfill in `test/shared/setup.ts` ist deshalb **load-bearing**:
+  ohne ihn 2 Tests rot mit `vi.spyOn() can only spy on a function`, und `shared/prefers.dark.ts` braucht
+  `addEventListener` am zurückgegebenen Objekt. (Die frühere Aussage „nicht load-bearing" war auf dem Stand
+  vor `app.root.test.tsx` gemessen und ist widerlegt.) Load-bearing ist auch **`ResizeObserver`**: ohne ihn
+  15/16 Tests in `test/app/*` rot mit
   `ReferenceError: ResizeObserver is not defined` (`@rc-component/resize-observer`). Suite: 154 Tests /
   19 Dateien in ~8,5 s Wanduhr (vorher 149/18 in 4,5 s) — AntD kostet ~4 s, Grenze ~30 s hält.
 - **Ein `Select` wird über `<id>_list` adressiert, nicht über `aria-controls`** (gemessen): die Liste hängt
@@ -903,14 +909,15 @@
   `aria-expanded`/`aria-controls` mit dem Popup kommen und gehen. jsdom schließt **nie** (weder Escape noch
   Klick außerhalb), und ein `mouseDown` auf ein **offenes** Choice schließt es — Öffnen also nur, wenn die
   Liste fehlt. Helper: `test/shared/choices.ts`. Anzeige = `.ant-select-content[title]` und das ist das
-  **Label**, nicht der Drahtwert (Inc 1b „Catalog-Wert ≠ Feldwert" gilt weiter; der Drahtwert bleibt in den
-  PUT-Body-Tests bewiesen).
+  **Label**, nicht der Drahtwert (Inc 1b „Catalog-Wert ≠ Feldwert" gilt weiter); der Drahtwert wird im
+  PUT-Body von `theChoiceSendsItsWireValue` bewiesen (`test/config/config.page.test.tsx`, UC-WP-24).
 - **`id` an einem Choice ist Test-Ökologie und Barrierefreiheit**: ohne `id` nutzt rc-select `useId()`, und
   deren Wert ist im Testbaum für mehrere Felder **gleich** (`test-id_list`) ⇒ `getElementById` trifft die
   Liste eines fremden Feldes. Deshalb tragen die Choices der Config-Seite `settings-provider` /
   `settings-send-thinking`.
 - **`Menu mode="horizontal"`** rendert `li[role=menuitem]`, Auswahl nur als Klasse
-  `.ant-menu-item-selected` — **kein** `aria-current`/`aria-selected` (A1). `Alert`-Prop heißt `title`
+  `.ant-menu-item-selected` — **kein** `aria-current`/`aria-selected` (`ANTD-A1`, s. Abweichungs-Register
+  (UI)). `Alert`-Prop heißt `title`
   (`message` deprecated), `role="alert"` sitzt am Div, `textContent` = title allein.
 - **`Layout.Header` Maß und Kopffarbe kommen aus `var(--ant-layout-header-*)`** — gleiche Spezifität wie
   unsere `.app-header`, also über `theme.components.Layout` (bodyBg/headerBg/headerColor/headerPadding)
@@ -920,9 +927,59 @@
 - **Positiver Ersatz für die `--bs-*`-/`.ui-card`-Belege** (der Blatt-Leser kann AntD nicht messen):
   `test/shared/theme.test.ts` (`// UC-WP-71`) prüft Token-Gleichheit gegen `index.css`
   (`tokenValues('--accent')` …), `darkAlgorithm`, `Card.colorBgContainer`, `Layout.*`, und ein Guard scannt
-  `import.meta.glob('../../src/**/*.{ts,tsx}', { query: '?raw' })` + package.json-Rohtext gegen
-  react-bootstrap/`bi bi-`/`--bs-`. Erster Test nach Umbau auf eine neue Basis: Guard mit Absichtstester
-  (Sonde mit `from 'react-bootstrap'` ⇒ genau der Guard rot; Guard raus ⇒ Verletzung unsichtbar).
+  die Quellen + package.json-Rohtext gegen react-bootstrap/`bi bi-`/`--bs-`. Seit Inc 1-N1 liegt der Guard in
+  `test/shared/design.basis.ts`: Glob `'../../src/**/*.{ts,tsx,css}'` (`?raw` liefert **auch** für `.css`
+  Text, weil `test.css.include` die eigenen Sheets durchlässt — die Pfad-Anzahl allein beweist nichts, nötig
+  ist je `.css` ein `not.toHaveLength(0)`), Muster erfassen zusätzlich den CSS-Import ohne `from` und die
+  `@import`-Form, und die Manifest-Prüfung liest `dependencies` **∪** `devDependencies` (Sonden: CSS-Import
+  in `main.tsx`, `@import` in `styles.css`, `bootstrap` in devDeps ⇒ jeweils der Guard mit Pfad-Angabe).
 - **oxlint `only-export-components` erwischt auch `main.tsx`**: eine Komponente, die nur das Theme um die
   App legt, gehört in eine eigene Datei (`app/app.root.tsx`), sonst bleibt eine Warnung im `lint`-Lauf.
+
+## AntD-Umbau Inc 1-N1 (Zyklus 2026-11-06) — Beweise + eine Dunkel-Tabelle
+
+- **`darkAlgorithm` leitet den Akzent ab** (gemessen): aus `colorPrimary: '#58a6ff'` wird im Token
+  `#4e90dc`, im Light-Modus geht das Literal durch. „Token == Tabellen-Literal" ist im Dunkel **nicht**
+  prüfbar — der Dunkel-Fall vergleicht gegen ein eigenes `factoryTheme(true)` und fordert zusätzlich
+  `hell !== dunkel`; die Tabellen-Gleichheit bleibt in `theme.test.ts` (Kommentar in `app.root.test.tsx`,
+  damit niemand die Behauptung „repariert").
+- **Dunkel ist eine Tabelle, wirksam über `data-theme`**: `AppRoot` setzt
+  `document.documentElement.dataset.theme` aus `usePrefersDark()`; `theme.ts` liest unverändert die
+  Attribut-Tabelle, der Media-Block bleibt der No-JS-Fallback. Neu `tokenTable(selector)` in
+  `test/shared/sheets.ts`: akzeptiert wird ein Selektor nur, wenn ihm **nur Whitespace + `{`** folgt —
+  `indexOf(selector)` + „nächstes `{`" las die **helle** Tabelle, weil der neue `index.css`-Kopf den
+  Selektorwortlaut in Prosa nennt; die helle Tabelle muss als gruppierte Regel angegeben werden (`:root,`
+  allein ist nicht `{`-ständig). ⇒ Prosa in `index.css` darf nie den Selektorwortlaut enthalten, den ein
+  Test per `indexOf` sucht (gilt ebenso für `blockOf`, Review LOW-10).
+- **Fonts ohne Dunkel-Zeile**: `--sans`/`--mono` fehlen in der Attribut-Tabelle; `theme.ts` fällt auf die
+  helle Tabelle zurück, und der Test fordert je gemapptem Token „Dunkelwert, sonst Hellwert" — sonst steht
+  `fontFamily: undefined` still im Theme.
+- **Proben Inc 1-N1** (je genau die genannten Tests rot, Restore per `cp` + `diff`): Optionswerte der Choice
+  getauscht → `theChoiceSendsItsWireValue` **und** zwei Label-Leser; nur die Drahtseite in `patchOf` getauscht
+  → genau die zwei Drahtwert-Assertions; CSS-Import in `main.tsx` / `@import` in `styles.css` / `bootstrap`
+  in `devDependencies` → jeweils der Guard (nennt die Datei); `theme`-Prop aus `ConfigProvider` →
+  `appRootWearsOurTokenColours`; `useEffect` raus → `appRootSetsTheDocumentTheme`; `--border` nur im
+  Media-Block → `theDarkSheetIsOneTable` (Diff nennt das Feld); Font-Fallback raus →
+  `darkModeCarriesTheDarkSheetAndTheDarkAlgorithm`. Lehre: „Optionswerte tauschen" ist **keine**
+  Drahtwert-Mutation — sie zerstört auch das Label-Mapping.
+- **Nach Inc 1-N1: UI 159 Tests / 20 Dateien** in ~8,6 s, `tsc -b` 0, oxlint 0/0 (69 Dateien). Kein Backend,
+  keine neue Dependency, `src/chat/**` unverändert.
+
+## Abweichungs-Register (UI)
+
+Codes je Zyklus präfixiert; ein Code in einem Testkommentar verweist auf diese eine Stelle.
+
+- `ANTD-A1` — **Nav-Rolle**: `Menu mode="horizontal"` rendert `li[role=menuitem]` (kein `a`/`button`) und
+  zeigt die Auswahl nur als Klasse `.ant-menu-item-selected`.
+- `ANTD-A2` — **Popconfirm** statt des eigenen Lösch-Popups in der Projektliste.
+- `ANTD-A3` — **Choice: Label im Feld, Drahtwert im Body** (`content.config.yes` ≠ `'true'`).
+- `ANTD-A4` — **Icons über `.anticon-*`** statt `bi bi-*` (Test-Selektoren).
+- `ANTD-A5` — **reserviert für Inc 2** (Markdown: kein rohes HTML, kein Abbruch, final gerendert).
+- `INC7B-A1` — **Dev-Label „Think (Default)"** statt `content.agents.think` (Inc 7b, fünf Abnehmer).
+- **`aria-current` — Übergang bis Inc 5a**: die Navigation trägt es seit dem AntD-Umbau nicht mehr; Auswahl
+  wird über `.ant-menu-item-selected` bewiesen. Inc 5a stellt es mit der URL-Auswahl wieder her und pinnt es
+  mit Test (`// UC-WP-70`).
+- **Eingefroren: `A1` in `test/chat/chat.page.test.tsx`** — gehört der Inc-7-Sperrregel im alten Chat-
+  Namensraum und bleibt unumbenannt (Sperre `test/chat/**`); gemeint ist dieselbe Nav-Rollen-Abweichung wie
+  `ANTD-A1`, gehoben mit Inc 4 (Timeline).
 

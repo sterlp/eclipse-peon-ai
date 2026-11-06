@@ -27,7 +27,7 @@ test('theUiSpeaksEnglish', async () => {
   stubAppServer()
   const { container } = renderApp('/projects')
 
-  // A1: the frame's entries are the basis' menu items (R-WP-39), still exactly the three of R-WP-1
+  // ANTD-A1: the frame's entries are the basis' menu items (R-WP-39), still exactly the three of R-WP-1
   const nav = screen.getByRole('navigation', { name: content.nav.views })
   expect(within(nav).getAllByRole('menuitem').map(entry => entry.textContent)).toEqual([
     content.nav.projects,

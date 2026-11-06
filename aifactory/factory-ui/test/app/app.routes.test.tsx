@@ -18,7 +18,7 @@ function nav() {
 }
 
 /**
- * The entry the frame marks as showing. A1: the design basis states a menu's selection as the item state
+ * The entry the frame marks as showing. ANTD-A1: the design basis states a menu's selection as the item state
  * of its entry (`ant-menu-item-selected`) and carries no `aria-current`, so the mark is read there — the
  * claim itself is unchanged: exactly one entry shows, and it is the one the address names.
  */

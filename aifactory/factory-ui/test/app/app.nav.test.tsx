@@ -12,7 +12,7 @@ beforeEach(() => {
 /**
  * The frame of the app is exactly the three views of R-WP-1 — the test is the counter-probe to a fourth.
  *
- * A1 (R-WP-39): the entries are the basis' menu items, and the showing one carries the basis' item state
+ * ANTD-A1 (R-WP-39): the entries are the basis' menu items, and the showing one carries the basis' item state
  * `ant-menu-item-selected` — its accent on the entry — instead of the `aria-current` a hand-linked button
  * used to carry. Which entry shows stays provable, and provable for exactly one entry.
  */

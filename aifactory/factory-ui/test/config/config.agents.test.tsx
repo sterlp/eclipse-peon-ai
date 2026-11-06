@@ -305,7 +305,7 @@ test('thinkFieldFollowsTheProviderForm', async () => {
   renderAgents({ form: 'VALUES', values: ['minimal', 'low', 'medium', 'high'] })
 
   await waitFor(() => row())
-  // A3 (AntD 6): the provider's form is the dropdown of the basis's choice — there is no `<option>` list,
+  // ANTD-A3 (AntD 6): the provider's form is the dropdown of the basis's choice — there is no `<option>` list,
   // and the entry that inherits is named by its label, not by an empty value
   expect(await openChoice(content.agents.thinkDefault)).toEqual([
     content.agents.inheritOption,
@@ -363,7 +363,7 @@ test('storedThinkStaysVerbatim', async () => {
   renderAgents({ form: 'VALUES', values: ['low', 'medium', 'high'] })
 
   const slot = await waitFor(() => row())
-  // A3 (AntD 6): the stored level the offered list does not carry shows as itself and is offered first
+  // ANTD-A3 (AntD 6): the stored level the offered list does not carry shows as itself and is offered first
   expect(await openChoice(content.agents.thinkDefault)).toEqual([
     content.agents.inheritOption,
     'ultra',
@@ -379,7 +379,7 @@ test('storedThinkStaysVerbatim', async () => {
 })
 
 /**
- * UC-WP-67 / A4 (R-THINK-10): the Dev row names its field for the base value it carries; every other row
+ * UC-WP-67 / INC7B-A1 (R-THINK-10): the Dev row names its field for the base value it carries; every other row
  * keeps the plain name, or the page would claim twice that a slot is the default.
  */
 // UC-WP-67

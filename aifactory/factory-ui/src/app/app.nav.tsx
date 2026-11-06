@@ -20,7 +20,7 @@ interface Props {
  *
  * The mark is the basis' own selected state (its accent on the entry), not `aria-current`: a menu of the
  * design basis carries its selection as its item state, and bending that into `aria-current` would be a
- * style war with the library (R-WP-39). Named deviation A1.
+ * style war with the library (R-WP-39). Named deviation ANTD-A1.
  */
 export function AppNav({ active, onSelect }: Props) {
   return (

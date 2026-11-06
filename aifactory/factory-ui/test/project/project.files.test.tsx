@@ -332,7 +332,7 @@ test('theFilesTabOpensTheSlideOut', async () => {
   expect(tab).toHaveTextContent(content.files.open)
   expect(tab).toHaveAttribute('aria-expanded', 'false')
   expect(tab.getAttribute('aria-label')).toBe(content.files.openArea)
-  // A4 (R-WP-39): the icon set of the basis names the direction in its class (`anticon-left`,
+  // ANTD-A4 (R-WP-39): the icon set of the basis names the direction in its class (`anticon-left`,
   // `anticon-right`) — the same claim about the arrow, read where the new set states it
   expect(tab.querySelector('.anticon-left'), 'a closed tab points inwards').not.toBeNull()
   // the tab stands sideways at the edge — jsdom lays out nothing, so the look is read where it is written

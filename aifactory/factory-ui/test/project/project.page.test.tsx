@@ -110,7 +110,7 @@ test('showsExactlyThreeViews', async () => {
   renderApp()
 
   // the frame is a menu (R-WP-1): exactly the three views, the showing one marked by the basis' item
-  // state (A1, R-WP-39) — the menu of the design basis carries no `aria-current`
+  // state (ANTD-A1, R-WP-39) — the menu of the design basis carries no `aria-current`
   const entries = within(
     screen.getByRole('navigation', { name: content.nav.views }),
   ).getAllByRole('menuitem')
@@ -211,7 +211,7 @@ test('credentialUrlRejectedAndNothingStored', async () => {
 
 // UC-WP-28
 /**
- * A2 (R-WP-39): the confirmation is the basis' `Popconfirm` at the row instead of `window.confirm` — the
+ * ANTD-A2 (R-WP-39): the confirmation is the basis' `Popconfirm` at the row instead of `window.confirm` — the
  * question is on the screen, so it is read there, and "nothing deleted while it stands" is read off the
  * calls to the edge rather than off a spy of a browser dialog.
  */
