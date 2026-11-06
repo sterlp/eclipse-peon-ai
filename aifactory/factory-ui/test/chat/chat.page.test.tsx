@@ -1316,6 +1316,49 @@ test('twoTurnsCountingTheSameRowsAreNotTheSameTurn', async () => {
   expect(working()[0].textContent).toContain('wc -l README.md')
 })
 
+/**
+ * A delegation is an entry of the log of its own (R-WP-40, UC-WP-72 GIVEN 3): the wire's pair opens it and
+ * closes it, the word that the member works belongs to the open turn, and the entry survives the history
+ * read that `done` triggers — it is a link of the timeline, not a second answer and not a line of the
+ * history.
+ */
+// UC-WP-72
+test('aDelegationStaysInTheLogAfterTheTurnEnds', async () => {
+  const entry = () => screen.getByTestId('chat-delegation')
+  const chat = stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'frag Dev nach einer Frucht' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  // an end that reaches this browser with no open entry of his: nothing to close, so nothing stands there
+  // — an end never invents the entry it was meant to close (UC-WP-72 GIVEN 3)
+  await chat.push(event('delegation', { member: 'Plan', working: false }))
+  expect(screen.queryAllByTestId('chat-delegation'), 'an end that matches nothing draws no line').toEqual([])
+  await chat.push(event('tool', { text: 'Dev start: nenne eine Frucht', origin: 'Jon' }))
+  await chat.push(event('delegation', { member: 'Dev', working: true }))
+
+  expect(entry().querySelector('.chat-delegation-name')?.textContent).toBe('Dev')
+  expect(entry().textContent, 'the start of the delegation is what says he works').toContain(
+    content.chat.working,
+  )
+
+  // the entry's own end, still inside the turn: the entry stands, the word is gone
+  await chat.push(event('delegation', { member: 'Dev', working: false }))
+  expect(entry().textContent, 'the end event ends the word').not.toContain(content.chat.working)
+
+  // the turn ends and its history is read: the live entry stays where it happened, without its word
+  chat.setMessages([QUESTION, { role: 'user', text: 'frag Dev nach einer Frucht' }, TEAM_ANSWER, JONS_ANSWER])
+  await chat.push(event('done', { millis: 21 }))
+  await flush()
+
+  expect(entry().textContent, 'a read gives the delegation entry back like the trace of the turn').toContain(
+    'Dev',
+  )
+  expect(entry().textContent).not.toContain(content.chat.working)
+  expect(screen.getAllByTestId('chat-delegation'), 'one start stays one entry').toHaveLength(1)
+})
+
 
 /**
  * The indicator of a step ends with the next step or with the end of the answer — never with the first word

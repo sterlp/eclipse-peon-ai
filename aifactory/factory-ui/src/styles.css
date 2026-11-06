@@ -349,6 +349,41 @@ button {
   }
 }
 
+/* One delegation of the turn is a link of the timeline and not a voice (R-WP-40): the member the order went
+   to, in the trace's own quiet — mono, small, no surface and no frame of its own. */
+.chat-log .chat-line.delegation {
+  border-left-color: var(--tool-line);
+  padding-top: 0.1rem;
+  padding-bottom: 0.2rem;
+  color: var(--tool);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+
+/* The member above his entry, in the idiom of a step's stamp: small capitals in the trace grey, upright, on
+   no surface. Nothing else stands on the line — the wire carries no order text to paint (UC-WP-72 GIVEN 3). */
+.chat-log .chat-line.delegation .chat-delegation-name {
+  display: block;
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--tool);
+}
+
+/* The word that says he works: the blink of the waiting bar. It ends with the entry's own end event or with
+   the turn — a duration stays the statement of the turn alone (R-WP-40, UC-WP-72 GIVEN 3). */
+.chat-log .chat-line.delegation .chat-delegation-working {
+  animation: chat-waiting-blink 1s steps(2, start) infinite;
+}
+
+/* Own block instead of a comma with the rules above: a grouped rule is only readable at its last selector,
+   and the sheet is read block by block — by the browser and by the test that proves this one. */
+@media (prefers-reduced-motion: reduce) {
+  .chat-log .chat-line.delegation .chat-delegation-working {
+    animation: none;
+  }
+}
+
 /* A file the turn changed (R-WP-36) is a block of the log and neither a voice nor a trace line: the accent
    stays the trace grey, the colours are the ones the app already has — an addition is what the agent did
    (the agent token), a removal the problem token, the headers and context dimmed. Flat rules, one selector

@@ -1,8 +1,19 @@
 import { render, screen } from '@testing-library/react'
 
 import { ChatLog } from '../../src/chat/chat.log'
-import { appendLiveDiff, appendLiveText, appendLiveTool, arrivalTime, MAX_TOOL_LINES, type LiveItem } from '../../src/chat/chat.live'
+import {
+  appendLiveDelegation,
+  appendLiveDiff,
+  appendLiveText,
+  appendLiveTool,
+  arrivalTime,
+  endLiveDelegation,
+  livePreview,
+  MAX_TOOL_LINES,
+  type LiveItem,
+} from '../../src/chat/chat.live'
 import { appSheet, declarations } from '../shared/sheets'
+import { content } from '../../src/shared/content'
 import type { ChatMessage } from '../../src/chat/chat.client'
 
 const QUESTION: ChatMessage = { role: 'user', text: 'zähl die Dateien', origin: 'Paul' }
@@ -333,4 +344,92 @@ test('theIndicatorOfAStepEndsWithTheNextStepAndNotWithTheAnswer', () => {
   expect(allSteps()[1].getAttribute('title'), 'and the step that worked keeps its clock').toBe(
     arrivalTime(SECOND),
   )
+})
+
+/**
+ * A delegation is a link of the timeline of its own and works for its turn alone (R-WP-40, UC-WP-72
+ * GIVEN 3): the entry names the member the order went to — the wire carries no task, so nothing here could
+ * name one — and the word that he works ends with the entry's **own** end event, which is also what brings
+ * its arrival clock. An end that finds no open entry of that member leaves the list alone, and an entry of
+ * a turn this view does not hold open paints no indicator. The step above the entry works no longer: the
+ * delegation is the last step of its turn, so one turn paints exactly one indicator.
+ */
+// UC-WP-72
+test('theDelegationEntryNamesTheMemberAndStopsAtItsEnd', () => {
+  const entry = () => screen.getByTestId('chat-delegation')
+  const openDelegation = appendLiveDelegation(
+    stepsOf({ text: 'Dev start: nenne eine Frucht', origin: 'Jon', at: FIRST }),
+    'Dev',
+    1,
+    SECOND,
+    TURN,
+  )
+  const { rerender } = render(
+    <ChatLog messages={[QUESTION]} outgoing={[]} live={openDelegation} pending={false} openTurn={TURN} />,
+  )
+
+  expect(entry().querySelector('.chat-delegation-name')?.textContent).toBe('Dev')
+  expect(entry().textContent, 'while his turn is open, the member works').toContain(content.chat.working)
+  expect(entry().getAttribute('title'), 'a working entry carries no clock yet').toBeNull()
+  expect(
+    drawnSteps()[0].querySelector('.chat-step-running'),
+    'the delegation is the last step of the turn, so the step above it works no longer',
+  ).toBeNull()
+
+  // the entry's own end: the entry stands, the word is gone, the clock of its arrival appears
+  const ended = endLiveDelegation(openDelegation, 'Dev', TURN)
+  rerender(<ChatLog messages={[QUESTION]} outgoing={[]} live={ended} pending={false} openTurn={TURN} />)
+  expect(entry().textContent, 'the entry of a finished delegation stays where it happened').toContain('Dev')
+  expect(entry().textContent, 'the word ends with the end event and not with a duration').not.toContain(
+    content.chat.working,
+  )
+  expect(entry().getAttribute('title'), 'a closed entry carries its arrival clock').toMatch(/^\d{2}:\d{2}$/)
+
+  // an end that matches nothing: the same list, so no entry of nothing and no line beside it
+  expect(endLiveDelegation(ended, 'Plan', TURN), 'no open entry of that member, so nothing is added').toBe(
+    ended,
+  )
+  expect(endLiveDelegation(ended, 'Dev', TURN), 'a closed entry is not closed a second time').toBe(ended)
+  rerender(<ChatLog messages={[QUESTION]} outgoing={[]} live={ended} pending={false} openTurn={TURN} />)
+  expect(screen.getAllByTestId('chat-delegation'), 'ends that match nothing draw no second line').toHaveLength(
+    1,
+  )
+
+  // the open entry of a turn this view does not hold open paints nothing — identity decides, not the flag
+  rerender(
+    <ChatLog messages={[QUESTION]} outgoing={[]} live={openDelegation} pending={false} openTurn={TURN + 1} />,
+  )
+  expect(entry().textContent, 'an entry of another turn never works').not.toContain(content.chat.working)
+  expect(endLiveDelegation(openDelegation, 'Dev', TURN + 1), 'an end of another turn closes nothing').toBe(
+    openDelegation,
+  )
+
+  // quiet by decision: the member in small capitals in the trace grey, on no surface; the word blinks like
+  // the waiting caret and reduced motion stops it in a block of its own
+  const paintedName = declarations('.chat-log .chat-line.delegation .chat-delegation-name')
+  expect(paintedName, 'the member is a small capital above his entry').toContain('text-transform: uppercase')
+  expect(paintedName, 'the member stays the trace grey').toContain('var(--tool)')
+  expect(paintedName, 'an entry is no card').not.toMatch(/background|border/)
+  expect(
+    declarations('.chat-log .chat-line.delegation .chat-delegation-working'),
+    'the word is the blink of the waiting bar',
+  ).toContain('animation: chat-waiting-blink')
+  expect(appSheet(), 'and reduced motion stops it in its own block').toMatch(
+    /@media \(prefers-reduced-motion: reduce\) \{\s*\.chat-log \.chat-line\.delegation \.chat-delegation-working \{\s*animation: none/,
+  )
+})
+
+/**
+ * The waiting bar names the last thing the wire reported (R-WP-31): after a delegation that is the
+ * **member** — a diff is previewed by its file, and neither of the two is a body line of text
+ * (R-WP-31, UC-WP-72 GIVEN 3).
+ */
+// UC-WP-72
+test('theDelegationPreviewNamesTheMember', () => {
+  const withFile = appendLiveDiff([], 'pom.xml', '--- a/pom.xml\n+++ b/pom.xml\n@@ -1,1 +1,2 @@\n a\n+b\n', 1)
+  expect(livePreview(withFile), 'a diff is previewed by the file it changed').toBe('pom.xml')
+  expect(
+    livePreview(appendLiveDelegation(withFile, 'Dev', 1, FIRST, TURN)),
+    'a delegation is previewed by the member it went to',
+  ).toBe('Dev')
 })

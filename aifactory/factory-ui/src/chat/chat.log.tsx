@@ -4,8 +4,8 @@ import type { Ref } from 'react'
 import type { ChatMessage } from './chat.client'
 import { ChatDiff } from './chat.diff'
 import { ChatMarkdown } from './chat.markdown'
-import { ChatTools } from './chat.tools'
-import { liveRuns, openStep, type LiveItem, type ToolItem } from './chat.live'
+import { ChatDelegation, ChatTools } from './chat.tools'
+import { liveRuns, openStep, type DelegationItem, type LiveItem, type ToolItem } from './chat.live'
 import type { PendingLine } from './chat.pending'
 import { content } from '../shared/content'
 
@@ -44,14 +44,27 @@ interface Row {
   pending: boolean
 }
 
-/** One thing the log draws: a line of the conversation, a live answer, one merged box of tool steps, or one diff block. */
+/**
+ * A live item that speaks: an answer or a failure. A tool step, a diff block and a delegation are drawn as
+ * themselves and never as a line of speech, so they are out of this type by construction (R-WP-28, R-WP-36,
+ * R-WP-40).
+ */
+type SpokenItem = Exclude<LiveItem, { kind: 'tool' } | { kind: 'diff' } | { kind: 'delegation' }>
+
+/**
+ * One thing the log draws: a line of the conversation, a live answer, one merged box of tool steps, one diff
+ * block, or one delegation. The last three are links of the timeline and never a voice of the conversation.
+ */
 type Entry =
   | { type: 'row'; row: Row }
-  | { type: 'live'; item: LiveItem }
+  | { type: 'live'; item: SpokenItem }
   /** The steps of one tool run; `open` is the step the open turn reported last and stands in at most one of
    *  the boxes the log draws — identity, so neither the cap nor the place in the list decides it. */
   | { type: 'tools'; items: ToolItem[]; open: ToolItem | null }
   | { type: 'diff'; file: string; text: string }
+  /** One delegation; `open` is the entry's own end event and the identity of the open turn together, never
+   *  a flag the wire carried (R-WP-40, UC-WP-72 GIVEN 3). */
+  | { type: 'delegation'; item: DelegationItem; open: boolean }
 
 /**
  * One project's conversation as the screen shows it: the history, the own inputs the history does not
@@ -111,6 +124,9 @@ export function ChatLog({ messages, outgoing, live, pending, openTurn = null, lo
         }
         if (entry.type === 'diff') {
           return <ChatDiff key={`diff-${index}`} file={entry.file} diff={entry.text} />
+        }
+        if (entry.type === 'delegation') {
+          return <ChatDelegation key={`delegation-${index}`} item={entry.item} open={entry.open} />
         }
         if (entry.type === 'live') {
           // a live failure is already over, so it carries no waiting frame; its text is the server's
@@ -187,6 +203,18 @@ function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entr
     for (const item of run) {
       if (item.kind === 'tool') {
         tools.push(item)
+        continue
+      }
+      if (item.kind === 'delegation') {
+        // the entry ends the tool box before it: the delegation is the last step of its turn, so the step
+        // above it is worked on no longer — and its own indicator answers to the turn's identity and to the
+        // end event of the wire, never to a place in the list (R-WP-40, UC-WP-72 GIVEN 3)
+        pushTools()
+        entries.push({
+          type: 'delegation',
+          item,
+          open: item.turn !== null && item.turn === openTurn && !item.ended,
+        })
         continue
       }
       pushTools()

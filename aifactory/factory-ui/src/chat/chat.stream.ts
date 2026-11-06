@@ -79,6 +79,17 @@ function toEvent(name: string, payload: string): ChatStreamEvent | null {
       }
       return { kind: 'diff', file: fields.file, diff: fields.diff }
     }
+    case 'delegation': {
+      // the pair or nothing, like `diff`: an entry naming no member could never be closed again, and one
+      // without its flag would not say whether it opens or ends (R-WP-40, UC-WP-72 GIVEN 3)
+      if (typeof fields.member !== 'string' || fields.member.trim() === '') {
+        return null
+      }
+      if (typeof fields.working !== 'boolean') {
+        return null
+      }
+      return { kind: 'delegation', member: fields.member, working: fields.working }
+    }
     case 'agents': {
       // the whole roster, and the view replaces its list with it — a snapshot never accumulates, so it
       // cannot grow into a second history (R-WP-7); a payload without a list is not my error to guess

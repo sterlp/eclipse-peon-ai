@@ -36,6 +36,10 @@ export type ChatStreamEvent =
    *  step only where the wire carries one (R-WP-37, R-WP-40). */
   | { kind: 'tool'; text: string; origin?: string | null }
   | { kind: 'diff'; file: string; diff: string }
+  /** One delegation of the turn: `member` is the team member the order went to and `working` says whether it
+   *  began or ended — both fields, always. No task text: neither of the core's two listeners carries a
+   *  prompt, so the order keeps the wording of the tool line above it (R-WP-40, UC-WP-72 GIVEN 3). */
+  | { kind: 'delegation'; member: string; working: boolean }
   | { kind: 'done'; millis: number }
   | { kind: 'error'; message: string }
   | { kind: 'agents'; tiles: AgentTile[] }

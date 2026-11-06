@@ -1,5 +1,5 @@
 import { content } from '../shared/content'
-import { arrivalTime, MAX_TOOL_LINES, type ToolItem } from './chat.live'
+import { arrivalTime, MAX_TOOL_LINES, type DelegationItem, type ToolItem } from './chat.live'
 
 interface Props {
   /** The steps of one tool run, in the order they arrived. */
@@ -39,6 +39,34 @@ export function ChatTools({ items, open }: Props) {
           </span>
         )
       })}
+    </li>
+  )
+}
+
+interface DelegationProps {
+  /** The delegation as the wire reported it — member, arrival and what its own events said. */
+  item: DelegationItem
+  /** True only while THIS view holds the turn open that the entry belongs to: identity and the entry's own
+   *  end decide it, never the place in the list (R-WP-40, UC-WP-72 GIVEN 3). */
+  open: boolean
+}
+
+/**
+ * A delegation of the turn as a link of the timeline of its own (R-WP-40): the member the order went to and,
+ * while his turn is the open one, the word that he works. The order itself stays the wording of the tool
+ * line above — the wire carries no task text, so this entry parses nothing out of anybody (UC-WP-72
+ * GIVEN 3). Like a step it carries the clock of its arrival once it is over, and a duration stays the
+ * statement of the turn alone.
+ */
+export function ChatDelegation({ item, open }: DelegationProps) {
+  return (
+    <li
+      className="chat-line delegation"
+      data-testid="chat-delegation"
+      title={!open && item.at !== null ? arrivalTime(item.at) : undefined}
+    >
+      <span className="chat-delegation-name">{item.member}</span>
+      {open && <span className="chat-delegation-working">{content.chat.working}</span>}
     </li>
   )
 }

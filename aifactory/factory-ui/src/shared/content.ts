@@ -62,6 +62,9 @@ export const content = {
     you: 'YOU',
     /** The label of a merged tool box — the word `chat.html` paints above the trace (R-WP-28). */
     toolActivity: 'Tool',
+    /** The one word of a running delegation (R-WP-40): the entry names the member, never a task — the wire
+     *  carries none, so there is nothing else this screen could say about it (UC-WP-72 GIVEN 3). */
+    working: 'working',
     message: 'Message',
     messageToJon: 'Message to Jon',
     send: 'Send',

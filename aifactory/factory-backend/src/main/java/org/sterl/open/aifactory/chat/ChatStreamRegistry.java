@@ -186,6 +186,11 @@ public class ChatStreamRegistry {
                     .data(payload("tiles", agents.tiles()), MediaType.APPLICATION_JSON);
             case ChatEvent.Diff diff -> SseEmitter.event().name("diff")
                     .data(payload("file", diff.file(), "diff", diff.diff()), MediaType.APPLICATION_JSON);
+            // both fields always: the receiver needs the member to find his entry and the flag to know
+            // whether it opens or closes — one of them alone would be a statement without a subject
+            case ChatEvent.Delegation delegation -> SseEmitter.event().name("delegation")
+                    .data(payload("member", delegation.member(), "working", delegation.working()),
+                            MediaType.APPLICATION_JSON);
         };
     }
 

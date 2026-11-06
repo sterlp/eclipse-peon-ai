@@ -55,4 +55,16 @@ public sealed interface ChatEvent {
     record Diff(String file, String diff) implements ChatEvent {
     }
 
+    /**
+     * One delegation of a turn, typed: {@code working} says whether it began or ended, {@code member} names
+     * the team member it went to in both cases. A timeline entry and not a voice — the member's own words
+     * stay a history line (R-WP-4).
+     *
+     * <p>No order text, on purpose: the core's two listeners carry {@code (CallStats, AiAgent)} and no
+     * prompt ({@code PoDelegateTool.startListener/endListener}), so the task keeps the wording of the tool
+     * line above it and this class parses nothing out of anybody's text (R-WP-40, UC-WP-72).</p>
+     */
+    record Delegation(String member, boolean working) implements ChatEvent {
+    }
+
 }

@@ -21,13 +21,25 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
+
+import org.sterl.llmpeon.agent.AiAgent;
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.model.CompactResult;
+import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
+import org.sterl.llmpeon.shared.CallStats;
 import org.sterl.llmpeon.shared.OwnerMonitor;
+import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 
 /**
  * The translation of one core callback into one live line — over the real {@link ChatStreamRegistry} and
  * a recording emitter, no Spring context: nothing between {@code onFileUpdate} and the wire is a bean.
+ *
+ * <p>A delegation reaches this translation by the other door: not an {@code AiMonitor} callback but the
+ * delegation tool's own listener pair, which hands over a member and no word of his order (R-WP-40).</p>
  *
  * <p>Delivery runs on the subscriber's own thread, so a count of received events only means "all of them"
  * once the turn is known to be over. Every test therefore closes its events with a {@code done} marker and
@@ -164,6 +176,29 @@ class SseTurnMonitorTest {
                 .containsExactly("text");
     }
 
+    // UC-WP-72
+    @Test
+    void theDelegationSpeaksItsOwnStartAndEnd() {
+        // the delegation does not arrive on an AiMonitor callback but on the delegation tool's own listeners,
+        // and those carry (CallStats, AiAgent): the member is all the wire gets, so he is all it says
+        // (core PoDelegateTool.java:227-245, CallStats.java:34-45 — start before the run, end in its finally)
+        CallStats stats = CallStats.start();
+        monitor.onDelegationStart(stats, memberNamed("Dev"));
+        monitor.onDelegationEnd(stats, memberNamed("Dev"));
+        // both directions of a member nobody can name: a line naming nobody states nothing, so it stays out
+        monitor.onDelegationStart(stats, memberNamed("   "));
+        monitor.onDelegationEnd(stats, memberNamed("   "));
+        endTheTurn();
+
+        assertThat(wire.names()).as("one event per direction, and nothing for a nameless member")
+                .containsExactly("delegation", "delegation", "done");
+        assertThat(wire.payload(0).keySet()).as("both fields always — the receiver needs the pair")
+                .containsExactly("member", "working");
+        assertThat(wire.payload(0)).containsEntry("member", "Dev").containsEntry("working", true);
+        assertThat(wire.payload(1)).as("the end names the member too, or no entry could be closed")
+                .containsEntry("member", "Dev").containsEntry("working", false);
+    }
+
     private static String lines(String name) {
         return IntStream.range(0, 1200).mapToObj(i -> name + "-" + i).reduce("", (a, b) -> a + b + "\n");
     }
@@ -188,6 +223,70 @@ class SseTurnMonitorTest {
                 fail("interrupted while waiting");
             }
         }
+    }
+
+    /**
+     * A member as the tool's listener hands him over. The monitor asks exactly one question of an agent —
+     * his name — so this double answers that one and refuses every other instead of standing in for a
+     * running agent, which is also what keeps the blank-name case reachable: no real agent answers blank.
+     */
+    private static AiAgent memberNamed(String name) {
+        return new AiAgent() {
+
+            @Override
+            public String getName() {
+                return name;
+            }
+
+            @Override
+            public String getSystemPrompt() {
+                throw unreadable();
+            }
+
+            @Override
+            public ChatResponse call(String message, AiMonitor monitor) {
+                throw unreadable();
+            }
+
+            @Override
+            public CompactResult compact(AiMonitor monitor) {
+                throw unreadable();
+            }
+
+            @Override
+            public List<ChatMessage> buildStaticMessages(AiMonitor monitor) {
+                throw unreadable();
+            }
+
+            @Override
+            public ThreadSafeMemory getMemory() {
+                throw unreadable();
+            }
+
+            @Override
+            public int tokenContextUsedInPercent() {
+                throw unreadable();
+            }
+
+            @Override
+            public void clear() {
+                throw unreadable();
+            }
+
+            @Override
+            public boolean isToolActive(SmartToolExecutor exec) {
+                throw unreadable();
+            }
+
+            @Override
+            public boolean isMcpToolActive(String toolName) {
+                throw unreadable();
+            }
+        };
+    }
+
+    private static UnsupportedOperationException unreadable() {
+        return new UnsupportedOperationException("a delegation event reads a name and nothing else");
     }
 
     /**

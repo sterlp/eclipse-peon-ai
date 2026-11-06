@@ -128,7 +128,8 @@ final class ProjectRuntime {
         };
         // registered before the agent is built, otherwise Jon cannot delegate in his first turn; the
         // budget is a supplier so a changed config takes effect without a rebuild
-        toolSet.addDelegateTool(plan, review, dev, () -> model.getConfig().getAutoCompactAfter());
+        PoDelegateTool delegate = toolSet.addDelegateTool(plan, review, dev,
+                () -> model.getConfig().getAutoCompactAfter());
 
         // the team in the core's lifecycle order: Plan, Dev, Review (AiPoAgent.getTeam())
         this.jon = new AiPoAgent(model, toolSet.tools(), stateDir, List.of(plan, dev, review)) {
@@ -147,6 +148,10 @@ final class ProjectRuntime {
         // a member in exactly one place (D1) and a history line needs no second record of its author
         this.names = authorTable(plan.getName(), dev.getName(), review.getName());
         this.monitor = new SseTurnMonitor(projectId, streams, this::tiles, this::sawOrigin);
+        // the delegation events of the wire (R-WP-40, UC-WP-72): hung on the tool the moment the monitor
+        // exists to answer them — the tool itself stays registered where it was, before the agent was built
+        delegate.setStartListener(monitor::onDelegationStart);
+        delegate.setEndListener(monitor::onDelegationEnd);
     }
 
     private AgentTileDto tileOf(AiAgent agent, AgentTiles.Seat seat, long budget) {

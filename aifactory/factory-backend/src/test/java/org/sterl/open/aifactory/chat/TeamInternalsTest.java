@@ -175,9 +175,11 @@ class TeamInternalsTest extends FactorySpringTest {
                     .isEqualTo(JON_ANSWER);
             assertThat(stream.eventNames())
                     .as("no member line under a name of its own: the conversation keeps its three names,"
-                            + " the tile snapshot is the one addition and carries no text of anybody (R-WP-7)"
-                            + " — member text stays off every data line, asserted by wireText above")
-                    .containsOnly("partial", "tool", "done", "agents");
+                            + " the tile snapshot and the delegation entry are the additions, and neither"
+                            + " carries a word of anybody — a delegation entry names a member, never his text"
+                            + " (R-WP-7, R-WP-40) — member text stays off every data line, asserted by"
+                            + " wireText above")
+                    .containsOnly("partial", "tool", "done", "agents", "delegation");
             assertThat(stream.countOf("done")).as("two members, one turn, one done").isEqualTo(1);
             assertThat(stream.countOf("error")).isZero();
         }

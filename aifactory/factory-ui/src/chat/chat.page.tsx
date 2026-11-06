@@ -14,10 +14,12 @@ import { ChatComposer } from './chat.composer'
 import { ChatInsight } from './chat.insight'
 import { ChatLog } from './chat.log'
 import {
+  appendLiveDelegation,
   appendLiveDiff,
   appendLiveError,
   appendLiveText,
   appendLiveTool,
+  endLiveDelegation,
   liveLinesAfterHistory,
   livePreview,
   type LiveItem,
@@ -295,6 +297,22 @@ export function ChatPage({ project, files, user }: Props) {
           // so no author is needed and none is shown (R-WP-36, UC-WP-68)
           const at = beginTurn().anchor
           writeLive(appendLiveDiff(liveItems.current, event.file, event.diff, at))
+          break
+        }
+        case 'delegation': {
+          if (event.working) {
+            // the entry is opened by its own event and anchored like a step of this turn — its identity is
+            // what will decide whether the entry works, and the order stays in the tool line above
+            // (R-WP-40, UC-WP-72 GIVEN 3)
+            const step = beginTurn()
+            writeLive(
+              appendLiveDelegation(liveItems.current, event.member, step.anchor, Date.now(), step.id),
+            )
+            break
+          }
+          // an end that finds no open entry of this member leaves the list as it stands — the same reference.
+          // It never opens a turn either: an end cannot give birth to the entry it was meant to close
+          writeLive(endLiveDelegation(liveItems.current, event.member, turn.current?.id ?? null))
           break
         }
         case 'done':

@@ -153,14 +153,29 @@ class DelegatedAnswerTest extends FactorySpringTest {
                     .as("Jon's own answer still grows live on the same wire")
                     .isEqualTo(JON_ANSWER);
             assertThat(stream.eventNames())
-                    .as("the conversation still speaks its three names, plus the tile snapshot — a member"
-                            + " line under a name of its own would be a fourth, and the member's text is"
-                            + " checked against every data line above (R-WP-7)")
-                    .containsOnly("partial", "tool", "done", "agents");
+                    .as("the conversation still speaks its three names, plus the tile snapshot and the one"
+                            + " timeline entry of a delegation — the entry names a member and carries no word"
+                            + " of his, so the member's text is still checked against every data line above"
+                            + " (R-WP-7, R-WP-40)")
+                    .containsOnly("partial", "tool", "done", "agents", "delegation");
             assertThat(stream.countOf("done"))
                     .as("and it stays one done for the whole turn — the team's line is not a second answer")
                     .isEqualTo(1);
             assertThat(stream.countOf("error")).isZero();
+
+            // the order the core's own dispatch produces: the tool writes its start line, CallStats.run speaks
+            // the start before the member runs and its finally speaks the end (core PoDelegateTool.java:225-245,
+            // CallStats.java:34-45) — so the entry stands between the two tool lines of its own order
+            assertThat(stream.eventNames().stream()
+                    .filter(name -> "tool".equals(name) || "delegation".equals(name))
+                    .toList())
+                    .as("start line, its own start, result line, its own end")
+                    .containsExactly("tool", "delegation", "tool", "delegation");
+            assertThat(stream.payloads("delegation").stream()
+                    .map(payload -> List.of(JsonPath.read(payload, "$.member"), JsonPath.read(payload, "$.working")))
+                    .toList())
+                    .as("both events name the member; only the flag tells them apart (UC-WP-72 GIVEN 3)")
+                    .containsExactly(List.of("Dev", true), List.of("Dev", false));
 
             List<ChatMessageDto> history = messages(project.id());
             assertThat(history)

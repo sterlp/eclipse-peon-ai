@@ -4,11 +4,14 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
+import org.sterl.llmpeon.shared.CallStats;
 import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.shared.SimpleDiff;
+import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.open.aifactory.chat.dto.AgentTileDto;
 
@@ -153,6 +156,34 @@ class SseTurnMonitor implements AiMonitor {
         // the summary of content the core will not diff (binary) — same fallback as the plugin (AIChatView.onFileUpdate)
         // and no stamp to hand out: this callback names no author, so the step stays unnamed (UC-WP-68)
         streams.publish(projectId, new ChatEvent.ToolLine(diff, null));
+    }
+
+    /**
+     * A delegation began, said by the delegation tool's own listener and not by a stamped callback — so the
+     * origin filter of {@link #isJon(String)} has no part here: the event names a member without carrying a
+     * word of his (R-WP-40, UC-WP-72).
+     */
+    void onDelegationStart(CallStats stats, AiAgent member) {
+        publishDelegation(member, true);
+    }
+
+    /** The same delegation ended. The browser closes its entry on this event and on nothing else. */
+    void onDelegationEnd(CallStats stats, AiAgent member) {
+        publishDelegation(member, false);
+    }
+
+    /**
+     * Both events of a delegation are {@code (CallStats, AiAgent)} — the core hands no order text and no
+     * tool-call id, so the member is all the wire can say and the entry says nothing else. A member without
+     * a name is the one reason this translation withholds an event: a line naming nobody states nothing.
+     * No roster is published here — the tiles ride on {@link #onChatResponse} and
+     * {@link #onCompactCompleted} (R-WP-7).
+     */
+    private void publishDelegation(AiAgent member, boolean working) {
+        if (member == null || !StringUtil.hasValue(member.getName())) {
+            return;
+        }
+        streams.publish(projectId, new ChatEvent.Delegation(member.getName(), working));
     }
 
     /** The core has released its compacting flag here — the end state of UC-WP-13 goes out on this callback. */
