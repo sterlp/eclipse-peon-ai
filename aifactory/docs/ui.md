@@ -115,15 +115,28 @@ in voller Höhe daneben.
 Basis der Oberfläche ist **Ant Design** — Layout, Sider, Menu, Input, Button, Card, Form, Select,
 Timeline, Modal/Popconfirm, Alert — mit Theme-Tokens auf unsere Farben (Look oben). **Bootstrap
 verlässt die App vollständig**: kein Bootstrap-CSS, keine `react-bootstrap`-Komponente, keine
-`bootstrap-icons` im Bündel — zwei CSS-Basen nebeneinander sind verboten. Die **Chat-Zeilen**
+`bootstrap-icons` im Bündel — zwei CSS-Basen nebeneinander sind verboten; ein Import von
+Bootstrap-**CSS** ist dieselbe Verletzung wie ein Import ihrer Komponenten. Die **Chat-Zeilen**
 (Verlauf, Werkzeug-Zeilen, Diffs, Think) behalten **eigenes CSS** in unserer Optik
 ([R-WP-29](chat.md)): Akzent links, flache kompakte Zeilen, keine AntD-Karte um den Verlauf, nicht
 zentriert. Portiert werden **Muster und Widgets** der Referenz `ai-schulung` (Auto-Grow-Input,
 Timeline, Markdown-Renderer, Karten), **nie ihr Zustandsmodell**: Queue, Live-Anker und
 Bestätigung bleiben die unseren ([R-WP-37](chat.md)).
 
+**Dunkel ist eine Tabelle.** Die App setzt `data-theme` am Dokument auf den Wert der
+Betriebssystem-Vorliebe, und die Farb-Tokens der Basis stammen aus **derselben** Dunkel-Tabelle wie
+das Grundblatt — zwei abweichende Dunkellooks sind ein Defekt. Und die Basis **ist** die Haut der
+App: wo die App mountet, gilt ihr Theme; ein Ausschnitt, der ohne sie montiert, ist nicht die App.
+
 #### UC-WP-71 — oneDesignBasisOwnChatCss ❌
 - GIVEN die gebaute App WHEN das Bündel entsteht THEN enthält es kein Bootstrap-CSS und keine
-  `react-bootstrap`-Komponente.
+  `react-bootstrap`-Komponente; GIVEN denselben Fehler ein zweites Mal WHEN die Wache prüft THEN ist
+  die Suite rot — die Wache sieht den CSS-Import (`import 'bootstrap/…'`) ebenso wie die Komponente
+  und prüft das Manifest **vollständig** (`dependencies` und `devDependencies`).
+- GIVEN die App mountet WHEN ein Element der Basis zeichnet THEN trägt es unsere Token-Farbe; ohne
+  die Haut der App gilt keine unserer Farben.
+- GIVEN das Betriebssystem dunkel wünscht WHEN die App mountet THEN trägt das Dokument
+  `data-theme="dark"`, und **jedes** Farb-Feld der Basis stimmt mit der Dunkel-Tabelle des
+  Grundblatts überein — nicht nur zwei Beispiele.
 - GIVEN der Chat WHEN er den Verlauf zeichnet THEN tragen Nutzer-, Jon- und Werkzeug-Zeilen unsere
   Klassen und unsere Akzentlinie; AntD-Elemente stehen nur außerhalb des Verlaufs.

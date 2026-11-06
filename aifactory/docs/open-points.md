@@ -18,12 +18,22 @@ Reihenfolge, je ein grünes Inkrement:
    keine `breaks`-Option — gemessen 2026-11-06). Hebt C-2(b) (Reload ohne Markdown).
 3. **Eingabe** — Auto-Grow, Send nur bei Text, Refocus nach dem Turn ([R-WP-41/UC-WP-74](chat.md)).
    Tastatur bleibt R-WP-30 (Enter = Umbruch) — siehe ⏳ unten.
-4. **Timeline** — Werkzeuge und Delegationen als Einträge mit Agentenname, `loading`, Dauer und
-   Uhrzeit ([R-WP-40/UC-WP-72](chat.md)); kein `hr` zwischen Zeilen
-   ([R-WP-29/UC-WP-55](chat.md), C-6). F3 (Agent-Arbeit unsichtbar) wird hier mitbehandelt:
-   der Eintrag zeigt, wer arbeitet.
+4. **Timeline** — Werkzeuge und Delegationen als Einträge mit Agentenname, `loading` und
+   Ankunftszeit; **Dauer nur je Turn** an der Antwort ([R-WP-40/UC-WP-72](chat.md)); kein `hr`
+   zwischen Zeilen ([R-WP-29/UC-WP-55](chat.md), C-6). F3 (Agent-Arbeit unsichtbar) wird hier
+   mitbehandelt: der Eintrag zeigt, wer arbeitet.
 5. **Sider-Navigation + URL** — Projektbaum, Klick aufs Projekt öffnet seinen Chat, Einheiten
    Files (Paco später); URL auf den **klaren Projektnamen** (C-3, Namens-Kollision vorher prüfen).
+
+* **⏳ Dunkel = eine Tabelle, App setzt `data-theme`** (2026-11-06, Review-Fund zu Inc 1,
+  Rückversicherung ausstehend) — das Grundblatt schrieb Dunkel bisher zweimal (Media-Block für die
+  Betriebssystem-Vorliebe, `[data-theme='dark']` für eine explizite Wahl, die niemand setzt); die
+  Basis-Tokens lasen die ungenutzte Kopie → zwei Dunkellooks möglich, bei grüner Suite.
+  [R-WP-39/UC-WP-71](ui.md) jetzt: die App setzt `data-theme` am Dokument auf die
+  Betriebssystem-Vorliebe, die Tokens kommen aus **derselben** Tabelle, jedes Feld wird gegengeprüft.
+  *Andersfall:* willst du einen **manuellen** Hell/Dunkel-Umschalter im Header, ist das eine neue Regel
+  (Umschalter + Merkmal über Reload hinweg) — die Umsetzung bliebe kompatibel, nur die Queue der
+  Entscheidung wäre eine andere.
 
 * **⏳ „Jon muss weg" als Navigation LABEL verstanden** (2026-11-06, Paul per Zuruf, Rückversicherung
   ausstehend) — [R-WP-38](ui.md): es gibt **keinen „Jon"-Eintrag** und kein „Jon"-Label im Sider, ein
