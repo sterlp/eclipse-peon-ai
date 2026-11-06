@@ -355,9 +355,11 @@ class ChatQueueTest extends FactorySpringTest {
                     .as("kein zweiter Turn: die Prio war nachweislich nie beim Anbieter")
                     .doesNotContain("bitte abbrechen");
 
-            // R8.6 am laufenden Turn: ein einsames `!` ist konsumiert, ohne etwas einzureihen. Einzureihen
-            // ist die Arbeit des Request-Threads, darum ist die Zählung unmittelbar danach entschieden.
-            assertThat(send(project.id(), "!").getStatusCode())
+            // R8.6 am laufenden Turn, mit demselben Absender: ohne ihn wäre das Payload selbst blank und
+            // die Verwerfung wäre nicht von der Core-Regel zu unterscheiden — mit ihm wäre die eingereihte
+            // Zeile eine Namenszeile ohne Inhalt. Einzureihen ist die Arbeit des Request-Threads, darum ist
+            // die Zählung unmittelbar danach entschieden.
+            assertThat(send(project.id(), "!", "Anna").getStatusCode())
                     .as("das einsame `!` wird ebenso angenommen")
                     .isEqualTo(HttpStatus.ACCEPTED);
             assertThat(jon.getQueuedMessageCount())
@@ -388,6 +390,10 @@ class ChatQueueTest extends FactorySpringTest {
         assertThat(capturedText())
                 .as("das konsumierte `!` hat nichts zugestellt — es bleibt bei dem einen Block (R8.6)")
                 .containsOnlyOnce(TaggedResult.PREFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE);
+        // und es bleibt bei dem einen Absender: eingereiht wäre hier sonst eine Namenszeile ohne Inhalt
+        assertThat(capturedText())
+                .as("genau eine Absenderzeile ist zugestellt — das einsame `!` hat keine leere hinterlassen")
+                .containsOnlyOnce("[User Anna]");
 
         assertThat(messages(project.id()))
                 .as("die Prio wird nie in die Memory geschrieben (R8.7) — keine Nutzerzeile damit")
