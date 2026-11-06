@@ -17,33 +17,91 @@ ein Helfer, Marker). Stand: Backend **208/0/0**, UI **129 Tests/16 Dateien**, ox
 UC **67/67**, Doc-Lint 0 Findings (250 Ids). Alle 10 Feedback-Punkte verarbeitet. Dev-Slot-Lücke ⏳.
 Trailer-Regel: kein Modellname.
 
-## Zyklus 2026-11-03 — Runde 3 LÄUFT
+## Zyklus 2026-11-06 — Runde 4: AntD-Umbau (Paul freigegeben, autonom)
 
-**✅ F6/F7 abgeschlossen (Review CONCERNS ohne Bug, Delta S1/L1 nachgebaut, Inc 9):** 23 → **1**
-Spring-Kontext, Wanduhr **118 → 42,1 s**, 216 Tests/0, null Produktionscode. Commits `c47c4aa7`…`30c42754`
-auf `web-factory-mvp`. Regel + Messgröße jetzt in [AGENTS.md](../AGENTS.md), Fakten in
-`AGENTS-DEV.md` (Abschnitt „Build-Geschwindigkeit / Test-Kontext"); Guard `SingleContextGuardTest`
-(härtet Meta-Annotationen + Nicht-`*Test`-Klassen), Lifecycle-Netz 120 s, TurnGate statt Schlaf,
-ein Home `target/test-home`. F6/F7 aus open-points entfernt (Fakten leben in AGENTS-DEV).
+**Paul seit 12:05 wieder erreichbar** (Fragen wieder möglich). Backlog und Reihenfolge stehen in
+[open-points.md](open-points.md) („Runde 3 — AntD-Umbau der Oberfläche").
+**Inkrement 1 + Nacharbeit 1-N1 gebaut, reviewt, abgenommen** — [R-WP-39/UC-WP-71](ui.md) ✅: AntD
+**6.7.0** gepinnt, Bootstrap vollständig raus (Wache sieht CSS-Import, `.css` und `devDependencies`),
+Theme-Tokens aus einer Quelle, `data-theme` am Dokument aus der Betriebssystem-Vorliebe, `AppRoot`
+selbst gemountet bewiesen. UI **159 Tests/20 Dateien in 8,5 s**, tsc/oxlint 0/0, Diff `src/chat/**`
+= null Zeilen. Commits auf `web-factory-mvp-2`: `cad7f0e6` (Inc 1) · `77b33213` (Docs von Jon) ·
+`49f6a7b6` (1-N1, Spitze = origin).
 
-**Offen Runde 3 (Backlog in [open-points.md](open-points.md)):** F3 Kacheln · F4/F6-C hr raus, Linien
-wie Eclipse · F5 Optik/Config · F8 Config-Umfang (reasoning_effort, Header) · F9 Clear-Layout ·
-F10 Bootstrap docs-Laden · C-1 TurnClaim-Timeout · C-2 Compact-Anzeige · C-3 URL-Hash ·
-C-5 Verlauf out of order (Referenz: `/Users/sterlp/dev/workset/ai-schulung/app/frontend`) ·
-C-7 Agent-Chat = Haupt-Widget read-only. **C-4 Diffs 🔒 entschieden (live only)** — als nächstes
-Inkrement mit Regel+UC in chat.md. Bild-Support-Anzeige weiter ⏳.
-**✅ C-4 Diffs gebaut + reviewt (2026-11-03):** [R-WP-36/UC-WP-68](chat.md) ✅. Commits
-`32bb05fd`/`d7ca61b3`/`5e0956dd`. **Core-Erweiterung von Paul einbauen lassen (2026-11-05, `2cac0d6f`
-auf main):** Anlegen = reiner `+`-Diff, `SimpleDiff` cappt bei 500 Changed-Zeilen partziell statt zu
-skippen, Binary → Werkzeug-Zeile; Docs bereits nachgezogen (Core-Agent), Fabrik-Test nachgeholt
-(`49571dc4`, Backend 222/0, missCount 1). Entscheidung in [resolved-points.md](resolved-points.md).
-**Branch `web-factory-mvp-2`** (von `origin/main` `2cac0d6f`, Commit `796cd8b9` Toolchain-Fakten).
-**pnpm-Fix (2026-11-05):** corepack 0.33 kann pnpm ≥11 nicht starten (`bin/pnpm.mjs` vs `pnpm.cjs`);
-läuft wieder mit **pnpm 10.28.0**, Root-`package.json`-Kollateral gelöscht, Lockfile drift-frei.
-Arbeitsregel (Paul): Nur-UI-Änderung ⇒ nur UI-Tests; Backend anfassen ⇒ Backend-Tests.
-Vor Fabrik-Build nach Core-Änderung: Kern `clean test` → `install -DskipTests` (Core-Artefakt in
-`~/.m2` kann älter sein als der Branch-Stand).
-Trailer-Regel: kein Modellname. Commit nur `aifactory/`-Pfade scopen (Core im selben Repo).
+**Entschieden (2026-11-06):** AntD wird Design-Basis, **Bootstrap raus** ([R-WP-39](ui.md));
+Navigation = **Projektbaum im Sider**, Klick aufs Projekt öffnet den Chat, **kein „Jon"-Label**
+([R-WP-38](ui.md), ⏳ ob auch die Kachel umbenannt werden soll); **kein `hr`** zwischen Zeilen
+([R-WP-29/UC-WP-55](chat.md) deshalb wieder ❌); Timeline für Werkzeuge/Delegationen
+([R-WP-40/UC-WP-72](chat.md)); Markdown muss GFM + einfache Umbrüche können
+([R-WP-28/UC-WP-73](chat.md), `markstream` hält nicht: CSS nie importiert, kein `breaks`);
+Eingabe Auto-Grow/Refocus ([R-WP-41/UC-WP-74](chat.md)); **Zeiten bleiben live** (kein zweiter
+Speicher, kein Text-Parsing). Grenze: [AF-ADR-003](adr/003-reference-ui-is-a-donor-not-a-source.md) —
+die Referenz `ai-schulung` gibt Muster, **nie** unseren Zustand (C-5-Fix bleibt grün!).
+
+**Konflikt entschieden (2026-11-06, Paul „A"):** Tastatur — **Enter sendet, Shift+Enter = neue Zeile**;
+[R-WP-30/UC-WP-56](chat.md) umgeschrieben und auf ❌ gesetzt (Umbau in Inkrement 3), Merkposten gegen
+Wiederaufmachen in [resolved-points.md](resolved-points.md). Paul zusätzlich: „es gibt **kein Lock vom
+Input**" (bestätigt [R-WP-41](chat.md)). **`!` geklärt (2026-11-06, Paul: „sollte implementiert sein" → im Core nachgelesen):** die
+Prio-Nachricht ist **Core-Bestand**
+([`queued-user-messages.md`](../../org.sterl.llmpeon.core/docs/queued-user-messages.md) R1/R2/R8/R11:
+`!` am Anfang **nur** im laufenden Turn → Urgent-Lane, dort gestrippt, kein Batching, beim nächsten
+Tool-Call als **ein** `queued_user_message`-Block am Tool-Ergebnis; ohne laufenden Turn normaler Text).
+**Die Fabrik reicht `!` noch nicht durch** (`ProjectRuntime.submit()` → Rohtext an `call()`) — SOLL als
+[R-WP-42/UC-WP-75](chat.md) ❌, Bau in **Inkrement 3b**. **Tastatur nach Pauls Klarstellung:** Enter =
+senden, **`Shift+Enter` UND `Ctrl/Cmd+Enter` = neue Zeile** ([R-WP-30/UC-WP-56](chat.md) ❌, Bau in
+Inkrement 3). **Glossary angelegt** (2026-11-06, Paul):
+[glossary.md](glossary.md) mit **Jon** / **Paco**, verlinkt aus [index.md](index.md) und
+[product-vision.md](product-vision.md); Begriffe, die über ein Doc hinausreichen, stehen ab dort.
+
+**Review zu Inc 1 = REJECTED** (4 Beweis-BUG: Wache sah den CSS-Import nicht · zwei Dunkel-Tabellen,
+`theme.ts` las die ungenutzte `[data-theme='dark']`-Kopie · `sendThinking` nur im Label bewiesen ·
+`AppRoot`/`ConfigProvider` von keinem Test gerendert) — alle vier geschlossen, je mit Mutation und
+getroffener Datei (8 Sonden, keine blieb grün). **Merksatz für Reviews:** eine Mutation, die grün
+bleibt, ist ein Befund — nicht der Test ist zu leise. `matchMedia`-Polyfill **bleibt** (gemessen:
+jsdom 26.1.0 liefert die Property als `undefined`; Inc-1-Behauptung „nicht load-bearing" war falsch).
+
+**Nächste Schritte:** Inc 2 Markdown ([R-WP-28/UC-WP-73](chat.md), hebt C-2b) → Inc 3 Eingabe
+([R-WP-41/UC-WP-74](chat.md)) — **wartet auf Pauls Tastatur-Entscheidung** (⏳ Enter-Konflikt unten) →
+Inc 4 Timeline + kein `hr` (hebt F3 zum Teil) → Inc 5a Sider + URL (C-3, bringt `aria-current` mit
+Test zurück) → 5b Files-Unit. Danach Rest-Backlog:
+C-7 (Agent-Blick read-only live), C-2a/C-1, F8/F10. Stagehand ⏳ parked (Node ≥22.18 vs. Bau 22.12).
+
+## Archivierte Stationen dieser Runde
+
+**✅ F6/F7 abgeschlossen:** 23 → **1** Spring-Kontext, Wanduhr **118 → 42,1 s**, 216 Tests/0, null
+Produktionscode. Commits `c47c4aa7`…`30c42754` auf `web-factory-mvp`. Regel + Messgröße in
+[AGENTS.md](../AGENTS.md), Fakten in `AGENTS-DEV.md`; Guard `SingleContextGuardTest`, Lifecycle-Netz
+120 s, TurnGate statt Schlaf, ein Home `target/test-home`.
+
+**✅ C-4 Diffs gebaut + reviewt:** [R-WP-36/UC-WP-68](chat.md) ✅. Commits `32bb05fd`/`d7ca61b3`/`5e0956dd`.
+Core-Erweiterung von Paul (`2cac0d6f` auf main): Anlegen = `+`-Diff, `SimpleDiff`-Cap 500 Changed-Zeilen
+partziell statt Skip, Binary → Werkzeug-Zeile; Fabrik-Test `49571dc4` (Backend 222/0, missCount 1).
+Entscheidung in [resolved-points.md](resolved-points.md).
+
+**✅ C-5 Verlauf out of order — abgeschlossen (2026-11-05), R-WP-37/UC-WP-69 ✅:** Branch
+`web-factory-mvp-2`, Inc 1 `195b149d` (Anker je Turn eingefroren, Stream nach erstem Read) · Inc 2
+`a3da4b01` (Read-Sequenz + `mark`: veraltete Reads verworfen, nur Items `< mark` aufs Verlaufs-Target) ·
+Inc 3 `8360d27e` (Bestätigung über Position statt Text) · **Review REJECTED** → Paul entschieden
+(Fälle 1–6 einzeln per GIVEN/WHEN bestätigt) → **Inc 4 `08eefdde`** (Wasserlinie **je Absender**,
+zustandslos; Bündel-Fall: eine Verlaufszeile bestätigt alle vor ihr gesendeten vorläufigen Zeilen
+desselben Absenders; `senderName()` eine Normierungsstelle; ChatLog zeichnet `origin ?? you`, Prop
+`user` entfällt) · Docs-Flip `702993b5`, Plan archiviert+gelöscht `d94784ad`. UI **149 Tests/18
+Dateien**, tsc/oxlint 0/0, UC-WP 69/69 belegt. Geschärft: `user.md` R-WP-25 — „You" = Anzeige des
+anonymen Nutzers, **kein Präfix an Jon**, namenlose Eingaben = eine Absenderklasse.
+
+**Offen Runde 3 (Backlog in [open-points.md](open-points.md)):** F3 Kacheln · F5 Optik/Config ·
+F8 Config-Umfang (reasoning_effort, Header) · F9 Clear-Layout · F10 Bootstrap docs-Laden ·
+C-1 TurnClaim-Timeout · C-2 Compact-Anzeige · C-3 URL-Hash · C-7 Agent-Chat = Haupt-Widget
+read-only (**nächster**, nach C-5). C-6 🔒 (hr raus/Linien in R-WP-29). Bild-Support-Anzeige ⏳.
+LOW-2/LOW-3 + Projektwechsel-Ref-Reset aus dem C-5-Review ungeplant offen (klein, bei Gelegenheit).
+Suspicion S1 (Clear/Compact verkürzt Verlauf → Wasserlinie hoch) und S2 (Read bei laufendem Turn,
+heute 409) beobachten.
+
+**pnpm-Fix (2026-11-05):** corepack 0.33 kann pnpm ≥11 nicht starten; läuft mit **pnpm 10.28.0**,
+Root-`package.json`-Kollateral gelöscht, Lockfile drift-frei. Arbeitsregel (Paul): Nur-UI-Änderung ⇒
+nur UI-Tests; Backend anfassen ⇒ Backend-Tests. Vor Fabrik-Build nach Core-Änderung: Kern
+`clean test` → `install -DskipTests`. Trailer-Regel: kein Modellname. Commit nur `aifactory/`-Pfade
+scopen (Core im selben Repo).
 
 Runde 1/2-Befundlisten und die Design-Entscheidungen vom 2026-11-02 sind verarbeitet und leben in den
 Feature-Docs (ui/chat/files/config.md) — hier gelöscht.
@@ -66,7 +124,9 @@ Feature-Docs (ui/chat/files/config.md) — hier gelöscht.
 * Port 8080 = IDE → Nachweise auf 8099; `~/.peon` vor/nach vergleichen; `@TempDir` liegt auf macOS unter
   TMP → Test-Homes nach `target/`.
 * `lintDocsAndTests`/`nextIds`: Pfade relativ zum Session-cwd (aifactory) — `docRoots:["docs"]` reicht
-  (kein Präfix `aifactory/`, kein `root`-Parameter); `testRoots` ebenso relativ (Fabrik + UI).
+  (kein Präfix `aifactory/`, kein `root`-Parameter); `testRoots` ebenso relativ (Fabrik + UI:
+  `factory-backend/src/test`, `factory-ui/test`, `factory-ui/src`). **`idPattern` weglassen** — mit
+  `idPattern` lief der Lint auf 0/0-Definitionen (2026-11-05 gemessen); der Default matched korrekt.
 * eclipseEditFile verliert `oldString` bei langen Blöcken → `diskEditFile` (kurz ankern); sonst
   `eclipseWriteFile`/`eclipseReplaceLines`.
 * `TurnClaim`-Tests: Kachel-Handshake (COMPACTING⇒IDLE) statt Core-Flags als Warte-Bedingung.

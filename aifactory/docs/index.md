@@ -16,6 +16,9 @@ Backlog = jedes ❌/🚧/◐/❓.
 * **[Architektur](aifactory-architektur.md)** — das WIE: Komponenten, Turn-Besitz, Core-Abbildung,
   Invarianten. **Vor jedem Plan** zu lesen.
 * **[Product Vision](product-vision.md)** — was Open AI Fabric (OAF, Jon@Web) ist und was nicht.
+* **[Glossary](glossary.md)** — ein Begriff, eine Bedeutung. Definiert hier: **Jon** (bauender,
+  technischer PO je Projekt) und **Paco** (fachlicher PO je Nutzer). Begriffe, die über ein einzelnes
+  Doc hinausreichen, kommen hierher, bevor sie in einem Doc „erfunden" werden.
 * **[Pauls Produktvision](../pauls-product-vision.md)** — Pauls Rohvision (*für Agenten nur zu lesen*).
   **Quelle des SOLL**, soweit keine bessere Idee abgestimmt ist (Paul 2026-10-27); verbindlich wird
   ein Punkt erst als Regel in einem Feature-Doc. Abweichungen stehen als ❓ in [Open Points](open-points.md).
@@ -50,7 +53,8 @@ Nicht hier: alles Eclipse-/OSGi-spezifische (SWT-Views, Widgets, Preference-Page
 
 MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabil).
 
-* [UI](ui.md) — Projektbaum im Sider (AntD), URL-stabil, Auslieferung unter `/ui/`, Look. ◐ (Auslieferung ✅, AntD-Umbau ❌ — [R-WP-38](ui.md)/[R-WP-39](ui.md))
+* [UI](ui.md) — Projektbaum im Sider (AntD), URL-stabil, Auslieferung unter `/ui/`, Look. ◐ (Auslieferung
+  ✅, **AntD-Basis ✅ [R-WP-39](ui.md)** — Bootstrap raus; Sider + URL ❌ [R-WP-38](ui.md))
 * [Projekte](project.md) — Git-Checkout als Projekt: klonen, eindeutig, entfernen, nie interaktiv, Live-Status. ◐
 * [Jon-Chat](chat.md) — ein Jon, ein Gespräch je Projekt: Streaming, Queue, Neustart, Tools, Kacheln. ◐
   (Herkunft je Zeile ✅ UC-WP-39/40; Kacheln ✅ R-WP-7, Blick je Agent ✅ R-WP-26)
@@ -66,7 +70,6 @@ MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabi
 
 ## Noch nicht angelegt
 
-[Glossary](glossary.md) — kommt mit dem ersten übergreifenden Begriff.
 [ADRs](adr/index.md): unsere Web-ADRs liegen **hier** im eigenen Raum `AF-ADR-*`; nur eine ADR, die
 den geteilten **Core** betrifft, liegt im globalen Raum
 [`docs/adr/`](../../docs/adr/index.md). [Open Points](open-points.md) existiert.

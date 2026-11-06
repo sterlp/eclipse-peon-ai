@@ -89,11 +89,31 @@ Queue sind die des Cores — die Web-Schicht erfindet keinen zweiten Turn-Pfad.
 ### R-WP-10 — Ein Turn je Projekt, weitere Eingaben in der Queue ✅
 
 Eingaben während eines laufenden Turns gehen in die Queue des Cores; verschiedene Projekte dürfen
-parallel laufen.
+parallel laufen. **Bündelung, Reihenfolge und Ablieferung sind die des Cores** —
+[`queued-user-messages.md`](../../org.sterl.llmpeon.core/docs/queued-user-messages.md) (R1, R2). Die
+Fabrik hält **keinen** eigenen Queue-Speicher vor und mischt sich in die Reihenfolge nicht ein.
 
 #### UC-WP-14 — secondInputDuringTurnQueues ✅
 - GIVEN ein laufender Turn WHEN der Nutzer erneut sendet THEN wird die Nachricht gequeued und erst
   nach dem Turn verarbeitet — kein zweiter paralleler Turn auf derselben Memory.
+
+### R-WP-42 — `!` am Anfang ist die Prio-Nachricht des Cores ❌ (Paul 2026-11-06)
+
+Eine Eingabe, die **während eines laufenden Turns** mit `!` **beginnt**, ist die **Prio-Nachricht**;
+Verhalten, Lane und Zustellung regelt der Core
+([`queued-user-messages.md`](../../org.sterl.llmpeon.core/docs/queued-user-messages.md) R8, R11 — dort
+nachlesen, hier nicht wiederholt). **Der Fabrik-Anteil ist nur:** die Eingabe **unparsed** an genau
+denselben Core-Eingang zu geben, den auch das Plugin nutzt — statt sie als normalen Turn-Text
+aufzunehmen — und die Zeile im Verlauf **so zu zeigen, wie sie getippt wurde** ([R-WP-37](chat.md):
+die Fabrik parst und kürzt nichts). Läuft **kein** Turn, ist `!` schlicht Text (Core R8.1) — die
+Fabrik kennt keinen eigenen Sonderfall.
+
+#### UC-WP-75 — urgentMarkerIsHandedToTheCore ❌
+- GIVEN im Projekt läuft ein Turn WHEN der Nutzer `! <Text>` sendet THEN nimmt der Core die Eingabe als
+  Prio-Nachricht auf — **kein** zweiter Turn, kein zweiter Weg durch die Fabrik.
+- GIVEN dieselbe Eingabe WHEN der Verlauf gezeichnet wird THEN steht sie mit `!` im Verlauf, genau
+  einmal ([R-WP-37](chat.md)).
+- GIVEN es läuft **kein** Turn WHEN der Nutzer mit `!` sendet THEN ist `!` Teil der Nachricht.
 
 ### R-WP-15 — Je Projekt genau ein Jon, ein Chat für alle ✅
 
@@ -244,7 +264,7 @@ Verlauf; kompakt (klein, grau, Tool-Zeilen gemerged wie in `chat.html`) und nach
 - GIVEN Tool-Aktivität WHEN Zeilen erscheinen THEN stehen sie im Verlauf an ihrer Stelle, kompakt,
   und bleiben nach dem Turn sichtbar.
 
-#### UC-WP-73 — markdownKeepsLineBreaksAndGfm ❌
+#### UC-WP-73 — markdownKeepsLineBreaksAndGfm ✅ (gebaut 2026-11-06)
 - GIVEN eine Antwort mit zwei durch **ein** Zeilenumbruch getrennten Sätzen WHEN sie gezeichnet wird
   THEN stehen die Sätze auf **zwei** Zeilen.
 - GIVEN eine Antwort mit Tabelle und Durchstreichung WHEN sie gezeichnet wird THEN ist sie eine
@@ -323,8 +343,12 @@ Zeile**, kein Rahmen um den Chat (wie `chat.html`: Label „You" blau, Agent-Lab
 **rechtsbündig**, nichts ist **mittig zentriert**. Jons Antworten haben **keinen grauen
 Hintergrund-Block** und keine eingestreuten Markierungen oder Cards im Fließtext. Wo die Rolle wechselt,
 **trennt keine Linie**: die seitlichen Akzentlinien der Zeilen sind die Trennung — **kein `<hr>`** und
-keine andere horizontale Linie zwischen zwei Zeilen (Paul 2026-11-06: „hr raus, Linien treffen sich
-seitlich wie in Eclipse").
+keine andere horizontale Linie **zwischen zwei Zeilen** (Paul 2026-11-06: „hr raus, Linien treffen sich
+seitlich wie in Eclipse"). Ein `---` **innerhalb einer Antwort** ist deren Inhalt und wird nicht
+unterdrückt — es zeichnet als **unsere** kurze, ruhige Linie **im Antwortblock**, nie linienbreit über
+den Verlauf; ein Beweis für „keine Trennlinie" prüft deshalb den **ganzen Verlauf** und nicht nur eine
+eigene Klasse. **Breite Kost** verbreitert nie die Seite: eine **Tabelle** scrollt innerhalb des
+Antwortblocks horizontal, ein **Bild** bleibt innerhalb der Antwortbreite.
 
 #### UC-WP-55 — colorsFollowChatHtmlBaseline ❌
 - GIVEN eine Nutzer- und eine Agent-Antwort WHEN beide im Verlauf stehen THEN trägt die Nutzer-Zeile
@@ -332,6 +356,12 @@ seitlich wie in Eclipse").
   Hintergrund-Block.
 - GIVEN dieselben beiden Zeilen WHEN zwischen ihnen die Rolle wechselt THEN verläuft **keine**
   horizontale Linie durch den Verlauf (kein `<hr>`), und keine der beiden Zeilen ist mittig zentriert.
+- GIVEN eine Antwort mit `---` WHEN sie gezeichnet wird THEN steht die Linie **innerhalb** der Antwort
+  und nicht als Trennung über die Verlaufsbreite; **kein** Beweis für „keine Trennlinie" darf ein
+  modell-gemalenes `hr` übersehen.
+- GIVEN eine Antwort mit einer breiten Tabelle und einem Bild WHEN sie gezeichnet wird THEN scrollt die
+  Tabelle **im Antwortblock**, die Seite bleibt ungeändert breit, und das Bild bleibt in der
+  Antwortbreite.
 
 ### R-WP-41 — Die Eingabe wächst mit und findet ihren Fokus zurück ❌ (Paul 2026-11-06, Muster aus `ai-schulung`)
 
@@ -355,16 +385,26 @@ zu aktiviert) — der Nutzer tippt weiter, ohne zu klicken. Tastatur und Resend 
 - GIVEN ein Turn war läuft und ist jetzt vorbei WHEN die Eingabe wieder aktiv wird THEN steht der
   Fokus in ihr.
 
-### R-WP-30 — Eingabe: Enter ist Zeilenumbruch, Cmd/Ctrl+Enter sendet ✅ (Paul 2026-11-02)
+### R-WP-30 — Eingabe: Enter sendet, Shift+Enter macht die neue Zeile ❌ (Paul 2026-11-06, **bedeutet die Umkehrung** von Paul 2026-11-02)
 
-Im Eingabefeld (Textarea) macht **Enter eine neue Zeile**; **Cmd/Ctrl+Enter** sendet — so bleiben
-Mehrzeiler möglich. Der Send-Knopf bleibt die klickbare Alternative. Zusätzlich kann der Nutzer die
-**letzte gesendete Nachricht erneut senden**, ohne sie neu zu tippen — etwa nach einem Fehler
+Im Eingabefeld (Textarea) **sendet Enter**; **Shift+Enter** setzt eine neue Zeile — das ist die
+Bewegung, die der Nutzer aus jedem Chat-Tool mitbringt (Paul 2026-11-06, nach Blick auf die
+Referenz-App). **`Shift+Enter` UND `Ctrl/Cmd+Enter` setzen eine neue Zeile** (Paul 2026-11-06: am Mac
+ist `Cmd` das `Ctrl`) — die neue Zeile hat damit zwei Wege, das Senden nur einen. Der
+Send-Knopf bleibt die klickbare Alternative und ist bei leerer Eingabe deaktiviert
+([R-WP-41](chat.md)). **Mehrzeilige Eingaben bleiben möglich** — über Shift+Enter, und ein Text mit
+eingebetteten Umbrüchen wird so gesendet, wie er dasteht. Zusätzlich kann der Nutzer die **letzte
+gesendete Nachricht erneut senden**, ohne sie neu zu tippen — etwa nach einem Fehler
 („Resend"); sie läuft wie jede Eingabe in die Queue ([R-WP-10](chat.md)), wenn ein Turn läuft.
+*Umsetzung steht aus:* die alte Fassung (Enter = Umbruch) ist gebaut und muss mit umgebaut werden.
 
-#### UC-WP-56 — enterNewlinesCtrlEnterSends ✅
-- GIVEN das Eingabefeld WHEN der Nutzer Enter drückt THEN entsteht eine neue Zeile; WHEN er
-  Cmd/Ctrl+Enter drückt THEN sendet die Eingabe.
+#### UC-WP-56 — enterSendsShiftEnterNewlines ❌ (war `enterNewlinesCtrlEnterSends` ✅, Umkehrung Paul 2026-11-06)
+- GIVEN das Eingabefeld mit Text WHEN der Nutzer Enter drückt THEN wird gesendet und das Feld ist
+  danach leer; WHEN er **Shift+Enter** drückt THEN entsteht eine neue Zeile und es wird **nicht**
+  gesendet. GIVEN leere Eingabe WHEN Enter THEN passiert nichts (der Knopf ist deaktiviert, die
+  Eingabe bleibt, kein leerer Turn).
+- GIVEN ein Text mit zwei per Shift+Enter gesetzten Zeilen WHEN der Nutzer Enter drückt THEN kommen
+  beide Zeilen **gemeinsam und in der Reihenfolge** in einem Turn an.
 
 #### UC-WP-57 — resendWithoutNewInput ✅
 - GIVEN der Nutzer hat eine Nachricht gesendet WHEN er „Resend" wählt THEN geht dieselbe Nachricht

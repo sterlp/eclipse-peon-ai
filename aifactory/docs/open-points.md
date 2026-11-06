@@ -13,11 +13,12 @@ Reihenfolge, je ein grünes Inkrement:
 1. **AntD-Basis** — Provider, Theme-Tokens auf unsere Farben, Bootstrap raus (Hülle, Buttons,
    Karten, Formulare, Dialoge). Chat-Log bleibt unangetastet. Zieht **F5** (Optik Config) und
    **F9** (Clear-Layout) mit hoch.
-2. **Markdown** — GFM + einfache Umbrüche als Zeilen ([R-WP-28/UC-WP-73](chat.md)); Fallback
-   `react-markdown` + `remark-gfm`, weil `markstream` die Zusage nicht hält (CSS nie importiert,
-   keine `breaks`-Option — gemessen 2026-11-06). Hebt C-2(b) (Reload ohne Markdown).
-3. **Eingabe** — Auto-Grow, Send nur bei Text, Refocus nach dem Turn ([R-WP-41/UC-WP-74](chat.md)).
-   Tastatur bleibt R-WP-30 (Enter = Umbruch) — siehe ⏳ unten.
+2. **Markdown** — ✅ gebaut 2026-11-06: `react-markdown` + `remark-gfm` + `remark-breaks`
+   ([R-WP-28/UC-WP-73](chat.md)); `markstream` hielt die Zusage nicht (CSS nie importiert, keine
+   `breaks`-Option — gemessen). C-2(b) damit erledigt.
+3. **Eingabe** — Auto-Grow, Send nur bei Text, Refocus nach dem Turn ([R-WP-41/UC-WP-74](chat.md));
+   **Enter sendet, `Shift+Enter` und `Ctrl/Cmd+Enter` = neue Zeile** ([R-WP-30/UC-WP-56](chat.md),
+   Paul 2026-11-06). **3b** schleift die Prio-Nachricht `!` durch ([R-WP-42/UC-WP-75](chat.md)).
 4. **Timeline** — Werkzeuge und Delegationen als Einträge mit Agentenname, `loading` und
    Ankunftszeit; **Dauer nur je Turn** an der Antwort ([R-WP-40/UC-WP-72](chat.md)); kein `hr`
    zwischen Zeilen ([R-WP-29/UC-WP-55](chat.md), C-6). F3 (Agent-Arbeit unsichtbar) wird hier
@@ -41,12 +42,18 @@ Reihenfolge, je ein grünes Inkrement:
   ([R-WP-7](chat.md)) und die Docs nennen den Agenten weiter Jon. *Andersfall:* war gemeint, dass der
   Name auch auf der Kachel/ im Header verschwindet („Chat" statt „Jon"), ist das eine Umbenennung der
   Anzeige plus UC-Änderung in [chat.md](chat.md) — kein Umbau der Kachel-Regel selbst.
-* **⏳ ⚠ Konflikt Tastatur:** Paul 2026-11-06 „die Referenz hat die korrekte Keyboard-Integration"
-  (dort: **Enter sendet**, Shift+Enter = neue Zeile) gegen [R-WP-30](chat.md) (Paul 2026-11-02:
-  **Enter = neue Zeile**, Cmd/Ctrl+Enter = senden). Ich habe R-WP-30 **nicht** angetastet und baue
-  weiter danach. *Entscheidung nötig:* will Paul Enter = senden, ist das eine Bedeutungsänderung von
-  R-WP-30 (plus `chat.composer`-Tests) — dann sage ich es dir vorher, weil Mehrzeile-Tippen damit
-  seine Eingewöhnung verliert.
+* **🔒 Tastatur entschieden (2026-11-06, Paul: „A")** — **Enter sendet, Shift+Enter = neue Zeile**;
+  [R-WP-30/UC-WP-56](chat.md) accordingly umgeschrieben (❌ — Umbau steht aus, Inkrement 3). Der
+  Konflikt mit Pauls Regel vom 02.11. ist damit gelöst, nicht offen; Merkposten gegen Wiederaufmachen
+  steht in [resolved-points.md](resolved-points.md). Pauls Zusatz dazu (12:40): **„es gibt kein Lock vom
+  Input"** — Eingabe ist auch im laufenden Turn benutzbar, sie geht in die Queue
+  ([R-WP-41](chat.md), bereits Regel).
+* **🔒 `!` = Prio-Nachricht — Core-Regel, Fabrik reicht sie nur durch (2026-11-06, Paul)** — Regeln
+  stehen im Core ([`queued-user-messages.md`](../../org.sterl.llmpeon.core/docs/queued-user-messages.md)
+  R8, R11), hier nur der Fabrik-Anteil: [`R-WP-42/UC-WP-75`](chat.md) ❌ (Bau in Inkrement 3b —
+  `ProjectRuntime.submit()` gibt heute Rohtext ans `call()`). **Tastatur** nach Pauls Klarstellung
+  (13:20): Enter = senden, **`Shift+Enter` UND `Ctrl/Cmd+Enter` = neue Zeile** — in
+  [R-WP-30](chat.md) nachgezogen.
 * **⏳ Screenshot-Werkzeug (Stagehand) parked** (2026-11-06) — `@browserbasehq/stagehand` v4 kann den
   Dev-Server öffnen und Screenshots/Layout-Messungen **ohne** LLM-Call (nur `page`-API); verlangt
   aber **Node ≥ 22.18**, der Bau fährt **22.12** (v23.4 ist vorhanden). Angenommen: kein neues
@@ -83,9 +90,10 @@ Defekte/Fragen, je eine Story je Punkt erst nach Klärung (❓ = präzisieren, b
   claimed action` — `TurnClaim.awaitNoAction` wirft nach 10 000 ms (`ProjectRuntime.java:348`).
   Aufgetreten beim Compact. Verwandt zur ⏳ TurnClaim-Lücke; Ursache im Code klären (Dev), bevor eine
   Regel steht.
-* **❓ C-2 · Compact-Ergebnis im UI** — (a) live: nur „error" in der Agent-Karte, weder Ergebnis noch
-  Fehlermeldung sichtbar; (b) nach Reload: Ergebnis da, aber **ohne Markdown** (nur Text). Regel in
-  [chat.md](chat.md) fehlt: wie Compact live + im Verlauf erscheint.
+* **❓ C-2 · Compact-Ergebnis live** — in der Agent-Karte erscheint nur „error", weder Ergebnis noch
+  Fehlermeldung sichtbar; Regel in [chat.md](chat.md) fehlt (wie Compact live erscheint).
+  *(b) „nach Reload ohne Markdown" ist erledigt (2026-11-06, Inkrement 2): Markdown zeichnet jetzt
+  überall dasselbe Renderer-Pfad, auch im Verlauf — [R-WP-28/UC-WP-73](chat.md).*
 * **❓ C-3 · URL mit Hash-Suffix** — `/ui/chat/spring-persistent-tasks-071d14a` statt
   `/ui/chat/spring-persistent-tasks`. Paul will den klaren Namen. Prüfen, ob die Registry-ID den Hash
   braucht (Namens-Kollision) — wenn Namen eindeutig sind, URL auf den Namen legen.
