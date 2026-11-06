@@ -50,7 +50,7 @@ Nicht hier: alles Eclipse-/OSGi-spezifische (SWT-Views, Widgets, Preference-Page
 
 MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabil).
 
-* [UI](ui.md) — Top-Navigation (Projekte, Chat, Settings), URL-stabil, Bootstrap + eigenes Theme, Look. ◐ (Auslieferung ✅, Navigation/Look ❌)
+* [UI](ui.md) — Projektbaum im Sider (AntD), URL-stabil, Auslieferung unter `/ui/`, Look. ◐ (Auslieferung ✅, AntD-Umbau ❌ — [R-WP-38](ui.md)/[R-WP-39](ui.md))
 * [Projekte](project.md) — Git-Checkout als Projekt: klonen, eindeutig, entfernen, nie interaktiv, Live-Status. ◐
 * [Jon-Chat](chat.md) — ein Jon, ein Gespräch je Projekt: Streaming, Queue, Neustart, Tools, Kacheln. ◐
   (Herkunft je Zeile ✅ UC-WP-39/40; Kacheln ✅ R-WP-7, Blick je Agent ✅ R-WP-26)

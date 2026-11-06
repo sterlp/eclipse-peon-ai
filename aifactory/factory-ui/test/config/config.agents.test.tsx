@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 
 import { Agents } from '../../src/config/config.agents'
 import { content } from '../../src/shared/content'
+import { chooseOption, openChoice, shownChoice } from '../shared/choices'
 import type { AgentSettings } from '../../src/config/config.agents.client'
 import type { ThinkInput } from '../../src/config/config.client'
 
@@ -104,11 +105,6 @@ const FIELDS = [
  */
 function renderAgents(think: ThinkInput = { form: 'UNKNOWN', values: [] }) {
   return render(<Agents think={think} />)
-}
-
-/** The values a selection offers, in the order the screen shows them. */
-function options(select: HTMLSelectElement): string[] {
-  return Array.from(select.options).map((option) => option.value)
 }
 
 // UC-WP-44
@@ -308,27 +304,29 @@ test('thinkFieldFollowsTheProviderForm', async () => {
 
   renderAgents({ form: 'VALUES', values: ['minimal', 'low', 'medium', 'high'] })
 
-  const slot = await waitFor(() => row())
-  const think = within(slot).getByLabelText(content.agents.thinkDefault) as HTMLSelectElement
-  expect(think.tagName).toBe('SELECT')
-  expect(think.value).toBe('medium')
-  expect(options(think)).toEqual(['', 'minimal', 'low', 'medium', 'high'])
-  expect(think.options[0].textContent).toBe(content.agents.inheritOption)
+  await waitFor(() => row())
+  // A3 (AntD 6): the provider's form is the dropdown of the basis's choice — there is no `<option>` list,
+  // and the entry that inherits is named by its label, not by an empty value
+  expect(await openChoice(content.agents.thinkDefault)).toEqual([
+    content.agents.inheritOption,
+    'minimal',
+    'low',
+    'medium',
+    'high',
+  ])
+  expect(shownChoice(content.agents.thinkDefault)).toBe('medium')
 
-  fireEvent.change(think, { target: { value: 'low' } })
-  expect(think.value).toBe('low')
+  await chooseOption(content.agents.thinkDefault, 'low')
+  expect(shownChoice(content.agents.thinkDefault)).toBe('low')
 
   // one form per section, because the form is the base provider's — the toggle needs its own answer
   cleanup()
   stubServer({ slots: [agent({ id: 'po', name: 'Jon', overridden: true, think: 'true' })] })
   renderAgents({ form: 'TOGGLE', values: [] })
 
-  const toggle = (await waitFor(() => row('po')).then((po) =>
-    within(po).getByLabelText(content.agents.think),
-  )) as HTMLSelectElement
-  expect(toggle.tagName).toBe('SELECT')
-  expect(options(toggle)).toEqual(['', 'true', 'false'])
-  expect(toggle.value).toBe('true')
+  await waitFor(() => row('po'))
+  expect(await openChoice(content.agents.think)).toEqual([content.agents.inheritOption, 'true', 'false'])
+  expect(shownChoice(content.agents.think)).toBe('true')
 })
 
 /**
@@ -365,9 +363,15 @@ test('storedThinkStaysVerbatim', async () => {
   renderAgents({ form: 'VALUES', values: ['low', 'medium', 'high'] })
 
   const slot = await waitFor(() => row())
-  const think = within(slot).getByLabelText(content.agents.thinkDefault) as HTMLSelectElement
-  expect(think.value).toBe('ultra')
-  expect(options(think)).toEqual(['', 'ultra', 'low', 'medium', 'high'])
+  // A3 (AntD 6): the stored level the offered list does not carry shows as itself and is offered first
+  expect(await openChoice(content.agents.thinkDefault)).toEqual([
+    content.agents.inheritOption,
+    'ultra',
+    'low',
+    'medium',
+    'high',
+  ])
+  expect(shownChoice(content.agents.thinkDefault)).toBe('ultra')
 
   fireEvent.click(within(slot).getByRole('button', { name: content.agents.save }))
   await waitFor(() => expect(server.calls.some((call) => call.method === 'PUT')).toBe(true))

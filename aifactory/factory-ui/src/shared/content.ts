@@ -27,6 +27,12 @@ export const content = {
     close: 'Close',
     back: 'Back',
     seconds: 'seconds',
+    /**
+     * The two answers of a confirmation. The library's own dialog would speak its locale's words — the
+     * catalog is the only source of copy here (R-WP-27), so both are named.
+     */
+    yes: 'Yes',
+    no: 'No',
   },
 
   projects: {

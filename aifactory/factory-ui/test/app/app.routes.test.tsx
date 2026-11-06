@@ -17,6 +17,19 @@ function nav() {
   return screen.getByRole('navigation', { name: content.nav.views })
 }
 
+/**
+ * The entry the frame marks as showing. A1: the design basis states a menu's selection as the item state
+ * of its entry (`ant-menu-item-selected`) and carries no `aria-current`, so the mark is read there — the
+ * claim itself is unchanged: exactly one entry shows, and it is the one the address names.
+ */
+function markedEntry(): HTMLElement {
+  const marked = within(nav())
+    .getAllByRole('menuitem')
+    .filter(entry => entry.className.includes('ant-menu-item-selected'))
+  expect(marked, 'exactly one entry of the menu shows').toHaveLength(1)
+  return marked[0]
+}
+
 beforeEach(() => {
   cleanup()
   localStorage.clear()
@@ -34,13 +47,13 @@ test('theMvpPagesAreReachable', async () => {
   renderApp('/projects')
 
   // exactly the three entries of R-WP-1 — the counter-probe to a fourth page
-  expect(within(nav()).getAllByRole('button')).toHaveLength(3)
+  expect(within(nav()).getAllByRole('menuitem')).toHaveLength(3)
   expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
 
-  fireEvent.click(within(nav()).getByRole('button', { name: content.nav.settings }))
+  fireEvent.click(within(nav()).getByRole('menuitem', { name: content.nav.settings }))
   expect(await screen.findByText(content.config.provider)).toBeInTheDocument()
 
-  fireEvent.click(within(nav()).getByRole('button', { name: content.nav.projects }))
+  fireEvent.click(within(nav()).getByRole('menuitem', { name: content.nav.projects }))
   fireEvent.click(await screen.findByRole('button', { name: project().name }))
   expect(await screen.findByRole('region', { name: content.chat.title })).toBeInTheDocument()
 
@@ -71,10 +84,7 @@ test('aDeepLinkShowsTheSameState', async () => {
   expect(within(chat).getByRole('heading', { name: project().name })).toBeInTheDocument()
   expect(app.path()).toBe(CHAT_PATH)
   // the entry that shows is the one the address names, not one a click left behind
-  expect(within(nav()).getByRole('button', { name: content.nav.chat })).toHaveAttribute(
-    'aria-current',
-    'page',
-  )
+  expect(markedEntry().textContent).toBe(content.nav.chat)
 })
 
 // UC-WP-43
@@ -102,10 +112,7 @@ test('aReloadStaysOnSettings', async () => {
 
   renderApp('/settings')
   expect(await screen.findByText(content.config.provider)).toBeInTheDocument()
-  expect(within(nav()).getByRole('button', { name: content.nav.settings })).toHaveAttribute(
-    'aria-current',
-    'page',
-  )
+  expect(markedEntry().textContent).toBe(content.nav.settings)
 })
 
 // UC-WP-43
@@ -126,7 +133,7 @@ test('chatOpensTheLastActiveProject', async () => {
   const app = renderApp('/projects')
   await screen.findByLabelText(content.projects.gitUrl)
 
-  fireEvent.click(within(nav()).getByRole('button', { name: content.nav.chat }))
+  fireEvent.click(within(nav()).getByRole('menuitem', { name: content.nav.chat }))
 
   expect(await screen.findByRole('region', { name: content.chat.title })).toBeInTheDocument()
   expect(app.path()).toBe(CHAT_PATH)
@@ -138,7 +145,7 @@ test('chatWithoutAProjectGoesToProjects', async () => {
   const app = renderApp('/settings')
   await screen.findByText(content.config.provider)
 
-  fireEvent.click(within(nav()).getByRole('button', { name: content.nav.chat }))
+  fireEvent.click(within(nav()).getByRole('menuitem', { name: content.nav.chat }))
 
   expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
   expect(app.path()).toBe('/projects')

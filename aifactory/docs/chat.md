@@ -219,19 +219,68 @@ leer. **WEIL** „warum hat Dev das gebaut?" sonst nur über die finale Antwort 
 - GIVEN ein Neustart WHEN der Blick geöffnet wird THEN ist er leer (R-WP-11) — kein zweiter
   Speicher und kein Mitschnitt im Jon-Chat.
 
-### R-WP-28 — Markdown-Streaming: markstream-react, Code mit react-shiki ✅ (Paul 2026-11-02)
+### R-WP-28 — Markdown der Antworten: GFM, Zeilenumbrüche, Code mit react-shiki ✅ (Paul 2026-11-02; Schärfung 2026-11-06)
 
-Antworten rendern als Markdown mit **Streaming-Unterstützung** (`markstream-react`): unvollständiges
-Markdown wird beim Streaming sauber gerendert, Code-Blöcke mit **react-shiki**; Fallback, falls
-markstream im Prototypen nicht hält: `react-markdown`. **Tool-Zeilen bleiben sichtbar** und stehen
-**inline im Verlauf** an der Stelle, wo sie passieren — nicht als separate Liste hinter dem Verlauf;
-kompakt (klein, grau, Tool-Zeilen gemerged wie in `chat.html`).
+Antworten rendern als Markdown mit **Streaming-Unterstützung**; Code-Blöcke mit **react-shiki**.
+Der Renderer ist Mittel, kein Ziel — **er muss liefern**: **GFM** (Tabellen, Durchstreichen,
+Aufgabenlisten) und **ein einzelner Zeilenumbruch im Text bleibt eine Zeile** auf dem Schirm
+(Soft-Breaks, die zu einem Absatz laufen, sind der gemessene Defekt von `markstream-react`: eigenes
+CSS nie eingebunden, keine `breaks`-Option). Halten die Zusagen im Prototypen nicht, gilt der
+Fallback **`react-markdown` + `remark-gfm` + `remark-breaks`** (Referenz `ai-schulung`, wo Paul das
+Rendering gut findet; `remark-breaks` ist nötig, weil `react-markdown` v10 keine `breaks`-Option hat).
+**„Kein kaputtes Markup" heißt:** kein rohes HTML und kein Abbruch, während halbe Syntax über den
+Draht kommt; **rohe Syntax-Zeichen (z. B. ein offenes `**`) während des Streams sind erlaubt** und
+müssen nach dem letzten Token gerendert sein.
+**Nur Antworten sind Markdown**: Nutzer-, Fehler- und Werkzeug-Zeilen bleiben Wortlaut im Text-Element
+([AF-ADR-002](adr/002-origin-in-core-display-in-factory.md)). **Tool-Zeilen bleiben sichtbar** und
+stehen **inline im Verlauf** an der Stelle, wo sie passieren — nicht als separate Liste hinter dem
+Verlauf; kompakt (klein, grau, Tool-Zeilen gemerged wie in `chat.html`) und nach
+[R-WP-40](chat.md) als Timeline-Einträge.
 
 #### UC-WP-54 — streamingMarkdownWithInlineToolLines ✅
 - GIVEN ein laufender Turn WHEN die Antwort streamt THEN wächst das Markdown sichtbar und bleibt
-  während des Streams lesbar — unvollständige Syntax-Bruchstücke erzeugen kein kaputtes Markup.
+  während des Streams lesbar — **kein rohes HTML, kein Abbruch**; ein noch offenes Syntax-Zeichen
+  steht solange als Text und ist nach dem letzten Token gerendert.
 - GIVEN Tool-Aktivität WHEN Zeilen erscheinen THEN stehen sie im Verlauf an ihrer Stelle, kompakt,
   und bleiben nach dem Turn sichtbar.
+
+#### UC-WP-73 — markdownKeepsLineBreaksAndGfm ❌
+- GIVEN eine Antwort mit zwei durch **ein** Zeilenumbruch getrennten Sätzen WHEN sie gezeichnet wird
+  THEN stehen die Sätze auf **zwei** Zeilen.
+- GIVEN eine Antwort mit Tabelle und Durchstreichung WHEN sie gezeichnet wird THEN ist sie eine
+  Tabelle und durchgestrichener Text — kein Quelltext.
+- GIVEN eine Nutzer-Eingabe mit Markdown-Zeichen WHEN sie im Verlauf steht THEN erscheint sie als
+  Wortlaut, nicht als Markup.
+
+### R-WP-40 — Werkzeug- und Delegationsschritte stehen als Timeline im Verlauf ❌ (Paul 2026-11-06)
+
+Die Schritte eines Turns — Werkzeug, Think-Abschnitt, Delegation — werden als **Timeline**
+dargestellt, **an der Stelle im Verlauf, wo sie passieren** (R-WP-28: kein Block hinter dem
+Verlauf). Ein Eintrag trägt den **Namen des arbeitenden Agenten** und seinen Auftrag
+(`Dev: <Prompt>`), einen **laufenden Indikator**, solange er arbeitet, und die **Uhrzeit seiner
+Ankunft**, sobald er fertig ist. Eine **Delegation ist ein Eintrag**: während das Mitglied arbeitet,
+zeigt sein Eintrag „working", das Ergebnis erscheint unter ihm; der Blick in den Gesprächsverlauf
+des Mitglieds bleibt davon unberührt ([R-WP-26](chat.md)). **Zeiten sind live und lückenhaft:** Der
+Draht trägt je Schritt **nur den Augenblick des Eintreffens** (Browser-Uhr) — eine **Dauer hat allein
+der Turn** (`done.millis`) und steht an seiner Antwort, **nie je Werkzeug**; die Fabrik erfindet keine
+Zeit und **parst auch keine** aus dem Text des Cores. Wo keine Zeit bekannt ist, trägt der Eintrag
+**keinen Titel**. Nach einem Reload zeigen die Zeilen, was der Memory enthält
+([R-WP-11](chat.md): Dauer und `HH:mm` stehen dort, wo der Core sie selbst in den Text geschrieben
+hat), und einen zweiten Speicher dafür gibt es nicht.
+
+#### UC-WP-72 — toolStepsAsTimelineEntries ❌
+- GIVEN ein Turn ruft Werkzeuge WHEN die Zeilen erscheinen THEN stehen sie als Timeline-Einträge an
+  ihrer Stelle im Verlauf, jeder mit dem Namen des arbeitenden Agenten.
+- GIVEN ein Werkzeug läuft WHEN die Timeline zeichnet THEN trägt sein Eintrag einen laufenden
+  Indikator; WHEN es endet THEN endet der Indikator und der Eintrag bleibt mit seiner Ankunftszeit
+  stehen. GIVEN die Antwort des Turns endet WHEN deren Indikator endet THEN trägt **nur sie** die
+  Turn-Dauer — kein Werkzeugeintrag zeigt eine eigene Dauer.
+- GIVEN Jon delegiert an ein Mitglied WHEN die Delegation läuft THEN zeigt ihr Eintrag „working", und
+  das Ergebnis erscheint unter diesem Eintrag — nicht am Ende des Verlaufs.
+- GIVEN ein Reload nach dem Turn WHEN der Verlauf neu gezeichnet wird THEN stehen die Zeilen ohne
+  erfundene Zeiten; ein Eintrag ohne Zeit hat keinen Titel.
+- GIVEN ein Turn mit mehr Werkzeugzeilen als die Anzeige fasst WHEN die ältesten fallen THEN
+  **behalten** die verbleibenden Einträge ihre Ankunftszeit.
 
 ### R-WP-36 — Datei-Änderungen erscheinen live als Diff im Chat ✅ (Paul 2026-11-03, C-4)
 
@@ -267,20 +316,44 @@ Datei-Bereich ([Dateien](files.md)).
   ist im Datei-Bereich sichtbar.
 
 
-### R-WP-29 — Farben und Fließtext der Chat-Zeilen ✅ (Paul 2026-11-02; Korrektur auf Akzent-links in Runde 2, Inc 4)
+### R-WP-29 — Farben und Fließtext der Chat-Zeilen ❌ (Paul 2026-11-02; Akzent-links Runde 2; **Trennung ohne `hr`** Paul 2026-11-06, C-6)
 
 Beide Stimmen stehen **im Fluss** und tragen ihre Farbkante **links** — die Kante ist der **Akzent der
 Zeile**, kein Rahmen um den Chat (wie `chat.html`: Label „You" blau, Agent-Label grün). Keine Zeile ist
 **rechtsbündig**, nichts ist **mittig zentriert**. Jons Antworten haben **keinen grauen
-Hintergrund-Block** und keine eingestreuten Markierungen oder Cards im Fließtext; wo die Rolle wechselt,
-trennt **eine** einfache Trennlinie (`<hr>`) — nie zwei.
+Hintergrund-Block** und keine eingestreuten Markierungen oder Cards im Fließtext. Wo die Rolle wechselt,
+**trennt keine Linie**: die seitlichen Akzentlinien der Zeilen sind die Trennung — **kein `<hr>`** und
+keine andere horizontale Linie zwischen zwei Zeilen (Paul 2026-11-06: „hr raus, Linien treffen sich
+seitlich wie in Eclipse").
 
-#### UC-WP-55 — colorsFollowChatHtmlBaseline ✅
+#### UC-WP-55 — colorsFollowChatHtmlBaseline ❌
 - GIVEN eine Nutzer- und eine Agent-Antwort WHEN beide im Verlauf stehen THEN trägt die Nutzer-Zeile
   den blauen Akzent **links** (nicht rechtsbündig), die Agent-Zeile den grünen — ohne grauen
   Hintergrund-Block.
-- GIVEN dieselben beiden Zeilen WHEN zwischen ihnen die Rolle wechselt THEN trennt **genau eine**
-  Trennlinie, und keine der beiden Zeilen ist mittig zentriert.
+- GIVEN dieselben beiden Zeilen WHEN zwischen ihnen die Rolle wechselt THEN verläuft **keine**
+  horizontale Linie durch den Verlauf (kein `<hr>`), und keine der beiden Zeilen ist mittig zentriert.
+
+### R-WP-41 — Die Eingabe wächst mit und findet ihren Fokus zurück ❌ (Paul 2026-11-06, Muster aus `ai-schulung`)
+
+Das Eingabefeld ist eine **Auto-Grow-Textarea** (von einer Zeile bis ca. fünf, danach scrollt sie) und
+steht **unten seiner Spalte** ([R-WP-35](chat.md)). **Senden kann nur, wer etwas getippt hat**: bei
+leerer Eingabe ist der Send-Knopf deaktiviert, nicht versteckt. **Während eines laufenden Turns bleibt
+die Eingabe benutzbar und der Send-Knopf aktiv** — eine weitere Eingabe geht in die Queue
+([R-WP-10](chat.md)); die Referenz-App sperrt ihr Feld im Stream, weil sie keine Queue kennt, und
+genau deshalb folgen wir ihr hier **nicht** ([AF-ADR-003](adr/003-reference-ui-is-a-donor-not-a-source.md)).
+Ist der Turn vorbei, **kehrt der Fokus in die Eingabe zurück** (Refocus beim Übergang von deaktiviert
+zu aktiviert) — der Nutzer tippt weiter, ohne zu klicken. Tastatur und Resend bleiben, wie sie sind
+([R-WP-30](chat.md)). Sichtbare Texte kommen aus dem String-Catalog ([R-WP-27](ui.md)).
+
+#### UC-WP-74 — inputGrowsAndRefocuses ❌
+- GIVEN eine leere Eingabe WHEN die App zeichnet THEN ist der Send-Knopf deaktiviert; WHEN Text
+  entsteht THEN wird er aktiv.
+- GIVEN ein Turn läuft WHEN der Nutzer tippt und sendet THEN ist der Knopf **aktiv** und die Eingabe
+  geht in die Queue ([UC-WP-14](chat.md)) — kein Sperren des Feldes, kein Deaktivieren im Turn.
+- GIVEN ein langer Mehrzeiler WHEN der Nutzer tippt THEN wächst das Feld bis zu seiner Obergrenze
+  und scrollt danach, statt die Chat-Fläche zu verdrängen.
+- GIVEN ein Turn war läuft und ist jetzt vorbei WHEN die Eingabe wieder aktiv wird THEN steht der
+  Fokus in ihr.
 
 ### R-WP-30 — Eingabe: Enter ist Zeilenumbruch, Cmd/Ctrl+Enter sendet ✅ (Paul 2026-11-02)
 

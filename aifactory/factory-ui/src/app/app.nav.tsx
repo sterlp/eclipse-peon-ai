@@ -1,6 +1,4 @@
-import Nav from 'react-bootstrap/Nav'
-import NavItem from 'react-bootstrap/NavItem'
-import NavLink from 'react-bootstrap/NavLink'
+import { Menu } from 'antd'
 
 import { content } from '../shared/content'
 import type { ViewName } from './app.paths'
@@ -18,27 +16,22 @@ interface Props {
 
 /**
  * The frame's navigation (R-WP-1): exactly three entries, and the one showing is marked. It is a menu and
- * not a tab strip — the entries address a view instead of a panel, so the mark is `aria-current`, which is
- * also what a link carries once the view lives in the URL.
+ * not a tab strip — the entries address a view instead of a panel.
+ *
+ * The mark is the basis' own selected state (its accent on the entry), not `aria-current`: a menu of the
+ * design basis carries its selection as its item state, and bending that into `aria-current` would be a
+ * style war with the library (R-WP-39). Named deviation A1.
  */
 export function AppNav({ active, onSelect }: Props) {
   return (
     <nav className="app-nav-bar" aria-label={content.nav.views}>
-      <Nav as="ul" className="app-nav">
-        {ENTRIES.map(entry => (
-          <NavItem key={entry.id} as="li">
-            <NavLink
-              as="button"
-              type="button"
-              active={active === entry.id}
-              aria-current={active === entry.id ? 'page' : undefined}
-              onClick={() => onSelect(entry.id)}
-            >
-              {entry.label}
-            </NavLink>
-          </NavItem>
-        ))}
-      </Nav>
+      <Menu
+        className="app-nav"
+        mode="horizontal"
+        selectedKeys={[active]}
+        onClick={entry => onSelect(entry.key as ViewName)}
+        items={ENTRIES.map(entry => ({ key: entry.id, label: entry.label }))}
+      />
     </nav>
   )
 }

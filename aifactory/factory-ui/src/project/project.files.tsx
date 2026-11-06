@@ -1,4 +1,14 @@
 import { useCallback, useState } from 'react'
+import {
+  CloseOutlined,
+  FileOutlined,
+  FolderOpenOutlined,
+  FolderOutlined,
+  LeftOutlined,
+  RightOutlined,
+} from '@ant-design/icons'
+
+
 
 import { readFiles, type DirectoryResponse, type FileEntry, type FileResponse, type FileRoot } from './files.client'
 import { errorMessage } from '../shared/api.client'
@@ -57,9 +67,19 @@ function suffixOf(entry: FileEntry): string {
   return entry.symlink ? content.files.linkSuffix : ` (${entry.size} B)`
 }
 
-/** An icon is decoration: the row keeps its name as the whole label. */
-function Icon({ name }: { name: string }) {
-  return <i className={`bi bi-${name}`} aria-hidden="true" />
+/** The icon of a row, by the name the row uses. An icon is decoration: the row keeps its name as label. */
+const ICONS = {
+  'folder2-open': FolderOpenOutlined,
+  folder: FolderOutlined,
+  'file-earmark': FileOutlined,
+  'x-lg': CloseOutlined,
+  'chevron-right': RightOutlined,
+  'chevron-left': LeftOutlined,
+} as const
+
+function Icon({ name }: { name: keyof typeof ICONS }) {
+  const Glyph = ICONS[name]
+  return <Glyph aria-hidden="true" />
 }
 
 interface LevelProps {

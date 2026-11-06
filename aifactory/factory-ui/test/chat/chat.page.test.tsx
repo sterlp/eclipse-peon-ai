@@ -558,8 +558,9 @@ test('oneChatPerProject', async () => {
     content.tiles.open('Plan'),
   ])
 
+  // A1 (R-WP-39): the frame's entry is the basis' menu item now — the click and its claim are unchanged
   fireEvent.click(
-    within(screen.getByRole('navigation', { name: content.nav.views })).getByRole('button', {
+    within(screen.getByRole('navigation', { name: content.nav.views })).getByRole('menuitem', {
       name: content.nav.projects,
     }),
   )

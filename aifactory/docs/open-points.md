@@ -2,6 +2,49 @@
 
 Status: ❓ offen · ⏳ selbst entschieden (Rückversicherung steht aus) · 🔒 geklärt.
 Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entfällt.
+## Runde 3 — AntD-Umbau der Oberfläche (Paul 2026-11-06)
+
+Entschieden: **AntD als neue Design-Basis**, Bootstrap verlässt die App
+([R-WP-39](ui.md)), Navigation wird der **Projektbaum im Sider** ([R-WP-38](ui.md)), Zeiten bleiben
+**live** ([AF-ADR-003](adr/003-reference-ui-is-a-donor-not-a-source.md)). Geber der Muster ist
+`/Users/sterlp/dev/workset/ai-schulung/app/frontend` — **nie** ihr Zustandsmodell (AF-ADR-003).
+Reihenfolge, je ein grünes Inkrement:
+
+1. **AntD-Basis** — Provider, Theme-Tokens auf unsere Farben, Bootstrap raus (Hülle, Buttons,
+   Karten, Formulare, Dialoge). Chat-Log bleibt unangetastet. Zieht **F5** (Optik Config) und
+   **F9** (Clear-Layout) mit hoch.
+2. **Markdown** — GFM + einfache Umbrüche als Zeilen ([R-WP-28/UC-WP-73](chat.md)); Fallback
+   `react-markdown` + `remark-gfm`, weil `markstream` die Zusage nicht hält (CSS nie importiert,
+   keine `breaks`-Option — gemessen 2026-11-06). Hebt C-2(b) (Reload ohne Markdown).
+3. **Eingabe** — Auto-Grow, Send nur bei Text, Refocus nach dem Turn ([R-WP-41/UC-WP-74](chat.md)).
+   Tastatur bleibt R-WP-30 (Enter = Umbruch) — siehe ⏳ unten.
+4. **Timeline** — Werkzeuge und Delegationen als Einträge mit Agentenname, `loading`, Dauer und
+   Uhrzeit ([R-WP-40/UC-WP-72](chat.md)); kein `hr` zwischen Zeilen
+   ([R-WP-29/UC-WP-55](chat.md), C-6). F3 (Agent-Arbeit unsichtbar) wird hier mitbehandelt:
+   der Eintrag zeigt, wer arbeitet.
+5. **Sider-Navigation + URL** — Projektbaum, Klick aufs Projekt öffnet seinen Chat, Einheiten
+   Files (Paco später); URL auf den **klaren Projektnamen** (C-3, Namens-Kollision vorher prüfen).
+
+* **⏳ „Jon muss weg" als Navigation LABEL verstanden** (2026-11-06, Paul per Zuruf, Rückversicherung
+  ausstehend) — [R-WP-38](ui.md): es gibt **keinen „Jon"-Eintrag** und kein „Jon"-Label im Sider, ein
+  Klick aufs Projekt öffnet dessen Chat. Die **Kachel** des Agenten behält ihren Namen
+  ([R-WP-7](chat.md)) und die Docs nennen den Agenten weiter Jon. *Andersfall:* war gemeint, dass der
+  Name auch auf der Kachel/ im Header verschwindet („Chat" statt „Jon"), ist das eine Umbenennung der
+  Anzeige plus UC-Änderung in [chat.md](chat.md) — kein Umbau der Kachel-Regel selbst.
+* **⏳ ⚠ Konflikt Tastatur:** Paul 2026-11-06 „die Referenz hat die korrekte Keyboard-Integration"
+  (dort: **Enter sendet**, Shift+Enter = neue Zeile) gegen [R-WP-30](chat.md) (Paul 2026-11-02:
+  **Enter = neue Zeile**, Cmd/Ctrl+Enter = senden). Ich habe R-WP-30 **nicht** angetastet und baue
+  weiter danach. *Entscheidung nötig:* will Paul Enter = senden, ist das eine Bedeutungsänderung von
+  R-WP-30 (plus `chat.composer`-Tests) — dann sage ich es dir vorher, weil Mehrzeile-Tippen damit
+  seine Eingewöhnung verliert.
+* **⏳ Screenshot-Werkzeug (Stagehand) parked** (2026-11-06) — `@browserbasehq/stagehand` v4 kann den
+  Dev-Server öffnen und Screenshots/Layout-Messungen **ohne** LLM-Call (nur `page`-API); verlangt
+  aber **Node ≥ 22.18**, der Bau fährt **22.12** (v23.4 ist vorhanden). Angenommen: kein neues
+  Werkzeug, solange die F-Befunde unpräzise sind — Look-Abnahme bleibt Pauls Smoke-Test.
+  *Andersfall:* eigenes Script unter Node 23.4, kein Vitest-/Maven-Eingriff.
+
+
+
 ## Runde 3 — Pauls Smoke-Test-Befunde (2026-11-03, Backlog)
 
 Positiv bestätigt: **(1)** Chat-Restore geht. **(2)** Gemeinsam ein RAG-Chat gebaut
@@ -36,8 +79,6 @@ Defekte/Fragen, je eine Story je Punkt erst nach Klärung (❓ = präzisieren, b
 * **❓ C-3 · URL mit Hash-Suffix** — `/ui/chat/spring-persistent-tasks-071d14a` statt
   `/ui/chat/spring-persistent-tasks`. Paul will den klaren Namen. Prüfen, ob die Registry-ID den Hash
   braucht (Namens-Kollision) — wenn Namen eindeutig sind, URL auf den Namen legen.
-* **🔒 C-6 · hr raus, Linien treffen sich seitlich wie in Eclipse** — F4 bestätigt und präzisiert:
-  keine `hr`, die Voices-Trennung läuft über die seitlichen Akzentlinien. In R-WP-29 nachziehen.
 * **❓ C-7 · Agent-Chat ist ein anderes Widget** — der aufgeklappte Blick auf ein Team-Mitglied nutzt
   ein eigenes Chat-Widget: anderes Look&Feel, aktualisiert nicht während der Agent arbeitet, zieht
   alle Daten erneut (= Totalschaden). SOLL: dasselbe Chat-Widget wie der Haupt-Chat, an den

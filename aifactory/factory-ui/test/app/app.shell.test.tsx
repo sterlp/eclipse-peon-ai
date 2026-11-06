@@ -27,8 +27,9 @@ test('theUiSpeaksEnglish', async () => {
   stubAppServer()
   const { container } = renderApp('/projects')
 
+  // A1: the frame's entries are the basis' menu items (R-WP-39), still exactly the three of R-WP-1
   const nav = screen.getByRole('navigation', { name: content.nav.views })
-  expect(within(nav).getAllByRole('button').map(entry => entry.textContent)).toEqual([
+  expect(within(nav).getAllByRole('menuitem').map(entry => entry.textContent)).toEqual([
     content.nav.projects,
     content.nav.chat,
     content.nav.settings,
@@ -48,7 +49,7 @@ test('theUiSpeaksEnglish', async () => {
   expect(screen.getByTestId('files-open')).toHaveTextContent(content.files.open)
 
   // settings: the field names of the form
-  fireEvent.click(within(nav).getByRole('button', { name: content.nav.settings }))
+  fireEvent.click(within(nav).getByRole('menuitem', { name: content.nav.settings }))
   expect(await screen.findByText(content.config.provider)).toBeInTheDocument()
   expect(screen.getByText(content.config.model)).toBeInTheDocument()
 

@@ -109,14 +109,18 @@ test('showsExactlyThreeViews', async () => {
   stubServer({ GET: [] })
   renderApp()
 
-  // the frame is a menu (R-WP-1): exactly the three views, the showing one marked with aria-current
-  const entries = within(screen.getByRole('navigation', { name: content.nav.views })).getAllByRole('button')
+  // the frame is a menu (R-WP-1): exactly the three views, the showing one marked by the basis' item
+  // state (A1, R-WP-39) — the menu of the design basis carries no `aria-current`
+  const entries = within(
+    screen.getByRole('navigation', { name: content.nav.views }),
+  ).getAllByRole('menuitem')
   expect(entries.map(entry => entry.textContent)).toEqual([
     content.nav.projects,
     content.nav.chat,
     content.nav.settings,
   ])
-  expect(entries[0]).toHaveAttribute('aria-current', 'page')
+  expect(entries[0].className).toContain('ant-menu-item-selected')
+  expect(entries.filter(entry => entry.className.includes('ant-menu-item-selected'))).toHaveLength(1)
   await screen.findByText(content.projects.empty)
 })
 
@@ -206,26 +210,31 @@ test('credentialUrlRejectedAndNothingStored', async () => {
 })
 
 // UC-WP-28
+/**
+ * A2 (R-WP-39): the confirmation is the basis' `Popconfirm` at the row instead of `window.confirm` — the
+ * question is on the screen, so it is read there, and "nothing deleted while it stands" is read off the
+ * calls to the edge rather than off a spy of a browser dialog.
+ */
 test('asksForConfirmationBeforeDelete', async () => {
-  stubServer({ GET: [project()] })
-  const confirmed = vi.spyOn(window, 'confirm').mockImplementation(() => false)
+  const server = stubServer({ GET: [project()] })
   render(<ProjectPage onOpen={() => undefined} />)
   await screen.findByText('demo')
 
   fireEvent.click(screen.getByRole('button', { name: content.projects.remove }))
 
-  expect(confirmed).toHaveBeenCalledTimes(1)
+  expect(await screen.findByText(content.projects.removeQuestion('demo'))).toBeInTheDocument()
+  expect(server.calls.filter(call => call.method === 'DELETE')).toEqual([])
   expect(screen.getByText('demo')).toBeInTheDocument()
 })
 
 test('removesProjectAfterConfirmation', async () => {
   const server = stubServer({ GET: [project()] })
-  vi.spyOn(window, 'confirm').mockImplementation(() => true)
   render(<ProjectPage onOpen={() => undefined} />)
   await screen.findByText('demo')
 
   server.script = { GET: [], POST: undefined, DELETE: undefined }
   fireEvent.click(screen.getByRole('button', { name: content.projects.remove }))
+  fireEvent.click(await screen.findByRole('button', { name: content.common.yes }))
 
   expect(await screen.findByText(content.projects.empty)).toBeInTheDocument()
   expect(

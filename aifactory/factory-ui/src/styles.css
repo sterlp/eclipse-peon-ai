@@ -1,22 +1,19 @@
-/* The app's own layer over Bootstrap: full width, one small gutter, compact top bar (R-WP-1, R-WP-27). */
+/* The app's own layer over the design basis (R-WP-1): full width, one small gutter, compact top bar.
+   Geometry the basis already states — its layout column, its header height, its field surfaces — is not
+   repeated here; where it had to move, `shared/theme.ts` moved it (R-WP-39). */
 
 .app {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
   padding: 0 1rem 2rem;
 }
 
+/* The basis' header carries its own height and gutter (theme tokens); what is ours is the rule below it
+   and the order of its parts. */
 .app-header {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
   margin: 0 -1rem 1rem;
-  padding: 0.4rem 1rem;
   border-bottom: 1px solid var(--border);
-  background: var(--bg);
 }
 
 .app-title {
@@ -29,45 +26,14 @@
 .app-user {
   margin-left: auto;
   width: 9rem;
-  padding: 0.25rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 0.4rem;
-  background: var(--bg);
-  color: var(--text-h);
 }
 
-/* Top navigation (R-WP-1): three entries, the active one marked — it is a menu, not a tab strip. */
-.app-nav {
-  gap: 0.15rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.app-nav .nav-link {
-  border: 1px solid transparent;
-  border-radius: 0.4rem;
-  padding: 0.2rem 0.6rem;
-  font: inherit;
-  color: var(--text);
-  cursor: pointer;
-
-  &:hover {
-    color: var(--text-h);
-    background: var(--code-bg);
-  }
-
-  &.active {
-    border-color: var(--border);
-    background: var(--code-bg);
-    color: var(--text-h);
-    font-weight: 600;
-  }
+/* Top navigation (R-WP-1): the basis' horizontal menu, its own accent marking the entry that shows. */
+.app-nav-bar {
+  min-width: 0;
 }
 
 .app-main {
-  flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -86,16 +52,15 @@
   display: flex;
   gap: 0.5rem;
 
+  /* the field of the basis takes the width the button leaves; its surface is the basis' own */
   input {
     flex: 1;
-    padding: 0.4rem 0.6rem;
-    border: 1px solid var(--border);
-    border-radius: 0.4rem;
-    background: var(--bg);
-    color: var(--text-h);
+    min-width: 0;
   }
 }
 
+/* The plain buttons of the chat and of the file area (R-WP-29: their own compact language). A Button of
+   the basis states itself through its own class and is not reached by this element rule. */
 button {
   border: 1px solid var(--border);
   border-radius: 0.4rem;
@@ -103,16 +68,6 @@ button {
   color: var(--text-h);
   padding: 0.4rem 0.8rem;
   cursor: pointer;
-}
-
-.form-error {
-  color: var(--problem);
-  border: 1px solid currentColor;
-  border-radius: 0.4rem;
-  padding: 0.4rem 0.6rem;
-  white-space: pre-wrap;
-  font-family: var(--mono);
-  font-size: 0.85rem;
 }
 
 .empty-state {
@@ -124,15 +79,6 @@ button {
   color: var(--text);
 }
 
-/* A card in the app's own language, taken from the chat's cards (`.files-root-card`,
-   `.chat-insight-line`): the border names the block, the surface stays the page's. Named `ui-card` and not
-   `card` because Bootstrap paints `.card` as well, and its flex column would move these blocks. */
-.ui-card {
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  padding: 0.6rem 0.75rem;
-}
-
 .project-list {
   list-style: none;
   margin: 1rem 0 0;
@@ -140,21 +86,15 @@ button {
   display: grid;
   gap: 0.4rem;
 
-  li {
+  /* the order inside the card of the basis is ours (R-WP-39) */
+  .project-row {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: 0.4rem;
-    padding: 0.45rem 0.6rem;
   }
 
   .project-name {
-    border: none;
-    background: none;
-    padding: 0;
     font-weight: 600;
-    color: var(--text-h);
   }
 
   .project-url {
@@ -186,10 +126,6 @@ button {
 
   .project-queued {
     color: var(--text);
-  }
-
-  .remove {
-    font-size: 0.85rem;
   }
 }
 
@@ -938,12 +874,15 @@ button {
 }
 
 /* The config page (R-WP-16): one column of labeled fields, the key row carrying its own status. Each area
-   is a card (`.ui-card`) — the chat's border-and-radius language, no geometry of its own here. */
+   is a card of the basis — its border and radius are the theme's, so only the width is named here. */
+.settings-card {
+  max-width: 34rem;
+}
+
 .settings-form {
   display: grid;
   justify-items: start;
   gap: 0.5rem;
-  max-width: 34rem;
 }
 
 .settings {
@@ -973,34 +912,29 @@ button {
     margin: 0;
   }
 
-  /* the field takes the width the label leaves; what travels beside it wraps after that */
+  /* the field takes the width the label leaves; what travels beside it wraps after that. A field the
+     provider makes unusable stays on the screen and says so through the basis' own disabled state (Q3). */
   input,
-  select {
+  .ant-select {
     flex: 1 1 12rem;
-  }
-
-  /* A field the provider makes unusable stays readable and says so — it is not hidden (Q3). */
-  input:disabled,
-  select:disabled {
-    color: var(--tool);
-    background: var(--code-bg);
-    cursor: not-allowed;
   }
 }
 
 /* One measure for every field of the page: the measure of the chat's own input (`.chat-composer`), so the
-   config page reads as the same app rather than as a smaller generation of control. */
+   config page reads as the same app rather than as a smaller generation of control. The surface — border,
+   radius, colours — belongs to the basis and is not repeated here (R-WP-39). */
 .settings input,
-.settings select,
 .config-agents-field input,
 .config-agents-key input {
   min-width: 0;
   padding: 0.4rem 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: 0.4rem;
-  background: var(--bg);
-  color: var(--text-h);
   font: inherit;
+}
+
+/* a selection of the basis takes the room the field beside it takes; its box paces itself */
+.settings .ant-select,
+.config-agents-field .ant-select {
+  min-width: 0;
 }
 
 /* The key status is the status line of its row — the mono measure of the chat's tile metadata. */
@@ -1018,13 +952,17 @@ button {
 
 /*
  * The agent section under the default form (R-WP-23): one card per slot, the checkbox above the fields it
- * unlocks. The card tokens are those of the form above (`.ui-card`) — two areas of one page, one language.
+ * unlocks. The card is the basis' own, the same as the form above — two areas of one page, one language.
  */
 .config-agents {
   display: grid;
   gap: 0.4rem;
   margin-top: 1.5rem;
   max-width: 34rem;
+}
+
+.config-agents-card {
+  width: 100%;
 }
 
 .config-agents-slot {
@@ -1037,13 +975,6 @@ button {
 .config-agents-name {
   margin: 0;
   font-size: 0.9rem;
-}
-
-.config-agents-override {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.8rem;
 }
 
 .config-agents-fields {

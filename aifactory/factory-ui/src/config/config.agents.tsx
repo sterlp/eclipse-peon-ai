@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Alert, Button, Card, Checkbox, Input, Select } from 'antd'
 
 import { errorMessage } from '../shared/api.client'
 import { content } from '../shared/content'
@@ -71,7 +72,7 @@ function Field(props: {
     <div className="config-agents-field">
       <label htmlFor={props.id}>{props.label}</label>
       {/* text, not `type="number"`: a number input reports its garbage as empty, and empty deletes */}
-      <input
+      <Input
         id={props.id}
         value={props.value}
         inputMode={props.numeric ? 'numeric' : undefined}
@@ -111,21 +112,21 @@ function ThinkField(props: {
 
   if (form === 'VALUES' || form === 'TOGGLE') {
     const offered = (form === 'TOGGLE' ? TOGGLE_ITEMS : values).filter((item) => item !== '')
+    // a stored value the list does not carry is offered as itself — never replaced (ADR-0064)
+    const choices =
+      props.value !== '' && !offered.includes(props.value) ? [props.value, ...offered] : offered
     return (
       <div className="config-agents-field">
         <label htmlFor={props.id}>{props.label}</label>
-        <select id={props.id} value={props.value} onChange={(event) => props.onChange(event.target.value)}>
-          <option value="">{content.agents.inheritOption}</option>
-          {/* a stored value the list does not carry is offered as itself — never replaced (ADR-0064) */}
-          {props.value !== '' && !offered.includes(props.value) && (
-            <option value={props.value}>{props.value}</option>
-          )}
-          {offered.map((item) => (
-            <option key={item} value={item}>
-              {item}
-            </option>
-          ))}
-        </select>
+        <Select
+          id={props.id}
+          value={props.value}
+          onChange={props.onChange}
+          options={[
+            { value: '', label: content.agents.inheritOption },
+            ...choices.map((item) => ({ value: item, label: item })),
+          ]}
+        />
       </div>
     )
   }
@@ -172,7 +173,7 @@ export function Agents({ think }: { think: ThinkInput }) {
   }
 
   function override(id: string) {
-    return (event: React.ChangeEvent<HTMLInputElement>) => {
+    return (event: { target: { checked: boolean } }) => {
       const checked = event.target.checked
       setDrafts((current) => ({ ...current, [id]: { ...current[id], overridden: checked } }))
     }
@@ -207,90 +208,89 @@ export function Agents({ think }: { think: ThinkInput }) {
   return (
     <section className="config-agents" aria-label={content.agents.title}>
       <h2>{content.agents.title}</h2>
-      {message && (
-        <p className="form-error" role="alert">
-          {message}
-        </p>
-      )}
+      {message && <Alert type="error" title={message} />}
       {slots.map((slot) => {
         const draft = drafts[slot.id]
         return (
-          <div
-            className="config-agents-slot ui-card"
+          <Card
+            size="small"
+            className="config-agents-card"
             key={slot.id}
             data-testid={'agent-slot-' + slot.id}
           >
-            <h3 className="config-agents-name">{slot.name}</h3>
-            <label className="config-agents-override" htmlFor={'agent-' + slot.id + '-override'}>
-              <input
-                id={'agent-' + slot.id + '-override'}
-                type="checkbox"
-                checked={draft.overridden}
-                onChange={override(slot.id)}
-              />
-              {content.agents.override}
-            </label>
-            {draft.overridden && (
-              <div className="config-agents-fields">
-                <Field
-                  id={'agent-' + slot.id + '-model'}
-                  label={content.agents.model}
-                  value={draft.model}
-                  onChange={edit(slot.id, 'model')}
-                />
-                <Field
-                  id={'agent-' + slot.id + '-url'}
-                  label={content.agents.url}
-                  value={draft.url}
-                  onChange={edit(slot.id, 'url')}
-                />
-                {/* Devs record is the base think value of every other agent (R-THINK-10, R-WP-23) */}
-                <ThinkField
-                  id={'agent-' + slot.id + '-think'}
-                  label={slot.id === DEV_SLOT ? content.agents.thinkDefault : content.agents.think}
-                  value={draft.think}
-                  think={think}
-                  onChange={edit(slot.id, 'think')}
-                />
-                <Field
-                  id={'agent-' + slot.id + '-temperature'}
-                  label={content.agents.temperature}
-                  value={draft.temperature}
-                  numeric
-                  onChange={edit(slot.id, 'temperature')}
-                />
-                <div className="config-agents-key">
-                  <label htmlFor={'agent-' + slot.id + '-key'}>{content.config.key}</label>
-                  <input
-                    id={'agent-' + slot.id + '-key'}
-                    type="password"
-                    autoComplete="off"
-                    placeholder={content.config.unchanged}
-                    value={draft.apiKey}
-                    onChange={(event) => edit(slot.id, 'apiKey')(event.target.value)}
+            <div className="config-agents-slot">
+              <h3 className="config-agents-name">{slot.name}</h3>
+              <Checkbox checked={draft.overridden} onChange={override(slot.id)}>
+                {content.agents.override}
+              </Checkbox>
+              {draft.overridden && (
+                <div className="config-agents-fields">
+                  <Field
+                    id={'agent-' + slot.id + '-model'}
+                    label={content.agents.model}
+                    value={draft.model}
+                    onChange={edit(slot.id, 'model')}
                   />
-                  <span className={slot.keySet ? 'key-set' : 'key-missing'}>
-                    {slot.keySet ? content.config.keySet : content.config.keyMissing}
-                  </span>
-                  {/* a slot's key can only come from its own file, so it is the page's to remove */}
-                  {slot.keySet && (
-                    <button
-                      type="button"
-                      disabled={removeKey[slot.id]}
-                      onClick={() => setRemoveKey((current) => ({ ...current, [slot.id]: true }))}
-                    >
-                      {content.config.removeKey}
-                    </button>
-                  )}
-                  {removeKey[slot.id] && <span className="hint">{content.config.removeKeyQueued}</span>}
+                  <Field
+                    id={'agent-' + slot.id + '-url'}
+                    label={content.agents.url}
+                    value={draft.url}
+                    onChange={edit(slot.id, 'url')}
+                  />
+                  {/* Devs record is the base think value of every other agent (R-THINK-10, R-WP-23) */}
+                  <ThinkField
+                    id={'agent-' + slot.id + '-think'}
+                    label={slot.id === DEV_SLOT ? content.agents.thinkDefault : content.agents.think}
+                    value={draft.think}
+                    think={think}
+                    onChange={edit(slot.id, 'think')}
+                  />
+                  <Field
+                    id={'agent-' + slot.id + '-temperature'}
+                    label={content.agents.temperature}
+                    value={draft.temperature}
+                    numeric
+                    onChange={edit(slot.id, 'temperature')}
+                  />
+                  <div className="config-agents-key">
+                    <label htmlFor={'agent-' + slot.id + '-key'}>{content.config.key}</label>
+                    <Input
+                      id={'agent-' + slot.id + '-key'}
+                      type="password"
+                      autoComplete="off"
+                      placeholder={content.config.unchanged}
+                      value={draft.apiKey}
+                      onChange={(event) => edit(slot.id, 'apiKey')(event.target.value)}
+                    />
+                    <span className={slot.keySet ? 'key-set' : 'key-missing'}>
+                      {slot.keySet ? content.config.keySet : content.config.keyMissing}
+                    </span>
+                    {/* a slot's key can only come from its own file, so it is the page's to remove */}
+                    {slot.keySet && (
+                      <Button
+                        size="small"
+                        disabled={removeKey[slot.id]}
+                        onClick={() => setRemoveKey((current) => ({ ...current, [slot.id]: true }))}
+                      >
+                        {content.config.removeKey}
+                      </Button>
+                    )}
+                    {removeKey[slot.id] && (
+                      <span className="hint">{content.config.removeKeyQueued}</span>
+                    )}
+                  </div>
+                  <p className="hint">{content.agents.inherits}</p>
                 </div>
-                <p className="hint">{content.agents.inherits}</p>
-              </div>
-            )}
-            <button type="button" disabled={saving !== null} onClick={() => void save(slot.id)}>
-              {saving === slot.id ? content.config.saving : content.agents.save}
-            </button>
-          </div>
+              )}
+              <Button
+                type="primary"
+                disabled={saving !== null}
+                onClick={() => void save(slot.id)}
+              >
+                {saving === slot.id ? content.config.saving : content.agents.save}
+              </Button>
+            </div>
+          </Card>
         )
       })}
     </section>

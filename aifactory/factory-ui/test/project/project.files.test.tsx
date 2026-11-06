@@ -332,7 +332,9 @@ test('theFilesTabOpensTheSlideOut', async () => {
   expect(tab).toHaveTextContent(content.files.open)
   expect(tab).toHaveAttribute('aria-expanded', 'false')
   expect(tab.getAttribute('aria-label')).toBe(content.files.openArea)
-  expect(tab.querySelector('i.bi-chevron-left'), 'a closed tab points inwards').not.toBeNull()
+  // A4 (R-WP-39): the icon set of the basis names the direction in its class (`anticon-left`,
+  // `anticon-right`) — the same claim about the arrow, read where the new set states it
+  expect(tab.querySelector('.anticon-left'), 'a closed tab points inwards').not.toBeNull()
   // the tab stands sideways at the edge — jsdom lays out nothing, so the look is read where it is written
   expect(declarations('.files-tab'), 'the tab is vertical').toContain('writing-mode: vertical-rl')
 
@@ -340,7 +342,7 @@ test('theFilesTabOpensTheSlideOut', async () => {
   await screen.findByTestId('files-panel')
   expect(tab).toHaveAttribute('aria-expanded', 'true')
   expect(tab.getAttribute('aria-label')).toBe(content.files.collapseArea)
-  expect(tab.querySelector('i.bi-chevron-right'), 'an open tab points back out').not.toBeNull()
+  expect(tab.querySelector('.anticon-right'), 'an open tab points back out').not.toBeNull()
 
   // the two roots as cards, each one naming what it holds
   const checkout = screen.getByTestId('files-root-checkout')
@@ -350,7 +352,7 @@ test('theFilesTabOpensTheSlideOut', async () => {
   expect(within(screen.getByTestId('files-panel')).getByRole('group', { name: content.files.root }))
     .toBeInTheDocument()
   // and the panel carries its own way out: the icon of the tab, repeated where the eye is
-  expect(screen.getByTestId('files-close').querySelector('i.bi-chevron-right')).not.toBeNull()
+  expect(screen.getByTestId('files-close').querySelector('.anticon-right')).not.toBeNull()
 })
 
 // UC-WP-60

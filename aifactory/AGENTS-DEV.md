@@ -888,3 +888,41 @@
   Findings** bei UC 69/69, 274 Test-Ids. Marker `R-WP-37`/`UC-WP-69` bleiben ❌ — flippt Jon;
   `docs/chat.md`/`docs/user.md` (Jons Schärfungen) bleiben uncommitted bei ihm.
 
+## AntD-Umbau Inc 1 (Zyklus 2026-11-06) — die Basis unter jsdom
+
+- **Versionen gemessen, nicht geraten**: `antd` latest **6.7.0** (keine 7.x vorhanden, latest-5 = 5.29.3),
+  `@ant-design/icons` **6.3.4** (`next: 4.0.0-rc.0` ist ein alter Pre-Release, keine neue Major). React
+  19.3.1 läuft an v6 nativ — `@ant-design/v5-patch-for-react-19` bleibt unnötig.
+- **`matchMedia` ist unter jsdom 26 NICHT load-bearing** (gemessen): jsdom bringt die API, der Polyfill in
+  `test/shared/setup.ts` läuft wegen seines `typeof`-Guards nie — Mutation „Polyfill raus" bleibt grün.
+  Load-bearing ist **`ResizeObserver`**: ohne ihn 15/16 Tests in `test/app/*` rot mit
+  `ReferenceError: ResizeObserver is not defined` (`@rc-component/resize-observer`). Suite: 154 Tests /
+  19 Dateien in ~8,5 s Wanduhr (vorher 149/18 in 4,5 s) — AntD kostet ~4 s, Grenze ~30 s hält.
+- **Ein `Select` wird über `<id>_list` adressiert, nicht über `aria-controls`** (gemessen): die Liste hängt
+  ab der ersten Öffnung im DOM (`getElementById('<id>_list').closest('.ant-select-dropdown')`), während
+  `aria-expanded`/`aria-controls` mit dem Popup kommen und gehen. jsdom schließt **nie** (weder Escape noch
+  Klick außerhalb), und ein `mouseDown` auf ein **offenes** Choice schließt es — Öffnen also nur, wenn die
+  Liste fehlt. Helper: `test/shared/choices.ts`. Anzeige = `.ant-select-content[title]` und das ist das
+  **Label**, nicht der Drahtwert (Inc 1b „Catalog-Wert ≠ Feldwert" gilt weiter; der Drahtwert bleibt in den
+  PUT-Body-Tests bewiesen).
+- **`id` an einem Choice ist Test-Ökologie und Barrierefreiheit**: ohne `id` nutzt rc-select `useId()`, und
+  deren Wert ist im Testbaum für mehrere Felder **gleich** (`test-id_list`) ⇒ `getElementById` trifft die
+  Liste eines fremden Feldes. Deshalb tragen die Choices der Config-Seite `settings-provider` /
+  `settings-send-thinking`.
+- **`Menu mode="horizontal"`** rendert `li[role=menuitem]`, Auswahl nur als Klasse
+  `.ant-menu-item-selected` — **kein** `aria-current`/`aria-selected` (A1). `Alert`-Prop heißt `title`
+  (`message` deprecated), `role="alert"` sitzt am Div, `textContent` = title allein.
+- **`Layout.Header` Maß und Kopffarbe kommen aus `var(--ant-layout-header-*)`** — gleiche Spezifität wie
+  unsere `.app-header`, also über `theme.components.Layout` (bodyBg/headerBg/headerColor/headerPadding)
+  lösen, nicht über CSS. `Card` füllt seinen Inhalt in `.ant-card-body`: eine eigene Flex-Regel gehört auf
+  einen inneren Wrapper, nicht auf die Card-Klasse; „kein Hintergrund" (docs/ui.md) ist
+  `Card.colorBgContainer: 'transparent'` als Token.
+- **Positiver Ersatz für die `--bs-*`-/`.ui-card`-Belege** (der Blatt-Leser kann AntD nicht messen):
+  `test/shared/theme.test.ts` (`// UC-WP-71`) prüft Token-Gleichheit gegen `index.css`
+  (`tokenValues('--accent')` …), `darkAlgorithm`, `Card.colorBgContainer`, `Layout.*`, und ein Guard scannt
+  `import.meta.glob('../../src/**/*.{ts,tsx}', { query: '?raw' })` + package.json-Rohtext gegen
+  react-bootstrap/`bi bi-`/`--bs-`. Erster Test nach Umbau auf eine neue Basis: Guard mit Absichtstester
+  (Sonde mit `from 'react-bootstrap'` ⇒ genau der Guard rot; Guard raus ⇒ Verletzung unsichtbar).
+- **oxlint `only-export-components` erwischt auch `main.tsx`**: eine Komponente, die nur das Theme um die
+  App legt, gehört in eine eigene Datei (`app/app.root.tsx`), sonst bleibt eine Warnung im `lint`-Lauf.
+

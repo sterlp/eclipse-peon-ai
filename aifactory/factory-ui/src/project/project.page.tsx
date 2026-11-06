@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Alert, Button, Card, Input, Popconfirm } from 'antd'
 
 import { addProject, listProjects, removeProject } from './project.client'
 import { openProjectStatusStream } from './project.status.client'
@@ -95,9 +96,6 @@ export function ProjectPage({ onOpen }: Props) {
   }
 
   async function remove(project: Project) {
-    if (!window.confirm(content.projects.removeQuestion(project.name))) {
-      return
-    }
     setMessage(null)
     try {
       await removeProject(project.id)
@@ -111,22 +109,18 @@ export function ProjectPage({ onOpen }: Props) {
     <section className="view" aria-label={content.projects.title}>
       <h1>{content.projects.title}</h1>
       <form className="add-project" onSubmit={event => void submit(event)}>
-        <input
+        <Input
           type="url"
           placeholder={content.projects.gitUrlSample}
           aria-label={content.projects.gitUrl}
           value={gitUrl}
           onChange={event => setGitUrl(event.target.value)}
         />
-        <button type="submit" disabled={busy}>
+        <Button type="primary" htmlType="submit" disabled={busy}>
           {busy ? content.projects.cloning : content.projects.add}
-        </button>
+        </Button>
       </form>
-      {message && (
-        <p className="form-error" role="alert">
-          {message}
-        </p>
-      )}
+      {message && <Alert type="error" title={message} />}
       {projects.length === 0 ? (
         <p className="empty-state">{content.projects.empty}</p>
       ) : (
@@ -139,19 +133,30 @@ export function ProjectPage({ onOpen }: Props) {
             const queued = state?.queued ?? 0
             return (
               <li key={project.id}>
-                <button type="button" className="project-name" onClick={() => onOpen(project)}>
-                  {project.name}
-                </button>
-                <span className="project-work" data-working={working}>
-                  {working ? content.projects.working : content.projects.free}
-                  {working && queued > 0 && (
-                    <span className="project-queued">{content.projects.queued(queued)}</span>
-                  )}
-                </span>
-                <span className="project-url">{project.gitUrl}</span>
-                <button type="button" className="remove" onClick={() => void remove(project)}>
-                  {content.projects.remove}
-                </button>
+                {/* the card of the basis names the row (R-WP-39) */}
+                <Card size="small">
+                  <div className="project-row">
+                    <Button type="link" className="project-name" onClick={() => onOpen(project)}>
+                      {project.name}
+                    </Button>
+                    <span className="project-work" data-working={working}>
+                      {working ? content.projects.working : content.projects.free}
+                      {working && queued > 0 && (
+                        <span className="project-queued">{content.projects.queued(queued)}</span>
+                      )}
+                    </span>
+                    <span className="project-url">{project.gitUrl}</span>
+                    {/* the removal asks before it deletes: the clone folder goes with the row (UC-WP-28) */}
+                    <Popconfirm
+                      title={content.projects.removeQuestion(project.name)}
+                      okText={content.common.yes}
+                      cancelText={content.common.no}
+                      onConfirm={() => void remove(project)}
+                    >
+                      <Button size="small">{content.projects.remove}</Button>
+                    </Popconfirm>
+                  </div>
+                </Card>
               </li>
             )
           })}
