@@ -74,7 +74,13 @@ Reihenfolge, je ein grünes Inkrement:
   **Think-Abschnitt** wird kein Eintrag — der Chat zeigt sein Denken nicht, und R-WP-40 nannte ihn trotzdem
   als Schritt (Widerspruch **innerhalb** einer Regel, jetzt im Doc aufgelöst). *Andersfall:* eine echte
   je-Werkzeug-Dauer oder ein sichtbarer Think-Abschnitt bräuchten je eine eigene Regel (Dauer zusätzlich den
-  Core) — beides wäre neu und nicht Nebenprodukt der Timeline.
+  Core) — beides wäre neu und nicht Nebenprodukt der Timeline. **Nachschärfung (2026-11-06, vor Inc 4c):**
+  R-WP-40 forderte je Eintrag auch „und seinen Auftrag (`Dev: <Prompt>`)". Der Draht trägt den Prompt **nur im
+  Wortlaut der Werkzeugzeile** (`"<Name> start:\n<Prompt>"`), der Delegations-Listener liefert ihn nicht — ihn
+  aus dem Text zu lesen wäre genau das Parse-Verbot der Regel. Angenommen: der **Delegations-Eintrag nennt das
+  Mitglied**, der **Auftrag steht unverändert in der Werkzeugzeile darüber**; die Klammer ist aus der Regel
+  geworfen. *Andersfall:* ein Auftrag im Delegations-Eintrag verlangt eine **Core-Erweiterung** (Prompt im
+  Listener) — Core-Änderung, nur mit deinem Proposal.
 * **⏳ Screenshot-Werkzeug (Stagehand) parked** (2026-11-06) — `@browserbasehq/stagehand` v4 kann den
   Dev-Server öffnen und Screenshots/Layout-Messungen **ohne** LLM-Call (nur `page`-API); verlangt
   aber **Node ≥ 22.18**, der Bau fährt **22.12** (v23.4 ist vorhanden). Angenommen: kein neues

@@ -280,9 +280,11 @@ Verlauf; kompakt (klein, grau, Tool-Zeilen gemerged wie in `chat.html`) und nach
 
 Die Schritte eines Turns — Werkzeug, Think-Abschnitt, Delegation — werden als **Timeline**
 dargestellt, **an der Stelle im Verlauf, wo sie passieren** (R-WP-28: kein Block hinter dem
-Verlauf). Ein Eintrag trägt den **Namen des arbeitenden Agenten** und seinen Auftrag
-(`Dev: <Prompt>`), einen **laufenden Indikator**, solange er arbeitet, und die **Uhrzeit seiner
-Ankunft**, sobald er fertig ist. Eine **Delegation ist ein Eintrag**: während das Mitglied arbeitet,
+Verlauf). Ein Eintrag trägt den **Namen des arbeitenden Agenten**, einen **laufenden Indikator**,
+solange er arbeitet, und die **Uhrzeit seiner Ankunft**, sobald er fertig ist. **Den Auftrag erfindet
+die Fabrik nicht:** was der Core über die Leitung schickt, steht als **Wortlaut** in dem Eintrag
+darüber — aus einem Text wird **nie** etwas herausgeparst, und ein Auftrag, den der Draht nicht trägt,
+hat keinen eigenen Eintrag. Eine **Delegation ist ein Eintrag**: während das Mitglied arbeitet,
 zeigt sein Eintrag „working", das Ergebnis erscheint unter ihm; der Blick in den Gesprächsverlauf
 des Mitglieds bleibt davon unberührt ([R-WP-26](chat.md)). **Zeiten sind live und lückenhaft:** Der
 Draht trägt je Schritt **nur den Augenblick des Eintreffens** (Browser-Uhr) — eine **Dauer hat allein

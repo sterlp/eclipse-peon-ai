@@ -76,6 +76,10 @@
   Selektorwortlaut in CSS-Prosa — die Helfer (`declarations`, `blockOf`, `tokenTable`) suchen per
   `indexOf(selector)`; `tokenTable` akzeptiert einen Selektor erst bei Whitespace + `{`.
 - `sheets.ts::declarations()` trifft nur den **ersten** Block — ein Verbot, das über **allen** `.chat-line.*`-Blättern (inkl. `@media`) gelten muss, liest `allDeclarations`.
+- **Ein offener Zustand wird an das laufende Objekt gebunden, nie an „Flag + letztes Element"** — ein
+  Indikator sonst beim nächsten Turn auf dem alten Eintrag weiterblinkt (live-Items überleben den Turn). Und:
+  eine Draht-Eigenschaft, die erst **nach** dem Zustandsende sichtbar wird (Zeit am geschlossenen Schritt),
+  braucht **beide Zustände im selben Test** — sonst bleibt ihr Löscher grün.
 - **AntD unter jsdom**: `matchMedia` **und** `ResizeObserver` sind load-bearing (jsdom 26.1.0: Property da,
   Wert `undefined`); `Select` über `<id>_list` (`id` je Choice Pflicht, `useId()` ist im Testbaum nicht
   eindeutig), Helfer `test/shared/choices.ts`. Dunkel ist **eine** Tabelle über `data-theme` am Document;
