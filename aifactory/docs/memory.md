@@ -43,12 +43,21 @@ Ctrl/Cmd+Enter** setzen die neue Zeile, Send nur bei Text, Fokus bleibt beim Fel
 wie bei Auswahl, Mutationen M12/M13), AntD-Wache **fail-closed** (Bann = ganz `src/chat/`, Allowlist allein
 `chat.composer.tsx`, M14 beweist eine neue Verlaufs-Datei), Seitentest schließt die Kette über echten
 Ctrl+Enter, WHY-Kommentar an der doppelten Sende-Prüfung. Commits `8f6fe18c` · `8284d09d` · `6bad9074` ·
-`0945f1a2` = Spitze = origin. Stand UI **171 Tests/20 Dateien ~8,7 s**, tsc/oxlint 0/0.
-**`AGENTS-DEV.md` neu gefasst: 117 Zeilen, nur Zeitloses** (Paul: Plan-Status hat dort nichts zu suchen;
-Core-`developer.md:55-60` von Paul nachgezogen — „episodic goes to the plan file"). Pauls Umzug hat den
-alten Stand als **Dump in [`peon-plan/overview.md`](../peon-plan/overview.md) ab :447** abgelegt =
-Doppelbestand; wartet auf sein Wort, dann raus. **Doc-Lint: 31 Findings** (PC 14, CR 14, UC-WP-70/72/75 —
-UC-WP-56/74 sind raus). **Immer selbst messen**: Dev und Review melden 3, ihr Lint scopet nur `chat`/`ui`.
+`0945f1a2`. Stand UI **171 Tests/20 Dateien ~8,7 s**, tsc/oxlint 0/0. **Inkrement 3b (`!` durchreichen) ✅
+abgenommen** — [R-WP-42/UC-WP-75](chat.md) ✅: `ProjectRuntime.urgentTextOf` + Urgent-Lane als **erste**
+Anweisung in `submit` (kein zweiter Turn, kein Claim, kein `done`), Bedingung `jon.isWorking()` (Core,
+nicht unser Claim), Blank-`!` konsumiert, Absendername trägt sie wie jede Eingabe. Review **REJECTED**
+(2 Beweislücken) → closed; **meine Korrektur an Devs „Mutation nicht widerlegbar"**:
+`UserMessageQueue.addUrgent` verwirft nur **blanken** Text — mit Absender wird aus `""` die Namenszeile
+`"[User Anna]: "`, also ist der Blank-Guard tragend und der Test jetzt diskriminierend
+(`containsOnlyOnce` auf den Block-Kopf). Commits `e0338f30` · `402bb60f` · `2d26da28` · `c3918b69` =
+Spitze = origin (darunter **Pauls** Core-Commits `da858cc4` · `91b8d521`). Stand: Backend **225/0**,
+`missCount 1` · UI **172/20 ~8,5 s**, tsc/oxlint 0/0 · **Doc-Lint 30 Findings** (PC 14, CR 14,
+UC-WP-70/72). **`AGENTS-DEV.md` neu gefasst, nur Zeitloses** (Paul: Plan-Status hat dort nichts zu
+suchen; Core-`developer.md:55-60` von Paul nachgezogen) — **über dem Cap: 124 Zeilen statt 100, bei
+Zyklus-Ende von Jon einziehen.** Pauls Umzug liegt als **Dump in
+[`peon-plan/overview.md`](../peon-plan/overview.md) ab :447** = Doppelbestand, wartet auf sein Wort.
+**Immer selbst messen**: Dev und Review melden weniger, ihr Lint scopet enger als `docRoots:["docs"]`.
 
 **Entschieden (2026-11-06):** AntD wird Design-Basis, **Bootstrap raus** ([R-WP-39](ui.md));
 Navigation = **Projektbaum im Sider**, Klick aufs Projekt öffnet den Chat, **kein „Jon"-Label**

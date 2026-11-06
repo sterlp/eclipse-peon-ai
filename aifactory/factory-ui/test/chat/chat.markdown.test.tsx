@@ -88,8 +88,6 @@ test('anAnswersOwnRuleStaysInsideTheAnswer', () => {
   const painted = declarations('.chat-log .chat-markdown hr')
   expect(painted, 'the quiet border grey, not the accent').toContain('var(--border)')
   expect(painted, 'short — a line over the log would read as a separation').toContain('width: 3rem')
-  // the two are different rules on purpose: this one is content, that one is the voice separator
-  expect(declarations('.chat-log .chat-rule')).toContain('var(--tool-line)')
 })
 
 /**

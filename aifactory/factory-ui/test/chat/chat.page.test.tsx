@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 
 import { renderApp } from '../shared/app.harness'
 import { baseDeclarations, declarations, declares, tokenValues } from '../shared/sheets'
+import { separatorsOf } from '../shared/log.parts'
 import { ChatPage } from '../../src/chat/chat.page'
 import { project } from '../shared/fixtures'
 import { content } from '../../src/shared/content'
@@ -917,18 +918,18 @@ test('agentLineIsGreenAndNamedByItsAgent', async () => {
 })
 
 // UC-WP-55
-test('roleChangeDrawsARule', async () => {
+// R-WP-29
+test('roleChangeDrawsNoRule', async () => {
   stubChat({ messages: [QUESTION, TEAM_ANSWER, JONS_ANSWER, { role: 'user', text: 'und im Root?' }] })
   render(<ChatPage project={project()} />)
   await flush()
 
-  // user, agent, agent, user: one rule where the voice changes and none within a voice, and the rule is
-  // the plain hr of the doc — carried by the line that begins the new voice, so the list stays a list
-  const shape = screen.getAllByTestId(/chat-line-(user|jon)/).map(line => {
-    const ruled = [...line.children].some(child => child.tagName === 'HR')
-    return `${ruled ? 'rule ' : ''}${line.classList.contains('user') ? 'user' : 'agent'}`
-  })
-  expect(shape).toEqual(['user', 'rule agent', 'agent', 'rule user'])
+  // user, agent, agent, user: two changes of voice and no line for either — what separates them is the
+  // accent each row carries on its own side (R-WP-29, UC-WP-55 GIVEN 2)
+  expect(separatorsOf(screen.getByTestId('chat-log')), 'the whole log draws no separator').toEqual([])
+  expect(
+    screen.getAllByTestId(/chat-line-(user|jon)/).map(line => (line.classList.contains('user') ? 'user' : 'agent')),
+  ).toEqual(['user', 'agent', 'agent', 'user'])
 })
 
 // UC-WP-55

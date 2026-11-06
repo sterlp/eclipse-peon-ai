@@ -47,18 +47,34 @@ Reihenfolge, je ein grünes Inkrement:
   ([R-WP-7](chat.md)) und die Docs nennen den Agenten weiter Jon. *Andersfall:* war gemeint, dass der
   Name auch auf der Kachel/ im Header verschwindet („Chat" statt „Jon"), ist das eine Umbenennung der
   Anzeige plus UC-Änderung in [chat.md](chat.md) — kein Umbau der Kachel-Regel selbst.
-* **🔒 Tastatur entschieden (2026-11-06, Paul: „A")** — **Enter sendet, Shift+Enter = neue Zeile**;
-  [R-WP-30/UC-WP-56](chat.md) accordingly umgeschrieben (❌ — Umbau steht aus, Inkrement 3). Der
-  Konflikt mit Pauls Regel vom 02.11. ist damit gelöst, nicht offen; Merkposten gegen Wiederaufmachen
-  steht in [resolved-points.md](resolved-points.md). Pauls Zusatz dazu (12:40): **„es gibt kein Lock vom
-  Input"** — Eingabe ist auch im laufenden Turn benutzbar, sie geht in die Queue
-  ([R-WP-41](chat.md), bereits Regel).
+* **🔒 Tastatur entschieden (2026-11-06, Paul: „A")** — **Enter sendet, Shift+Enter und Ctrl/Cmd+Enter =
+  neue Zeile**; gebaut und abgenommen in [R-WP-30/UC-WP-56](chat.md) ✅ (Inkrement 3). Der Konflikt mit
+  Pauls Regel vom 02.11. ist damit gelöst, nicht offen; Merkposten gegen Wiederaufmachen steht in
+  [resolved-points.md](resolved-points.md). Pauls Zusatz dazu (12:40): **„es gibt kein Lock vom Input"** —
+  Eingabe ist auch im laufenden Turn benutzbar, sie geht in die Queue ([R-WP-41](chat.md) ✅).
 * **🔒 `!` = Prio-Nachricht — Core-Regel, Fabrik reicht sie nur durch (2026-11-06, Paul)** — Regeln
   stehen im Core ([`queued-user-messages.md`](../../org.sterl.llmpeon.core/docs/queued-user-messages.md)
-  R8, R11), hier nur der Fabrik-Anteil: [`R-WP-42/UC-WP-75`](chat.md) ❌ (Bau in Inkrement 3b —
-  `ProjectRuntime.submit()` gibt heute Rohtext ans `call()`). **Tastatur** nach Pauls Klarstellung
-  (13:20): Enter = senden, **`Shift+Enter` UND `Ctrl/Cmd+Enter` = neue Zeile** — in
-  [R-WP-30](chat.md) nachgezogen.
+  R8, R11), hier nur der Fabrik-Anteil: [`R-WP-42/UC-WP-75`](chat.md) ✅ (Inkrement 3b).
+* **⏳ Prio-Zeile ist nur eine vorläufige Zeile (2026-11-06, Jon nach Review; Paul: „mit deiner
+  Empfehlung")** — [UC-WP-75 GIVEN 2](chat.md) versprach die `!` Zeile **im Verlauf**; der Core schreibt
+  eine Prio-Nachricht nie in die Memory (Core R8.7), also trägt der Verlauf sie nie. Angenommen: die Zeile
+  ist die **vorläufige** Zeile des Absenders (von der nächsten bestätigten Nutzerzeile geschluckt) und die
+  Regel sagt das jetzt so. *Andersfall:* eine dauerhafte Prio-Spur (Inc 3d) braucht einen zweiten Speicher
+  neben der Memory (widerspricht R-WP-11) — eigenes Inkrement, frühestens nach deinem Smoke-Test. Ebenso
+  neu in der Regel: ein `!` ohne Text ist konsumiert (Core R8.6) und die Prio trägt den Absendernamen
+  ([R-WP-25](user.md)) — beides war schon gebaut, aber nicht behauptet.
+* **⏳ „Arbeitet" heißt „letzter Schritt eines laufenden Turns" (2026-11-06, Jon für Inkrement 4)** —
+  [R-WP-40/UC-WP-72](chat.md) verlangt einen laufenden Indikator „solange er arbeitet"; der Core meldet je
+  **Werkzeug** kein Ende (nur die Zeile bei Ankunft), also endet der Indikator am nächsten Schritt oder am
+  Ende der Antwort. Der **Name** des Schritts ist der Core-Stempel auf der Zeile — ohne Stempel kein Name
+  ([R-WP-37](chat.md)). Die **Delegation** ist die Ausnahme: Anfang und Ende kommen typisiert über den
+  Factory-Listener der Delegation, ihr Eintrag nennt das **Mitglied**. Da die Fabrik Mitglieder-Zeilen
+  filtert ([R-WP-4](chat.md)), ist der Stempel eines Werkzeug-Schritts praktisch immer **„Jon"** — ehrlich,
+  aber laut; das Mitglied nennt erst der Delegations-Eintrag. **Ebenfalls angenommen:** Jons
+  **Think-Abschnitt** wird kein Eintrag — der Chat zeigt sein Denken nicht, und R-WP-40 nannte ihn trotzdem
+  als Schritt (Widerspruch **innerhalb** einer Regel, jetzt im Doc aufgelöst). *Andersfall:* eine echte
+  je-Werkzeug-Dauer oder ein sichtbarer Think-Abschnitt bräuchten je eine eigene Regel (Dauer zusätzlich den
+  Core) — beides wäre neu und nicht Nebenprodukt der Timeline.
 * **⏳ Screenshot-Werkzeug (Stagehand) parked** (2026-11-06) — `@browserbasehq/stagehand` v4 kann den
   Dev-Server öffnen und Screenshots/Layout-Messungen **ohne** LLM-Call (nur `page`-API); verlangt
   aber **Node ≥ 22.18**, der Bau fährt **22.12** (v23.4 ist vorhanden). Angenommen: kein neues
@@ -152,7 +168,9 @@ Defekte/Fragen, je eine Story je Punkt erst nach Klärung (❓ = präzisieren, b
 * **⏳ Der Urheber-Name gehört zur dauerhaften Zeile, nicht zum Live-Fragment**
   ([UC-WP-39](chat.md), 2026-10-26 gebaut, 2026-10-27 mit dem Core-Rückbau wieder ❌) — die Live-Zeile eines laufenden Turns trägt **keinen** Namen, weil live nur Jon spricht
   und damit nichts zu verwechseln ist. *Andersfall:* soll auch das wachsende Live-Fragment ein Label
-  tragen, ist das eine kleine UI-Zeile — dann sagt das Doc es ausdrücklich.
+  tragen, ist das eine kleine UI-Zeile — dann sagt das Doc es ausdrücklich. **Ausnahme seit Inkrement 4:**
+  die **Timeline-Schritte** nennen ihren Core-Stempel ([R-WP-40](chat.md)) — betroffen ist die Schritt-Zeile,
+  nie das wachsende Antwort-Fragment.
 
 
 * **⏳ Config-Quelle ist eine eigene Datei der Factory** (`~/.aifactory/config/config.properties`, Keys auch

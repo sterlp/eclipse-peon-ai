@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 
 import { ChatLog } from '../../src/chat/chat.log'
 import { appendLiveError, appendLiveTool } from '../../src/chat/chat.live'
-import { declarations } from '../shared/sheets'
+import { declarations, declares } from '../shared/sheets'
 import { separatorsOf } from '../shared/log.parts'
 import type { ChatMessage } from '../../src/chat/chat.client'
 
@@ -14,50 +14,52 @@ const SENTENCE: ChatMessage = { role: 'user', text: 'zähl die Dateien', origin:
 const ANSWER: ChatMessage = { role: 'jon', text: 'Zwei: pom.xml und README.md' }
 
 /**
- * The failure is a voice of the log (R-WP-34): it takes the rule of a voice change and the colour of the
- * problem, and it owns no surface of its own. Colour is no fact of the DOM in jsdom, so the sheet is read
- * where the contract is written — see `test/shared/sheets.ts`.
+ * A change of voice draws no line of its own (R-WP-29): the accents on the sides of the two rows separate
+ * them, and the failure keeps the colour of the problem. Colour is no fact of the DOM in jsdom, so the sheet
+ * is read where the contract is written — see `test/shared/sheets.ts`.
  */
-// UC-WP-64, UC-WP-55
-test('roleChangeToAnErrorDrawsARule', () => {
-  const { container } = render(<ChatLog messages={[QUESTION, FAILURE]} outgoing={[]} live={[]} pending={false} />)
+// UC-WP-64
+// UC-WP-55
+// R-WP-29
+test('roleChangeDrawsNoRule', () => {
+  render(<ChatLog messages={[QUESTION, FAILURE]} outgoing={[]} live={[]} pending={false} />)
 
-  // one rule for one change of voice, carried by the line that begins it, so the list stays a list
-  expect(container.querySelectorAll('hr.chat-rule')).toHaveLength(1)
-  const failure = screen.getByTestId('chat-line-error')
-  expect([...failure.children].some(child => child.tagName === 'HR')).toBe(true)
-  expect(failure.className).toContain('error')
+  const log = screen.getByTestId('chat-log')
+  expect(log.querySelectorAll('hr'), 'no line between two voices').toHaveLength(0)
+  expect(separatorsOf(log), 'and nothing of the log counts as one').toEqual([])
+  // the line that begins the new voice carries none either — it was the rule's carrier
+  expect([...screen.getByTestId('chat-line-error').children].some(child => child.tagName === 'HR')).toBe(false)
+  expect(screen.getByTestId('chat-line-error').className).toContain('error')
 
   const painted = declarations('.chat-log .chat-line.error')
   expect(painted, 'the accent and the text of a failure are the problem token').toContain('var(--problem)')
   expect(painted, 'a grey block would read as a card and not as a line (UC-WP-55)').not.toContain('background')
+
+  // the separation is the side accents alone: no rule of the sheet, and no line above or below a row
+  expect(declares('.chat-log .chat-rule'), 'the separator of two voices left the sheet').toBe(false)
+  const line = declarations('.chat-log .chat-line')
+  expect(line, 'a row carries no horizontal rule of its own').not.toMatch(/border-(top|bottom)/)
+  expect(line, 'and no row steps out of the flow to be centred').not.toContain('text-align: center')
 })
 
 /**
- * The separator of two voices and a line the model drew are not the same thing (R-WP-29, UC-WP-55
- * GIVEN 3): the answer's `---` stands inside the answer, so the separators of the **whole** log stay
- * exactly the voice changes. A proof that counted only its own class would let a model-drawn rule pass as
- * ours — which is why the count runs over the log, and through `separatorsOf`, the one definition Inc 4
- * keeps using.
+ * A line the model drew is content of its answer, and the log has no separator to confuse it with
+ * (R-WP-29, UC-WP-55 GIVEN 3): the answer's `---` stands inside the answer, so the separators of the
+ * **whole** log are empty while the screen still shows one line. `separatorsOf` is the one definition of
+ * which is which, so a proof can neither count a model's line as ours nor overlook one of ours.
  */
 // UC-WP-55
+// R-WP-29
 test('theLogNeverCountsAnAnswersRuleAsItsSeparator', () => {
   const separating: ChatMessage = { role: 'jon', text: 'zuerst\n\n---\n\nzuletzt' }
-  const { container } = render(
-    <ChatLog messages={[QUESTION, separating, SENTENCE]} outgoing={[]} live={[]} pending={false} />,
-  )
+  render(<ChatLog messages={[QUESTION, separating, SENTENCE]} outgoing={[]} live={[]} pending={false} />)
 
-  const separators = separatorsOf(screen.getByTestId('chat-log'))
-  expect(
-    separators.map(rule => rule.closest('li')?.getAttribute('data-testid')),
-    'one separator per voice change, in the order of the voices that begin',
-  ).toEqual(['chat-line-jon', 'chat-line-user'])
-  // three rules on the screen: the two separators and the line inside the answer
-  expect(screen.getByTestId('chat-log').querySelectorAll('hr')).toHaveLength(3)
+  const log = screen.getByTestId('chat-log')
+  expect(separatorsOf(log), 'the answer is the only line on the screen, and it is no separator').toEqual([])
 
-  const answer = container.querySelector('[data-testid="chat-line-jon"] [data-testid="chat-markdown"]')
-  expect(answer?.querySelector('hr'), 'the answer does draw its line').not.toBeNull()
-  expect(answer?.querySelector('hr.chat-rule'), 'and never with our separator class').toBeNull()
+  const drawn = log.querySelectorAll('hr')
+  expect(drawn, 'the answer does draw its line').toHaveLength(1)
+  expect(drawn[0].closest('[data-testid="chat-markdown"]'), 'inside the answer, not beside it').not.toBeNull()
 })
 
 /** The other half of the same rule: the failure shows the moment the stream reports it, in the log. */

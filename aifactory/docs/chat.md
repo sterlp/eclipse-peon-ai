@@ -97,7 +97,7 @@ Fabrik hält **keinen** eigenen Queue-Speicher vor und mischt sich in die Reihen
 - GIVEN ein laufender Turn WHEN der Nutzer erneut sendet THEN wird die Nachricht gequeued und erst
   nach dem Turn verarbeitet — kein zweiter paralleler Turn auf derselben Memory.
 
-### R-WP-42 — `!` am Anfang ist die Prio-Nachricht des Cores ❌ (Paul 2026-11-06)
+### R-WP-42 — `!` am Anfang ist die Prio-Nachricht des Cores ✅ (Paul 2026-11-06)
 
 Eine Eingabe, die **während eines laufenden Turns** mit `!` **beginnt**, ist die **Prio-Nachricht**;
 Verhalten, Lane und Zustellung regelt der Core
@@ -106,13 +106,17 @@ nachlesen, hier nicht wiederholt). **Der Fabrik-Anteil ist nur:** die Eingabe **
 denselben Core-Eingang zu geben, den auch das Plugin nutzt — statt sie als normalen Turn-Text
 aufzunehmen — und die Zeile im Verlauf **so zu zeigen, wie sie getippt wurde** ([R-WP-37](chat.md):
 die Fabrik parst und kürzt nichts). Läuft **kein** Turn, ist `!` schlicht Text (Core R8.1) — die
-Fabrik kennt keinen eigenen Sonderfall.
+Fabrik kennt keinen eigenen Sonderfall. Ein `!` **ohne** Text danach ist konsumiert und löst nichts aus
+(Core R8.6). Auch die Prio-Nachricht ist eine Nachricht an Jon: sie trägt den Absendernamen wie jede
+andere Eingabe ([R-WP-25](user.md)).
 
-#### UC-WP-75 — urgentMarkerIsHandedToTheCore ❌
+#### UC-WP-75 — urgentMarkerIsHandedToTheCore ✅
 - GIVEN im Projekt läuft ein Turn WHEN der Nutzer `! <Text>` sendet THEN nimmt der Core die Eingabe als
   Prio-Nachricht auf — **kein** zweiter Turn, kein zweiter Weg durch die Fabrik.
-- GIVEN dieselbe Eingabe WHEN der Verlauf gezeichnet wird THEN steht sie mit `!` im Verlauf, genau
-  einmal ([R-WP-37](chat.md)).
+- GIVEN dieselbe Eingabe WHEN die Oberfläche zeichnet THEN steht sie **als vorläufige Zeile des
+  Absenders** mit `!`, genau einmal ([R-WP-37](chat.md)). Eine dauerhafte Verlaufszeile ist sie bewusst
+  **nicht**: der Core schreibt die Prio-Nachricht nie in die Memory, und die nächste bestätigte
+  Nutzerzeile desselben Absenders löst sie ab.
 - GIVEN es läuft **kein** Turn WHEN der Nutzer mit `!` sendet THEN ist `!` Teil der Nachricht.
 
 ### R-WP-15 — Je Projekt genau ein Jon, ein Chat für alle ✅
@@ -264,7 +268,7 @@ Verlauf; kompakt (klein, grau, Tool-Zeilen gemerged wie in `chat.html`) und nach
 - GIVEN Tool-Aktivität WHEN Zeilen erscheinen THEN stehen sie im Verlauf an ihrer Stelle, kompakt,
   und bleiben nach dem Turn sichtbar.
 
-#### UC-WP-73 — markdownKeepsLineBreaksAndGfm ✅ (gebaut 2026-11-06)
+#### UC-WP-73 — markdownKeepsLineBreaksAndGfm ✅
 - GIVEN eine Antwort mit zwei durch **ein** Zeilenumbruch getrennten Sätzen WHEN sie gezeichnet wird
   THEN stehen die Sätze auf **zwei** Zeilen.
 - GIVEN eine Antwort mit Tabelle und Durchstreichung WHEN sie gezeichnet wird THEN ist sie eine
@@ -286,14 +290,24 @@ der Turn** (`done.millis`) und steht an seiner Antwort, **nie je Werkzeug**; die
 Zeit und **parst auch keine** aus dem Text des Cores. Wo keine Zeit bekannt ist, trägt der Eintrag
 **keinen Titel**. Nach einem Reload zeigen die Zeilen, was der Memory enthält
 ([R-WP-11](chat.md): Dauer und `HH:mm` stehen dort, wo der Core sie selbst in den Text geschrieben
-hat), und einen zweiten Speicher dafür gibt es nicht.
+hat), und einen zweiten Speicher dafür gibt es nicht. **Was zeigbar ist, entscheidet der Draht — nichts
+wird erfunden:** der Name des arbeitenden Agenten ist sein **Stempel** ([R-WP-37](chat.md): ohne Stempel
+kein Name); **arbeitet** heißt am Bildschirm, dass der Eintrag der **letzte Schritt eines laufenden Turns**
+ist — mit dem nächsten Schritt oder dem Ende der Antwort endet sein Indikator, denn je Werkzeug meldet der
+Core kein eigenes Ende. **Die Delegation ist die Ausnahme:** Anfang und Ende ihres Auftrags stehen
+**typisiert** am Draht, und ihr Eintrag trägt den **Namen des Mitglieds**, nicht den Jons. Der
+**Think-Abschnitt** ist heute **kein** Eintrag: Jons Denken zeigt der Chat nicht
+([R-WP-5](chat.md), Mitglieder-Denken ohnehin nicht [R-WP-4](chat.md)) — was der Schirm nicht zeigt,
+kann keine Timeline-Zeile haben; seine Sichtbarkeit wäre eine eigene Regel (⏳ in
+[Open Points](open-points.md)).
 
 #### UC-WP-72 — toolStepsAsTimelineEntries ❌
 - GIVEN ein Turn ruft Werkzeuge WHEN die Zeilen erscheinen THEN stehen sie als Timeline-Einträge an
-  ihrer Stelle im Verlauf, jeder mit dem Namen des arbeitenden Agenten.
+  ihrer Stelle im Verlauf, jeder mit dem Namen des arbeitenden Agenten; nennt der Draht zu einem
+  Schritt keinen Agenten, nennt auch der Eintrag keinen.
 - GIVEN ein Werkzeug läuft WHEN die Timeline zeichnet THEN trägt sein Eintrag einen laufenden
-  Indikator; WHEN es endet THEN endet der Indikator und der Eintrag bleibt mit seiner Ankunftszeit
-  stehen. GIVEN die Antwort des Turns endet WHEN deren Indikator endet THEN trägt **nur sie** die
+  Indikator; WHEN der nächste Schritt erscheint oder die Antwort des Turns endet THEN endet der
+  Indikator und der Eintrag bleibt mit seiner Ankunftszeit stehen. GIVEN die Antwort des Turns endet WHEN deren Indikator endet THEN trägt **nur sie** die
   Turn-Dauer — kein Werkzeugeintrag zeigt eine eigene Dauer.
 - GIVEN Jon delegiert an ein Mitglied WHEN die Delegation läuft THEN zeigt ihr Eintrag „working", und
   das Ergebnis erscheint unter diesem Eintrag — nicht am Ende des Verlaufs.
@@ -396,7 +410,6 @@ Send-Knopf bleibt die klickbare Alternative und ist bei leerer Eingabe deaktivie
 eingebetteten Umbrüchen wird so gesendet, wie er dasteht. Zusätzlich kann der Nutzer die **letzte
 gesendete Nachricht erneut senden**, ohne sie neu zu tippen — etwa nach einem Fehler
 („Resend"); sie läuft wie jede Eingabe in die Queue ([R-WP-10](chat.md)), wenn ein Turn läuft.
-*Umsetzung steht aus:* die alte Fassung (Enter = Umbruch) ist gebaut und muss mit umgebaut werden.
 
 #### UC-WP-56 — enterSendsShiftEnterNewlines ✅ (war `enterNewlinesCtrlEnterSends` ✅, Umkehrung Paul 2026-11-06)
 - GIVEN das Eingabefeld mit Text WHEN der Nutzer Enter drückt THEN wird gesendet und das Feld ist

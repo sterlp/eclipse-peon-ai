@@ -110,7 +110,7 @@ in voller Höhe daneben.
 - GIVEN ein Fenster unter dem Sider-Breakpoint WHEN die App zeichnet THEN ist der Sider eingeklappt
   und die Chat-Fläche nutzt die volle Breite.
 
-### R-WP-39 — Eine Design-Basis: AntD, Chat-Zeilen eigenes CSS ✅ (Paul 2026-11-06, gebaut 2026-11-06)
+### R-WP-39 — Eine Design-Basis: AntD, Chat-Zeilen eigenes CSS ✅ (Paul 2026-11-06)
 
 Basis der Oberfläche ist **Ant Design** — Layout, Sider, Menu, Input, Button, Card, Form, Select,
 Timeline, Modal/Popconfirm, Alert — mit Theme-Tokens auf unsere Farben (Look oben). **Bootstrap
@@ -130,7 +130,7 @@ Betriebssystem-Vorliebe, und die Farb-Tokens der Basis stammen aus **derselben**
 das Grundblatt — zwei abweichende Dunkellooks sind ein Defekt. Und die Basis **ist** die Haut der
 App: wo die App mountet, gilt ihr Theme; ein Ausschnitt, der ohne sie montiert, ist nicht die App.
 
-#### UC-WP-71 — oneDesignBasisOwnChatCss ✅ (gebaut 2026-11-06; der Pinselstrich selbst wird im Smoke-Test abgenommen — belegt ist die Verdrahtung, der Test malt keine Farbe)
+#### UC-WP-71 — oneDesignBasisOwnChatCss ✅ (der Pinselstrich selbst wird im Smoke-Test abgenommen — belegt ist die Verdrahtung, der Test malt keine Farbe)
 - GIVEN die gebaute App WHEN das Bündel entsteht THEN enthält es kein Bootstrap-CSS und keine
   `react-bootstrap`-Komponente; GIVEN denselben Fehler ein zweites Mal WHEN die Wache prüft THEN ist
   die Suite rot — die Wache sieht den CSS-Import (`import 'bootstrap/…'`) ebenso wie die Komponente

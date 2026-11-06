@@ -399,8 +399,8 @@ button {
 }
 
 /* A line the model drew inside an answer is content of that answer (R-WP-29): ours, short and quiet, in
-   the border grey and at the answer's own left edge — never as wide as the log, and never the separator
-   between two voices, which is the rule of the voice change below it. */
+   the border grey and at the answer's own left edge — never as wide as the log. Between two voices the log
+   draws no line of its own at all; their accents separate them. */
 .chat-log .chat-markdown hr {
   border: 0;
   border-top: 1px solid var(--border);
@@ -485,13 +485,6 @@ button {
 
 .chat-log .chat-line.user .chat-role {
   color: var(--user);
-}
-
-/* One rule where the voice changes, and nowhere else (R-WP-29). */
-.chat-log .chat-rule {
-  border: 0;
-  border-top: 1px solid var(--tool-line);
-  margin: 0 0 0.45rem;
 }
 
 /* An own line the history has not confirmed yet: the accent is not a fact yet — last, so it outvotes

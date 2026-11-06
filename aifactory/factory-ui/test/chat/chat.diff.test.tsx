@@ -5,6 +5,7 @@ import { ChatLog } from '../../src/chat/chat.log'
 import { appendLiveDiff, appendLiveTool, livePreview } from '../../src/chat/chat.live'
 import { openChatStream } from '../../src/chat/chat.stream'
 import { declarations } from '../shared/sheets'
+import { separatorsOf } from '../shared/log.parts'
 import type { ChatMessage, ChatStreamEvent } from '../../src/chat/chat.client'
 
 const QUESTION: ChatMessage = { role: 'user', text: 'nimm die 3 zur 4', origin: 'Paul' }
@@ -90,13 +91,14 @@ test('aChangeIsABlockWithItsFileAndItsColouredLines', () => {
 
 /** The other half of the same rule: the block is beside the trace, never inside it, and draws no voice line. */
 // UC-WP-68
+// UC-WP-55
 test('aDiffStandsBesideTheTraceAndNotInsideIt', () => {
   const trace = appendLiveTool(
     appendLiveDiff(appendLiveTool([], 'write the file', 1), FILE, DIFF, 1),
     'read it back',
     1,
   )
-  const { container } = render(<ChatLog messages={[QUESTION]} outgoing={[]} live={trace} pending={false} />)
+  render(<ChatLog messages={[QUESTION]} outgoing={[]} live={trace} pending={false} />)
 
   // the diff interrupts the trace run: one box before it, one after, because a box is one place of the trace
   expect(screen.getAllByTestId(/^chat-(tool-line|diff)$/).map(entry => entry.getAttribute('data-testid'))).toEqual([
@@ -107,8 +109,9 @@ test('aDiffStandsBesideTheTraceAndNotInsideIt', () => {
   for (const box of screen.getAllByTestId('chat-tool-line')) {
     expect(within(box).queryByTestId('chat-diff'), 'a block with its own file joins no box').toBeNull()
   }
-  // and it is nobody's speech, so it neither begins a voice nor separates two (R-WP-29)
-  expect(container.querySelectorAll('hr.chat-rule')).toHaveLength(0)
+  // and it is nobody's speech, so it neither begins a voice nor separates two (R-WP-29, UC-WP-55 GIVEN 2) —
+  // read over the whole log, because a class of our own no longer exists to look for
+  expect(separatorsOf(screen.getByTestId('chat-log'))).toEqual([])
 })
 
 /** A `diff` event that carries only half its pair is the server's mistake, not a block to guess at. */

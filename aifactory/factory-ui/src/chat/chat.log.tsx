@@ -43,8 +43,8 @@ interface Row {
 
 /** One thing the log draws: a line of the conversation, a live answer, one merged box of tool lines, or one diff block. */
 type Entry =
-  | { type: 'row'; row: Row; rule: boolean }
-  | { type: 'live'; item: LiveItem; rule: boolean }
+  | { type: 'row'; row: Row }
+  | { type: 'live'; item: LiveItem }
   | { type: 'tools'; lines: string[] }
   | { type: 'diff'; file: string; text: string }
 
@@ -54,18 +54,17 @@ type Entry =
  * activity stands between the parts of an answer it belongs to (R-WP-28, D-7).
  *
  * A row is speech and not a card — the accent line on its left names its voice, in the flow of the text
- * and never right-aligned, and one rule separates the two voices (R-WP-29). An answer reads as Markdown, so
- * the model's headings, lists and code blocks are what the user sees; the person's line stays the text he
- * typed.
+ * and never right-aligned. Voices separate by those accents alone: the log draws no line of its own
+ * between two of them (R-WP-29). An answer reads as Markdown, so the model's headings, lists and code
+ * blocks are what the user sees; the person's line stays the text he typed.
  *
  * A user's line always names its author — the person the server named, or the role label of the doc —
  * because the chat is shared and every viewer has to read the same thing (R-WP-25, UC-WP-48). An agent's
  * line stays nameless when the server named none: no "System", no "Peon", no invented agent (R-WP-4).
  * A thinking delta never reaches here (§3.3.3, Q7).
  *
- * Tool activity is not a voice: it keeps the grey of `chat.html`, takes no part in the rule between the
- * voices, and never carries a name. A diff block is of the same family — a fact about the project's files,
- * seen by everybody watching (R-WP-36).
+ * Tool activity is not a voice: it keeps the grey of `chat.html` and never carries a name. A diff block is
+ * of the same family — a fact about the project's files, seen by everybody watching (R-WP-36).
  */
 export function ChatLog({ messages, outgoing, live, pending, logRef, onScroll }: Props) {
   const rows: Row[] = [
@@ -117,7 +116,6 @@ export function ChatLog({ messages, outgoing, live, pending, logRef, onScroll }:
               className={failure ? 'chat-line error' : `chat-line agent${pending ? ' pending' : ''}`}
               data-testid={failure ? 'chat-line-error' : 'chat-live'}
             >
-              {entry.rule && <hr className="chat-rule" />}
               {failure ? (
                 <span className="chat-text">{entry.item.text}</span>
               ) : (
@@ -133,7 +131,6 @@ export function ChatLog({ messages, outgoing, live, pending, logRef, onScroll }:
             className={`chat-line ${row.voice}${row.pending ? ' pending' : ''}`}
             data-testid={row.handle}
           >
-            {entry.rule && <hr className="chat-rule" />}
             {row.author !== null && <ChatRole name={row.author} />}
             {row.voice === 'agent' ? (
               <ChatMarkdown text={row.text} />
@@ -154,25 +151,21 @@ export function ChatLog({ messages, outgoing, live, pending, logRef, onScroll }:
  * what stood at that moment — the history plus the inputs that were still pending then — so it names the
  * same place before and after the read that confirms those inputs, and a run pointing past the rows that
  * stand today falls to the end (D-A, UC-WP-54). Consecutive tool lines become one box, a diff block stands
- * beside it as a block of its own; the rule between two voices is decided over the rows and the live answers
- * only, because tool activity and a diff are neither voice (R-WP-29).
+ * beside it as a block of its own (R-WP-36).
  */
 function entriesOf(rows: Row[], live: LiveItem[]): Entry[] {
   const entries: Entry[] = []
   let shown = 0
-  let voice: Row['voice'] | null = null
 
-  const pushRow = (row: Row) => {
-    const rule = voice !== null && voice !== row.voice
-    entries.push({ type: 'row', row, rule })
-    voice = row.voice
+  const pushRows = (until: number) => {
+    while (shown < Math.min(until, rows.length)) {
+      entries.push({ type: 'row', row: rows[shown] })
+      shown += 1
+    }
   }
 
   for (const run of liveRuns(live)) {
-    while (shown < Math.min(run[0].afterLines, rows.length)) {
-      pushRow(rows[shown])
-      shown += 1
-    }
+    pushRows(run[0].afterLines)
     let tools: string[] = []
     for (const item of run) {
       if (item.kind === 'tool') {
@@ -184,24 +177,18 @@ function entriesOf(rows: Row[], live: LiveItem[]): Entry[] {
         tools = []
       }
       if (item.kind === 'diff') {
-        // a diff is neither voice nor trace: it ends the tool run before it, takes no rule, and leaves the
-        // voice of what follows unchanged (R-WP-29, R-WP-36)
+        // a diff is neither voice nor trace: it ends the tool run before it and stands as a block of its
+        // own (R-WP-36)
         entries.push({ type: 'diff', file: item.file, text: item.text })
         continue
       }
-      // a failure is a voice of its own for the rule: it separates what was said from what failed
-      const spoken: Row['voice'] = item.kind === 'error' ? 'error' : 'agent'
-      entries.push({ type: 'live', item, rule: voice !== null && voice !== spoken })
-      voice = spoken
+      entries.push({ type: 'live', item })
     }
     if (tools.length > 0) {
       entries.push({ type: 'tools', lines: tools })
     }
   }
-  while (shown < rows.length) {
-    pushRow(rows[shown])
-    shown += 1
-  }
+  pushRows(rows.length)
   return entries
 }
 
