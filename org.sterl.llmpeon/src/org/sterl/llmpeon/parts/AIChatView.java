@@ -172,7 +172,8 @@ public class AIChatView implements EclipseAiMonitor {
             this::onClear,
             this::onHandoff,
             this::onAgentChange,
-            this::doCompactAgent
+            this::doCompactAgent,
+            this::refreshChat
         );
 
         statusLine = new StatusLineWidget(inputBlock, SWT.NONE,
@@ -394,6 +395,7 @@ public class AIChatView implements EclipseAiMonitor {
     // -------------------------------------------------------------------------
 
     // TODO: DOUBLE CHECK if refreshStatusLine and refreshChat are 2 methods!
+    /** call in UI thread */
     public void refreshStatusLine() {
         if (statusLine == null) return;
         if (actionsBar == null) return;
@@ -413,12 +415,15 @@ public class AIChatView implements EclipseAiMonitor {
     /**
      * clears the chat history and rebuilds it.
      * Also calls refresh refreshStatusLine.
+     * 
+     * call in UI thread
      */
     private void refreshChat() {
         var memory = aiService.getActiveAgent().getMemory();
         chatHistory.clear();
         memory.forEach(chatHistory::appendMessage);
         refreshStatusLine();
+        if (aiService.getActiveAgent().isWorking()) chatHistory.updateLiveResponseInUIThread("waiting for AI...", 0, null);
     }
 
     // -------------------------------------------------------------------------

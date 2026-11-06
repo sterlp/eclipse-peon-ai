@@ -31,6 +31,12 @@ public class EclipseUiUtil {
         result.setLayoutData(new RowData(SWT.DEFAULT, 16));
         return result;
     }
+    
+    public static boolean isDarkTheme() {
+        if (!PlatformUI.isWorkbenchRunning()) return false;
+        return DARK_THEME_NAME.equals(resolveTheme(PlatformUI.getWorkbench().getService(IEclipseContext.class)));
+        
+    }
 
     /**
      * Resolves the current Eclipse theme as {@code "dark"} or {@code "light"}.
