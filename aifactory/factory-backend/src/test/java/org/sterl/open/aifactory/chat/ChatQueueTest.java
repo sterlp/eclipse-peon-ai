@@ -320,6 +320,10 @@ class ChatQueueTest extends FactorySpringTest {
      * when the {@code !} arrives. What separates it from {@code secondInputDuringTurnQueues} is the lane:
      * the core's urgent entry rides on the running turn's tool result (core R11) and is never written to the
      * memory (core R8.7) — so the marker of the normal lane stays away and no history line appears.
+     *
+     * <p>The {@code !} alone (core R8.6) is asked in the same turn, because only a turn that is provably
+     * running can tell "consumed" from "enqueued": it answers with nothing at all — no entry, no delivery,
+     * no turn. The named send is what lets this test claim the entry carries its sender (R-WP-25).</p>
      */
     @Test
     @Timeout(60)
@@ -340,7 +344,8 @@ class ChatQueueTest extends FactorySpringTest {
             awaitUntil(jon::isWorking, 2_000, "Jon arbeitet an der ersten Eingabe");
             stream.awaitShellRunning(5_000, "die Shell des ersten Turns läuft");
 
-            assertThat(send(project.id(), "! bitte abbrechen").getStatusCode())
+            // mit Absender gesendet: die Prio-Zeile ist eine Eingabe wie jede andere, also trägt sie ihn
+            assertThat(send(project.id(), "! bitte abbrechen", "Anna").getStatusCode())
                     .as("die Prio-Eingabe wird angenommen — als Eingabe, nicht als Turn")
                     .isEqualTo(HttpStatus.ACCEPTED);
 
@@ -350,10 +355,19 @@ class ChatQueueTest extends FactorySpringTest {
                     .as("kein zweiter Turn: die Prio war nachweislich nie beim Anbieter")
                     .doesNotContain("bitte abbrechen");
 
+            // R8.6 am laufenden Turn: ein einsames `!` ist konsumiert, ohne etwas einzureihen. Einzureihen
+            // ist die Arbeit des Request-Threads, darum ist die Zählung unmittelbar danach entschieden.
+            assertThat(send(project.id(), "!").getStatusCode())
+                    .as("das einsame `!` wird ebenso angenommen")
+                    .isEqualTo(HttpStatus.ACCEPTED);
+            assertThat(jon.getQueuedMessageCount())
+                    .as("und reiht nichts ein — der eine Eintrag bleibt der einzige")
+                    .isEqualTo(1);
+
             TurnGate.release(project.localPath());
             stream.awaitEvent("done", 1);
             assertThat(stream.countOf("done"))
-                    .as("ein Turn, ein done — die Prio ist kein zweiter Turn")
+                    .as("ein Turn, ein done — weder die Prio noch das einsame `!` sind ein zweiter Turn")
                     .isEqualTo(1);
             assertThat(jon.getQueuedMessageCount())
                     .as("der laufende Turn hat sie verbraucht — nichts bleibt für einen Follow-up")
@@ -366,6 +380,14 @@ class ChatQueueTest extends FactorySpringTest {
                 .contains("bitte abbrechen")
                 .as("und nicht als normalen Queue-Eintrag mit seinem Marker")
                 .doesNotContain(UserMessageQueue.QUEUED_MARKER_PREFIX);
+        // das Leerzeichen nach dem `!` bleibt, wo es der Core gelassen hat, deshalb das Muster und kein
+        // Wortlaut: behauptet wird der Absender vor dem Text (R-WP-25), nicht die Zahl der Leerzeichen
+        assertThat(capturedText())
+                .as("die Prio-Zeile trägt den Absendernamen wie jede andere Eingabe an Jon (R-WP-25)")
+                .containsPattern("\\[User Anna]:\\s+bitte abbrechen");
+        assertThat(capturedText())
+                .as("das konsumierte `!` hat nichts zugestellt — es bleibt bei dem einen Block (R8.6)")
+                .containsOnlyOnce(TaggedResult.PREFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE);
 
         assertThat(messages(project.id()))
                 .as("die Prio wird nie in die Memory geschrieben (R8.7) — keine Nutzerzeile damit")
@@ -384,11 +406,6 @@ class ChatQueueTest extends FactorySpringTest {
         model.queueResponse("Antwort auf die Eingabe mit Ausrufezeichen");
         assertThat(send(project.id(), "! prio").getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
 
-        AiPoAgent jon = runtimes.runtime(project.id()).jon();
-        assertThat(jon.getQueuedMessageCount())
-                .as("im Idle gibt es keine Prio-Lane, also auch keinen Eintrag darin")
-                .isZero();
-
         awaitUntil(() -> messages(project.id()).stream()
                 .map(ChatMessageDto::text)
                 .anyMatch("Antwort auf die Eingabe mit Ausrufezeichen"::equals), 20_000,
@@ -397,6 +414,11 @@ class ChatQueueTest extends FactorySpringTest {
         assertThat(capturedText())
                 .as("das Ausrufezeichen ist Teil der Nachricht, wie getippt (R-WP-37)")
                 .contains("! prio");
+        // nach dem Turn entschieden und ohne Zustand, der verschwinden kann: keine Prio-Lane, also auch
+        // nirgends ein Block — eine Queue-Zählung hier hinge vom Augenblick des Lesens ab
+        assertThat(capturedText())
+                .as("im Idle gibt es keine Prio-Lane, also auch keine Zustellung an einen laufenden Turn")
+                .doesNotContain(TaggedResult.PREFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE);
         assertThat(messages(project.id()))
                 .as("und der Verlauf trägt genau die eine Nutzerzeile damit")
                 .extracting(ChatMessageDto::text)
@@ -408,8 +430,13 @@ class ChatQueueTest extends FactorySpringTest {
     // ------------------------------------------------------------------
 
     private ResponseEntity<String> send(String projectId, String text) {
+        return send(projectId, text, null);
+    }
+
+    /** A send with the sender's label (R-WP-25) — the shape the browser carries, name included. */
+    private ResponseEntity<String> send(String projectId, String text, String user) {
         return http.postForEntity("http://127.0.0.1:" + port + "/api/projects/" + projectId + "/messages",
-                jsonEntity(new SendMessageRequest(text)), String.class);
+                jsonEntity(new SendMessageRequest(text, user)), String.class);
     }
 
     private HttpEntity<Object> jsonEntity(Object body) {
