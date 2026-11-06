@@ -184,14 +184,15 @@ test('theBasisIsTheOnlyDesignLibraryOfTheApp', () => {
     builtWithBasis.length,
     'buttons, cards, fields, choices and icons come from the basis',
   ).toBeGreaterThanOrEqual(6)
-  // R-WP-39 / UC-WP-71 GIVEN 4 draws the line where the basis stops: inside the conversation every line
-  // keeps our classes, outside it the basis is the skin of the app — and the field is outside (R-WP-39
-  // names `Input`, R-WP-41 its auto-grow), so the ban is the conversation's files, not the chat folder.
-  const conversation = ['chat.log.tsx', 'chat.tools.tsx', 'chat.diff.tsx', 'chat.markdown.tsx']
-  const insideTheConversation = builtWithBasis
+  // R-WP-39 / UC-WP-71 GIVEN 4 draws the line where the basis stops: the conversation keeps our classes.
+  // So the ban is the whole chat folder and the exception is the one name the docs hand to the basis
+  // (R-WP-39 names `Input`, R-WP-41 its auto-grow): a new file of the conversation arrives inside the ban,
+  // which is exactly GIVEN 1 — the same mistake a second time makes the suite red, not the file list.
+  const basisOwnField = ['chat.composer.tsx']
+  const basisInsideTheChat = builtWithBasis
     .map(([path]) => path)
-    .filter((path) => conversation.some((file) => path.endsWith(`/${file}`)))
-  expect(insideTheConversation, 'no line of the conversation is painted by the basis').toEqual([])
+    .filter((path) => path.includes('/chat/') && !basisOwnField.some((name) => path.endsWith(`/${name}`)))
+  expect(basisInsideTheChat, 'no line of the conversation is painted by the basis').toEqual([])
   expect(
     builtWithBasis.map(([path]) => path).filter((path) => path.endsWith('/chat.composer.tsx')),
     'the field beside the conversation is the basis own (R-WP-41)',

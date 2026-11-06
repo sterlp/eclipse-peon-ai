@@ -92,6 +92,8 @@ Entscheidungen nach `docs/`. Bestehenden Eintrag ergänzen statt anhängen, Vera
   `test/shared/log.parts.ts` → `separatorsOf(log)`; ein `<hr>` gehört in die `<li>`, nie dazwischen.
 - **Modellierte Draht-Form braucht die erzeugende Core-Regel** (Datei:Zeile am Test), sonst prüft der Test
   eine Form, die der Core nie liefert (`docs/adr/003`).
+- **jsdom bleibt auf 26.1.0 gepinnt**: jsdom 30 verlangt Node ≥ 22.22.2 → undici-Crash `reading 'bind'`.
+- **`defineConfig` aus `vitest/config`** in `vite.config.ts` — sonst findet `tsc -b` das `test`-Feld nicht.
 
 ## Abweichungs-Register (UI)
 

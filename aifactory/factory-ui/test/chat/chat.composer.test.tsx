@@ -63,11 +63,26 @@ function renderOwnedComposer(): HTMLTextAreaElement {
   return screen.getAllByTestId('chat-input').at(-1) as HTMLTextAreaElement
 }
 
-/** The field of one render, its caret at the end — where a line break has to land. */
-function fieldWithCaretAtTheEnd(draft: string): HTMLTextAreaElement {
+/**
+ * Ctrl/Cmd+Enter on a fresh composer with the selection the test names, and the text the field was handed.
+ * Never a send, never the browser's default — what varies is the selection: the Umbruch has to land where
+ * the caret stands, not where the text ends.
+ */
+function pressLineBreak(
+  modifier: { ctrlKey?: boolean; metaKey?: boolean },
+  draft: string,
+  from: number,
+  to = from,
+): string {
+  cleanup()
+  const props = renderComposer({ draft })
   const field = screen.getByTestId('chat-input') as HTMLTextAreaElement
-  field.setSelectionRange(draft.length, draft.length)
-  return field
+  field.setSelectionRange(from, to)
+
+  expect(fireEvent.keyDown(field, { key: 'Enter', ...modifier }), 'no default to keep here').toBe(false)
+  expect(props.onSubmit, 'and the keystroke never sends').not.toHaveBeenCalled()
+  expect(props.onDraftChange, 'one text, not two').toHaveBeenCalledTimes(1)
+  return props.onDraftChange.mock.calls[0]?.[0] as string
 }
 
 // UC-WP-56
@@ -89,22 +104,16 @@ test('shiftEnterAndCtrlEnterBreakTheLine', () => {
   expect(shifted.onSubmit).not.toHaveBeenCalled()
   expect(shifted.onDraftChange).not.toHaveBeenCalled()
 
-  // the browser adds no Umbruch to Ctrl/Cmd+Enter, so the composer inserts it — on both platforms
-  cleanup()
-  const windows = renderComposer({ draft: 'erste Zeile' })
-  expect(
-    fireEvent.keyDown(fieldWithCaretAtTheEnd('erste Zeile'), { key: 'Enter', ctrlKey: true }),
-  ).toBe(false)
-  expect(windows.onDraftChange).toHaveBeenCalledWith('erste Zeile\n')
-  expect(windows.onSubmit).not.toHaveBeenCalled()
-
-  cleanup()
-  const mac = renderComposer({ draft: 'erste Zeile' })
-  expect(
-    fireEvent.keyDown(fieldWithCaretAtTheEnd('erste Zeile'), { key: 'Enter', metaKey: true }),
-  ).toBe(false)
-  expect(mac.onDraftChange).toHaveBeenCalledWith('erste Zeile\n')
-  expect(mac.onSubmit).not.toHaveBeenCalled()
+  // the browser adds no Umbruch to Ctrl/Cmd+Enter, so the composer inserts it — on both platforms, and at
+  // the place the user stands: mid-text it splits the line, a selection it replaces
+  expect(pressLineBreak({ ctrlKey: true }, 'erste Zeile', 'erste Zeile'.length)).toBe('erste Zeile\n')
+  expect(pressLineBreak({ metaKey: true }, 'erste Zeile', 'erste Zeile'.length)).toBe('erste Zeile\n')
+  expect(pressLineBreak({ ctrlKey: true }, 'erste Zeile', 5), 'the Umbruch lands at the caret').toBe(
+    'erste\n Zeile',
+  )
+  expect(pressLineBreak({ ctrlKey: true }, 'erste Zeile', 6, 11), 'a selection is replaced by it').toBe(
+    'erste \n',
+  )
 
   // and the field is one that holds a second line at all — a text input would drop it
   const owned = renderOwnedComposer()

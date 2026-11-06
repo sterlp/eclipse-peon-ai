@@ -391,6 +391,8 @@ export function ChatPage({ project, files, user }: Props) {
   function submit(event: FormEvent) {
     event.preventDefault()
     const text = draft.trim()
+    // "only a text sends" stands twice on purpose: Enter asks the form, and requestSubmit does not ask the
+    // disabled button — without this guard the keystroke would open the turn the button refuses (R-WP-41)
     if (text === '') {
       return
     }

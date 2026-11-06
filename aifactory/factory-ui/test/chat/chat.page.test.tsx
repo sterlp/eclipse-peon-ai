@@ -301,8 +301,16 @@ test('enterSendsBothLinesInOneTurn', async () => {
   await flush()
 
   // Enter is the send (R-WP-30), and what the field holds goes with it — both lines, in their order, one turn
-  const field = screen.getByTestId('chat-input')
-  fireEvent.change(field, { target: { value: 'erste Zeile\nzweite Zeile' } })
+  const field = screen.getByTestId('chat-input') as HTMLTextAreaElement
+  fireEvent.change(field, { target: { value: 'erste Zeile' } })
+
+  // the second line is set the way the user sets it, at the caret of the field, so the chain
+  // Umbruch → two lines → one turn is walked and not modelled
+  field.setSelectionRange(field.value.length, field.value.length)
+  fireEvent.keyDown(field, { key: 'Enter', metaKey: true })
+  expect(field, 'the line break came from the keyboard').toHaveValue('erste Zeile\n')
+  fireEvent.change(field, { target: { value: `${field.value}zweite Zeile` } })
+
   fireEvent.keyDown(field, { key: 'Enter' })
   await flush()
 
