@@ -2,6 +2,7 @@ package org.sterl.llmpeon.poagent.tools;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.IntSupplier;
 
@@ -18,42 +19,11 @@ import org.sterl.llmpeon.tool.tools.AbstractTool;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
+import lombok.Setter;
 
 /**
- * Jon's delegate tools. Each drives one of his own, RAM-only slaves — a
- * Plan, a Review and a Dev member
- * instance — for a single turn and returns the slave's reply verbatim as the
- * tool result. Verbs per slave: a direct question ({@code talkPlan} /
- * {@code askDev}), the real work ({@code planWithPlanAgent} writes the plan,
- * {@code reviewPlanAgent} reviews it, {@code buildWithDev} builds it) and
- * context management (clear/compact per slave).
- *
- * <p>
- * The three slaves are shared, eager singletons: the layer that wires the tool
- * creates them (core supplies disk-tool slaves, the Eclipse plugin supplies
- * workspace-tool slaves with the memory-write tool filtered out) and hands them
- * in as {@link AiAgent}s — the very same instances Jon exposes via
- * {@code AiPoAgent.getTeam()} (ADR-0025). Their in-RAM context carries across
- * calls. Slaves use a RAM-only memory (no history file); the durable handover
- * is the plan file (see ADR-0024).
- *
- * <p>
- * <b>Shared memory:</b> the slaves only ever <em>read</em> the shared workspace
- * memory — its content rides in their system prompt (static context, the same list
- * Jon's static context is set to). They cannot write it; only Jon curates the shared
- * memory (and thereby steers the other agents).
- *
- * <p>
- * <b>Working orders:</b> {@code planWithPlanAgent} injects a plan-writing
- * discipline (plan-write-loop.txt) as a one-shot standing order;
- * {@code buildWithDev} keeps its {@code planPath} sticky and injects the build
- * discipline (dev-build-loop.txt); {@code reviewPlanAgent} reuses the same
- * sticky plan path — all survive the slaves' own compaction.
- * The base orders are resolved per slave via the {@code ordersFor} function
- * (e.g. the agent-specific AGENTS-<agent>.md), still lazily per dispatch().
- * Jon judges "done vs. still working" from the reply and always has the plan
- * reviewed after the build before the Dev slave calls planImplemented to
- * archive it (steered by po-delegation.txt).
+ * Jon's delegate tools. Older version -- should be replaced by a 
+ * generic Agent Delegation Tool - which hold a {@link Map} of agents.
  */
 public class PoDelegateTool extends AbstractTool {
 
@@ -62,6 +32,15 @@ public class PoDelegateTool extends AbstractTool {
     public static final String PLAN_WITH_PLAN_AGENT = "planWithPlanAgent";
     public static final String ASK_DEV = "askDev";
     public static final String BUILD_WITH_DEV = "buildWithDev";
+
+    @FunctionalInterface
+    public interface DelegationListener {
+        void call(CallStats stats, AiAgent agent);
+    }
+    @Setter
+    private volatile CallStats.CallStatsListener<AiAgent> startListener;
+    @Setter
+    private volatile CallStats.CallStatsListener<AiAgent> endListener;
 
     /**
      * Build discipline injected into the Dev slave only when it builds from a
@@ -244,27 +223,26 @@ public class PoDelegateTool extends AbstractTool {
 
         // TODO custom style for the UI as agent message ...
         onTool(target.getName() + " start: " + System.lineSeparator() + prompt);
-        var stats = CallStats.start();
-        // The slave streams through Jon's monitor (this.monitor) — that is what
-        // refreshes its 🟢 in the
-        // header status widget while it works (ADR-0025). Keep the monitor
-        // passed through.
-        try {
-            final var response = target.call(prompt, this.monitor);
-            final var statsLine = target.getName() + " done. " + contextUsed(target) + " " + stats.suffix();
-            final var answer = response != null
-                    ? response.aiMessage().text()
-                    : null;
+        
+        return CallStats.run((a, t) -> {
+            try {
+                final var response = target.call(prompt, this.monitor);
 
-            final var result = StringUtil.hasValue(answer)
-                    ? answer + System.lineSeparator() + statsLine
-                    : target.getName() + " returned no result " + statsLine;
-            onTool(statsLine + " " + StringUtil.charsSuffix(result));
-            return result;
-        } catch (IllegalStateException e) {
-            onProblem(target.getName() + " " + e.getMessage());
-            return "Failed: " + target.getName() + " " + e.getMessage();
-        }
+                final var statsLine = target.getName() + " done. " + contextUsed(target) + " " + t.suffix();
+                final var answer = response != null
+                        ? response.aiMessage().text()
+                        : null;
+
+                final var result = StringUtil.hasValue(answer)
+                        ? answer + System.lineSeparator() + statsLine
+                        : target.getName() + " returned no result " + statsLine;
+                onTool(statsLine + " " + StringUtil.charsSuffix(result));
+                return result;
+            } catch (IllegalStateException e) {
+                onProblem(target.getName() + " " + e.getMessage()  + " " + t.suffix());
+                return "Failed: " + target.getName() + " " + e.getMessage() + " " + t.suffix();
+            }
+        }, target, startListener, endListener);
     }
 
     /** Paul: 0.7 des geteilten Budgets — vor der Delegation compacten, sonst stirbt der Task. */

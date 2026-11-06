@@ -2,6 +2,9 @@ package org.sterl.llmpeon.shared;
 
 import java.time.Clock;
 import java.time.LocalTime;
+import java.util.function.Function;
+
+import lombok.Getter;
 
 /**
  * Measures the wall-clock duration of a tool call for end-of-output disclosure
@@ -14,23 +17,56 @@ import java.time.LocalTime;
  * {@link Timer}) so tests are deterministic.
  */
 public final class CallStats {
-
-    private final Clock clock;
-    private final long startedAtMillis;
-
+    @FunctionalInterface
+    public interface CallStatsListener<T> {
+        void call(CallStats stats, T agent);
+    }
+    @FunctionalInterface
+    public interface MonitoredFunction<T, R> {
+        R apply(T arg, CallStats stats);
+    }
+    
     /** Starts measuring with the system default clock (local zone). */
     public static CallStats start() {
         return new CallStats(Clock.systemDefaultZone());
     }
+    
+    public static <T, R> R run(MonitoredFunction<T, R> toRun, T arg,
+            CallStatsListener<T> startListener,
+            CallStatsListener<T> endListener) {
+        var timer = CallStats.start();
+        try {
+            if (startListener != null) startListener.call(timer, arg);
+            return toRun.apply(arg, timer);
+        } finally {
+            timer.stop();
+            if (endListener != null) endListener.call(timer, arg);
+        }
+    }
+
+    private final Clock clock;
+    @Getter
+    private final long startedAtMillis;
+    private volatile long stoppedAtMillis = -1;
 
     public CallStats(Clock clock) {
         this.clock = clock;
         this.startedAtMillis = clock.millis();
     }
+    
+    public void stop() {
+        stoppedAtMillis = clock.millis();
+    }
 
     /** Measured elapsed time, human form (e.g. {@code 3s}, {@code 1m 5s}). */
     public String duration() {
-        return StringUtil.humanElapsed(clock.millis() - startedAtMillis);
+        return StringUtil.humanElapsed(durationMs());
+    }
+    
+    public long durationMs() {
+        return stoppedAtMillis < 0 
+                ? clock.millis() - startedAtMillis
+                : stoppedAtMillis - startedAtMillis;
     }
 
     /** Duration only, e.g. {@code (3s)}. */
