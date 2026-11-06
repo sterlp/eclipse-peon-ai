@@ -180,6 +180,22 @@ class TeamInternalsTest extends FactorySpringTest {
                             + " (R-WP-7, R-WP-40) — member text stays off every data line, asserted by"
                             + " wireText above")
                     .containsOnly("partial", "tool", "done", "agents", "delegation");
+            assertThat(stream.eventNames().stream()
+                    .filter(name -> "tool".equals(name) || "delegation".equals(name))
+                    .toList())
+                    .as("each member's entry stands between his two trace lines, both members in the order he"
+                            + " ran them (UC-WP-72 GIVEN 3)")
+                    .containsExactly("tool", "delegation", "tool", "delegation",
+                            "tool", "delegation", "tool", "delegation");
+            assertThat(stream.payloads("delegation").stream()
+                    .map(payload -> List.of(JsonPath.read(payload, "$.member"),
+                            JsonPath.read(payload, "$.working")))
+                    .toList())
+                    .as("four events, each naming its own member: the member is what tells the two pairs"
+                            + " apart, so no book over which delegation was open is needed (R-WP-40)")
+                    .containsExactly(List.of("Plan", true), List.of("Plan", false),
+                            List.of("Dev", true), List.of("Dev", false));
+
             assertThat(stream.countOf("done")).as("two members, one turn, one done").isEqualTo(1);
             assertThat(stream.countOf("error")).isZero();
         }

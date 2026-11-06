@@ -1359,6 +1359,85 @@ test('aDelegationStaysInTheLogAfterTheTurnEnds', async () => {
   expect(screen.getAllByTestId('chat-delegation'), 'one start stays one entry').toHaveLength(1)
 })
 
+/**
+ * The second half of UC-WP-72 GIVEN 3: the entry stands <em>where the delegation happened</em>, so the
+ * result reads under it and not at the end of the conversation (R-WP-40). Its place is the turn's frozen
+ * anchor — neither an input queued while the member works may push it down, nor the history read that
+ * `done` triggers may drop it behind the answer it delegated.
+ */
+// UC-WP-72
+test('aDelegationStandsWhereItHappenedAndNotAtTheEndOfTheLog', async () => {
+  const shape = () =>
+    [...screen.getByTestId('chat-log').children].map(line => line.getAttribute('data-testid'))
+  const chat = stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'frag Dev nach einer Frucht' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await chat.push(event('tool', { text: 'Dev start: nenne eine Frucht', origin: 'Jon' }))
+  // he types on while the member works, so the input queues (R-WP-10) — the delegation happened before it
+  // and stays above it, because the anchor is the turn's, not the moment's (D-A)
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'und was macht Plan?' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await chat.push(event('delegation', { member: 'Dev', working: true }))
+
+  expect(shape(), 'below its own input, above the one queued after it, above every answer').toEqual([
+    'chat-line-user',
+    'chat-line-user',
+    'chat-tool-line',
+    'chat-delegation',
+    'chat-line-user',
+  ])
+
+  // the turn ends and its history is read — the moment a live entry of the wrong anchor would fall behind
+  // the last answer, since the read brings the two inputs and both answers
+  chat.setMessages([
+    QUESTION,
+    { role: 'user', text: 'frag Dev nach einer Frucht' },
+    { role: 'user', text: 'und was macht Plan?' },
+    TEAM_ANSWER,
+    JONS_ANSWER,
+  ])
+  await chat.push(event('done', { millis: 21 }))
+  await flush()
+
+  const entries = [...screen.getByTestId('chat-log').children]
+  const at = entries.indexOf(screen.getByTestId('chat-delegation'))
+  const ownInputAt = entries.findIndex(line =>
+    (line.textContent ?? '').includes('frag Dev nach einer Frucht'),
+  )
+  const queuedAt = entries.findIndex(line => (line.textContent ?? '').includes('und was macht Plan?'))
+  const answerAt = entries.findIndex(line => line.getAttribute('data-testid') === 'chat-line-jon')
+  expect(at, 'the entry stays between both inputs').toBeGreaterThan(ownInputAt)
+  expect(at, 'a read does not push it below the input queued after it').toBeLessThan(queuedAt)
+  expect(at, 'and never behind the answer it delegated').toBeLessThan(answerAt)
+})
+
+/**
+ * A delegation event is the pair or nothing, like a diff (R-WP-40, UC-WP-72 GIVEN 3): a name of blank text
+ * names no member and opens nothing, and a payload without its flag says neither start nor end — so it may
+ * not end the entry that stands either. The backend guards both; the client does not trust it.
+ */
+// UC-WP-72
+test('aDelegationWithoutItsPairSaysNothing', async () => {
+  const entry = () => screen.getByTestId('chat-delegation')
+  const chat = stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'frag Dev nach einer Frucht' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await chat.push(event('delegation', { member: '   ', working: true }))
+  expect(screen.queryAllByTestId('chat-delegation'), 'an entry naming nobody is no entry').toEqual([])
+
+  await chat.push(event('delegation', { member: 'Dev', working: true }))
+  expect(entry()).toHaveTextContent(content.chat.working)
+  await chat.push(event('delegation', { member: 'Dev' }))
+  expect(entry().textContent, 'a payload without its flag ends nothing').toContain(content.chat.working)
+})
+
+
 
 /**
  * The indicator of a step ends with the next step or with the end of the answer — never with the first word
