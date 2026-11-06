@@ -13,11 +13,13 @@
   "dependencies": {
     "@ant-design/icons": "^6.3.4",
     "antd": "^6.7.0",
-    "markstream-react": "2.0.23",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.18.5",
-    "react-shiki": "0.11.2"
+    "react-shiki": "0.11.2",
+    "remark-breaks": "^4.0.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",

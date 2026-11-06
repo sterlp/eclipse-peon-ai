@@ -78,3 +78,20 @@ test('aLiveTraceStaysBetweenItsInputAndTheAnswer', () => {
     ...screen.getByTestId('chat-tool-line').querySelectorAll('.chat-tool-line'),
   ]).toHaveLength(2)
 })
+
+/**
+ * Only answers are Markdown (R-WP-28): what a person typed keeps its markers, so an input quoting a command
+ * never reads as the agent's formatting — and never becomes markup of the page either.
+ */
+// UC-WP-73
+test('anInputWithMarkdownCharactersStaysItsWord', () => {
+  const quoted: ChatMessage = { role: 'user', text: 'mach das **fett** und ~~weg~~' }
+  render(<ChatLog messages={[quoted, ANSWER]} outgoing={[]} live={[]} pending={false} />)
+
+  const line = screen.getByTestId('chat-line-user')
+  expect(line.textContent).toContain('**fett**')
+  expect(line.textContent).toContain('~~weg~~')
+  expect(line.querySelector('strong, del, br, table')).toBeNull()
+  // the answer beside it is the line that draws markup
+  expect(screen.getByTestId('chat-line-jon').querySelector('[data-testid="chat-markdown"]')).not.toBeNull()
+})

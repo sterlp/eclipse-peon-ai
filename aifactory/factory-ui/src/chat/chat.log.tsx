@@ -121,7 +121,7 @@ export function ChatLog({ messages, outgoing, live, pending, logRef, onScroll }:
               {failure ? (
                 <span className="chat-text">{entry.item.text}</span>
               ) : (
-                <ChatMarkdown text={entry.item.text} final={false} />
+                <ChatMarkdown text={entry.item.text} />
               )}
             </li>
           )

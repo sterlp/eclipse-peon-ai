@@ -180,6 +180,9 @@
 
 ## Inc 3b (Zyklus 2026-11-02) — Markdown-Streaming und Tool-Zeilen inline
 
+> **Überholt seit 2026-11-06 (AntD-Umbau Inc 2):** `markstream-react` ist nicht mehr im Projekt — die
+> Befunde unten gelten historisch, maßgeblich ist der Abschnitt „AntD-Umbau Inc 2".
+
 - **`markstream-react` hat kein 1.x im npm-Registry** (gemessen 2026-11-02: 0.0.x → 0.1.0-beta →
   2.0.x). Der React-Einstieg von 2.0.23 ist der **Default-Export** (`MarkdownRender` existiert nicht als
   Export, auch nicht als Alias). Code-Block ersetzt man über `setCustomComponents(id, { code_block: Cmp })`
@@ -965,6 +968,39 @@
 - **Nach Inc 1-N1: UI 159 Tests / 20 Dateien** in ~8,6 s, `tsc -b` 0, oxlint 0/0 (69 Dateien). Kein Backend,
   keine neue Dependency, `src/chat/**` unverändert.
 
+## AntD-Umbau Inc 2 (Zyklus 2026-11-06) — Markdown der Antworten: react-markdown + GFM + breaks
+
+- **`markstream-react` raus, `react-markdown` 10.1.0 + `remark-gfm` 4.0.1 + `remark-breaks` 4.0.0 rein**
+  (Lockfile gemessen). Das ist der in R-WP-28 vorgesehene Fallback: `breaks` fehlt bei markstream, sein
+  eigenes CSS war nie eingebunden. `remark-breaks` ist Pflicht — react-markdown v10 hat **keine**
+  `breaks`-Option.
+- **`react-markdown` parst synchron im Render**: der `settle()`-Helper (`setTimeout 0`) der Markdown-Tests
+  ist entfallen, und mit ihm das `final`-Prop von `ChatMarkdown` — der letzte Token parst den ganzen Text,
+  ein Fertig-Flag hätte keine unterscheidbare Wirkung (Abweichung von der Plan-Skizze; einzige Aufruferin
+  `chat.log.tsx`, dort ohne `final={false}`).
+- **`remarkPlugins` und `components` als Modul-Konstante**: der Processor wird über die Identität der
+  Plugins memoisiert, ein frisches Array pro Render hieße bei jedem Token ein Neuaufbau.
+- **`pre` ist der einzige Haken der Code-Ansicht**: der Override reicht sein `code`-Kind an `CodeView`
+  weiter (Sprache aus `language-*`, sonst `text`, die Umbruchzeile des Zaunendes abgeschnitten).
+  Kein `code`-Override: der trennte Inline und Zaun nicht — deshalb pinnt der Test `chat-code` genau einmal
+  und `closest('.code-view') === null` für Inline-Code.
+- **Rohes HTML wird Wortlaut, nicht weggelassen** (gemessen mit `renderToStaticMarkup`):
+  `und <b>fett</b> danach.` → `und &lt;b&gt;fett&lt;/b&gt; danach.`; ein `<img …>`-Block steht als Text da,
+  der Folgeabsatz bleibt; `javascript:` in einem Markdown-Link-Ziel wird zu `href=""` (die eigene
+  `urlTransform` von react-markdown). ⇒ kein `rehype-raw`, kein `skipHtml` nötig (UC-WP-54).
+- **GFM-Form gemessen**: Tabelle → `table`/`th`/`tbody td`, `~~x~~` → `del`, Aufgabenliste →
+  `input[type=checkbox][disabled]`, ein einfacher Umbruch → `br`, eine echte Leerzeile bleibt Absatzgrenze.
+- **`white-space: normal` auf `.chat-log .chat-markdown` ist tragend**: `.chat-log .chat-line` setzt
+  `pre-wrap`, ohne die Aufzeichnung zeichnet der erhaltene `\n` neben dem `br` eine zweite leere Zeile —
+  dieselbe Fallgrube wie Shikis `.line`-Umbruch (Inc 5, Runde 2). Pin im Umbruch-Test.
+- **Proben Inc 2** (je genau die genannten Tests rot, Restore per `cp` + `diff`): `remark-breaks` raus →
+  `aSingleLineBreakStaysALineOnTheScreen`; `remark-gfm` raus → `aTableAndStrikeThroughAreDrawnAndNotTyped`;
+  `pre`-Override leer → `codeBlocksAreHighlighted` + `streamingMarkdownStaysReadable`; `white-space: normal`
+  aus `styles.css` → `aSingleLineBreakStaysALineOnTheScreen`.
+- **Nach Inc 2: UI 163 Tests / 20 Dateien** in ~9,0 s, `tsc -b` 0, oxlint 0/0 (69 Dateien). Kein Backend,
+  kein Draht, kein `pnpm build` (Pauls Server läuft). Bei Jon: `UC-WP-73` ❌→✅ und C-2b in
+  `docs/open-points.md` (Reload ohne Markdown) — damit erledigt.
+
 ## Abweichungs-Register (UI)
 
 Codes je Zyklus präfixiert; ein Code in einem Testkommentar verweist auf diese eine Stelle.
@@ -974,7 +1010,10 @@ Codes je Zyklus präfixiert; ein Code in einem Testkommentar verweist auf diese 
 - `ANTD-A2` — **Popconfirm** statt des eigenen Lösch-Popups in der Projektliste.
 - `ANTD-A3` — **Choice: Label im Feld, Drahtwert im Body** (`content.config.yes` ≠ `'true'`).
 - `ANTD-A4` — **Icons über `.anticon-*`** statt `bi bi-*` (Test-Selektoren).
-- `ANTD-A5` — **reserviert für Inc 2** (Markdown: kein rohes HTML, kein Abbruch, final gerendert).
+- `ANTD-A5` — **Markdown-Streaming**: ein noch offenes Syntax-Zeichen (`**`) steht während des Streams als
+  **Wortlaut** und ist erst mit dem letzten Token gerendert; rohes HTML wird nie Markup der Seite (es bleibt
+  als Text stehen). Bewiesen in `test/chat/chat.markdown.test.tsx` (`UC-WP-54`, `UC-WP-73`) — die alte
+  Zusage „der Renderer schließt offene Syntax" ist mit dem Renderer entfallen.
 - `INC7B-A1` — **Dev-Label „Think (Default)"** statt `content.agents.think` (Inc 7b, fünf Abnehmer).
 - **`aria-current` — Übergang bis Inc 5a**: die Navigation trägt es seit dem AntD-Umbau nicht mehr; Auswahl
   wird über `.ant-menu-item-selected` bewiesen. Inc 5a stellt es mit der URL-Auswahl wieder her und pinnt es
