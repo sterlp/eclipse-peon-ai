@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 
 import { ChatLog } from '../../src/chat/chat.log'
 import { appendLiveError, appendLiveTool } from '../../src/chat/chat.live'
-import { declarations, declares } from '../shared/sheets'
+import { allDeclarations, declarations, declares } from '../shared/sheets'
 import { separatorsOf } from '../shared/log.parts'
 import type { ChatMessage } from '../../src/chat/chat.client'
 
@@ -25,9 +25,8 @@ test('roleChangeDrawsNoRule', () => {
   render(<ChatLog messages={[QUESTION, FAILURE]} outgoing={[]} live={[]} pending={false} />)
 
   const log = screen.getByTestId('chat-log')
-  expect(log.querySelectorAll('hr'), 'no line between two voices').toHaveLength(0)
-  expect(separatorsOf(log), 'and nothing of the log counts as one').toEqual([])
-  // the line that begins the new voice carries none either — it was the rule's carrier
+  expect(separatorsOf(log), 'no line of the log separates two voices').toEqual([])
+  // the row that opens the new voice carries no line of its own either
   expect([...screen.getByTestId('chat-line-error').children].some(child => child.tagName === 'HR')).toBe(false)
   expect(screen.getByTestId('chat-line-error').className).toContain('error')
 
@@ -35,12 +34,53 @@ test('roleChangeDrawsNoRule', () => {
   expect(painted, 'the accent and the text of a failure are the problem token').toContain('var(--problem)')
   expect(painted, 'a grey block would read as a card and not as a line (UC-WP-55)').not.toContain('background')
 
-  // the separation is the side accents alone: no rule of the sheet, and no line above or below a row
-  expect(declares('.chat-log .chat-rule'), 'the separator of two voices left the sheet').toBe(false)
-  const line = declarations('.chat-log .chat-line')
-  expect(line, 'a row carries no horizontal rule of its own').not.toMatch(/border-(top|bottom)/)
-  expect(line, 'and no row steps out of the flow to be centred').not.toContain('text-align: center')
+  // the separation is the side accents alone: the sheet gives no separator of two voices
+  expect(declares('.chat-log .chat-rule'), 'no rule of the sheet paints a separator').toBe(false)
 })
+
+/**
+ * The sheet is what separates the voices, so its prohibition is read as a whole: **every** rule naming a
+ * row — `.chat-line`, each of its voices, a rule a media query adds later — paints no horizontal line and
+ * centres nothing, and `.chat-log` itself sets no frame, which would be a line above the first row and
+ * below the last (R-WP-29, UC-WP-55). Read through `allDeclarations`: the first block alone would let a
+ * later one break the rule with the suite green.
+ */
+// UC-WP-55
+// R-WP-29
+test('noRuleOfTheSheetDrawsALineBetweenTwoRows', () => {
+  for (const rule of allDeclarations(/\.chat-line/)) {
+    expect(linesOf(rule.declarations), `${rule.selector} draws a horizontal line`).toEqual([])
+    expect(centringOf(rule.declarations), `${rule.selector} centres a row out of the flow`).toEqual([])
+  }
+  for (const rule of allDeclarations(/^\.chat-log$/)) {
+    expect(bordersOf(rule.declarations), `${rule.selector} frames the chat`).toEqual([])
+  }
+})
+
+/** The declarations of one rule, each for itself — so a failure names the one that broke the rule. */
+function eachDeclaration(declarations: string): string[] {
+  return declarations
+    .split(';')
+    .map(one => one.trim())
+    .filter(Boolean)
+}
+
+/** A declaration painting a horizontal line: the shorthand or a top/bottom edge, one of `0` or `none` apart. */
+function linesOf(declarations: string): string[] {
+  return eachDeclaration(declarations).filter(
+    one => /^border(?:-(?:top|bottom))?\s*:/i.test(one) && !/:\s*(?:0|none)$/i.test(one),
+  )
+}
+
+/** A declaration stepping a row out of the flow of the conversation to stand in the middle of the screen. */
+function centringOf(declarations: string): string[] {
+  return eachDeclaration(declarations).filter(one => /^text-align\s*:\s*center\b/i.test(one))
+}
+
+/** Any border at all — the frame around the whole log is asked for by name, not by side. */
+function bordersOf(declarations: string): string[] {
+  return eachDeclaration(declarations).filter(one => /^border\b/i.test(one))
+}
 
 /**
  * A line the model drew is content of its answer, and the log has no separator to confuse it with

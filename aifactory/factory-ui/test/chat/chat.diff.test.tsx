@@ -110,7 +110,7 @@ test('aDiffStandsBesideTheTraceAndNotInsideIt', () => {
     expect(within(box).queryByTestId('chat-diff'), 'a block with its own file joins no box').toBeNull()
   }
   // and it is nobody's speech, so it neither begins a voice nor separates two (R-WP-29, UC-WP-55 GIVEN 2) —
-  // read over the whole log, because a class of our own no longer exists to look for
+  // read over the whole log, where `separatorsOf` alone decides which line counts as one
   expect(separatorsOf(screen.getByTestId('chat-log'))).toEqual([])
 })
 

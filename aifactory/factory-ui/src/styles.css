@@ -399,8 +399,8 @@ button {
 }
 
 /* A line the model drew inside an answer is content of that answer (R-WP-29): ours, short and quiet, in
-   the border grey and at the answer's own left edge — never as wide as the log. Between two voices the log
-   draws no line of its own at all; their accents separate them. */
+   the border grey and at the answer's own left edge — never as wide as the log. The voices themselves
+   separate by the accent on their side. */
 .chat-log .chat-markdown hr {
   border: 0;
   border-top: 1px solid var(--border);

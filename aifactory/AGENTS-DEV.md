@@ -75,6 +75,7 @@
   `test.css` aus ist; `test.css.include` verlangt **RegExp** und muss beim Raw-Laden `\?|$` zulassen. Kein
   Selektorwortlaut in CSS-Prosa — die Helfer (`declarations`, `blockOf`, `tokenTable`) suchen per
   `indexOf(selector)`; `tokenTable` akzeptiert einen Selektor erst bei Whitespace + `{`.
+- `sheets.ts::declarations()` trifft nur den **ersten** Block — ein Verbot, das über **allen** `.chat-line.*`-Blättern (inkl. `@media`) gelten muss, liest `allDeclarations`.
 - **AntD unter jsdom**: `matchMedia` **und** `ResizeObserver` sind load-bearing (jsdom 26.1.0: Property da,
   Wert `undefined`); `Select` über `<id>_list` (`id` je Choice Pflicht, `useId()` ist im Testbaum nicht
   eindeutig), Helfer `test/shared/choices.ts`. Dunkel ist **eine** Tabelle über `data-theme` am Document;
