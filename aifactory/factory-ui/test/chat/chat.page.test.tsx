@@ -294,6 +294,28 @@ test('chatAlwaysGoesToJon', async () => {
   expect(screen.queryByRole('combobox')).toBeNull()
 })
 
+// UC-WP-56
+test('enterSendsBothLinesInOneTurn', async () => {
+  const chat = stubChat({ messages: [] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  // Enter is the send (R-WP-30), and what the field holds goes with it — both lines, in their order, one turn
+  const field = screen.getByTestId('chat-input')
+  fireEvent.change(field, { target: { value: 'erste Zeile\nzweite Zeile' } })
+  fireEvent.keyDown(field, { key: 'Enter' })
+  await flush()
+
+  expect(sentTexts(chat)).toEqual(['erste Zeile\nzweite Zeile'])
+  expect(field, 'the send took the text').toHaveValue('')
+
+  // the same keystroke on an empty field opens nothing: the send needs a text (UC-WP-56 GIVEN 1)
+  fireEvent.keyDown(field, { key: 'Enter' })
+  await flush()
+  expect(chat.countOf('/messages', 'POST')).toBe(1)
+})
+
+
 // UC-WP-7
 test('streamingUpdatesChatWithoutReload', async () => {
   const chat = stubChat({ messages: [QUESTION] })
