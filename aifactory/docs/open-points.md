@@ -80,12 +80,23 @@ Reihenfolge, je ein grünes Inkrement:
   aus dem Text zu lesen wäre genau das Parse-Verbot der Regel. Angenommen: der **Delegations-Eintrag nennt das
   Mitglied**, der **Auftrag steht unverändert in der Werkzeugzeile darüber**; die Klammer ist aus der Regel
   geworfen. *Andersfall:* ein Auftrag im Delegations-Eintrag verlangt eine **Core-Erweiterung** (Prompt im
-  Listener) — Core-Änderung, nur mit deinem Proposal.
+  Listener) — Core-Änderung, nur mit deinem Proposal. **Und:** ein **Diff-Block** ist kein „nächster Schritt"
+  (R-WP-40 zählt Werkzeug, Think und Delegation) — er lässt den Indikator am Werkzeugschritt, der vor ihm
+  stand. *Andersfall:* Diff als Schrittende gelesen = eine Zeile Code und eine Assertion.
 * **⏳ Screenshot-Werkzeug (Stagehand) parked** (2026-11-06) — `@browserbasehq/stagehand` v4 kann den
   Dev-Server öffnen und Screenshots/Layout-Messungen **ohne** LLM-Call (nur `page`-API); verlangt
   aber **Node ≥ 22.18**, der Bau fährt **22.12** (v23.4 ist vorhanden). Angenommen: kein neues
   Werkzeug, solange die F-Befunde unpräzise sind — Look-Abnahme bleibt Pauls Smoke-Test.
   *Andersfall:* eigenes Script unter Node 23.4, kein Vitest-/Maven-Eingriff.
+* **❓ Ein Turn kann enden, ohne dass der Draht ein Endereignis sendet** (2026-11-06, Review-Fund zu
+  Inkrement 4, **unbestätigt**) — `ProjectRuntime` publiziert `done` nur, wenn die Antwort nicht `null`
+  ist; ein `Error`, der allen `catch`-Zweigen entkommt, und ein Submit, das der Core einreiht statt einen
+  Turn zu öffnen, senden möglicherweise weder `done` noch `error`. Sichtbare Folge wäre eine Warteschleife
+  und ein Indikator, der weiterblinkt. Nicht gemessen, deshalb keine Regel und kein Bug-Verdikt.
+  **Empfehlung:** eigene, kleine Story nach der Timeline — Regel „je Turn genau ein Endereignis auf dem
+  Draht" plus Backend-Test; die Fabrik repariert das allein (kein Core-Eingriff nötig, der `finally`-Pfad
+  gehört ihr). *Andersfall:* ist der Pfad real und häufig, wäre das ein Look-Defekt beim nächsten
+  Smoke-Test — melde mich dann mit dem Messwert.
 
 
 

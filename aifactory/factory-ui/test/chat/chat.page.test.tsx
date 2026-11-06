@@ -1267,6 +1267,57 @@ test('aSecondTurnDrawsNoIndicatorOnTheStepsOfTheFinishedOne', async () => {
 })
 
 /**
+ * The identity a step answers to is its turn, never the number of rows that turn anchored at (R-WP-40,
+ * UC-WP-72 GIVEN 2). A Clear gives the log back exactly the row count the finished turn anchored at while
+ * that turn's trace stays on the screen (UC-WP-54) — so both turns anchor at the same number, and only the
+ * identity tells them apart.
+ */
+// UC-WP-72
+test('twoTurnsCountingTheSameRowsAreNotTheSameTurn', async () => {
+  const steps = () =>
+    screen.getAllByTestId('chat-tool-line').flatMap(box => [...box.querySelectorAll('.chat-tool-line')])
+  const working = () => steps().filter(step => step.querySelector('.chat-step-running') !== null)
+
+  const chat = stubChat({ messages: [], agents: [tile('Jon', 'IDLE')] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  // the first turn anchors behind its own pending line, on a log of no row
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await chat.push(event('tool', { text: 'ls in the checkout' }))
+  expect(working(), 'a step of the open turn works').toHaveLength(1)
+
+  chat.setMessages([{ role: 'user', text: 'zähl die Dateien' }, ANSWER])
+  await chat.push(event('done', { millis: 11 }))
+  expect(userLineTexts(), 'the read of the finished turn has landed').toEqual(['zähl die Dateien'])
+  expect(working(), 'the turn ended with its step').toEqual([])
+
+  // the conversation is cleared: the log counts the rows of its log again from zero — the same number the
+  // finished turn anchored at — while the trace of that turn stays
+  chat.setMessages([])
+  fireEvent.click(screen.getByTestId('tile-clear-Jon'))
+  await waitFor(() => expect(userLineTexts()).toEqual([]))
+  expect(screen.getByTestId('chat-tool-line')).toHaveTextContent('ls in the checkout')
+  expect(working(), 'a cleared conversation works nothing').toEqual([])
+
+  // the next input opens its turn at the same row number and answers with text before its first step
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'und jetzt die README' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await chat.push(event('partial', { kind: 'answer', text: 'Im Root liegen ' }))
+  expect(
+    working(),
+    'the open turn takes no step of the finished one, though both anchor at the same number of rows',
+  ).toEqual([])
+
+  // the first step of the open turn is where the indicator goes — the rule is not simply switched off
+  await chat.push(event('tool', { text: 'wc -l README.md' }))
+  expect(working()).toHaveLength(1)
+  expect(working()[0].textContent).toContain('wc -l README.md')
+})
+
+
+/**
  * The indicator of a step ends with the next step or with the end of the answer — never with the first word
  * of that answer (R-WP-40, UC-WP-72 GIVEN 2): a streaming text is not a step, so the step that worked last
  * keeps working on the screen until the wire reports another step or the turn ends, and the step then keeps
