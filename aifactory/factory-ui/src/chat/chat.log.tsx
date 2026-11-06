@@ -20,8 +20,9 @@ interface Props {
   live: LiveItem[]
   /** A turn this browser started is still open — the only thing that may paint a waiting frame (R-WP-31). */
   pending: boolean
-  /** A turn is open on this project — the only thing that may paint a working step (R-WP-40, UC-WP-72). */
-  running?: boolean
+  /** The identity of the turn this view holds open, or none: the only thing that may paint a working step,
+   *  and it names WHICH turn — a step of a turn that ended never works for the next one (R-WP-40, UC-WP-72). */
+  openTurn?: number | null
   /** The scroll area of the chat, handed to the page: it keeps the end of the log in view (R-WP-35). */
   logRef?: Ref<HTMLUListElement>
   /** The page learns from this where the user reads (R-WP-35, UC-WP-66). */
@@ -47,8 +48,9 @@ interface Row {
 type Entry =
   | { type: 'row'; row: Row }
   | { type: 'live'; item: LiveItem }
-  /** The steps of one tool run; `running` marks the box whose last step is the step being worked on. */
-  | { type: 'tools'; items: ToolItem[]; running: boolean }
+  /** The steps of one tool run; `open` is the step the open turn reported last and stands in at most one of
+   *  the boxes the log draws — identity, so neither the cap nor the place in the list decides it. */
+  | { type: 'tools'; items: ToolItem[]; open: ToolItem | null }
   | { type: 'diff'; file: string; text: string }
 
 /**
@@ -70,7 +72,7 @@ type Entry =
  * stamped on it — never one the log invented (R-WP-37, R-WP-40). A diff block is of the same family — a fact
  * about the project's files, seen by everybody watching (R-WP-36).
  */
-export function ChatLog({ messages, outgoing, live, pending, running = false, logRef, onScroll }: Props) {
+export function ChatLog({ messages, outgoing, live, pending, openTurn = null, logRef, onScroll }: Props) {
   const rows: Row[] = [
     ...messages.map((message): Row => ({
       voice: voiceOf(message),
@@ -93,7 +95,7 @@ export function ChatLog({ messages, outgoing, live, pending, running = false, lo
     })),
   ]
 
-  const entries = entriesOf(rows, live, running)
+  const entries = entriesOf(rows, live, openTurn)
 
   return (
     <ul
@@ -105,7 +107,7 @@ export function ChatLog({ messages, outgoing, live, pending, running = false, lo
     >
       {entries.map((entry, index) => {
         if (entry.type === 'tools') {
-          return <ChatTools key={`tools-${index}`} items={entry.items} running={entry.running} />
+          return <ChatTools key={`tools-${index}`} items={entry.items} open={entry.open} />
         }
         if (entry.type === 'diff') {
           return <ChatDiff key={`diff-${index}`} file={entry.file} diff={entry.text} />
@@ -157,12 +159,13 @@ export function ChatLog({ messages, outgoing, live, pending, running = false, lo
  * stand today falls to the end (D-A, UC-WP-54). Consecutive tool lines become one box, a diff block stands
  * beside it as a block of its own (R-WP-36).
  */
-function entriesOf(rows: Row[], live: LiveItem[], running: boolean): Entry[] {
+function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entry[] {
   const entries: Entry[] = []
   let shown = 0
-  // one step of the whole live list can be working, and only while a turn is open: the box that holds it
-  // marks itself, so the next step or the end of the turn ends the indicator (R-WP-40, UC-WP-72 GIVEN 2)
-  const open = openStep(live, running)
+  // one step of the whole live list can be working: the last step of the turn that is open — a turn of its
+  // own has to bring a step of its own first, and the next step or the end of that turn ends the indicator
+  // (R-WP-40, UC-WP-72 GIVEN 2)
+  const open = openStep(live, openTurn)
 
   const pushRows = (until: number) => {
     while (shown < Math.min(until, rows.length)) {
@@ -178,7 +181,7 @@ function entriesOf(rows: Row[], live: LiveItem[], running: boolean): Entry[] {
       if (tools.length === 0) {
         return
       }
-      entries.push({ type: 'tools', items: tools, running: tools[tools.length - 1] === open })
+      entries.push({ type: 'tools', items: tools, open })
       tools = []
     }
     for (const item of run) {

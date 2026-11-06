@@ -4,8 +4,9 @@ import { arrivalTime, MAX_TOOL_LINES, type ToolItem } from './chat.live'
 interface Props {
   /** The steps of one tool run, in the order they arrived. */
   items: ToolItem[]
-  /** A turn is open and the last of these steps is the last thing the wire reported (R-WP-40). */
-  running: boolean
+  /** The step the open turn reported last, or none (R-WP-40). Identity and not index: the cap may have
+   *  trimmed this run, and the step that works belongs to one turn — not to whichever turn works. */
+  open: ToolItem | null
 }
 
 /**
@@ -18,21 +19,18 @@ interface Props {
  * shown, and a step whose moment the browser never received carries no title — the factory invents no time
  * and parses none out of the text (UC-WP-72).
  */
-export function ChatTools({ items, running }: Props) {
+export function ChatTools({ items, open }: Props) {
   const shown = items.length > MAX_TOOL_LINES ? items.slice(-MAX_TOOL_LINES) : items
   const first = items.length - shown.length
-  // the open step is an index of `items`, not of `shown`: the cap must not decide which step is working
-  const open = running ? items.length - 1 : -1
   return (
     <li className="chat-line tool" data-testid="chat-tool-line">
       <span className="chat-tools-label">{content.chat.toolActivity}</span>
       {shown.map((item, offset) => {
-        const at = first + offset
-        const working = at === open
+        const working = item === open
         return (
           <span
             className="chat-tool-line"
-            key={`tool-${at}`}
+            key={`tool-${first + offset}`}
             title={working || item.at === null ? undefined : arrivalTime(item.at)}
           >
             {item.origin !== null && <span className="chat-step-name">{item.origin}</span>}

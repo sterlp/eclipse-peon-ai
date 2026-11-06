@@ -1223,6 +1223,91 @@ test('theRunningStepEndsWithTheTurn', async () => {
   expect(finished[1].getAttribute('title'), 'a finished step carries its arrival clock').toMatch(/^\d{2}:\d{2}$/)
 })
 
+/**
+ * The indicator belongs to a step of the turn that is open and to no older one (R-WP-40, UC-WP-72 GIVEN 2):
+ * the trace of a finished turn keeps its place on the screen (UC-WP-54) without working, and while the next
+ * turn has reported no step of its own, no step works — `busy` is the waiting bar's statement (R-WP-31) and
+ * never the statement of which step runs.
+ */
+// UC-WP-72
+test('aSecondTurnDrawsNoIndicatorOnTheStepsOfTheFinishedOne', async () => {
+  const steps = () =>
+    screen.getAllByTestId('chat-tool-line').flatMap(box => [...box.querySelectorAll('.chat-tool-line')])
+  const working = () => steps().filter(step => step.querySelector('.chat-step-running') !== null)
+
+  const chat = stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await chat.push(event('tool', { text: 'ls in the checkout' }))
+  expect(working(), 'a step of the open turn works').toHaveLength(1)
+
+  chat.setMessages([QUESTION, { role: 'user', text: 'zähl die Dateien' }, ANSWER])
+  await chat.push(event('done', { millis: 12 }))
+  await flush()
+
+  // the turn is over and its trace stands: nothing of it works any more
+  expect(screen.getByTestId('chat-tool-line')).toHaveTextContent('ls in the checkout')
+  expect(working()).toEqual([])
+
+  // the next input opens a turn that has reported nothing yet: the wait is on the screen, while the step of
+  // the finished turn keeps its place without its indicator
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'und jetzt die README' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+  expect(screen.getByTestId('chat-waiting'), 'a turn is open').toBeInTheDocument()
+  expect(working(), 'the old step does not work for a turn it never belonged to').toEqual([])
+
+  // the first step of the open turn is where the indicator goes — the rule is not simply switched off
+  await chat.push(event('tool', { text: 'wc -l README.md' }))
+  expect(working()).toHaveLength(1)
+  expect(working()[0].textContent).toContain('wc -l README.md')
+})
+
+/**
+ * The indicator of a step ends with the next step or with the end of the answer — never with the first word
+ * of that answer (R-WP-40, UC-WP-72 GIVEN 2): a streaming text is not a step, so the step that worked last
+ * keeps working on the screen until the wire reports another step or the turn ends, and the step then keeps
+ * the clock of its arrival.
+ */
+// UC-WP-72
+test('theIndicatorOfAStepEndsWithTheNextStepAndNotWithTheAnswer', async () => {
+  const steps = () =>
+    screen.getAllByTestId('chat-tool-line').flatMap(box => [...box.querySelectorAll('.chat-tool-line')])
+  const working = () => steps().filter(step => step.querySelector('.chat-step-running') !== null)
+
+  const chat = stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await chat.push(event('tool', { text: 'ls in the checkout' }))
+
+  // the answer starts to stream over the same turn: a word is no step and no end, so the indicator stands
+  await chat.push(event('partial', { kind: 'answer', text: 'Im Root liegen ' }))
+  await chat.push(event('partial', { kind: 'answer', text: 'pom.xml und README.md.' }))
+  expect(working(), 'streaming text does not end the indicator of a step').toHaveLength(1)
+  expect(working()[0].textContent).toContain('ls in the checkout')
+
+  // the next step takes the indicator, and only one step works
+  await chat.push(event('tool', { text: 'wc -l pom.xml' }))
+  expect(working()).toHaveLength(1)
+  expect(working()[0].textContent).toContain('wc -l pom.xml')
+
+  // the end of the answer ends it; both steps stay with their arrival clock and without a duration
+  chat.setMessages([QUESTION, { role: 'user', text: 'zähl die Dateien' }, ANSWER])
+  await chat.push(event('done', { millis: 9 }))
+  expect(working(), 'with the end of the answer no step works').toEqual([])
+  expect(
+    steps().map(step => step.getAttribute('title')),
+    'every finished step keeps its own arrival clock and no duration',
+  ).toEqual([expect.stringMatching(/^\d{2}:\d{2}$/), expect.stringMatching(/^\d{2}:\d{2}$/)])
+})
+
+
 // UC-WP-68
 test('aFileChangeIsLiveAndDoesNotOutliveTheReload', async () => {
   const chat = stubChat({ messages: [QUESTION] })

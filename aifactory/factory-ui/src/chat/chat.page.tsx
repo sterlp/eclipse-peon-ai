@@ -134,11 +134,17 @@ export function ChatPage({ project, files, user }: Props) {
    */
   const liveItems = useRef<LiveItem[]>([])
   /**
-   * The rows that stood when this turn reported its first line — frozen for the whole turn. Recomputing the
-   * count per event would let an input queued mid-turn move every later chunk of the running answer to a
-   * new anchor: the answer would break into blocks and stand below the question typed after it (D-A, UC-WP-54).
+   * The turn this view holds open: the rows that stood when it reported its first line, and its identity.
+   * Recomputing the count per event would let an input queued mid-turn move every later chunk of the running
+   * answer to a new anchor: the answer would break into blocks and stand below the question typed after it
+   * (D-A, UC-WP-54). The identity is what a working step answers to — two turns can anchor at the same
+   * number of rows, so the anchor alone cannot say which step is the one being worked on (R-WP-40).
    */
-  const turnAnchor = useRef<number | null>(null)
+  const turn = useRef<{ anchor: number; id: number } | null>(null)
+  /** Hands out the ids of the turns, ever growing: a step of a past turn can never read as a step of the open one. */
+  const turnSeq = useRef(0)
+  /** The open turn as the screen sees it — no turn open, no step working (R-WP-40, UC-WP-72 GIVEN 2). */
+  const [openTurn, setOpenTurn] = useState<number | null>(null)
   /**
    * How many history reads this view has asked for. A read is a network round trip over the whole memory, so
    * it is slowest exactly when the conversation is long, and a later read can answer first — the number is
@@ -182,18 +188,26 @@ export function ChatPage({ project, files, user }: Props) {
     setLive(next)
   }, [])
 
-  /**
-   * The anchor of the running turn, fixed by its first live line and reused by every later one. Frozen
-   * <em>including</em> the own pending lines, because the history read turns exactly those into history
-   * lines at the same indices — so the same number names the same place before and after the read, which is
-   * what keeps one answer one block (D-A, UC-WP-54).
-   */
-  const anchorOf = useCallback((): number => {
-    if (turnAnchor.current === null) {
-      turnAnchor.current = historyRows.current + pendingLines.current.length
-    }
-    return turnAnchor.current
+  const writeTurn = useCallback((next: { anchor: number; id: number } | null) => {
+    turn.current = next
+    setOpenTurn(next?.id ?? null)
   }, [])
+
+  /**
+   * The open turn, opened by the first live line that needs it and frozen from then on. Its anchor is frozen
+   * <em>including</em> the own pending lines, because the history read turns exactly those into history lines
+   * at the same indices — so the same number names the same place before and after the read, which is what
+   * keeps one answer one block (D-A, UC-WP-54). Its identity is what a working step belongs to: a step of
+   * this turn can work, a step of one that ended cannot (R-WP-40, UC-WP-72 GIVEN 2).
+   */
+  const beginTurn = useCallback(() => {
+    if (turn.current !== null) {
+      return turn.current
+    }
+    const started = { anchor: historyRows.current + pendingLines.current.length, id: ++turnSeq.current }
+    writeTurn(started)
+    return started
+  }, [writeTurn])
 
   /**
    * The finished text arrives here, never as an event — so the live answer gives way to it (§3.3.3). What
@@ -253,29 +267,40 @@ export function ChatPage({ project, files, user }: Props) {
         case 'partial':
           // thinking deltas stay invisible: the chat shows the answer, and R-WP-5 promises that text
           if (!event.thinking) {
-            // the anchor is read outside the writer: the turn's anchor is frozen on first use, and the list
+            // the turn is opened outside the writer: its anchor is frozen on first use, and the list
             // to continue is the one that stands, not the one a past render showed (D-A, D-B)
-            const at = anchorOf()
+            const at = beginTurn().anchor
             writeLive(appendLiveText(liveItems.current, event.text, at))
           }
           break
         case 'tool': {
-          const at = anchorOf()
-          // the step keeps the stamp the wire carried and the moment this browser received it — its own, so
-          // the cap of a long run cannot move a time (R-WP-40, UC-WP-72 GIVEN 5)
-          writeLive(appendLiveTool(liveItems.current, event.text, at, event.origin ?? null, Date.now()))
+          const step = beginTurn()
+          // the step keeps the stamp the wire carried, the moment this browser received it and the turn that
+          // reported it — each of them its own, so the cap of a long run cannot move a time and a step of a
+          // finished turn cannot work for the next one (R-WP-40, UC-WP-72 GIVEN 2 and GIVEN 5)
+          writeLive(
+            appendLiveTool(
+              liveItems.current,
+              event.text,
+              step.anchor,
+              event.origin ?? null,
+              Date.now(),
+              step.id,
+            ),
+          )
           break
         }
         case 'diff': {
           // the change itself, live, for every browser watching this project — the block names its own file,
           // so no author is needed and none is shown (R-WP-36, UC-WP-68)
-          const at = anchorOf()
+          const at = beginTurn().anchor
           writeLive(appendLiveDiff(liveItems.current, event.file, event.diff, at))
           break
         }
         case 'done':
-          // the turn is over: the next one anchors at the rows that stand when it reports, not at these
-          turnAnchor.current = null
+          // the turn is over: the next one anchors at the rows that stand when it reports, not at these, and
+          // nothing of this turn works any more — its steps stay on the screen without their indicator
+          writeTurn(null)
           // one reload per turn — the turn that drained a queued input closes that input too, and the
           // history that lands carries every finished line, the team's own answer among them
           if (stoppedTurn.current === projectId) {
@@ -293,8 +318,9 @@ export function ChatPage({ project, files, user }: Props) {
           // shown where it happened — a line of the log, not a notice beside it — and the composer stays
           // usable (Q1). The read that follows brings the same line as a line of the conversation, so it
           // survives a reload and every other browser (R-WP-34, UC-WP-64)
-          const at = anchorOf()
-          turnAnchor.current = null
+          const at = beginTurn().anchor
+          // the failure is an end of the answer, so no step of this turn works behind it
+          writeTurn(null)
           writeLive(appendLiveError(liveItems.current, event.message, at))
           setRunningTurn(null)
           setError(null)
@@ -307,7 +333,7 @@ export function ChatPage({ project, files, user }: Props) {
           break
       }
     },
-    [anchorOf, projectId, refresh, refreshTiles, writeLive],
+    [beginTurn, projectId, refresh, refreshTiles, writeLive, writeTurn],
   )
 
   useEffect(() => {
@@ -330,7 +356,7 @@ export function ChatPage({ project, files, user }: Props) {
             // a dropped stream loses the live lines and nothing else (R-WP-11): the history that follows
             // is read again, and what the wire will not send back is dropped from the screen
             writeLive([])
-            turnAnchor.current = null
+            writeTurn(null)
             void refresh()
             reconnect = setTimeout(connect, RECONNECT_MS)
           },
@@ -355,7 +381,7 @@ export function ChatPage({ project, files, user }: Props) {
         clearTimeout(reconnect)
       }
     }
-  }, [applyEvent, projectId, refresh, refreshTiles, writeLive])
+  }, [applyEvent, projectId, refresh, refreshTiles, writeLive, writeTurn])
 
   /**
    * One text into this project's conversation — whether it came from the field or from "Resend" makes no
@@ -506,9 +532,9 @@ export function ChatPage({ project, files, user }: Props) {
           outgoing={outgoing}
           live={live}
           pending={pending}
-          // a turn working on this project — another browser's included: its steps are on this stream too,
-          // and one of them is the step being worked on (R-WP-40, UC-WP-72 GIVEN 2)
-          running={busy}
+          // the turn this view holds open — another browser's included, because its steps arrive on this
+          // stream too: the indicator belongs to a step of THIS turn and to none that has ended (R-WP-40)
+          openTurn={openTurn}
           logRef={log}
           onScroll={onLogScroll}
         />

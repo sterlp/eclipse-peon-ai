@@ -14,8 +14,17 @@ export type LiveItem =
   | { kind: 'text' | 'error'; text: string; afterLines: number }
   /** One step of the turn's tool activity. `origin` is the wire's stamp of the agent that worked and `at`
    *  the moment this browser received it — both per item, so the cap of a long run keeps the times of what
-   *  stays (R-WP-40). Neither is ever guessed: no stamp, no name; no time, no title. */
-  | { kind: 'tool'; text: string; afterLines: number; origin: string | null; at: number | null }
+   *  stays (R-WP-40). Neither is ever guessed: no stamp, no name; no time, no title. `turn` names the turn
+   *  that reported the step: the anchor counts rows and two turns can count the same number, so which step
+   *  works is decided by the turn's identity and never by its place. */
+  | {
+      kind: 'tool'
+      text: string
+      afterLines: number
+      origin: string | null
+      at: number | null
+      turn: number | null
+    }
   /** One file the turn changed: `text` is its unified diff, `file` the path the block names. */
   | { kind: 'diff'; file: string; text: string; afterLines: number }
 
@@ -37,6 +46,7 @@ export function appendLiveText(items: LiveItem[], text: string, afterLines: numb
 /**
  * Every tool line is its own item; the log merges the ones that stand in a row (R-WP-28). `origin` and `at`
  * are optional because the wire may carry neither, and the screen invents nothing (R-WP-37, R-WP-40).
+ * `turn` is the identity of the turn that reported the step — without it the step can never work.
  */
 export function appendLiveTool(
   items: LiveItem[],
@@ -44,18 +54,34 @@ export function appendLiveTool(
   afterLines: number,
   origin: string | null = null,
   at: number | null = null,
+  turn: number | null = null,
 ): LiveItem[] {
-  return [...items, { kind: 'tool', text, afterLines, origin, at }]
+  return [...items, { kind: 'tool', text, afterLines, origin, at, turn }]
 }
 
 /**
- * The step that is working: the last thing the wire reported, and only while a turn is open. The core
- * reports no end of a single tool, so this is the whole meaning of "working" — the next step or the end of
- * the turn takes the indicator away (R-WP-40, UC-WP-72 GIVEN 2).
+ * The step that is working: the last step of the turn this view holds open, and of that turn alone. A step
+ * of a turn that has ended never works for the next one, and an open turn that has reported no step of its
+ * own has no indicator — the core reports no end of a single tool, so only the next step or the end of the
+ * turn takes the indicator away (R-WP-40, UC-WP-72 GIVEN 2). The answer a turn is writing, and the file
+ * changes it reports, are steps of neither: a step keeps its indicator while the answer streams to it.
  */
-export function openStep(items: LiveItem[], running: boolean): ToolItem | undefined {
-  const last = items[items.length - 1]
-  return running && last !== undefined && last.kind === 'tool' ? last : undefined
+export function openStep(items: LiveItem[], turn: number | null): ToolItem | null {
+  if (turn === null) {
+    return null
+  }
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const item = items[index]
+    if (item.kind === 'tool') {
+      return item.turn === turn ? item : null
+    }
+    if (item.kind === 'text' || item.kind === 'diff') {
+      continue
+    }
+    // a failure is an end of the answer, so nothing that stands behind it works
+    return null
+  }
+  return null
 }
 
 /**
