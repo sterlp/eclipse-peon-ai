@@ -1,8 +1,11 @@
-## aifactory — Bau-Fakten
-
-Nur was **unabhängig vom Plan** gilt — kein Plan-/Inkrement-Bezug, kein Status, kein Datum. Was nur diesen
-Zyklus angeht (Messungen, Proben, Fortschritt), gehört ins **Plan-File** `peon-plan/overview.md`,
-Entscheidungen nach `docs/`. Bestehenden Eintrag ergänzen statt anhängen, Veraltetes löschen, < 100 Zeilen.
+- Only facts you cannot derive from code, docs, or build files, and that stay true
+  regardless of the current plan. No plan/increment references, no status.
+- Add an entry when a fresh session would otherwise waste time or fail
+  (wrong assumption, hidden requirement, tool quirk).
+- Skip anything derivable from code, docs, or build files.
+- Max ~120 lines. Merge into an existing entry before adding a new one;
+  remove entries that are outdated or covered by code/docs.
+- Working notes, progress, and episodic findings go to the plan file(s)
 
 ## Build
 

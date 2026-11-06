@@ -52,8 +52,13 @@ Conventions
 - No comments unless they convey a non-obvious decision or gotcha; never restate existing docs —
   reference them (e.g. the rule/UC-ID) instead.
 
-claude.md, AGENTS.md and AGENTS-DEV.md (auto-loaded by the harness — no need to read these manually):
-- Correct or remove wrong/outdated entries when encountered
-- Save hard-won facts every session of this project needs to AGENTS-DEV.md
-- Load linked *.md files in subprojects when working there - add missing links if needed
-
+claude.md, AGENTS.md and AGENTS-DEV.md (auto-loaded by the harness — no need to read these manually).
+AGENTS-DEV.md:
+- Only facts you cannot derive from code, docs, or build files, and that stay true
+  regardless of the current plan. No plan/increment references, no status.
+- Add an entry when a fresh session would otherwise waste time or fail
+  (wrong assumption, hidden requirement, tool quirk).
+- Skip anything derivable from code, docs, or build files.
+- Max ~120 lines. Merge into an existing entry before adding a new one;
+  remove entries that are outdated or covered by code/docs.
+- Working notes, progress, and episodic findings go to the plan file(s)
