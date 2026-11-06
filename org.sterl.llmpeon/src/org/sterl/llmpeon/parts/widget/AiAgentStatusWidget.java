@@ -73,6 +73,7 @@ public class AiAgentStatusWidget extends Composite {
         layout.center = true;
         layout.marginHeight = 0;
         layout.marginWidth = 0;
+        layout.spacing = 0;
         setLayout(layout);
         setBackgroundMode(SWT.INHERIT_DEFAULT);
 
