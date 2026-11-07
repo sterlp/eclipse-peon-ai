@@ -2,12 +2,12 @@ import { expect, test } from 'vitest'
 
 import {
   chatFilesPath,
+  chatKeyOf,
   chatPath,
   chatRoot,
   filesKeyOf,
   navKeyOfPathname,
   pageKeyOfPathname,
-  projectKeyOf,
   projectOfSegment,
   projectsPath,
   settingsPath,
@@ -22,15 +22,17 @@ import { project } from '../shared/fixtures'
 // UC-WP-52
 test('theAddressNamesTheEntryThatShows', () => {
   expect(navKeyOfPathname('/projects')).toBe(siderRootKey)
-  expect(navKeyOfPathname(chatPath(project().name))).toBe(projectKeyOf(project().name))
+  // the chat address names the **unit** of its project and not the project entry: the tree lists chat · files
+  // under the project, and the unit is the finer handle the mark has to follow (UC-WP-77)
+  expect(navKeyOfPathname(chatPath(project().name))).toBe(chatKeyOf(project().name))
   // an address that names no entry of the tree marks nothing — guessing the first would lie about the page
   expect(navKeyOfPathname('/settings')).toBeNull()
   expect(navKeyOfPathname('/chat')).toBeNull()
   expect(navKeyOfPathname('/no/such/route')).toBeNull()
-  // an escaped name marks the entry whose chat opens: the chat resolves what `useParams` hands it — decoded
-  expect(navKeyOfPathname('/chat/deep%20dive')).toBe(projectKeyOf('deep dive'))
+  // an escaped name marks the unit whose chat opens: the chat resolves what `useParams` hands it — decoded
+  expect(navKeyOfPathname('/chat/deep%20dive')).toBe(chatKeyOf('deep dive'))
   // an address that cannot be decoded names what it spells; reading it is no reason to throw
-  expect(navKeyOfPathname('/chat/%E0%A4%A')).toBe(projectKeyOf('%E0%A4%A'))
+  expect(navKeyOfPathname('/chat/%E0%A4%A')).toBe(chatKeyOf('%E0%A4%A'))
 })
 
 /**
@@ -45,15 +47,15 @@ test('theUnitAddressIsItsOwnEntry', () => {
   expect(chatFilesPath('demo')).toBe('/chat/demo/files')
   expect(navKeyOfPathname(chatFilesPath('demo'))).toBe(filesKeyOf('demo'))
   expect(navKeyOfPathname('/chat/demo/files/')).toBe(filesKeyOf('demo'))
-  expect(navKeyOfPathname('/chat/demo/')).toBe(projectKeyOf('demo'))
+  expect(navKeyOfPathname('/chat/demo/')).toBe(chatKeyOf('demo'))
   expect(navKeyOfPathname('/chat/demo/unknown')).toBeNull()
   // the unit of an escaped name decodes like the chat does, and an undecodable one is read as it stands
   expect(navKeyOfPathname('/chat/deep%20dive/files')).toBe(filesKeyOf('deep dive'))
   expect(navKeyOfPathname('/chat/%E0%A4%A/files')).toBe(filesKeyOf('%E0%A4%A'))
   // the bare chat root answers with nothing: it is a question about the last project, not a unit
   expect(navKeyOfPathname('/chat')).toBeNull()
-  // a project called `files` is still a project, and its unit is still something else
-  expect(navKeyOfPathname(chatPath('files'))).toBe(projectKeyOf('files'))
+  // a project called `files` is still a project, and its chat unit and its file unit stay apart
+  expect(navKeyOfPathname(chatPath('files'))).toBe(chatKeyOf('files'))
   expect(navKeyOfPathname(chatFilesPath('files'))).toBe(filesKeyOf('files'))
 })
 

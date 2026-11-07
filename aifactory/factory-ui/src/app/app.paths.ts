@@ -57,7 +57,12 @@ export function projectKeyOf(segment: string): string {
   return `project:${segment}`
 }
 
-/** The sider key of one project's unit — its own prefix, because a project may be called `files`. */
+/** The sider key of one project's chat unit — the unit the chat address names (UC-WP-77). */
+export function chatKeyOf(segment: string): string {
+  return `chat:${segment}`
+}
+
+/** The sider key of one project's file area — its own prefix, because a project may be called `files`. */
 export function filesKeyOf(segment: string): string {
   return `files:${segment}`
 }
@@ -99,7 +104,9 @@ export function navKeyOfPathname(pathname: string): string | null {
   }
   const segment = readSegment(raw)
   if (rest.length === 0) {
-    return projectKeyOf(segment)
+    // the chat address names the **chat unit** of its project and not the project entry: the tree lists the
+    // units chat · files under it, and the finer handle is the one that has to show (UC-WP-77)
+    return chatKeyOf(segment)
   }
   return `/${rest.join('/')}` === filesSuffix ? filesKeyOf(segment) : null
 }

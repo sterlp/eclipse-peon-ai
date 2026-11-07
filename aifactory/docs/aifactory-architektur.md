@@ -214,6 +214,8 @@ Datei die Rolle im Namen (`<komponente>.<rolle>.tsx`). Kein Sammelordner für Vi
 factory-ui/
   src/
     app/      app.shell.tsx          Rahmen: Header · Sider · Content (R-WP-38)
+              app.top.tsx            dunkles Top-Menü — hält keine Auswahl (R-WP-43)
+              app.menu.ts            NavItem + entry(): eine Markenregel für beide Menüs
               app.routes.tsx         eine Adresse je Seite und je Einheit (R-WP-1)
               app.sider.tsx          Projektbaum — hält keine Auswahl
               app.paths.ts           das Adress-Modell: Erzeuger und Deuter in EINER Datei

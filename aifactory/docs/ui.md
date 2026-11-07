@@ -98,9 +98,10 @@ adressieren können (Befund Paul 2026-11-02; [AGENTS.md](../AGENTS.md): „UI: E
 
 ### R-WP-38 — Navigation: Projektbaum im Sider, Einheiten je Projekt ✅ (Paul 2026-11-06, AntD-Umbau; gebaut Inkremente 5a und 5b, 2026-11-07; Header und Einheiten-Ordnung seit 2026-11-07 in [R-WP-43](ui.md))
 
-Die Navigation ist ein **Sider** (`Layout.Sider`) links mit einem Eintrag **je Projekt**. **Sein erster
-Eintrag ist „Projects"** — die Projektliste, in der Projekte **hinzugefügt und entfernt** werden
-([R-WP-2](project.md)); er ist keine weitere Seite, sondern die bestehende Projekte-Seite im Sider.
+Die Navigation besteht aus dem **Top-Menü im Header** ([R-WP-43](ui.md)) und einem **Sider**
+(`Layout.Sider`) links mit einem Eintrag **je Projekt**. **Sein erster Eintrag ist „Projects"** — die
+Projektliste, in der Projekte **hinzugefügt und entfernt** werden ([R-WP-2](project.md)); er ist
+keine weitere Seite, sondern die bestehende Projekte-Seite — im Sider wie im Top-Menü.
 **Ein Klick auf das Projekt öffnet seinen Chat** — es gibt **keinen eigenen „Jon"-Eintrag** und kein „Jon"-Label
 in der Navigation (Paul 2026-11-06: „Jon … muss weg"; der Agent heißt in den Docs weiter Jon, und
 seine Kachel behält den Namen, [R-WP-7](chat.md)). Unter dem Projekt stehen seine **Einheiten** —

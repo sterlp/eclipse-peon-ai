@@ -157,7 +157,10 @@ test('theSettingsEntryIsCurrentOnSettings', async () => {
   // frame stayed mounted, so only a reading of the address can know which entry shows now
   fireEvent.click(await screen.findByRole('button', { name: project().name }))
   await screen.findByRole('region', { name: content.chat.title })
-  expect(markedEntries().map(entry => entry.textContent)).toEqual([project().name])
+  expect(
+    markedEntries().map(entry => entry.textContent),
+    'the tree shows the chat unit of the project the address names (UC-WP-77)',
+  ).toEqual([content.nav.chat])
   expect(settingsEntry()).not.toHaveAttribute('aria-current')
 
   fireEvent.click(settingsEntry())

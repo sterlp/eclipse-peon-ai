@@ -1157,5 +1157,22 @@ Drei Punkte, **kein Verhalten** — zwei Nachweislücken und ein Kommentar mit w
   `getByRole('navigation', { name: content.nav.views })`-Helfer mehrdeutig.
 - **Doc-Lint-Baseline 28 → 29:** Jons Docs-Änderung bringt `UNBELEGT UC-WP-77` (Slice 1b) — kein eigener Befund.
 
+## Inkrement 1b (Einheiten im Baum, 2026-11-07)
+
+- **Zwei Marken-Beweise, zwei verschiedene Mutationen — beide nötig:** `chatKeyOf` im Deuter auf
+  `projectKeyOf` zurückbauen ⇒ **9 Tests** rot (2× `app.paths`, 6× `app.routes`, 1× `app.shell`). Den
+  Chat-Eintrag statt auf `onOpen` auf den Files-Griff legen ⇒ **genau 2** rot
+  (`aRunningTurnSurvivesTheChatUnitClick` über die Adress-Assertion, `theChatUnitLeadsBackFromTheFileArea`).
+  **Und die Lücke:** Chat-Eintrag **gar nicht** verdrahten ⇒ der Turn-Test bleibt **grün** (nichts passiert ⇒
+  nichts stirbt), nur der Sider-Test fällt. Ein Turn-Test beweist also die **Adresse des Klicks**, nie den
+  Griff selbst — deshalb beide Stellen testen.
+- **Plan-Mutation „Chat-Eintrag navigiert auf `/chat`" ist in der Sider-Komponente nicht baubar** (sie kennt
+  nur Callbacks, kein `navigate`); ohne zusätzlichen Props-Callback ist die Files-Variante die nächstechte.
+  `/chat` wäre außerdem durch den Last-Project-Redirect deckungsgleich mit `/chat/<letztes>` (siehe 1a).
+- **Einheiten sind DOM-Nachbarn, nicht nur Array-Einträge:** Reihenfolge Chat → Files über
+  `unit.previousElementSibling` gepinnt (jsdom legt nichts aus, [[memory #15]]) — dieselbe Technik wie die
+  `+`-Regel des Tabs in 5b-1-N1.
+- **Doc-Lint wieder 28** (nur die fremden `UC-CR-*`/`UC-PC-*`): `UC-WP-76` und `UC-WP-77` sind jetzt belegt.
+
 
 

@@ -2,7 +2,7 @@ import { Layout, Menu } from 'antd'
 
 import { content } from '../shared/content'
 import { entry, type NavItem } from './app.menu'
-import { filesKeyOf, projectKeyOf, projectSegment, siderRootKey } from './app.paths'
+import { chatKeyOf, filesKeyOf, projectKeyOf, projectSegment, siderRootKey } from './app.paths'
 import type { Project } from '../shared/dto'
 
 /**
@@ -23,13 +23,15 @@ interface Props {
 }
 
 const keyOf = (project: Project): string => projectKeyOf(projectSegment(project))
+const chatUnitKeyOf = (project: Project): string => chatKeyOf(projectSegment(project))
 const unitKeyOf = (project: Project): string => filesKeyOf(projectSegment(project))
 
 /**
- * The frame's navigation (R-WP-38): the list first, then one entry per project and, under the one the
- * address names, its file area.
+ * The frame's tree (R-WP-38): the list first, then one entry per project and, under the one the address
+ * names, its units — the chat first and the file area last (UC-WP-77). Paco takes the place between them the
+ * day his story is built; nothing here has to move for that.
  *
- * A unit is a **flat** item carrying its own class for the indent, so its openness stays a reading of
+ * A unit is a **flat** item carrying its own class for the indent, so its showing stays a reading of
  * `activeKey` — no `SubMenu`, no `openKeys`, nothing to keep in step. The `<nav>` is ours because the
  * basis renders `ul[role=menu]` with no landmark, and the tests and a screen reader both ask for the
  * navigation by name.
@@ -42,11 +44,17 @@ export function AppSider({ projects, activeKey, onOpen, onProjects, onFiles }: P
   const items: NavItem[] = [entry(siderRootKey, content.nav.projects, activeKey === siderRootKey)]
   for (const project of projects) {
     const key = keyOf(project)
+    const chat = chatUnitKeyOf(project)
     const unit = unitKeyOf(project)
     items.push(entry(key, project.name, activeKey === key))
-    // the unit hangs under the project the address names and under no other: an entry beside a project the
-    // viewer is not in would be a second mark beside the URL (R-WP-38)
-    if (activeKey === key || activeKey === unit) {
+    // the units hang under the project the address names and under no other: entries beside a project the
+    // viewer is not in would be marks beside the URL (R-WP-38). The project's own entry shows only while no
+    // unit of it is named — the unit is the finer handle, so it is the one that marks (UC-WP-77)
+    if (activeKey === key || activeKey === chat || activeKey === unit) {
+      items.push({
+        ...entry(chat, content.nav.chat, activeKey === chat),
+        className: 'app-sider-unit',
+      })
       items.push({
         ...entry(unit, content.nav.files, activeKey === unit),
         className: 'app-sider-unit',
@@ -76,8 +84,12 @@ export function AppSider({ projects, activeKey, onOpen, onProjects, onFiles }: P
               onFiles(unit)
               return
             }
-            const opened = projects.find(project => keyOf(project) === key)
+            const opened = projects.find(
+              project => keyOf(project) === key || chatUnitKeyOf(project) === key,
+            )
             if (opened !== undefined) {
+              // the chat unit and the project entry are two handles of one address change (UC-WP-77): the
+              // same call, so the same path is written and the open chat is never mounted again
               onOpen(opened)
             }
           }}

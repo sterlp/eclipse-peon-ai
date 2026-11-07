@@ -25,7 +25,8 @@ function topNav() {
 /**
  * The entry the frame marks as showing. ANTD-A1: the design basis states a menu's selection as the item state
  * of its entry (`ant-menu-item-selected`), so the mark is read there — the claim itself is unchanged: exactly
- * one entry shows, and it is the one the address names (R-WP-38).
+ * one entry shows, and it is the one the address names (R-WP-38). Since UC-WP-77 an address names a **unit**
+ * of its project (chat, or files as the last), so the mark is that unit's entry and not the project's.
  */
 function markedEntry(): HTMLElement {
   const marked = within(nav())
@@ -104,8 +105,8 @@ test('aDeepLinkShowsTheSameState', async () => {
   const chat = await screen.findByRole('region', { name: content.chat.title })
   expect(within(chat).getByRole('heading', { name: project().name })).toBeInTheDocument()
   expect(app.path()).toBe(CHAT_PATH)
-  // the entry that shows is the one the address names, not one a click left behind
-  expect(markedEntry().textContent).toBe(project().name)
+  // the entry that shows is the unit the address names, not one a click left behind (UC-WP-77)
+  expect(markedEntry().textContent).toBe(content.nav.chat)
 })
 
 /** How often the mounted app asked for the chat history — a second read is a second mount (UC-WP-70 G2). */
@@ -152,7 +153,7 @@ test('theTabOpensTheUnitAddressAndBack', async () => {
   await waitFor(() => expect(app.path()).toBe(CHAT_PATH))
   expect(screen.queryByTestId('files-panel')).toBeNull()
   expect(screen.getByTestId('files-open')).toHaveAttribute('aria-expanded', 'false')
-  await waitFor(() => expect(markedEntry().textContent).toBe(project().name))
+  await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.chat))
 })
 
 // R-WP-38
@@ -172,7 +173,7 @@ test('theSiderEntryAndTheTabNameTheSameAddress', async () => {
   fireEvent.click(within(nav()).getByRole('menuitem', { name: project().name }))
   await waitFor(() => expect(app.path()).toBe(CHAT_PATH))
   expect(screen.queryByTestId('files-panel')).toBeNull()
-  await waitFor(() => expect(markedEntry().textContent).toBe(project().name))
+  await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.chat))
 })
 
 // R-WP-1
@@ -204,7 +205,10 @@ test('theNameAddressOpensTheProjectItNames', async () => {
   expect(within(chat).getByRole('heading', { name: second.name })).toBeInTheDocument()
   expect(within(chat).queryByRole('heading', { name: project().name })).toBeNull()
   expect(app.path()).toBe(`/chat/${second.name}`)
-  expect(markedEntry().textContent).toBe(second.name)
+  // the chat **unit** of that project shows, hung directly behind its entry (UC-WP-77) — the order is read
+  // from the DOM, because jsdom lays out nothing a mark could hide behind
+  expect(markedEntry().textContent).toBe(content.nav.chat)
+  expect(markedEntry().previousElementSibling?.textContent).toBe(second.name)
 })
 
 // UC-WP-70
@@ -223,7 +227,9 @@ test('anEscapedNameAddressOpensItsChatAndMarksItsEntry', async () => {
   const chat = await screen.findByRole('region', { name: content.chat.title })
   expect(within(chat).getByRole('heading', { name: spaced.name })).toBeInTheDocument()
   expect(app.path()).toBe('/chat/deep%20dive')
-  expect(markedEntry().textContent).toBe(spaced.name)
+  // the escaped address marks the chat unit of the decoded name, behind the entry it hangs under (UC-WP-77)
+  expect(markedEntry().textContent).toBe(content.nav.chat)
+  expect(markedEntry().previousElementSibling?.textContent).toBe(spaced.name)
 })
 
 // UC-WP-43
@@ -284,7 +290,7 @@ test('chatOpensTheLastActiveProject', async () => {
   expect(app.path()).toBe(CHAT_PATH)
   // same mount, address nobody clicked in the tree: `/chat` became this project's chat, so the tree shows
   // exactly that entry (R-WP-38) — the mark is the address, not what the mount found first
-  await waitFor(() => expect(markedEntry().textContent).toBe(project().name))
+  await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.chat))
 })
 
 // UC-WP-51
