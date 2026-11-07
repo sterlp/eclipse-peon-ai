@@ -557,8 +557,6 @@ class ToolServiceTest {
             } else {
                 msg = AiMessage.builder().text("Ok").build();
             }
-            System.err.println(req.messages().getLast());
-            System.err.println(msg);
             return ChatResponse.builder().aiMessage(msg).build();
         });
         var memory = new ThreadSafeMemory();
