@@ -1003,7 +1003,10 @@ test('noAnswerLineIsCentredOrRightAligned', async () => {
     false,
   )
 
-  const outOfTheFlow = /text-align:\s*center|margin:\s*0 auto|align-self:\s*flex-end|justify-self:\s*end/
+  // centred, pushed to a side or floated by a free margin — every way a row could leave the flow of the
+  // conversation, whether the sheet spells it as an edge or as `auto`
+  const outOfTheFlow =
+    /text-align:\s*(center|right)|margin[^;]*auto|align-self:\s*(flex-end|center)|justify-self:\s*(end|center)/
   for (const selector of ['.chat-log .chat-line', '.chat-log .chat-line.agent']) {
     expect(declarations(selector), `${selector} stands centred or right-aligned`).not.toMatch(outOfTheFlow)
   }

@@ -1,8 +1,10 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { cleanup, render, type RenderResult } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, type RenderResult } from '@testing-library/react'
 import { Button, ConfigProvider, theme } from 'antd'
 
 import { AppRoot } from '../../src/app/app.root'
+import { AppThemeToggle } from '../../src/app/app.theme.toggle'
+import { content } from '../../src/shared/content'
 import { factoryTheme } from '../../src/shared/theme'
 
 afterEach(() => {
@@ -63,7 +65,8 @@ function answerTheDarkQuery(dark: boolean): void {
  * the only thing the dark table of `index.css` hangs on, so without it a dark basis would be handed light
  * tokens. The start value is the answer of the operating system, and what this browser once chose beats it:
  * the frame reads what the browser left behind (UC-WP-71's second point) and writes nothing before a hand has
- * touched the switch.
+ * touched the switch. That hand is part of the case: the click is the one place the frame writes, so a choice
+ * that forgot the browser would be red here rather than at the browser.
  *
  * Compared against our own dark theme rather than against a colour of the sheet: under `darkAlgorithm` the
  * basis derives the accent it hands a surface from the token, so the value written in the table is not the
@@ -110,4 +113,23 @@ test('appRootSetsTheDocumentTheme', () => {
   )
   expect(document.documentElement.dataset.theme, 'a chosen dark outvotes the operating system').toBe('dark')
   expect(accentOf(chosen), 'and the basis is handed the chosen answer').toBe(accentUnder(true))
+  chosen.unmount()
+  window.localStorage.clear()
+
+  // the hand on the switch itself: what the frame hands down is what the browser keeps, and the document
+  // follows in the same turn — without this click `writeStoredMode` could fall out of the choice and stay
+  // green, because nothing else in this file lets the frame write
+  answerTheDarkQuery(false)
+  render(
+    <AppRoot>
+      <AppThemeToggle />
+    </AppRoot>,
+  )
+  expect(window.localStorage.getItem('aifactory.theme'), 'a screen nobody touched keeps nothing').toBeNull()
+  fireEvent.click(screen.getByRole('switch', { name: content.theme.toggle('light') }))
+  expect(window.localStorage.getItem('aifactory.theme'), 'the switch hands its choice to the browser').toBe(
+    'dark',
+  )
+  expect(document.documentElement.dataset.theme, 'and the document names it at once').toBe('dark')
+  window.localStorage.clear()
 })
