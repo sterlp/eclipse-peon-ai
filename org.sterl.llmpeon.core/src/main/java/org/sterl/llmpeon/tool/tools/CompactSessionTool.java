@@ -8,12 +8,12 @@ import dev.langchain4j.agent.tool.Tool;
 
 public class CompactSessionTool extends AbstractTool {
     public static final String NAME = "compactSession";
+    public static final String EMPTY_PRESERVE = "empty preserve";
+    public static final String PRESERVE = "preseve in tool call";
 
     @Tool(name = CompactSessionTool.NAME,
             value = """
             Compress/compact conversation history to free context, keeping key instructions.
-            If files are also needed, batch this tool first with read tool calls afrerward.
-            Loads them directly after the compact instead of preserving through the compact.
             """)
     public String compactSession(
             @P(description = "Short instructions or next steps to keep and echo back after compression.", required = false, name = "preserve") 
@@ -28,21 +28,16 @@ public class CompactSessionTool extends AbstractTool {
         var result = agent.compact(monitor);
         return switch (result.status()) {
             case COMPACTED -> {
-                // R-CT-8: no own UI line — the agent's compact already sent the one end line; the
-                // tool result below is what the LLM reads.
-                var toolResult = "🗜 " + result.resultLine() + System.lineSeparator()
-                        + (StringUtil.hasValue(preserve)
-                                ? "Preserved:" + System.lineSeparator() + StringUtil.stripToEmpty(preserve)
-                                : "(nothing preserved)");
                 // R-CC-18 (ADR-0070): the consequences of the compact hang on the runner — this
                 // tool. The next addResult's provider inputTokenCount describes the PRE-compact
                 // context, so the counter must be derived from the (small) post-compact memory
                 request.getMemory().markProviderUsageStale();
                 request.getMemory().reevaluateTokens();
                 request.staticMessages(agent.buildStaticMessages(monitor));
-                // R-CIB-6: the tool result carries the same numbers as the log (resultLine), so the
-                // LLM knows in the next turn what the compact did.
-                yield toolResult;
+                
+                // the tool result contains only OK -- as the preserve is already in the chat history as
+                // part of the argument from the LLM, don't echo, this would duplicate preserve
+                yield StringUtil.hasValue(preserve) ? PRESERVE : EMPTY_PRESERVE;
             }
             case SKIPPED_SMALL -> {
                 // R-CC-10: the diagnosis rides on the onTool LOG line only; the result string stays clean.

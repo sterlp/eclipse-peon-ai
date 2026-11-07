@@ -124,6 +124,7 @@ public class ToolLoopRequest {
     }
 
     /** Empties the queue and returns what it held, in order. */
+    // TODO Paul 07.11.2026: This should return 1 UserMessage not a list
     public List<UserMessage> drainAfterResults() {
         synchronized (afterResults) {
             var copy = List.copyOf(afterResults);

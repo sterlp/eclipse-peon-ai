@@ -234,6 +234,7 @@ public class ThreadSafeMemory {
         var aiMessage = response.aiMessage();
         appended.add(aiMessage);
         appended.addAll(toolResult);
+        // PAUL: BUUUG why do we add it that way? Join the user message to one!
         for (var followUp : followUps) {
             appended.add(AiMessage.from("ok"));
             appended.add(followUp);

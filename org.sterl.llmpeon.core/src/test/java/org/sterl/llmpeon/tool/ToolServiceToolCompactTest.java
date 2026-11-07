@@ -116,9 +116,7 @@ class ToolServiceToolCompactTest {
         // instructions; it names the compact by its numbers, never by the summary text (R-CT-8)
         assertThat(toolResults).hasSize(1);
         assertThat(toolResults.getFirst().text())
-                .startsWith("🗜 compressed ")
-                .contains("Preserved:")
-                .contains(PRESERVED)
+                .contains(CompactSessionTool.PRESERVE)
                 .doesNotContain(SUMMARY);
         // AND — the cleared history is gone: no seeded message reaches the second request
         assertThat(rendered(second)).doesNotContain(OLD);
