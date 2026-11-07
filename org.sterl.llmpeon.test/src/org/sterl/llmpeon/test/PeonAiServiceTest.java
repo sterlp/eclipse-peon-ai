@@ -1470,7 +1470,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             var jon = svc.getActiveAgent();
             var ctx = jon.getStaticContext();
             assertEquals(1, ctx.size());
-            assertContains(ctx.get(0).render().body(), "prefer eclipse*"); // Env
+            assertContains(ctx.get(0).render().body(), "eclipse* only; outside workspace"); // Env
 
             // AND: no memory snapshot and no file items in the static context
             var forbidden = List.of(memoryText, "docs/memory.md", "docs/index.md");
@@ -1560,7 +1560,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             // THEN: the new custom agent carries Env in its static context (system prompt) — no memory
             var custom = svc.getAgentService().get("TestAgent").orElseThrow();
             var ctx = custom.getStaticContext();
-            assertContains(ctx.get(0).render().body(), "prefer eclipse*"); // Env
+            assertContains(ctx.get(0).render().body(), "workspace files -> eclipse* only; outside workspace -> disk* only."); // Env
 
             // AND: the original callback fired AFTER the re-bake
             assertEquals("baked", callbackState.get());
@@ -2007,7 +2007,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
 
             // AND: die System-Message trägt Env, aber KEINEN Memory-Snapshot mehr
             var systemMessage = extractSystemMessage(mockLlmServer.getLastRequestBody());
-            assertContains(systemMessage, "prefer eclipse*"); // Env
+            assertContains(systemMessage, "workspace files -> eclipse* only; outside workspace -> disk* only."); // Env
             assertFalse("system prompt must not carry the memory snapshot",
                     systemMessage.contains(memoryText));
 
@@ -2017,7 +2017,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                     .filter(r -> r != null)
                     .map(TaggedResult::body)
                     .toList();
-            assertHasMessageWith(devRendered, "prefer eclipse*"); // Env
+            assertHasMessageWith(devRendered, "workspace files -> eclipse* only; outside workspace -> disk* only."); // Env
             assertHasNoMessageWith(devRendered, memoryText);
         } finally {
             wmt.memoryReset(); // isoliert: Memory nicht in andere Tests/Runs leaken
