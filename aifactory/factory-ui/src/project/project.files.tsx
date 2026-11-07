@@ -258,6 +258,11 @@ function FilesArea({ project, onClose }: { project: Project; onClose(): void }) 
     setBranches(previous => ({ ...previous, [key]: branch }))
   }, [])
 
+  /**
+   * A read that only records its answer. It skips the `loading` entry because its one caller before an
+   * answer exists is the mount below, and a level with no entry yet is already rendered as loading by
+   * `FilesLevel` — anything a click asks for goes through `loadBranch`, which does record it.
+   */
   const readBranch = useCallback(
     (root: FileRoot, path: string) => {
       const key = branchKey(root, path)

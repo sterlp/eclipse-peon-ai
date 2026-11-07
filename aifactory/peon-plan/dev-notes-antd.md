@@ -1091,5 +1091,36 @@ flaches Einheiten-Item unter dem Projekt, das die Adresse nennt (Klasse `app-sid
   schon, `loaded`-Gate fehlt), LOW-3 `theFrameShowsTheProjectTree` liegt noch in
   `test/project/project.page.test.tsx`, LOW-4 Prosa-Kürzungen. Erwartung danach 216 / 22.
 
+## Inkrement 5b-1-N1 (Nacharbeit auf Review `b4c202b0`, 2026-11-07)
+
+Drei Punkte, **kein Verhalten** — zwei Nachweislücken und ein Kommentar mit widerlegter Mechanik.
+
+- **Gemessen nachher:** UI **214 Tests / 22 Dateien grün** (keine neue Testdatei, kein neuer Test — die
+  Assertion sitzt in einem bestehenden), `npx tsc -b` 0, `npx oxlint` 0/0 bei 73 Dateien,
+  `AGENTS-DEV.md` **120 Zeilen** (Cap; gekürzt wurde das Abweichungs-Register **nicht**).
+- **N1 (BUG-1):** `.files-panel[data-wide='true'] + .files-tab` (`styles.css:729`) greift nur bei
+  unmittelbarer Vorgängerschaft; jsdom sieht weder die Kante noch die Reihenfolge. neu im Blatt-Test
+  `filesTabSitsOnThePanelTop`: derselbe Test mountet jetzt (offen **und** breit über `openFileInTree`) und
+  behauptet `data-wide='true'` am Panel plus `expect(tab.previousElementSibling).toBe(panel)`. **Warum hier
+  und nicht in `theFilesTabOpensTheSlideOut`:** die Behauptung „der Tab reitet die breite Kante" steht in
+  diesem Test — die Hälfte, die jsdom nicht sehen kann, gehört an denselben Ort, dann trifft eine
+  Umsortierung genau einen Test. **Mutation** (`{open && <FilesArea …/>}` hinter den Tab gezogen):
+  **`filesTabSitsOnThePanelTop` rot** — `expected <section class="view">… to be <aside class="files-panel">`;
+  die anderen 12 der Datei bleiben grün (Restore per `cp` + `diff -q`).
+- **N2 (BUG-2):** `app.routes.tsx` behauptete, eine **Schwesterroute** wäre „a new mount … `/messages`
+  again … `/events` again" — **gemessen falsch** (React Router 7.18.5: kein zweiter `/messages`-Read).
+  Kommentar sagt jetzt nur noch den wahren Grund (Unterpfad ⇒ Kindroute, rendert nichts, `open` ist eine
+  Lesart des Pfads) + ein Verweis auf `docs/aifactory-architektur.md` („Rahmen, Adresse, Einheit"); die
+  Kopf-Doku der Datei erzählt die Regel nicht mehr nach.
+- **N3 (LOW):** ein Satz an `readBranch`, warum dort kein `loading`-Remember steht (einziger Aufrufer vor
+  der Antwort ist der Mount, und `FilesLevel` zeigt für `undefined` schon den Ladehinweis; Klicklesungen
+  gehen über `loadBranch`). **Nichts umgebaut.**
+- **Restore-Falle, selbst passiert:** der `cp`-Rückweg für die Mutation war **vor** dem N3-Edit gesetzt ⇒ der
+  Restore hat den gerade gesetzten Kommentar weggefressen (still, weil Comment-only). **Regel:** vor jeder
+  Mutation die Sicherung auf der **dann** aktuellen Fassung neu setzen, und nach jedem Restore `git diff`
+  gegen die erwarteten Hübsche — `diff -q` gegen die Sicherung beweist nur, dass die Sicherung alt genug war.
+- **Umzug aus `AGENTS-DEV.md` hierher (Cap):** „Could not parse CSS stylesheet" bei **kaltem vite-Cache**
+  ist Rauschen — erst `rm -rf node_modules/.vite`, dann auf HEAD vergleichen, bevor es als Befund zählt.
+
 
 

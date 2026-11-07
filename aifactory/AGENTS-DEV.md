@@ -63,7 +63,8 @@
   auf, `scrollHeight` = 0): Farb-/Maßverträge aus dem **Stylesheet-Text** lesen
   (`import.meta.glob('../../src/*.css', { query: '?raw' })`, `test.css` an, mit RegExp) und über Tokens
   schließen; eine Grenze wie `MAX_ROWS` wird als **Konstante** gepinnt, nie als Pixel. Kein Selektorwortlaut
-  in CSS-Prosa — die Helfer (`declarations`, `blockOf`, `tokenTable`) suchen den Selektor per `indexOf`.
+  in CSS-Prosa — die Helfer (`declarations`, `blockOf`, `tokenTable`) suchen per `indexOf`. **Zustands-CSS
+  über `+`/`~` braucht die DOM-Nestung dazu** (`previousElementSibling`) — jsdom sieht die Kante nicht.
 - **AntD unter jsdom**: `matchMedia` **und** `ResizeObserver` sind load-bearing (jsdom 26.1.0: Property da,
   Wert `undefined`); `Select` über `<id>_list` (`id` je Choice Pflicht, `useId()` ist im Testbaum nicht
   eindeutig), Helfer `test/shared/choices.ts`. Dunkel ist **eine** Tabelle über `data-theme` am Document;
@@ -77,9 +78,8 @@
   **oxlint**: `react(only-export-components)` — eine Datei mit Komponenten-Export exportiert keine
   Funktionen/Hooks (auch im `test`-Baum nicht), Konstanten dürfen; `react(set-state-in-effect)` verboten
   (Projektwechsel remountet die Chat-Seite über `key={project.id}`).
-- **Routing macht Navigation async** → `findBy*`. „Could not parse CSS stylesheet" bei kaltem vite-Cache ist
-  Rauschen: erst `rm -rf node_modules/.vite` auf HEAD vergleichen. Quellen-Scan nur über `import.meta.glob`
-  mit `?raw` (`node:fs`/`process` sind in `src`+`test` nicht typisiert). **Kein Mount-Beweis über
+- **Routing macht Navigation async** → `findBy*`. Quellen-Scan nur über `import.meta.glob` mit `?raw`
+  (`node:fs`/`process` sind in `src`+`test` nicht typisiert). **Kein Mount-Beweis über
   Schwesterrouten:** gleiche Komponente an derselben Stelle behält React Router die Instanz — „bleibt
   gemountet" beweist nur ein erzwungener Remount (`key={pathname}`).
 - **Zwei Drähte enden auf `/events`** — `/api/projects/events` (Arbeitsstand, Rahmen) und

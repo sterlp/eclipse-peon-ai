@@ -48,9 +48,8 @@ export function AppBrowser() {
  * server already answered it with this app ({@code SpaFallbackResolver}).
  *
  * The file area is a child of its chat address (`chat/:project/files`) and not a fourth view: the child
- * route renders nothing, its only purpose being that the chat stays mounted while that address changes
- * (R-WP-38, UC-WP-70 G2). The team tiles are no address at all, and the insight opens and closes without
- * ever changing it (R-WP-1).
+ * route renders nothing and the page reads `open` from the path (R-WP-38, UC-WP-70 G2). The team tiles are
+ * no address at all, and the insight opens and closes without ever changing it (R-WP-1).
  *
  * `/chat` on its own is the one address that is a question and not a view: it answers with the project this
  * browser last opened, or with the list (R-WP-1, UC-WP-51). It is a redirect and not a fourth page.
@@ -63,9 +62,10 @@ export function AppRoutes() {
         <Route path="projects" element={<ProjectsRoute />} />
         <Route path="chat" element={<LastChatRoute />} />
         <Route path="chat/:project" element={<ChatRoute />}>
-          {/* renders nothing: its only purpose is that `chat/:project` stays mounted across the address
-              change to the file area and back — a sibling route would be a new mount, which would read
-              `/messages` again and open `/events` again, killing a running turn (R-WP-38, UC-WP-70 G2) */}
+          {/* the unit is a sub-path of the chat address, so its route hangs under this one and renders
+              nothing: `open` is one reading of the pathname (R-WP-38, UC-WP-70 G2). That a running turn
+              survives the switch is pinned by an enforced remount in `aRunningTurnSurvivesTheUnitClick`,
+              never by this shape — see docs/aifactory-architektur.md, „Rahmen, Adresse, Einheit" */}
           <Route path="files" element={<></>} />
         </Route>
         <Route path="settings" element={<ConfigPage />} />

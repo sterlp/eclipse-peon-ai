@@ -463,7 +463,20 @@ test('theChatStaysVisibleWhileTheViewerIsOpen', async () => {
 })
 
 // UC-WP-60
-test('filesTabSitsOnThePanelTop', () => {
+test('filesTabSitsOnThePanelTop', async () => {
+  // the sheet below is read as text — but the wide edge is a **sibling** rule, and jsdom sees neither the
+  // edge nor the order it depends on, so the mount that order has to be true for is made right here
+  stubFactory()
+  await openProjectChat()
+  await openFileInTree('app.tsx (12 B)')
+  await screen.findByTestId('files-viewer')
+  const panel = screen.getByTestId('files-panel')
+  const handle = screen.getByTestId('files-open')
+  expect(panel, 'a read file is what makes the panel wide').toHaveAttribute('data-wide', 'true')
+  expect(handle.previousElementSibling, 'the wide rule can only read the panel directly beside the tab').toBe(
+    panel,
+  )
+
   const tab = declarations('.files-tab')
 
   // a fixed tab at a percentage height met the panel top by accident, at one window height only; hung on
