@@ -1087,9 +1087,27 @@ flaches Einheiten-Item unter dem Projekt, das die Adresse nennt (Klasse `app-sid
   selben Zuge unverändert übernehmen. Vor jeder Teststufe: `git diff <datei>` gegen die erwarteten Hübsche.
   `cp`-Sicherungen nur von der **finalen** Fassung; `git checkout --` ist kein Rückweg für etwas, was
   Jons Hand schon geändert hat.
-- **Noch offen für 5b-2 (nicht angefasst):** LOW-1 zweiter `listProjects()` in `ChatRoute` (Rahmen liest
-  schon, `loaded`-Gate fehlt), LOW-3 `theFrameShowsTheProjectTree` liegt noch in
-  `test/project/project.page.test.tsx`, LOW-4 Prosa-Kürzungen. Erwartung danach 216 / 22.
+
+## Inkrement 5b-2 (Aufräumen, 2026-11-07) — hier eingefügt, vor dem 5b-1-N1-Block; zeitlich liegt er **danach**
+
+- **Gemessen:** UI **216 Tests / 22 Dateien grün**, `npx tsc -b` 0, `npx oxlint` 0/0 bei 73 Dateien. Die
+  Zahl steigt um genau zwei Tests (`aChatReadsTheProjectListOnce`, `aRefusedProjectListShowsTheList…`);
+  LOW-3 verschiebt nur (`theFrameShowsTheProjectTree` → `test/app/app.shell.test.tsx`, Behauptungen
+  wörtlich, `stubAppServer()` statt des lokalen `Host`-Doppels).
+- **LOW-1:** `ChatRoute` fragt das Registry **nicht** mehr selbst — `projects` + `loaded` kommen aus
+  `useAppContext()` (`useProjectList` meldet `loaded` in **beiden** Zweigen, auch nach Fehler). Der
+  Deep-Link merkt das Projekt weiter über `writeLastProject` (Effekt an `[project]`, kein State).
+- **Gate-Mutationen, beide genau einen Test treffend:** zweiten `listProjects()`-Ruf in `ChatRoute`
+  zurückholen ⇒ `aChatReadsTheProjectListOnce` rot (3 Reads statt 1); `setLoaded(true)` nur im `then`
+  ⇒ `aRefusedProjectListShowsTheListNotALoadingLine` rot. Ohne diese beiden Tests bliebe jede Mutation
+  am Gate grün — deshalb sind sie Teil des Aufräum-Slices.
+- **Zähler-Idiom:** Reads des Registry = `vi.mocked(fetch).mock.calls` mit `String(call[0]) === '/api/projects'`
+  (`endsWith('/events')` trifft auch den Arbeitsstand-Draht, ein Zähler über Teilzeichenketten zählt dort doppelt).
+- **Stub-Ansatz für eine abgelehnte Liste:** `stubAppServer()` zuerst, dann `fetch` um ein `vi.fn` wickeln, das
+  nur `/api/projects` mit 500 ablehnt und alles andere an den Harness-Stub durchreicht — sonst hängt der
+  offene `/events`-Strom des Rahmens als ungeschlossener Reader nach (der Harness kann nur seinen eigenen
+  Stream schließen).
+- **Die drei LOWs sind damit abgearbeitet:** LOW-1 (zweiter Read), LOW-3 (Test verschoben), LOW-4 (Prosa).
 
 ## Inkrement 5b-1-N1 (Nacharbeit auf Review `b4c202b0`, 2026-11-07)
 

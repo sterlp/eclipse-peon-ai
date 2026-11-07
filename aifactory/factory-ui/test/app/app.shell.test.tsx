@@ -29,6 +29,22 @@ afterEach(async () => {
   vi.restoreAllMocks()
 })
 
+// UC-WP-1
+test('theFrameShowsTheProjectTree', async () => {
+  stubAppServer()
+  renderApp()
+
+  // the frame owns the read (D1), so the tree fills in with it
+  expect(await within(nav()).findByText(project().name)).toBeInTheDocument()
+
+  // the frame is the tree (R-WP-38): the list first, then one entry per project; the showing entry carries
+  // the basis' item state (ANTD-A1, R-WP-39) and the answer a screen reader reads (ANTD-A9)
+  const entries = within(nav()).getAllByRole('menuitem')
+  expect(entries.map(entry => entry.textContent)).toEqual([content.nav.projects, project().name])
+  expect(entries.map(entry => entry.getAttribute('aria-current'))).toEqual(['page', null])
+  expect(entries.filter(entry => entry.className.includes('ant-menu-item-selected'))).toHaveLength(1)
+})
+
 // UC-WP-53
 test('theUiSpeaksEnglish', async () => {
   stubAppServer()

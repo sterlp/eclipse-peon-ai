@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import {
   BrowserRouter,
   Navigate,
@@ -24,10 +24,8 @@ import { ChatPage } from '../chat/chat.page'
 import { ConfigPage } from '../config/config.page'
 import { ProjectFiles } from '../project/project.files'
 import { ProjectPage } from '../project/project.page'
-import { listProjects } from '../project/project.client'
 import { content } from '../shared/content'
 import { readLastProject, writeLastProject } from '../shared/last.project'
-import type { Project } from '../shared/dto'
 
 /** The address the app is built under (R-WP-22) — every route below is relative to it. */
 export const BASENAME = '/ui'
@@ -100,20 +98,19 @@ function LastChatRoute() {
 }
 
 /**
- * The chat of the project the address names (UC-WP-43). The list is read because it is the only edge that
- * turns a name into a project — there is no `GET /api/projects/{name}` and this increment adds none. While it
- * is read the view says so instead of guessing an empty chat.
+ * The chat of the project the address names (UC-WP-43). A name becomes a project through the list the frame
+ * already read — there is no `GET /api/projects/{name}`, and none is added here (R-WP-38). While that read is
+ * still open the view says so instead of guessing an empty chat.
  *
- * A segment the list does not hold is a project that is gone: the address is replaced by the list, which is
- * where a missing project can be added again. A fourth view for that case is what R-WP-1 forbids.
+ * A segment the loaded list does not hold is a project that is gone: the address is replaced by the list,
+ * where a missing project can be added again — a fourth view for that case is what R-WP-1 forbids.
  */
 function ChatRoute() {
   const { project: segment } = useParams<{ project: string }>()
   const { pathname } = useLocation()
   const navigate = useNavigate()
-  const { user } = useAppContext()
-  const [project, setProject] = useState<Project | null>(null)
-  const [unknown, setUnknown] = useState(false)
+  const { user, projects, loaded } = useAppContext()
+  const project = segment === undefined ? null : projectOfSegment(projects, segment)
 
   /**
    * Openness of the file area is a reading of the address — the same reader the sider uses, so the panel
@@ -129,40 +126,20 @@ function ChatRoute() {
     navigate(filesOpen ? chatPath(segment) : chatFilesPath(segment))
   }
 
+  // a deep link opens a chat nobody clicked, and the bare `/chat` address needs to know it was here (UC-WP-51)
   useEffect(() => {
-    if (segment === undefined) {
-      return
+    if (project !== null) {
+      writeLastProject(projectSegment(project))
     }
-    // the segment came from the address, so only this effect may say what it found (no write after unmount)
-    let mine = true
-    listProjects()
-      .then(projects => {
-        if (!mine) {
-          return
-        }
-        const found = projectOfSegment(projects, segment)
-        setProject(found)
-        setUnknown(found === null)
-        if (found !== null) {
-          // opening a chat makes it the active project of this browser — the `/chat` address needs it (UC-WP-51)
-          writeLastProject(projectSegment(found))
-        }
-      })
-      .catch(() => {
-        if (mine) {
-          setUnknown(true)
-        }
-      })
-    return () => {
-      mine = false
-    }
-  }, [segment])
+  }, [project])
 
-  if (unknown) {
-    return <Navigate to={projectsPath} replace />
-  }
   if (project === null) {
-    return <p className="empty-state">{content.common.loading}</p>
+    // only a read registry can call a project gone; with no answer yet there is nothing to conclude (R-WP-1)
+    return loaded ? (
+      <Navigate to={projectsPath} replace />
+    ) : (
+      <p className="empty-state">{content.common.loading}</p>
+    )
   }
 
   return (

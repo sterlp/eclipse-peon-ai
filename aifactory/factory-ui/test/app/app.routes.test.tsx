@@ -305,6 +305,44 @@ test('aProjectThatIsGoneLeadsToTheList', async () => {
   await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.projects))
 })
 
+// R-WP-38
+test('aChatReadsTheProjectListOnce', async () => {
+  // tree and chat answer from one read (D1): a deep link resolves its name out of the frame's answer instead
+  // of asking the registry the same question twice
+  stubAppServer()
+  renderApp(CHAT_PATH)
+  await screen.findByRole('region', { name: content.chat.title })
+
+  const reads = vi.mocked(fetch).mock.calls.filter(call => String(call[0]) === '/api/projects')
+  expect(reads, 'one read of the registry for the whole frame').toHaveLength(1)
+})
+
+// R-WP-38
+// R-WP-1
+test('aRefusedProjectListShowsTheListNotALoadingLine', async () => {
+  // a refused registry is an answer too: a deep link must stop waiting on it, and the list is the page that
+  // can say why it stands empty — the loading line would be a view waiting for a question already answered
+  stubAppServer()
+  const frame = vi.mocked(fetch)
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL) =>
+      String(input) === '/api/projects'
+        ? new Response(JSON.stringify({ status: 500, error: 'unreadable', message: 'registry unreadable' }), {
+            status: 500,
+            headers: { 'content-type': 'application/json' },
+          })
+        : frame(input),
+    ),
+  )
+  const app = renderApp(CHAT_PATH)
+
+  expect(await screen.findByText('registry unreadable')).toBeInTheDocument()
+  expect(screen.getByLabelText(content.projects.gitUrl)).toBeInTheDocument()
+  expect(screen.queryByText(content.common.loading), 'no view stuck on its loading line').toBeNull()
+  expect(app.path()).toBe('/projects')
+})
+
 // UC-WP-70
 test('aNewProjectAppearsInTheSider', async () => {
   // one owner of the list (D1): the frame reads it once and both the tree and the page show that read

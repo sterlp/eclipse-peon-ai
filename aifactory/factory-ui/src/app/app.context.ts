@@ -12,6 +12,8 @@ export interface AppContext {
   projects: Project[]
   /** Why the tree is empty, when it is empty because the registry could not be read. */
   listError: string | null
+  /** The frame's read is over — an answer, refused or not. Until then a view knows nothing (R-WP-38). */
+  loaded: boolean
   reloadProjects: () => Promise<void>
   /** Remembers the project as this browser's last one and opens its chat (UC-WP-51, UC-WP-52). */
   openProject: (project: Project) => void

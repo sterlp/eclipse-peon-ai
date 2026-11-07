@@ -38,7 +38,7 @@ export default function AppShell() {
   // login, so the shell only holds it while the page runs (R-WP-17)
   const [user, setUser] = useState<string | null>(readUserName)
   // one read for the tree and for the list page (D1): a project added on the page appears in the tree
-  const { projects, error, reload } = useProjectList()
+  const { projects, error, loaded, reload } = useProjectList()
 
   function openProject(project: Project): void {
     const segment = projectSegment(project)
@@ -61,6 +61,7 @@ export default function AppShell() {
     user,
     projects,
     listError: error,
+    loaded,
     reloadProjects: reload,
     openProject,
   } satisfies AppContext

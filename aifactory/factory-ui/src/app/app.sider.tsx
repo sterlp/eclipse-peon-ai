@@ -37,21 +37,17 @@ const keyOf = (project: Project): string => projectKeyOf(projectSegment(project)
 const unitKeyOf = (project: Project): string => filesKeyOf(projectSegment(project))
 
 /**
- * The frame's navigation (R-WP-38): the project list first, then one entry per project, and under the one
- * project the address names its file area — no agent entry, no second place that adds or removes a
- * project. The header's Settings stays out of here, because the tree answers "which project" and not
- * "which page".
+ * The frame's navigation (R-WP-38): the list first, then one entry per project and, under the one the
+ * address names, its file area.
  *
- * A unit is a flat item directly after its project and carries its own class for the indent: its openness
- * is a reading of `activeKey`, so there is no `openKeys` and nothing to keep in step. Only one entry of
- * the whole tree is marked — the one the address names, never both a project and its unit.
+ * A unit is a **flat** item carrying its own class for the indent, so its openness stays a reading of
+ * `activeKey` — no `SubMenu`, no `openKeys`, nothing to keep in step. The `<nav>` is ours because the
+ * basis renders `ul[role=menu]` with no landmark, and the tests and a screen reader both ask for the
+ * navigation by name.
  *
- * The `<nav>` is ours: the basis renders `ul[role=menu]` and no landmark, and the tests and a screen reader
- * both ask for the navigation by name.
- *
- * `collapsed` is left to the basis on purpose. A controlled value would be answered by its responsive effect
- * once and ignored afterwards, so the trigger that R-WP-38 needs under the breakpoint — the only way back to
- * the tree at `collapsedWidth={0}` — would stop working.
+ * `collapsed` is left to the basis on purpose: its responsive `matchMedia` effect answers a controlled
+ * value once, at mount, and ignores it afterwards — the trigger R-WP-38 needs under the breakpoint, the
+ * only way back at `collapsedWidth={0}`, would stop working.
  */
 export function AppSider({ projects, activeKey, onOpen, onProjects, onFiles }: Props) {
   const items: NavItem[] = [entry(siderRootKey, content.nav.projects, activeKey === siderRootKey)]
