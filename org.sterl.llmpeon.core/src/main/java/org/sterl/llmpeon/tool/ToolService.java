@@ -18,6 +18,7 @@ import org.sterl.llmpeon.mcp.McpService;
 import org.sterl.llmpeon.queuedmessages.QueuedUserMessages;
 import org.sterl.llmpeon.shared.OwnerMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.tool.component.RescueToolComponent;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 import org.sterl.llmpeon.tool.model.ToSimpleMessage;
 import org.sterl.llmpeon.tool.tools.AbstractTool;
@@ -208,6 +209,14 @@ public class ToolService {
                 // component compacts directly, in the band it hints (one implementation, ADR-0070)
                 compactHandler.handle(req, hasCompactTool);
 
+            } else if (RescueToolComponent.isToolCall(response.aiMessage())) {
+                ++stuck;
+                req.monitor.onProblem("AI returned a tool call as response!");
+                if (stuck > MAX_STUCK_ITERATIONS) break;
+
+                req.getMemory().addResult(response);
+                req.getMemory().add(RescueToolComponent.AI_INFO);
+                shouldLoop = true;
             } else if (hasResponseMessage) {
                 stuck = 0; // reset on productive response
                 req.getMemory().addResult(response);

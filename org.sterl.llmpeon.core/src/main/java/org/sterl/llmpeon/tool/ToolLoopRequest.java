@@ -50,6 +50,7 @@ import lombok.NonNull;
  * https://github.com/ggml-org/llama.cpp/issues/22746
  * https://github.com/ggml-org/llama.cpp/pull/13194#issuecomment-4586088278
  */
+// TODO move to model
 @Builder(toBuilder = true)
 public class ToolLoopRequest {
 
