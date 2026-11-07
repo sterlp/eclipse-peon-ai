@@ -8,10 +8,11 @@ Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwiss
 
 ## Zyklus 2026-11-06/07 — Runde 4: AntD-Umbau („durchbauen"; Paul inzwischen wieder da, parallel im Core)
 
-Branch `web-factory-mvp-2`, Spitze `680f2239` = origin. Kette Inc 4: `832a9772` (4a) → `b51571b2` (N1)
+Branch `web-factory-mvp-2`, Spitze `2ec9d4f5` = origin. Kette Inc 4: `832a9772` (4a) → `b51571b2` (N1)
 → `6249d59a` (N2) → `eb103276` (4b) → `9704013a` → `98f55700` (4c) → `8da14901` (N1) → `a0a2c3f2`
 (N2 + Docs-Flip) → `5cfd251e` (memory). Inc 5a: `c04f8ed1` (Sider + Docs) → `a32409ad` (URL = Name) →
-`87949a90` (Cleanup) → **`680f2239` (5a-N1 Review-Delta)**.
+`87949a90` (Cleanup) → `680f2239` (5a-N1). Inc 5b: `b4c202b0` (5b-1) → `6578719d` (N1 Docs) →
+`83a63547` (N1 Code) → `583719d0` (Jons Docs) → **`2ec9d4f5` (5b-2)**.
 
 **Inkrement 4 — Timeline ✅ abgenommen** ([R-WP-40/UC-WP-72](chat.md), [R-WP-29/UC-WP-55](chat.md)):
 kein `hr`; Werkzeug-Stempel = Name + Ankunftszeit am **geschlossenen** Schritt; Indikator am letzten
@@ -48,17 +49,24 @@ den Tab" ist damit **rot**; Kommentar in `app.routes.tsx` sagt jetzt **Grammatik
 Architektur-Doc hält den gemessenen Befund (eine **Schwesterroute** remountet den Chat **nicht**,
 React Router 7.18.5 — Mount-Kontinuität beweist nur ein erzwungener Remount).
 
-**Gemessen (Spitze `83a63547`):** UI **214 Tests / 22 Dateien**, `tsc -b` 0, oxlint 0/0 (73 Dateien),
+**Inkrement 5b-2 — Aufräumen, abgenommen ohne zweite Review-Runde** (`2ec9d4f5`): Chat löst seinen Namen
+aus der Rahmen-Lesung (`useAppContext`), **zweiter Registry-Read weg**; `loaded` = „Antwort da, **auch eine
+abgelehnte**" — sonst hinge ein Deep-Link für immer in der Ladezeile (beides neu gepinnt:
+`aChatReadsTheProjectListOnce`, `aRefusedProjectListShowsTheListNotALoadingLine`, je eine Mutation ⇒ rot).
+Rahmen-Test `theFrameShowsTheProjectTree` nach `test/app/app.shell.test.tsx` **verschoben** (`// UC-WP-1`
+wanderte mit), Kommentar-Prosa in `app.sider.tsx`/`project.list.ts`/`last.project.ts` auf Regel-IDs
+gekürzt — WHY blieb (`collapsed` nie controlled, `matchMedia` beim Mount, Segment = Name).
+
+**Gemessen (Spitze `2ec9d4f5`):** UI **216 Tests / 22 Dateien**, `tsc -b` 0, oxlint 0/0 (73 Dateien),
 `AGENTS-DEV.md` 120 Zeilen · Backend **227/0** (in 5b nicht gebaut) · Doc-Lint **28** Findings = nur
 Fremd-Docs (PC 14, CR 14), kein `UNBELEGT_ERLEDIGT`. Dev/Review scoppen enger — **immer selbst messen.**
 
-**Nächste Schritte:** (1) **5b-2 = nur Aufräumen** (Plan §9, abgenommen): LOW-1 zweiter
-`listProjects()`-Read in `app.routes.tsx` → Kontext + `loaded`-Tor, LOW-3 `theFrameShowsTheProjectTree`
-nach `test/app/app.shell.test.tsx`, LOW-4 R-WP-38-Prosa in Kommentaren kürzen (WHY bleibt) — Erwartung
-**216 / 22**, kein neues Verhalten, **keine zweite Review-Runde** (Jon misst selbst); danach Plan
-archivieren + Archiv löschen. (2) Rest-Backlog: C-7 (Agent-Blick read-only live), C-2a,
+**Nächste Schritte:** AntD-Umbau ist **durch** (Inc 1–5b ✅, Plan archiviert). Weiter im Backlog:
+**C-7** (Agent-Blick read-only live im gleichen Chat-Widget — neuer Plan nötig), dann C-2a,
 C-1 TurnClaim-Timeout (`ProjectRuntime.java:348`), F8/F10, Mini 3c (`data:`-Bild ⇒ Alt statt leerem
-`src`). Stagehand ⏳ parked (Node ≥22.18 vs. Bau 22.12).
+`src`). **Look-Abnahme am Browser steht aus** (Pixel, dunkel, Sider-Breite — open-points #3/#6).
+Stagehand ⏳ parked (Node ≥22.18 vs. Bau 22.12). `peon-plan/review-findings.md` ist **ungetrackt**
+(siehe #3).
 
 ## Entscheidungen dieser Runde (Kurzfassung)
 

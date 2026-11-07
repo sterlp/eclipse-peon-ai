@@ -113,7 +113,10 @@ Fenster unter den Sider-Breakpoint, **klappt der Sider** und die Chat-Fläche nu
 Auswahl bleibt über
 den ausgeklappten Sider erreichbar. Die **Chat-Eingabe** gehört zur **Chat-Spalte** (dockt unten
 innerhalb ihrer Spalte, [R-WP-35](chat.md)) — sie läuft nicht unter dem Sider durch, der Sider läuft
-in voller Höhe daneben.
+in voller Höhe daneben. Für die Markierung **und** für die Frage, welches Projekt die Adresse nennt, gilt
+**ein einziger Lesevorgang**: die Antwort kommt aus der Liste, die der Rahmen gelesen hat — die App fragt
+die Registry nicht zweimal. Ist diese Lesung **abgelehnt**, ist sie trotzdem zu Ende: der Nutzer sieht die
+Projektliste mit dem Grund, nie eine Ladezeile, die auf eine Antwort wartet, die schon da war.
 
 #### UC-WP-70 — projectTreeAndUnitEntries ✅
 - GIVEN die App WHEN sie öffnet THEN zeigt der Sider **zuerst „Projects"** und darunter **ein Eintrag je

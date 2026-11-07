@@ -346,46 +346,58 @@ THEN nichts wird injiziert (kein Error, kein Status-Eintrag)
   sonst gerendeter Content bei `dedupKey() = null`); nur einmal injiziert, nie nachträglich
   angepasst (KV Cache!).
 
-## Compact-Tool-Result: preserve only (SOLL 2026-09-10) — ✅ done
+## Compact-Tool-Result: kein Echo — preserve in den Argumenten (Δ 2026-11-07) — ✅ done
 
 Auslöser: User-Befund „Es wird doppelt eingefügt". Die Compressor-Summary stand **zweimal** im
 Kontext: (1) als AiMessage — `AbstractAgent.compact()` → `memory.add(response.aiMessage())`;
 (2) als `ToolExecutionResultMessage` — `CompactSessionTool` gab `summary.aiMessage().text()` als
-Tool-Result zurück, das `ToolService.executeLoop:158` (`addResult(response, tR)`) in die Memory
+Tool-Result zurück, das `ToolService.executeLoop` (`addResult(response, tR)`) in die Memory
 schreibt.
 
-**Regel: Das Compact-Tool-Result trägt nur `preserve`.** Die Summary lebt ausschließlich als
-AiMessage in der Memory (eine Quelle, kein Duplikat).
+**Regel: Das Compact-Tool-Result echo't weder Summary noch preserve.** Die Summary lebt
+ausschließlich als AiMessage in der Memory; der preserve-Text lebt ausschließlich in den
+**Tool-Call-Argumenten** — die AiMessage mit den `toolExecutionRequests` ist Teil der History
+(ToolService `addResult` re-added sie bewusst, Message-Contract). Ein Echo wäre ein Duplikat.
 
-* Result = `Preserved:\n<preserve>` wenn preserve gesetzt; sonst der Marker `Session compacted.`
-  (Tool-Results sind nie leer — das Tool sagt, was passiert ist).
+* Result = der Marker `Compacted. Preserve text is in call arguments.` (`PRESERVE`) wenn
+  preserve gesetzt; sonst der Marker `empty preserve` (`EMPTY_PRESERVE`) —
+  Tool-Results sind nie leer, das Tool sagt, was passiert ist.
 * Die Compact-Abschlussmeldung bleibt UI-only (`onTool`) und wandert nicht ins Result — seit
   [R-CT-8](compact-lock.md) (2026-10-24) ist das die uniforme End-Zeile `🗜 <Agent> compacted: …`;
   die alte „Da Scribe done (Xs)"-Zeile ist entfallen.
 * Das Re-Add der Pre-Compact-Assistant-Message (ToolService `addResult`) bleibt **bewusst** — das
-  Tool-Result braucht seine Assistant-Message mit toolCalls (Message-Contract, issue-87-Repair).
+  Tool-Result braucht seine Assistant-Message mit toolCalls (Message-Contract, issue-87-Repair);
+  es ist zugleich die Quelle, in der preserve genau einmal steht.
 * `AbstractAgent.compact()` / `AiCompressorAgent` bleiben unverändert.
+
+**Trail:** SOLL 2026-09-10 (Summary raus aus dem Result), 2026-09-11 (Marker-Kollision
+`(nothing preserved)` / `Preserved:\n<preserve>`), **Δ 2026-11-07 (Paul):** preserve selbst wird
+nicht mehr geecho't — Argumente statt Duplikat, Marker vereinfacht auf
+`PRESERVE` / `EMPTY_PRESERVE`.
 
 ### BDD
 
 ```
 GIVEN ein Agent, dessen compact() die Summary „SUMMARY-X" als AiMessage in die Memory legt
 WHEN compactSession mit preserve = „KEEP-1" ausgeführt wird
-THEN das Tool-Result enthält „KEEP-1" und NICHT „SUMMARY-X"
+THEN „KEEP-1" steht genau einmal in der Memory — als Teil der Tool-Call-Argumente
+AND das Tool-Result ist der Marker „Compacted. Preserve text is in call arguments." (kein Echo)
 AND die Memory enthält „SUMMARY-X" genau einmal (AiMessage aus compact())
 
 GIVEN compactSession ohne preserve
 WHEN das Tool ausgeführt wird
-THEN das Result ist der Marker „Session compacted." (nicht leer)
+THEN das Result ist der Marker „empty preserve" (nicht leer)
 ```
-Test: `CompactSessionToolTest` — Red-Nachweis VOR dem Fix (alter Code fügt SUMMARY-X ins Result
-ein), Fix, dann grün.
+Tests: `CompactSessionToolTest` (Red-Nachweis VOR dem Fix von 2026-09-10: alter Code fügte
+SUMMARY-X ins Result ein; `preserveTextKept` pinnt preserve-Count == 1 — die Argumente) und
+`AiDeveloperAgentTest.test_clear_memory` (EMPTY_PRESERVE-Marker).
 
-**✅ done (2026-09-10):** Red-Evidenz: Result trug `SUMMARY-X\nPreserved:\nKEEP-1` →
-Fix: Result = `Preserved:\n<preserve>` / Marker `Session compacted.` (nie leer), Summary-Return
-entfernt, `onTool("Da Scribe done…")` unverändert. Zwei Alt-Assertions, die den Bug pinnnten,
-angepasst (`CompactSessionToolTest` delegiert → `doesNotContain`, `AiDeveloperAgentTest
-.test_clear_memory` → `isEqualTo("Session compacted.")`).
+**Historisch ✅ done (2026-09-10):** Red-Evidenz: Result trug `SUMMARY-X\nPreserved:\nKEEP-1` →
+Fix: Summary-Return entfernt, `onTool("Da Scribe done…")` unverändert. Zwei Alt-Assertions, die
+den Bug pinnnten, angepasst (`CompactSessionToolTest` delegiert → `doesNotContain`,
+`AiDeveloperAgentTest.test_clear_memory`). — Seither zweimal präzisiert: Result-Marker zuerst
+`Preserved:\n<preserve>` / `Session compacted.`, seit 2026-09-11 `(nothing preserved)` /
+`Preserved:\n<preserve>`, seit **2026-11-07** `PRESERVE` / `EMPTY_PRESERVE` (siehe oben).
 ## Compact-Result genau einmal (SOLL 2026-09-11) — ✅ done
 
 Auslöser: User-Befund 2026-09-11 — Compact-Result 2× sichtbar. Zwei unabhängige Duplikate:
@@ -403,9 +415,10 @@ Auslöser: User-Befund 2026-09-11 — Compact-Result 2× sichtbar. Zwei unabhän
 
 * **Memory:** kanonische Quelle ist der **Marker-Block der Reinsert-UserMessage** (letzter
   TextContent beginnt mit `Session compacted:`, R-CC-9) — sie existiert in BEIDEN Pfaden (Button
-  ruft `compact()` direkt, ohne Tool-Result). Das
-  no-preserve-Tool-Result trägt deshalb den Marker `(nothing preserved)` — nicht leer, aber ohne
-  Duplikat des Resume-Texts. Mit preserve: `Preserved:\n<preserve>` (unverändert).
+  ruft `compact()` direkt, ohne Tool-Result). Das no-preserve-Tool-Result trägt deshalb einen
+  Marker, der kein Duplikat des Resume-Texts ist — aktuell `empty preserve` (Δ 2026-11-07, zuvor
+  `(nothing preserved)`); mit preserve `Compacted. Preserve text is in call arguments.` —
+  preserve selbst steht nur in den Argumenten (siehe Abschnitt oben).
 * **Render:** nach Button-Compact ist das Voll-Re-Render der Memory autoritativ. Bei **echtem
   Erfolg** (`ChatResponse != null`) wird der Chat vor dem Re-Render geleert — der live gestreamte
   Compressor-Post bleibt nicht als permanentes Duplikat stehen. **Fehlerpfad: kein Clear** —
@@ -421,7 +434,7 @@ GIVEN ein In-Loop-Compact (Agent ruft compactSession ohne preserve)
 WHEN der Turn abgeschlossen ist
 THEN enthält contains(„Session compacted") über ALLE Messages der Memory genau 1 Treffer
      (der Marker-Block der Reinsert-UserMessage, letzter TextContent)
-AND das Tool-Result ist „(nothing preserved)" (nicht leer, kein Duplikat)
+AND das Tool-Result ist „empty preserve" (nicht leer, kein Duplikat)
 
 GIVEN ein Agent, dessen compact() die Summary „SUMMARY-X" in die Memory legt
 WHEN compactSession mit preserve = „KEEP-1" ausgeführt wird
