@@ -90,10 +90,10 @@ test('aLiveTraceStaysBetweenItsInputAndTheAnswer', () => {
   const shape = [...screen.getByTestId('chat-log').children].map(line =>
     line.getAttribute('data-testid'),
   )
-  expect(shape).toEqual(['chat-line-user', 'chat-line-user', 'chat-tool-line', 'chat-line-jon'])
-  // one box for the run, and both of its lines
+  expect(shape).toEqual(['chat-line-user', 'chat-line-user', 'chat-timeline', 'chat-line-jon'])
+  // one timeline for the run, and both of its entries
   expect([
-    ...screen.getByTestId('chat-tool-line').querySelectorAll('.chat-tool-line'),
+    ...screen.getByTestId('chat-timeline').querySelectorAll('.chat-trace-item'),
   ]).toHaveLength(2)
 })
 
@@ -120,9 +120,9 @@ test('onlyAnswersAreMarkdown', () => {
   const wordLiteral = [
     screen.getByTestId('chat-line-user'),
     ...screen.getAllByTestId('chat-line-error'),
-    screen.getByTestId('chat-tool-line'),
+    screen.getByTestId('chat-timeline'),
   ]
-  expect(wordLiteral, 'input, both failures and the tool line are drawn').toHaveLength(4)
+  expect(wordLiteral, 'input, both failures and the trace are drawn').toHaveLength(4)
   for (const line of wordLiteral) {
     const name = line.getAttribute('data-testid')
     expect(line.querySelector('strong, del, br, table'), `${name} stays its wording`).toBeNull()

@@ -98,18 +98,29 @@ test('theBasisIsTheOnlyDesignLibraryOfTheApp', () => {
     'buttons, cards, fields, choices and icons come from the basis',
   ).toBeGreaterThanOrEqual(6)
   // R-WP-39 / UC-WP-71 GIVEN 4 draws the line where the basis stops: the conversation keeps our classes.
-  // So the ban is the whole chat folder and the exception is the one name the docs hand to the basis
-  // (R-WP-39 names `Input`, R-WP-41 its auto-grow): a new file of the conversation arrives inside the ban,
-  // which is exactly GIVEN 1 — the same mistake a second time makes the suite red, not the file list.
-  const basisOwnField = ['chat.composer.tsx']
+  // So the ban is the whole chat folder and the exception is the two surfaces the docs hand to the basis —
+  // R-WP-39 names `Input`, R-WP-41 its auto-grow, and R-WP-40 the timeline the trace is drawn with. A new
+  // file of the conversation arrives inside the ban, which is exactly GIVEN 1 — the same mistake a second
+  // time makes the suite red, not the file list.
+  const basisOwnSurface = ['chat.composer.tsx', 'chat.timeline.tsx']
   const basisInsideTheChat = builtWithBasis
     .map(([path]) => path)
-    .filter((path) => path.includes('/chat/') && !basisOwnField.some((name) => path.endsWith(`/${name}`)))
+    .filter((path) => path.includes('/chat/') && !basisOwnSurface.some((name) => path.endsWith(`/${name}`)))
   expect(basisInsideTheChat, 'no line of the conversation is painted by the basis').toEqual([])
   expect(
     builtWithBasis.map(([path]) => path).filter((path) => path.endsWith('/chat.composer.tsx')),
     'the field beside the conversation is the basis own (R-WP-41)',
   ).toHaveLength(1)
+  // the exception stops at the trace: the two files that draw a VOICE of the conversation stay ours, so the
+  // ban keeps its meaning after R-WP-40 handed the trace to the basis
+  const voices = files
+    .filter(([path]) => /\/chat\.(log|markdown)\.tsx$/.test(path))
+    .map(([path]) => path)
+  expect(voices, 'the scan sees the two files that draw a voice').toHaveLength(2)
+  expect(
+    voices.filter(path => builtWithBasis.some(([built]) => built === path)),
+    'a voice of the conversation is nobody but ours: neither the log nor its Markdown builds with the basis',
+  ).toEqual([])
 
   // the other side of one basis: no second library, no bridge of copied variables, no icon font — in the
   // forms they really take, which is what `design.basis.ts` states and the test below proves

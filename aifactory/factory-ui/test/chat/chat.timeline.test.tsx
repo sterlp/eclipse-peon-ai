@@ -12,7 +12,6 @@ import {
   MAX_TOOL_LINES,
   type LiveItem,
 } from '../../src/chat/chat.live'
-import { appSheet, declarations } from '../shared/sheets'
 import { content } from '../../src/shared/content'
 import type { ChatMessage } from '../../src/chat/chat.client'
 
@@ -48,9 +47,15 @@ function stepsOf(...steps: Step[]): LiveItem[] {
   return items
 }
 
-/** The step lines of the one box a run draws, in the order the screen shows them. */
+/** The step entries of the one timeline a run draws, in the order the screen shows them. */
 function drawnSteps(): Element[] {
-  return [...screen.getByTestId('chat-tool-line').querySelectorAll('.chat-tool-line')]
+  return [...screen.getByTestId('chat-timeline').querySelectorAll('.chat-trace-item[data-trace="tool"]')]
+}
+
+/** The entries of the log that the screen shows as working. The indicator itself is the loading dot of the
+ *  design basis; what the factory owns, and therefore proves, is which entry carries it (R-WP-40). */
+function workingEntries(root?: Element): Element[] {
+  return [...(root ?? screen.getByTestId('chat-log')).querySelectorAll('[data-working="true"]')]
 }
 
 /**
@@ -81,11 +86,6 @@ test('aStepNamesItsAgentOnlyWhenTheWireNamesOne', () => {
   )
   expect(drawnSteps()[0].textContent).toContain('binary content')
   expect(drawnSteps()[0].querySelector('.chat-step-name'), 'an unstamped step names nobody').toBeNull()
-
-  // quiet by decision: small capitals above the report, on no surface and in no frame (R-WP-29)
-  const painted = declarations('.chat-log .chat-line.tool .chat-step-name')
-  expect(painted, 'the stamp is set as a small capital').toContain('text-transform: uppercase')
-  expect(painted, 'a stamp is no card').not.toMatch(/background|border/)
 })
 
 /**
@@ -105,8 +105,8 @@ test('theLastStepOfARunningTurnCarriesTheIndicator', () => {
 
   const running = drawnSteps()
   expect(running).toHaveLength(2)
-  expect(running[1].querySelector('.chat-step-running'), 'the step being worked on blinks').not.toBeNull()
-  expect(running[0].querySelector('.chat-step-running'), 'a finished step does not').toBeNull()
+  expect(running[1], 'the step being worked on is the entry that works').toHaveAttribute('data-working', 'true')
+  expect(running[0], 'a finished step does not work').not.toHaveAttribute('data-working')
   // the clock of a step comes once it is over and not while it works (R-WP-40, UC-WP-72 GIVEN 2)
   expect(running[0].getAttribute('title'), 'a finished step already carries its clock').toBe(arrivalTime(FIRST))
   expect(running[1].getAttribute('title'), 'a working step carries no clock yet').toBeNull()
@@ -115,18 +115,9 @@ test('theLastStepOfARunningTurnCarriesTheIndicator', () => {
   render(<ChatLog messages={[QUESTION, ANSWER]} outgoing={[]} live={steps} pending={false} />)
   const ended = drawnSteps()
   expect(ended).toHaveLength(2)
-  expect(
-    [...screen.getByTestId('chat-tool-line').querySelectorAll('.chat-step-running')],
-    'with the turn there is no working step left',
-  ).toEqual([])
+  expect(workingEntries(), 'with the turn there is no working step left').toEqual([])
   expect(ended[1].getAttribute('title'), 'the step that worked stands with its arrival clock').toBe(
     arrivalTime(SECOND),
-  )
-
-  const painted = declarations('.chat-log .chat-line.tool .chat-step-running')
-  expect(painted, 'the indicator is the blink of the waiting bar').toContain('animation: chat-waiting-blink')
-  expect(appSheet(), 'and reduced motion stops it in its own block').toMatch(
-    /@media \(prefers-reduced-motion: reduce\) \{\s*\.chat-log \.chat-line\.tool \.chat-step-running \{\s*animation: none/,
   )
 })
 
@@ -166,23 +157,37 @@ test('aFinishedStepCarriesItsArrivalClockAndNoDuration', () => {
 test('theCapKeepsTheArrivalTimesOfWhatStays', () => {
   const total = MAX_TOOL_LINES + 2
   const arrivals = Array.from({ length: total }, (_, index) => FIRST + index * 60_000)
-  render(
-    <ChatLog
-      messages={[QUESTION]}
-      outgoing={[]}
-      live={stepsOf(
-        ...arrivals.map((at, index) => ({ text: `step ${index + 1}`, at })),
-      )}
-      pending={false}
-    />,
+  const items = stepsOf(
+    ...arrivals.map((at, index) => ({ text: `step ${index + 1}`, at })),
   )
+  const { rerender } = render(<ChatLog messages={[QUESTION]} outgoing={[]} live={items} pending={false} />)
 
   const steps = drawnSteps()
-  expect(steps, 'the box keeps its tail of the run').toHaveLength(MAX_TOOL_LINES)
+  expect(steps, 'the timeline keeps its tail of the run').toHaveLength(MAX_TOOL_LINES)
   expect(steps[0].textContent).toBe(`step ${total - MAX_TOOL_LINES + 1}`)
   const titles = steps.map(step => step.getAttribute('title'))
   expect(titles, 'what stayed shows the moment it arrived, not the moment of the cut').toEqual(
     arrivals.slice(-MAX_TOOL_LINES).map(at => arrivalTime(at)),
+  )
+
+  // the cut comes down through the account of STEPS and no link of another kind: the member the wire named
+  // stays beside the tail, so a long run cannot drop a fact about the team (UC-WP-72 GIVEN 5)
+  rerender(
+    <ChatLog
+      messages={[QUESTION]}
+      outgoing={[]}
+      live={appendLiveDelegation(items, 'Dev', 1, FIRST, TURN)}
+      pending={false}
+    />,
+  )
+  expect(
+    [...screen.getByTestId('chat-timeline').querySelectorAll('.chat-trace-item')].map(item =>
+      item.getAttribute('data-trace'),
+    ),
+    'a delegation is never the entry the cap drops',
+  ).toEqual([...Array.from({ length: MAX_TOOL_LINES }, () => 'tool'), 'delegation'])
+  expect(screen.getByTestId('chat-delegation'), 'and he keeps the name the wire gave him').toHaveTextContent(
+    'Dev',
   )
 })
 
@@ -210,7 +215,7 @@ test('aReloadedLogInventsNoTimes', () => {
     [...log.querySelectorAll('[data-testid="chat-line-author"]')].map(line => line.textContent),
   ).toEqual(['Paul', 'Dev'])
   expect(log.querySelector('[title]'), 'nothing of a finished turn is titled by a time').toBeNull()
-  expect([...log.querySelectorAll('.chat-step-running')], 'no step works after a reload').toEqual([])
+  expect(workingEntries(log), 'no step works after a reload').toEqual([])
   expect([...log.querySelectorAll('.chat-step-name')], 'and none names an agent the wire did not name').toEqual(
     [],
   )
@@ -242,7 +247,7 @@ test('aStepNeverWorksForATurnThatDidNotReportIt', () => {
   const { rerender } = render(
     <ChatLog messages={[QUESTION]} outgoing={[]} live={steps} pending={false} openTurn={TURN} />,
   )
-  expect(drawnSteps()[0].querySelector('.chat-step-running')).not.toBeNull()
+  expect(drawnSteps()[0]).toHaveAttribute('data-working', 'true')
 
   // the turn ended and a new one is open that has reported nothing yet: the step stands, without working
   rerender(
@@ -254,10 +259,7 @@ test('aStepNeverWorksForATurnThatDidNotReportIt', () => {
       openTurn={TURN + 1}
     />,
   )
-  expect(
-    [...screen.getByTestId('chat-tool-line').querySelectorAll('.chat-step-running')],
-    'a step of a finished turn never works for the next one',
-  ).toEqual([])
+  expect(workingEntries(), 'a step of a finished turn never works for the next one').toEqual([])
   expect(drawnSteps()[0].getAttribute('title'), 'it keeps the clock of its arrival').toBe(arrivalTime(FIRST))
 
   // the new turn's answer is already streaming and its own first step has not come: still nothing works
@@ -270,10 +272,7 @@ test('aStepNeverWorksForATurnThatDidNotReportIt', () => {
       openTurn={TURN + 1}
     />,
   )
-  expect(
-    [...screen.getByTestId('chat-tool-line').querySelectorAll('.chat-step-running')],
-    'an open turn without a step of its own has no working step',
-  ).toEqual([])
+  expect(workingEntries(), 'an open turn without a step of its own has no working step').toEqual([])
 
   // and a step the view cannot place in a turn never works — neither while a turn is open nor while none is
   rerender(
@@ -285,10 +284,7 @@ test('aStepNeverWorksForATurnThatDidNotReportIt', () => {
       openTurn={TURN}
     />,
   )
-  expect(
-    [...screen.getByTestId('chat-tool-line').querySelectorAll('.chat-step-running')],
-    'a step of no turn never works',
-  ).toEqual([])
+  expect(workingEntries(), 'a step of no turn never works').toEqual([])
   rerender(
     <ChatLog
       messages={[QUESTION]}
@@ -298,10 +294,7 @@ test('aStepNeverWorksForATurnThatDidNotReportIt', () => {
       openTurn={null}
     />,
   )
-  expect(
-    [...screen.getByTestId('chat-tool-line').querySelectorAll('.chat-step-running')],
-    'and no step works when no turn is open',
-  ).toEqual([])
+  expect(workingEntries(), 'and no step works when no turn is open').toEqual([])
 })
 
 /**
@@ -316,42 +309,45 @@ test('theIndicatorOfAStepEndsWithTheNextStepAndNotWithTheAnswer', () => {
     'Im Root liegen ',
     1,
   )
-  /** The step lines of every box the run drew, in the order the screen shows them. */
+  /** The step entries of every timeline the run drew, in the order the screen shows them. */
   const allSteps = () =>
-    screen.getAllByTestId('chat-tool-line').flatMap(box => [...box.querySelectorAll('.chat-tool-line')])
+    screen
+      .getAllByTestId('chat-timeline')
+      .flatMap(widget => [...widget.querySelectorAll('.chat-trace-item[data-trace="tool"]')])
   const { rerender } = render(
     <ChatLog messages={[QUESTION]} outgoing={[]} live={streaming} pending={false} openTurn={TURN} />,
   )
   expect(drawnSteps()).toHaveLength(1)
-  expect(drawnSteps()[0].querySelector('.chat-step-running'), 'the answer of its turn is no step').not.toBeNull()
+  expect(drawnSteps()[0], 'the answer of its turn is no step').toHaveAttribute('data-working', 'true')
   expect(drawnSteps()[0].getAttribute('title'), 'while it works there is no clock yet').toBeNull()
 
   // a file the turn changed is a block of its own and no step either (R-WP-36)
   const withFile = appendLiveDiff(streaming, 'pom.xml', '--- a/pom.xml\n+++ b/pom.xml\n', 1)
   rerender(<ChatLog messages={[QUESTION]} outgoing={[]} live={withFile} pending={false} openTurn={TURN} />)
-  expect(
-    drawnSteps()[0].querySelector('.chat-step-running'),
-    'a file the turn changed is no step of the timeline',
-  ).not.toBeNull()
+  expect(drawnSteps()[0], 'a file the turn changed is no step of the timeline').toHaveAttribute(
+    'data-working',
+    'true',
+  )
 
   // the next step takes the indicator, and the step behind it keeps its clock
   const nextStep = appendLiveTool(withFile, 'wc -l pom.xml', 1, 'Jon', SECOND, TURN)
   rerender(<ChatLog messages={[QUESTION]} outgoing={[]} live={nextStep} pending={false} openTurn={TURN} />)
   const steps = allSteps()
-  expect(steps, 'a box is one place of the trace, so the run draws one box per place').toHaveLength(2)
-  expect(steps[0].querySelector('.chat-step-running'), 'the next step took the indicator').toBeNull()
+  expect(steps, 'every step of the run stays an entry of a timeline').toHaveLength(2)
+  expect(
+    screen.getAllByTestId('chat-timeline'),
+    'the answer and the block of their own interrupt the account, so it reads as two timelines',
+  ).toHaveLength(2)
+  expect(steps[0], 'the next step took the indicator').not.toHaveAttribute('data-working')
   expect(steps[0].getAttribute('title')).toBe(arrivalTime(FIRST))
-  expect(steps[1].querySelector('.chat-step-running')).not.toBeNull()
+  expect(steps[1]).toHaveAttribute('data-working', 'true')
   expect(steps[1].getAttribute('title'), 'the step that works carries no clock yet').toBeNull()
 
   // the end of the answer ends it, whatever stood behind the step
   rerender(
     <ChatLog messages={[QUESTION, ANSWER]} outgoing={[]} live={nextStep} pending={false} openTurn={null} />,
   )
-  expect(
-    allSteps().filter(step => step.querySelector('.chat-step-running') !== null),
-    'with the end of the answer no step works',
-  ).toEqual([])
+  expect(workingEntries(), 'with the end of the answer no step works').toEqual([])
   expect(allSteps()[1].getAttribute('title'), 'and the step that worked keeps its clock').toBe(
     arrivalTime(SECOND),
   )
@@ -383,9 +379,15 @@ test('theDelegationEntryNamesTheMemberAndStopsAtItsEnd', () => {
   expect(entry().textContent, 'while his turn is open, the member works').toContain(content.chat.working)
   expect(entry().getAttribute('title'), 'a working entry carries no clock yet').toBeNull()
   expect(
-    drawnSteps()[0].querySelector('.chat-step-running'),
+    [...screen.getByTestId('chat-timeline').querySelectorAll('.chat-trace-item')].map(item =>
+      item.getAttribute('data-trace'),
+    ),
+    'a step and a delegation are entries of ONE timeline, in the order the wire reported them',
+  ).toEqual(['tool', 'delegation'])
+  expect(
+    drawnSteps()[0],
     'the delegation is the last step of the turn, so the step above it works no longer',
-  ).toBeNull()
+  ).not.toHaveAttribute('data-working')
 
   // the entry's own end: the entry stands, the word is gone, the clock of its arrival appears
   const ended = endLiveDelegation(openDelegation, 'Dev', TURN)
@@ -414,32 +416,17 @@ test('theDelegationEntryNamesTheMemberAndStopsAtItsEnd', () => {
   expect(endLiveDelegation(openDelegation, 'Dev', TURN + 1), 'an end of another turn closes nothing').toBe(
     openDelegation,
   )
-
-  // quiet by decision: the member in small capitals above his entry, on no surface; the word blinks like
-  // the waiting caret and reduced motion stops it in a block of its own
-  const paintedName = declarations('.chat-log .chat-line.delegation .chat-delegation-name')
-  expect(paintedName, 'the member is a small capital above his entry').toContain('text-transform: uppercase')
-  expect(paintedName, 'an entry is no card').not.toMatch(/background|border/)
-  expect(
-    declarations('.chat-log .chat-line.delegation .chat-delegation-working'),
-    'the word is the blink of the waiting bar',
-  ).toContain('animation: chat-waiting-blink')
-  expect(appSheet(), 'and reduced motion stops it in its own block').toMatch(
-    /@media \(prefers-reduced-motion: reduce\) \{\s*\.chat-log \.chat-line\.delegation \.chat-delegation-working \{\s*animation: none/,
-  )
 })
 
 /**
  * „Working" is the LAST step of a running turn, and that is one entry of the timeline whatever it is (R-WP-40,
  * UC-WP-72 GIVEN 2 and 3): one decider answers for the whole log, so no order of the wire leaves two entries
- * blinking — the step above an open entry stops with it, a step arriving behind an open entry takes the
+ * working — the step above an open entry stops with it, a step arriving behind an open entry takes the
  * indicator over, and an entry the wire closed ends without handing it back.
  */
 // UC-WP-72
 test('onlyOneEntryOfTheTurnWorksAtATime', () => {
-  const indicators = () => [
-    ...screen.getByTestId('chat-log').querySelectorAll('.chat-step-running, .chat-delegation-working'),
-  ]
+  const indicators = () => workingEntries()
   const delegating = appendLiveDelegation(
     stepsOf({ text: 'Dev start: nenne eine Frucht', origin: 'Jon', at: FIRST }),
     'Dev',
@@ -452,11 +439,8 @@ test('onlyOneEntryOfTheTurnWorksAtATime', () => {
   )
 
   expect(indicators(), 'the entry the wire opened last works, and only it').toHaveLength(1)
-  expect(indicators()[0].className).toContain('chat-delegation-working')
-  expect(
-    drawnSteps()[0].querySelector('.chat-step-running'),
-    'the step above the entry stops with it',
-  ).toBeNull()
+  expect(indicators()[0].getAttribute('data-trace'), 'and it is the delegation entry').toBe('delegation')
+  expect(drawnSteps()[0], 'the step above the entry stops with it').not.toHaveAttribute('data-working')
 
   // a step that arrives behind the open entry is the last step of the turn from then on — the core reports
   // the two one after the other, so the rule has to hold in either order
@@ -465,7 +449,7 @@ test('onlyOneEntryOfTheTurnWorksAtATime', () => {
     <ChatLog messages={[QUESTION]} outgoing={[]} live={stepBehind} pending={false} openTurn={TURN} />,
   )
   expect(indicators(), 'still one entry works, now the step').toHaveLength(1)
-  expect(indicators()[0].className).toContain('chat-step-running')
+  expect(indicators()[0].getAttribute('data-trace'), 'and it is the step entry').toBe('tool')
   expect(
     screen.getByTestId('chat-delegation').textContent,
     'the entry the step left behind works no longer',

@@ -94,14 +94,13 @@ test('aDiffStandsBesideTheTraceAndNotInsideIt', () => {
   )
   render(<ChatLog messages={[QUESTION]} outgoing={[]} live={trace} pending={false} />)
 
-  // the diff interrupts the trace run: one box before it, one after, because a box is one place of the trace
-  expect(screen.getAllByTestId(/^chat-(tool-line|diff)$/).map(entry => entry.getAttribute('data-testid'))).toEqual([
-    'chat-tool-line',
-    'chat-diff',
-    'chat-tool-line',
-  ])
-  for (const box of screen.getAllByTestId('chat-tool-line')) {
-    expect(within(box).queryByTestId('chat-diff'), 'a block with its own file joins no box').toBeNull()
+  // the diff interrupts the trace run: one timeline before it, one after, because a timeline is one place
+  // of the trace and the block beside it is not a link of it
+  expect(screen.getAllByTestId(/^chat-(timeline|diff)$/).map(entry => entry.getAttribute('data-testid'))).toEqual(
+    ['chat-timeline', 'chat-diff', 'chat-timeline'],
+  )
+  for (const widget of screen.getAllByTestId('chat-timeline')) {
+    expect(within(widget).queryByTestId('chat-diff'), 'a block with its own file joins no timeline').toBeNull()
   }
   // and it is nobody's speech, so it neither begins a voice nor separates two (R-WP-29, UC-WP-55 GIVEN 2) —
   // read over the whole log, where `separatorsOf` alone decides which line counts as one

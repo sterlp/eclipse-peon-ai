@@ -98,6 +98,17 @@ export function factoryTheme(dark: boolean): ThemeConfig {
         darkItemHoverColor: read('--top-text'),
         darkSubMenuItemBg: read('--top-bg'),
       },
+      /**
+       * The trace of a turn is read beside the answer and not as a list of its own: its dots carry the line
+       * and its gaps stay small, which is the measure R-WP-40 of `docs/chat.md` asks for and not this
+       * file's taste. Tokens and no rule on the library's classes — a sheet that reaches into the basis
+       * fights its own algorithm (R-WP-39).
+       */
+      Timeline: {
+        dotSize: 12,
+        dotBorderWidth: 2,
+        itemPaddingBottom: 4,
+      },
     },
   }
 }

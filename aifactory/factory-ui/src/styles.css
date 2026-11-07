@@ -358,95 +358,56 @@ button {
 }
 
 
-/* Tool activity is not a voice of the conversation: the grey italic of chat.html, small, no name of its
-   own; the lines of one run share this one box (R-WP-28). */
-.chat-log .chat-line.tool {
+/* The trace of a turn is not a voice of the conversation: the steps and the delegations of one place share
+   ONE timeline of the design basis (R-WP-40), in the grey italic of chat.html, small and on no surface of
+   its own (R-WP-28). The dots and the gaps of that timeline are tokens of shared/theme.ts — never a rule on
+   the library's classes, which would step around the basis' own algorithm (R-WP-39). */
+.chat-log .chat-line.trace {
   padding-top: 0.1rem;
   padding-bottom: 0.2rem;
   color: var(--tool);
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: var(--fs-code);
+  line-height: var(--lh-code);
   font-style: italic;
 }
 
-/* The word above the trace, as chat.html sets it — upright, so the italic stays with the reports. */
-.chat-log .chat-line.tool .chat-tools-label {
+/* One entry of the trace keeps the breaks the wire sent it with and nothing else (R-WP-40). */
+.chat-log .chat-line.trace .chat-trace-item {
   display: block;
-  font-size: 0.66rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  font-style: normal;
+  white-space: pre-wrap;
 }
 
-.chat-log .chat-line.tool .chat-tool-line {
+/* The agent the core stamped on a step, above his report (R-WP-40): the mini measure in small capitals,
+   upright, on no surface of its own. A step the wire left unstamped draws no such line at all
+   (UC-WP-72 GIVEN 1). Own block, no grouped selector: the sheet is read rule by rule. */
+.chat-log .chat-line.trace .chat-step-name {
   display: block;
-}
-
-/* The agent the core stamped on a step, above its report (R-WP-40): information and not typography — small
-   capitals in the trace grey, upright, on no surface of its own. A step the wire left unstamped draws no
-   such line at all (UC-WP-72 GIVEN 1). Own block, no grouped selector: the sheet is read rule by rule. */
-.chat-log .chat-line.tool .chat-step-name {
-  display: block;
-  font-size: 0.66rem;
+  font-size: var(--fs-mini);
+  line-height: var(--lh-mini);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   font-style: normal;
   color: var(--tool);
 }
 
-/* The step a running turn works on (R-WP-40): the blink of the waiting bar, small and behind the report. It
-   ends with the next step or with the turn — the core reports no end of one tool, so nothing here measures a
-   duration (UC-WP-72 GIVEN 2). */
-.chat-log .chat-line.tool .chat-step-running {
-  display: inline-block;
-  inline-size: 0.4rem;
-  block-size: 0.7rem;
-  margin-inline-start: 0.3rem;
-  background: currentColor;
-  animation: chat-waiting-blink 1s steps(2, start) infinite;
-}
-
-/* Own block and no comma with the waiting caret: a grouped rule is only readable at its last selector, and
-   both answers stand on their own (R-WP-31 for the caret, R-WP-40 for the step). */
-@media (prefers-reduced-motion: reduce) {
-  .chat-log .chat-line.tool .chat-step-running {
-    animation: none;
-  }
-}
-
-/* One delegation of the turn is a link of the timeline and not a voice (R-WP-40): the member the order went
-   to, in the trace's own quiet — mono, small, no surface and no frame of its own. */
-.chat-log .chat-line.delegation {
-  padding-top: 0.1rem;
-  padding-bottom: 0.2rem;
-  color: var(--tool);
-  font-family: var(--mono);
-  font-size: 0.78rem;
-}
-
-/* The member above his entry, in the idiom of a step's stamp: small capitals in the trace grey, upright, on
-   no surface. Nothing else stands on the line — the wire carries no order text to paint (UC-WP-72 GIVEN 3). */
-.chat-log .chat-line.delegation .chat-delegation-name {
+/* The member above his entry, in the idiom of a step's stamp (R-WP-40): upright and on no surface, and
+   nothing else stands on the line — the wire carries no order text to paint (UC-WP-72 GIVEN 3). */
+.chat-log .chat-line.trace .chat-delegation-name {
   display: block;
-  font-size: 0.66rem;
+  font-size: var(--fs-mini);
+  line-height: var(--lh-mini);
   letter-spacing: 0.05em;
   text-transform: uppercase;
+  font-style: normal;
   color: var(--tool);
 }
 
-/* The word that says he works: the blink of the waiting bar. It ends with the entry's own end event or with
-   the turn — a duration stays the statement of the turn alone (R-WP-40, UC-WP-72 GIVEN 3). */
-.chat-log .chat-line.delegation .chat-delegation-working {
-  animation: chat-waiting-blink 1s steps(2, start) infinite;
-}
-
-/* Own block instead of a comma with the rules above: a grouped rule is only readable at its last selector,
-   and the sheet is read block by block — by the browser and by the test that proves this one. */
-@media (prefers-reduced-motion: reduce) {
-  .chat-log .chat-line.delegation .chat-delegation-working {
-    animation: none;
-  }
+/* The word that says a member works, upright like a stamp. The indicator that he works is the basis' loading
+   dot on his entry, so the word blinks no longer — one indicator per entry, and reduced motion has nothing
+   left to stop here (R-WP-40, UC-WP-72 GIVEN 3). */
+.chat-log .chat-line.trace .chat-delegation-working {
+  font-style: normal;
 }
 
 /* A file the turn changed (R-WP-36) is a block of the log and neither a voice nor a trace line: the trace's

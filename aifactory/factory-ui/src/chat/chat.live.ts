@@ -47,6 +47,13 @@ export type ToolItem = Extract<LiveItem, { kind: 'tool' }>
 /** One delegation, as the timeline draws it. */
 export type DelegationItem = Extract<LiveItem, { kind: 'delegation' }>
 
+/**
+ * One entry of the trace — the steps and the delegations of a turn, which the screen draws in ONE timeline
+ * (R-WP-40). A diff and a text of the answer are of no such family: the first is a block of its own
+ * (R-WP-36), the second is a voice.
+ */
+export type TraceItem = ToolItem | DelegationItem
+
 /** What `chat.html` keeps of a tool block: the tail, so a chatty turn cannot push the answer away. */
 export const MAX_TOOL_LINES = 10
 
@@ -87,7 +94,7 @@ export function appendLiveTool(
 export function openTimelineItem(
   items: LiveItem[],
   turn: number | null,
-): ToolItem | DelegationItem | null {
+): TraceItem | null {
   if (turn === null) {
     return null
   }

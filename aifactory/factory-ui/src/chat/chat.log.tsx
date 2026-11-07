@@ -4,13 +4,12 @@ import type { Ref } from 'react'
 import type { ChatMessage } from './chat.client'
 import { ChatDiff } from './chat.diff'
 import { ChatMarkdown } from './chat.markdown'
-import { ChatDelegation, ChatTools } from './chat.tools'
+import { ChatTraceTimeline } from './chat.timeline'
 import {
   liveRuns,
   openTimelineItem,
-  type DelegationItem,
   type LiveItem,
-  type ToolItem,
+  type TraceItem,
 } from './chat.live'
 import type { PendingLine } from './chat.pending'
 import { content } from '../shared/content'
@@ -58,21 +57,17 @@ interface Row {
 type SpokenItem = Exclude<LiveItem, { kind: 'tool' } | { kind: 'diff' } | { kind: 'delegation' }>
 
 /**
- * One thing the log draws: a line of the conversation, a live answer, one merged box of tool steps, one diff
- * block, or one delegation. The last three are links of the timeline and never a voice of the conversation.
+ * One thing the log draws: a line of the conversation, a live answer, one timeline of the trace, or one diff
+ * block. The last two are links of the account of what a turn did and never a voice of the conversation.
  */
 type Entry =
   | { type: 'row'; row: Row }
   | { type: 'live'; item: SpokenItem }
-  /** The steps of one tool run; `open` is the one entry the open turn works on and stands in at most one of
-   *  the boxes the log draws — identity, so neither the cap nor the place in the list decides it. A
-   *  delegation beside the box takes the indicator away from it (`openTimelineItem`). */
-  | { type: 'tools'; items: ToolItem[]; open: ToolItem | DelegationItem | null }
+  /** The trace of one place of the log: its steps and its delegations in the order they arrived, in the one
+   *  timeline they share (R-WP-40). `open` is the one entry the open turn works on and stands in at most one
+   *  of the widgets the log draws — identity, so neither the cap nor the place in the list decides it. */
+  | { type: 'trace'; items: TraceItem[]; open: TraceItem | null }
   | { type: 'diff'; file: string; text: string }
-  /** One delegation; `open` says this entry IS the one the log's single decider names — the entry's own end
-   *  event and the identity of the open turn decide that, never a flag the wire carried (R-WP-40,
-   *  UC-WP-72 GIVEN 3). */
-  | { type: 'delegation'; item: DelegationItem; open: boolean }
 
 /**
  * One project's conversation as the screen shows it: the history, the own inputs the history does not
@@ -127,14 +122,15 @@ export function ChatLog({ messages, outgoing, live, pending, openTurn = null, lo
       onScroll={onScroll}
     >
       {entries.map((entry, index) => {
-        if (entry.type === 'tools') {
-          return <ChatTools key={`tools-${index}`} items={entry.items} open={entry.open} />
+        if (entry.type === 'trace') {
+          return (
+            <li className="chat-line trace" data-testid="chat-timeline" key={`trace-${index}`}>
+              <ChatTraceTimeline items={entry.items} open={entry.open} />
+            </li>
+          )
         }
         if (entry.type === 'diff') {
           return <ChatDiff key={`diff-${index}`} file={entry.file} diff={entry.text} />
-        }
-        if (entry.type === 'delegation') {
-          return <ChatDelegation key={`delegation-${index}`} item={entry.item} open={entry.open} />
         }
         if (entry.type === 'live') {
           // a live failure is already over, so it carries no waiting frame; its text is the server's
@@ -180,8 +176,8 @@ export function ChatLog({ messages, outgoing, live, pending, openTurn = null, lo
  * number of rows its turn was anchored at, and inside the run the arrival order holds. The anchor counts
  * what stood at that moment — the history plus the inputs that were still pending then — so it names the
  * same place before and after the read that confirms those inputs, and a run pointing past the rows that
- * stand today falls to the end (D-A, UC-WP-54). Consecutive tool lines become one box, a diff block stands
- * beside it as a block of its own (R-WP-36).
+ * stand today falls to the end (D-A, UC-WP-54). The steps and delegations of one run become ONE timeline, a
+ * diff block stands beside it as a block of its own (R-WP-36, R-WP-40).
  */
 function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entry[] {
   const entries: Entry[] = []
@@ -200,36 +196,34 @@ function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entr
 
   for (const run of liveRuns(live)) {
     pushRows(run[0].afterLines)
-    let tools: ToolItem[] = []
-    const pushTools = () => {
-      if (tools.length === 0) {
+    // the trace of this place: the steps and the delegations of one run are ONE account and end only where
+    // the account is interrupted — by a voice, by a failure, by a block of its own, or by the next turn
+    // (R-WP-40, D6 of the increment)
+    let trace: TraceItem[] = []
+    const flushTrace = () => {
+      if (trace.length === 0) {
         return
       }
-      entries.push({ type: 'tools', items: tools, open })
-      tools = []
+      entries.push({ type: 'trace', items: trace, open })
+      trace = []
     }
     for (const item of run) {
-      if (item.kind === 'tool') {
-        tools.push(item)
+      if (item.kind === 'tool' || item.kind === 'delegation') {
+        // a delegation joins the run instead of breaking it: the indicator still moves to it, because ONE
+        // decider names the entry that works (`openTimelineItem`) and not the order of the widgets
+        trace.push(item)
         continue
       }
-      if (item.kind === 'delegation') {
-        // the entry ends the tool box before it and takes the indicator itself: identity decides, never a
-        // second formula and never a place in the list (R-WP-40, UC-WP-72 GIVEN 3)
-        pushTools()
-        entries.push({ type: 'delegation', item, open: open === item })
-        continue
-      }
-      pushTools()
+      flushTrace()
       if (item.kind === 'diff') {
-        // a diff is neither voice nor trace: it ends the tool run before it and stands as a block of its
+        // a diff is neither voice nor trace: it ends the trace before it and stands as a block of its
         // own (R-WP-36)
         entries.push({ type: 'diff', file: item.file, text: item.text })
         continue
       }
       entries.push({ type: 'live', item })
     }
-    pushTools()
+    flushTrace()
   }
   pushRows(rows.length)
   return entries
