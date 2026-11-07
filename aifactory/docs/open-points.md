@@ -49,6 +49,20 @@ Reihenfolge, je ein grünes Inkrement:
   ([R-WP-7](chat.md)) und die Docs nennen den Agenten weiter Jon. *Andersfall:* war gemeint, dass der
   Name auch auf der Kachel/ im Header verschwindet („Chat" statt „Jon"), ist das eine Umbenennung der
   Anzeige plus UC-Änderung in [chat.md](chat.md) — kein Umbau der Kachel-Regel selbst.
+* **⏳ Einheiten nur unter dem geöffneten Projekt** (2026-11-07, Schärfung zu
+  [R-WP-38](ui.md) vor Inkrement 5b, Rückversicherung ausstehend) — der Sider zeigt „Files" **nur** unter
+  dem Projekt, das die Adresse nennt. Abgeleitet: die Regel will sagen, **wo man ist**, und ein Projekt,
+  das nicht offen ist, hat nichts aufzuklappend. *Andersfall:* Einheiten unter **jedem** Projekt = die
+  doppelte Zeilenzahl im Sider und Adressen für Projekte, die niemand offen hat.
+* **⏳ „Ein laufender Turn endet nicht am Klick auf die Einheit" steht jetzt ausdrücklich in
+  [R-WP-38](ui.md)/[UC-WP-70 G2](ui.md)** (2026-11-07, abgeleitet aus [R-WP-33](files.md) „der Chat
+  bleibt daneben sichtbar" und R-WP-15 „je Projekt ein Chat") — nötig wird das, weil der Datei-Bereich
+  eine **Adresse** bekommt: würde die Adresse eine neue Seite rendern, würde der Chat neu mounten und der
+  Stream neu öffnen. Angenommen: ein Adresswechsel **innerhalb** eines Projekts behält die Seite.
+  *Andersfall:* „Klick auf Files darf den Turn abbrechen" wäre eine neue Regel und sichtbarer Datenverlust.
+* **🔒 Berichtigt (2026-11-07, kein neuer Punkt):** [R-WP-33](files.md) nannte für die Tab-Icons noch
+  `bootstrap-icons` — Rest vor Pauls AntD-Entscheidung ([R-WP-39](ui.md), 2026-11-06: Bootstrap raus).
+  Die Regel nennt jetzt **keine** Bibliothek mehr; die Icon-Wahl regelt R-WP-39.
 * **🔒 Tastatur entschieden (2026-11-06, Paul: „A")** — **Enter sendet, Shift+Enter und Ctrl/Cmd+Enter =
   neue Zeile**; gebaut und abgenommen in [R-WP-30/UC-WP-56](chat.md) ✅ (Inkrement 3). Der Konflikt mit
   Pauls Regel vom 02.11. ist damit gelöst, nicht offen; Merkposten gegen Wiederaufmachen steht in

@@ -1,9 +1,25 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useParams,
+} from 'react-router-dom'
 
 import AppShell from './app.shell'
 import { useAppContext } from './app.context'
-import { chatPath, projectOfSegment, projectSegment, projectsPath } from './app.paths'
+import {
+  chatFilesPath,
+  chatPath,
+  filesKeyOf,
+  navKeyOfPathname,
+  projectOfSegment,
+  projectSegment,
+  projectsPath,
+} from './app.paths'
 import { ChatPage } from '../chat/chat.page'
 import { ConfigPage } from '../config/config.page'
 import { ProjectFiles } from '../project/project.files'
@@ -31,8 +47,10 @@ export function AppBrowser() {
  * UC-WP-52); an address that names no view is sent to the list rather than given a page of its own — the
  * server already answered it with this app ({@code SpaFallbackResolver}).
  *
- * The file area and the team tiles are not routes: they live inside the chat (R-WP-1), and the insight
- * opens and closes without ever changing the address.
+ * The file area is a child of its chat address (`chat/:project/files`) and not a fourth view: the child
+ * route renders nothing, its only purpose being that the chat stays mounted while that address changes
+ * (R-WP-38, UC-WP-70 G2). The team tiles are no address at all, and the insight opens and closes without
+ * ever changing it (R-WP-1).
  *
  * `/chat` on its own is the one address that is a question and not a view: it answers with the project this
  * browser last opened, or with the list (R-WP-1, UC-WP-51). It is a redirect and not a fourth page.
@@ -44,7 +62,12 @@ export function AppRoutes() {
         <Route index element={<Navigate to={projectsPath} replace />} />
         <Route path="projects" element={<ProjectsRoute />} />
         <Route path="chat" element={<LastChatRoute />} />
-        <Route path="chat/:project" element={<ChatRoute />} />
+        <Route path="chat/:project" element={<ChatRoute />}>
+          {/* renders nothing: its only purpose is that `chat/:project` stays mounted across the address
+              change to the file area and back — a sibling route would be a new mount, which would read
+              `/messages` again and open `/events` again, killing a running turn (R-WP-38, UC-WP-70 G2) */}
+          <Route path="files" element={<></>} />
+        </Route>
         <Route path="settings" element={<ConfigPage />} />
         <Route path="*" element={<Navigate to={projectsPath} replace />} />
       </Route>
@@ -86,9 +109,25 @@ function LastChatRoute() {
  */
 function ChatRoute() {
   const { project: segment } = useParams<{ project: string }>()
+  const { pathname } = useLocation()
+  const navigate = useNavigate()
   const { user } = useAppContext()
   const [project, setProject] = useState<Project | null>(null)
   const [unknown, setUnknown] = useState(false)
+
+  /**
+   * Openness of the file area is a reading of the address — the same reader the sider uses, so the panel
+   * keeps no state of its own and a reload or a bookmark shows the very same thing (R-WP-38).
+   */
+  const filesOpen = segment !== undefined && navKeyOfPathname(pathname) === filesKeyOf(segment)
+
+  /** A push in both directions, so the browser's back closes the area again; never a replace. */
+  function toggleFiles(): void {
+    if (segment === undefined) {
+      return
+    }
+    navigate(filesOpen ? chatPath(segment) : chatFilesPath(segment))
+  }
 
   useEffect(() => {
     if (segment === undefined) {
@@ -136,8 +175,15 @@ function ChatRoute() {
         key={project.id}
         project={project}
         user={user}
-        // keyed: another project is another checkout, so the file area starts closed at its own root
-        files={<ProjectFiles key={project.id} project={project} />}
+        // keyed: another project is another checkout, so no tree of the previous one is on the screen
+        files={
+          <ProjectFiles
+            key={project.id}
+            project={project}
+            open={filesOpen}
+            onToggle={toggleFiles}
+          />
+        }
       />
     </div>
   )

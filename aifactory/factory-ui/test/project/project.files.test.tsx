@@ -478,7 +478,9 @@ test('filesTabSitsOnThePanelTop', () => {
   expect(appSheet(), 'the open tab rides the edge of the panel').toMatch(
     /&\[data-open='true'\]\s*\{\s*right:\s*var\(--files-width\)/,
   )
-  expect(declarations(".files-tab[data-open='true'][data-wide='true']")).toContain('right: var(--files-wide)')
+  // INC-5B-D1: the same claim, read where the width lives. The area is wide, the tab beside it rides that
+  // edge — a second copy of the width-state on the tab would be the second owner this increment removes.
+  expect(declarations(".files-panel[data-wide='true'] + .files-tab")).toContain('right: var(--files-wide)')
 
   // the row is the box it hangs on, and the panel keeps the height the frame gives it — `100vh` would cut
   // it below the frame, which is the other half of a top edge that has to stay shared

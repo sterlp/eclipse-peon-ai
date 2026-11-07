@@ -61,32 +61,29 @@
   und die eigenen UCs von der Liste genommen.
 - **jsdom misst weder Farbe noch Layout** (`getComputedStyle` = `canvastext`, `var()`/Nesting lösen nicht
   auf, `scrollHeight` = 0): Farb-/Maßverträge aus dem **Stylesheet-Text** lesen
-  (`import.meta.glob('../../src/*.css', { query: '?raw' })`) und über Tokens schließen; eine Grenze wie
-  `MAX_ROWS` wird als **Konstante** gepinnt, nie als Pixel. `?raw` auf `.css` liefert leer, solange
-  `test.css` aus ist; `test.css.include` verlangt **RegExp** und muss beim Raw-Laden `\?|$` zulassen. Kein
-  Selektorwortlaut in CSS-Prosa — die Helfer (`declarations`, `blockOf`, `tokenTable`) suchen per
-  `indexOf(selector)`; `tokenTable` akzeptiert einen Selektor erst bei Whitespace + `{`.
-- `sheets.ts::declarations()` trifft nur den **ersten** Block — ein Verbot, das über **allen** `.chat-line.*`-Blättern (inkl. `@media`) gelten muss, liest `allDeclarations`.
+  (`import.meta.glob('../../src/*.css', { query: '?raw' })`, `test.css` an, mit RegExp) und über Tokens
+  schließen; eine Grenze wie `MAX_ROWS` wird als **Konstante** gepinnt, nie als Pixel. Kein Selektorwortlaut
+  in CSS-Prosa — die Helfer (`declarations`, `blockOf`, `tokenTable`) suchen den Selektor per `indexOf`.
 - **AntD unter jsdom**: `matchMedia` **und** `ResizeObserver` sind load-bearing (jsdom 26.1.0: Property da,
   Wert `undefined`); `Select` über `<id>_list` (`id` je Choice Pflicht, `useId()` ist im Testbaum nicht
   eindeutig), Helfer `test/shared/choices.ts`. Dunkel ist **eine** Tabelle über `data-theme` am Document;
   `darkAlgorithm` leitet den Akzent ab („Token == Literal" ist im Dunkel nicht prüfbar — eigener Vergleich +
   `hell !== dunkel`), Tokens ohne Dunkel-Zeile (Fonts) fallen auf hell zurück.
-- **Responsive der Basis (Sider)**: unter jsdom nur über die matchMedia-Antwort + Klassen
-  (`-below`/`-collapsed`/`-zero-width`) + Inline-`width`; `collapsed` **nie** controlled, Trigger = `span` ohne Rolle.
-- **Markdown/Shiki**: `remarkPlugins`/`components` als Modul-Konstante (stabile Props), `remark-breaks` ist
-  Pflicht (v10 hat keine `breaks`-Option), rohes HTML bleibt Wortlaut, `white-space: normal` auf
-  `.chat-log .chat-markdown` ist tragend; Markdown zerteilt Text in Spans ⇒ **Zeile** über `textContent`.
-  `react-shiki` über `/web`, `engine="javascript"` (jsdom-tauglich); Sprachen außerhalb des Web-Sets rendern
-  still Text (`shared/code.language.ts`), `shiki` ist bei pnpm strict nicht direkt importierbar.
+- **Markdown/Shiki**: `remarkPlugins`/`components` als Modul-Konstante (stabile Props), `remark-breaks`
+  Pflicht (v10 hat keine `breaks`-Option), rohes HTML bleibt Wortlaut; `white-space: normal` auf
+  `.chat-log .chat-markdown` ist tragend und Markdown zerteilt Text in Spans ⇒ **Zeile** über
+  `textContent`; `react-shiki` über `/web`, `engine="javascript"`, Fremdsprachen still (`code.language.ts`).
 - **Vitest** kennt kein `.as(…)` → Nachricht als **zweites** `expect`-Argument (`.as` ist AssertJ/Backend).
   **oxlint**: `react(only-export-components)` — eine Datei mit Komponenten-Export exportiert keine
   Funktionen/Hooks (auch im `test`-Baum nicht), Konstanten dürfen; `react(set-state-in-effect)` verboten
   (Projektwechsel remountet die Chat-Seite über `key={project.id}`).
-- **Quellen-Scan in UI-Tests** nur über `import.meta.glob(…, { query: '?raw', eager: true })` —
-  `node:fs`/`node:path`/`process` sind in `src`+`test` nicht typisiert.
 - **Routing macht Navigation async** → `findBy*`. „Could not parse CSS stylesheet" bei kaltem vite-Cache ist
-  Rauschen: erst `rm -rf node_modules/.vite` auf HEAD vergleichen.
+  Rauschen: erst `rm -rf node_modules/.vite` auf HEAD vergleichen. Quellen-Scan nur über `import.meta.glob`
+  mit `?raw` (`node:fs`/`process` sind in `src`+`test` nicht typisiert). **Kein Mount-Beweis über
+  Schwesterrouten:** gleiche Komponente an derselben Stelle behält React Router die Instanz — „bleibt
+  gemountet" beweist nur ein erzwungener Remount (`key={pathname}`).
+- **Zwei Drähte enden auf `/events`** — `/api/projects/events` (Arbeitsstand, Rahmen) und
+  `/api/projects/<id>/events` (Chat): Ströme und Reads **projektbezählt** zählen (`/${project().id}/events`).
 - **Chat-Draht-Griffe nicht umbenennen**: `chat-line-jon` / `chat-live` / `chat-line-author` (Stimme
   user/agent = **Klasse**, Draht = `data-testid`). Verlaufszeilen nie mit `toContain` (Autor-Label hängt an
   der `li`) → `[data-testid="chat-line-user"] .chat-text` als exakte Liste. Trenner zählt allein
@@ -94,7 +91,7 @@
 - **Modellierte Draht-Form braucht die erzeugende Core-Regel** (Datei:Zeile am Test), sonst prüft der Test
   eine Form, die der Core nie liefert (`docs/adr/003`).
 - **jsdom bleibt auf 26.1.0 gepinnt**: jsdom 30 verlangt Node ≥ 22.22.2 → undici-Crash `reading 'bind'`.
-- **`defineConfig` aus `vitest/config`** in `vite.config.ts` — sonst findet `tsc -b` das `test`-Feld nicht.
+  `vite.config.ts` braucht `defineConfig` aus `vitest/config`, sonst findet `tsc -b` das `test`-Feld nicht.
 
 ## Abweichungs-Register (UI)
 
@@ -118,3 +115,6 @@ Ein Code im Testkommentar verweist auf diese Stelle; die Begründung steht am Te
 - `eclipseEditFile`/`eclipseReplaceLines` mit **Teilzeile** als `oldString` haben schon Nachbarzeilen
   beschädigt → Region danach neu lesen. `eclipseEditFile` verliert `oldString` bei langen Blöcken →
   `diskEditFile` mit kurzem Anker. `*InsertLines` scheitern an einer Datei, die mit Leerzeile endet.
+- **Nie eine Quelldatei aus dem Kontext neu schreiben** (`*WriteFile` ohne Vorher-Lesen): der Kopf wird
+  erfunden. Kleine `*EditFile`-Schritte oder erst komplett lesen; dann `git diff <file>` gegen die geplanten
+  Änderungen — `git checkout -- <file>` ist kein Rückweg für fremde Handänderungen.

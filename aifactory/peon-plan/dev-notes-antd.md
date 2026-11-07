@@ -1013,3 +1013,83 @@ Review-Verdict REJECTED, Grund nur im Test: drei Mutationen blieben grün (Auswa
 
 
 
+## Inkrement 5b-1 (2026-11-07): Einheit = Adresse, die Seite bleibt gemountet
+
+`chat/:project/files` als **Kindroute, die nichts rendert**; „offen" ist eine Lesart der Adresse
+(`navKeyOfPathname(pathname) === filesKeyOf(segment)`), `ProjectFiles` hat keinen `open`-State mehr, die
+Fläche ist eine **innere** Komponente (`FilesArea`), die nur mit der Adresse gemountet ist. Sider: ein
+flaches Einheiten-Item unter dem Projekt, das die Adresse nennt (Klasse `app-sider-unit`), genau eine Marke.
+
+- **Zahlen:** UI **214 Tests / 22 Dateien**, `tsc -b` 0, oxlint **0/0** (73 Dateien), Doc-Lint **28**
+  (unveränderte Liste, alle UC-CR-*/UC-PC-* fremd). Kein Backend, kein Core, kein `pnpm build`.
+- **INC-5B-D1 (eine umgeschriebene Assertion, Behauptung identisch).** Vorher
+  (`test/project/project.files.test.tsx::filesTabSitsOnThePanelTop`):
+  `expect(declarations(".files-tab[data-open='true'][data-wide='true']")).toContain('right: var(--files-wide)')`
+  — nachher: `expect(declarations(".files-panel[data-wide='true'] + .files-tab")).toContain('right: var(--files-wide)')`.
+  Grund: die Breite ist der Zustand der **Fläche**; eine zweite Kopie am Tab war genau der zweite Eigner, den
+  dieses Inkrement entfernt. Blatt-Regel accordingly: `.files-panel[data-wide='true'] + .files-tab` (Panel
+  steht im DOM **vor** dem Tab — Geschwister in `.chat-workspace`, Spezifität 0,3,0 schlägt die nested
+  `.files-tab[data-open]` mit 0,2,0).
+- **INC-5B-D2:** der Tab-Klick ist jetzt eine Navigation (Push in beide Richtungen, Zurück schließt wieder).
+  Die Datei-Tests erreichen das Panel unverändert über denselben Klick auf `files-open` — keine einzige
+  Assertion dieser Datei hat sich deshalb geändert.
+- **INC-5B-D3:** 5b-1 ist der eine bewusst gemischte Slice (Adresse/Key/Item/CSS dazu, `useState(open)` +
+  `closeArea`-Maschine weg). Zwei Eigentümer von „offen" hätten R-WP-38 im selben Commit verletzt.
+- **INC-5B-D4 (Testname, nicht Verhalten):** der Plan nennt `theUnitLeavesTheTreeWhenAnotherProjectIsNamed`
+  mit „kein Eintrag ‚Files' überhaupt" für `activeKey = project:<anderes>`. Das ist mit demselben Plan
+  unvereinbar: §4.3/§13.5 hängen die Einheit an **das Projekt, das die Adresse nennt** — und
+  `theSiderEntryAndTheTabNameTheSameAddress` braucht den Eintrag genau dann, wenn die **Chat**-Adresse offen
+  ist (sonst gibt es vom Chat aus keinen Sider-Griff auf die Einheit). Umgesetzt ist der Kern der Regel:
+  Test `theUnitHangsUnderTheNamedProjectAlone` — bei `project:other` genau **ein** „Files", direkt hinter
+  `other`, `demo` keins; und `noAddressMeansNoMark` (verschärft, nichts gelöscht) verlangt bei
+  `activeKey = null` **kein** Einheiten-Item. Mutation „Einheit an jedes Project anhängen" macht beide rot.
+- **Zwei Sider-Teststellen, die mitwachsen mussten:** `show()`-Doppel und das `view.rerender(<AppSider …/>)`
+  in `theSiderShowsOneEntryPerProject` übergeben Props explizit ⇒ `onFiles` war an **beiden** Stellen fällig.
+- **Draht Zählen, projektbezählt:** die Sider-Leiste öffnet den **Arbeitsstand**-Strom `/api/projects/events`,
+  der Chat öffnet `/api/projects/<id>/events`. `chat.countOf('/events', 'GET')` zählt deshalb **beide** (im
+  Rahmen: 2 statt 1). Behauptet wird projektbezählt: `countOf('/' + project().id + '/events', 'GET')` (und
+  analog `/messages`). Sonst beweist der Test die Zahl der falschen Leitungen.
+- **Mount statt Klick:** die Root-Ebene liest jetzt der Mount (`useEffect(() => readBranch('checkout',''),
+  [readBranch])`), der Klick auf eine Wurzel bleibt `loadBranch` (setzt vorher `loading`). Geteilt in
+  `readBranch` (nur lesen) und `loadBranch` (laden-markieren + lesen), damit der Mount kein synchrones
+  `setState` im Effektrumpf tut — `react(set-state-in-effect)` ist hier verboten und `FilesLevel` zeigt für
+  `undefined` schon den Ladehinweis. `readBranch` hängt in `loadBranch`s Abhängigkeiten **und** `remember`
+  (oxlint `react-hooks(exhaustive-deps)` sonst mit Warning).
+- **Mutationen, je einzeln, Restore per `cp` + `diff -q`:**
+  - (a) **Kindroute → Schwesterroute** (`chat/:project/files` neben `chat/:project`, beide `<ChatRoute/>`) ⇒
+    **Befund: bleibt grün** (90 Tests der drei betroffenen Dateien). React Router v6 rendert beide Male
+    `RenderedRoute` derselben Stelle ⇒ dieselbe Instanz, kein neuer Mount, `/messages` bleibt bei 1 Read,
+    `/events` bei 1 Strom, die Live-Zeile steht. Die Plan-Aussage „M1 ⇒ aRunningTurnSurvivesTheUnitClick
+    rot" ist damit **nicht haltbar**: Mount-Identität ist hier Reconciliation, kein Routing-Beweis. Die
+    Kindroute bleibt trotzdem die richtige Form (sie *sagt*, dass die Chat-Route gematcht bleibt, statt es
+    der Trefferliste zu überlassen) — beweisbar ist sie durch diese Mutation nicht.
+  - (a′) **freiwillige Gegenprobe, um die Blindheit des Tests auszuschließen:** `key={project.id}` →
+    `key={pathname}` an `ChatPage` ⇒ `aRunningTurnSurvivesTheUnitClick` **rot** („Unable to find
+    … `chat-live`"), 76 andere grün. Der Test sieht einen echten Remount also; er sieht nur den von (a)
+    behaupteten nicht, weil es ihn nicht gibt.
+  - (b) `chatFilesPath` gibt `chatPath` zurück ⇒ **3 rot**: `theUnitAddressIsItsOwnEntry`,
+    `theTabOpensTheUnitAddressAndBack` („expected '/chat/demo' to be '/chat/demo/files'"),
+    `theSiderEntryAndTheTabNameTheSameAddress`. Der Deep-Link-Test `theUnitAddressIsARouteOfTheChat` bleibt
+    grün — er nennt die Adresse selbst, nicht den Erzeuger (so soll es sein).
+  - (c) `FilesArea` **immer** gemountet (`{open && …}` → immer) ⇒ **6 rot**, darunter
+    `closingThePanelForgetsThePositionInIt`, `fileAreaOpensOnCheckoutAndReadsItsWayDown`,
+    `fileAreaShowsTheRejectionInsteadOfContent`, `theViewerCanAlwaysBeClosed` und die beiden
+    Adress-Tests des Rahmens (das Panel steht dann auch bei geschlossener Adresse).
+- **Verlauf, nicht Schönfärberei — Datei aus dem Gedächtnis geschrieben:** beim Umbau von
+  `src/project/project.files.tsx` wurde die Datei einmal **vollständig überschrieben**, nachdem ihr Kopf
+  (Importe, `FilesLevel`, `FileViewer`, `ROOTS`, `branchKey`) **nicht mehr gelesen**, sondern rekonstruiert
+  war — Ergebnis: erfundene Helfer und Signaturen, die es so nie gab. Zurückgeholt mit
+  `git checkout -- <datei>` (die Datei war **uncommitted**, aber ihr **Kopf** stimmte mit HEAD; verloren
+  ging nur der eigene, laufende Edit). Afterwards in kleinen `diskEditFile`-Schritten auf dem realen Inhalt
+  neu gebaut und per `git diff` **+ `git diff --ignore-all-space`** gegengeprüft (nur die geplanten Hübsche,
+  kein verlorener Helfer). **Dauerhafte Regel:** eine Quelldatei wird **nie** aus dem Kontext neu
+  geschrieben — entweder Zeile für Zeile editieren, oder erst komplett lesen und die gelesenen Zeilen im
+  selben Zuge unverändert übernehmen. Vor jeder Teststufe: `git diff <datei>` gegen die erwarteten Hübsche.
+  `cp`-Sicherungen nur von der **finalen** Fassung; `git checkout --` ist kein Rückweg für etwas, was
+  Jons Hand schon geändert hat.
+- **Noch offen für 5b-2 (nicht angefasst):** LOW-1 zweiter `listProjects()` in `ChatRoute` (Rahmen liest
+  schon, `loaded`-Gate fehlt), LOW-3 `theFrameShowsTheProjectTree` liegt noch in
+  `test/project/project.page.test.tsx`, LOW-4 Prosa-Kürzungen. Erwartung danach 216 / 22.
+
+
+

@@ -213,21 +213,20 @@ Datei die Rolle im Namen (`<komponente>.<rolle>.tsx`). Kein Sammelordner für Vi
 ```
 factory-ui/
   src/
-    app/      app.shell.tsx          Router (eine Adresse je Seite, R-WP-1), Auswahl des Projekts
-    project/  project.page.tsx       Liste + Hinzufügen
-              project.list.tsx
-              project.add.tsx
+    app/      app.shell.tsx          Rahmen: Header · Sider · Content (R-WP-38)
+              app.routes.tsx         eine Adresse je Seite und je Einheit (R-WP-1)
+              app.sider.tsx          Projektbaum — hält keine Auswahl
+              app.paths.ts           das Adress-Modell: Erzeuger und Deuter in EINER Datei
+              app.context.ts         was der Rahmen den Seiten reicht
+    project/  project.page.tsx       Liste + Hinzufügen/Entfernen — liest die Liste nicht selbst
+              project.list.ts        useProjectList: der Eigner der Liste im Rahmen
+              project.files.tsx      Datei-Bereich (Slide-out), props-getrieben
     chat/     chat.page.tsx          Verlauf, Composer, Live-Zeilen
-              chat.log.tsx
-              chat.composer.tsx
+              chat.log.tsx · chat.composer.tsx · chat.tools.tsx
               chat.stream.ts         SSE-Lesen/Parser
     config/   config.page.tsx        Config-Seite
-              config.form.tsx
-    shared/   api.client.ts          HTTP + Fehlertyp, von allen benutzt
-              dto.ts
-  test/
-    project/project.page.test.tsx
-    chat/chat.page.test.tsx
+    shared/   api.client.ts · sse.client.ts · content.ts · theme.ts · last.project.ts
+  test/<komponente>/                 Spiegel von src/, niemals Tests unter src/
 ```
 
 * **Gleicher Name wie im Backend** (`project`, `chat`, `config`, `shared`): wer den Server versteht,
@@ -239,6 +238,37 @@ factory-ui/
   ausgeliefert wird, und beides wird beim Lesen verwechselt.
 * **Abhängigkeitsrichtung wie im Backend:** `app` kennt die Komponenten, `shared` kennt keine; eine
   Komponente importiert nie aus einer anderen außer `shared` (Ausnahme: `app` als Verdrahtung).
+
+### Rahmen, Adresse, Einheit (2026-11-07)
+
+```mermaid
+flowchart LR
+  URL[Adresse] -->|navKeyOfPathname| Sider[AppSider · Markierung]
+  URL -->|Route| Shell[AppShell · Rahmen]
+  List[useProjectList<br/>project.list.ts] -->|projects| Shell
+  Shell -->|projects · onOpen| Page[ProjectPage]
+  Shell -->|projects · activeKey| Sider
+  Shell -->|openProject: merken + navigate| URL
+  URL -->|chat/:project| Chat[ChatPage<br/>bleibt gemountet]
+  URL -->|chat/:project/files| Files[ProjectFiles<br/>Kind-Route]
+  Chat --- Files
+```
+
+* **Der Rahmen besitzt Liste und Navigation.** `useProjectList` (eine Datei, ein GET) füttert Sider
+  **und** Projekte-Seite über `app.context.ts`; eine Seite fragt die Liste nie selbst. `app.paths.ts` ist
+  der **einzige** Ort, der Adressen baut und liest (`chatPath`, `projectSegment`, `navKeyOfPathname`) —
+  der Sider hält dafür **keinen** Zustand.
+* **Markierung ist eine Funktion der Adresse**, nicht das Ergebnis eines Klicks. Messbarer Grund
+  (Review 2026-11-07): eine Auswahl im State überlebt Back/Forward und jede Weiterleitung — und bleibt
+  bei Tests grün, wenn die Mutation nur `useState(null)` trifft. Zu treffen sind **geseedeter** State und
+  **beim Mount eingefrorener** Wert; `unmount()` + Neu-Mount prüft zwei Mounts, nie eine Zustandsänderung.
+* **Der Datei-Bereich gehört der Adresse, nicht dem Seiten-State** (Inkrement 5b): `files` ist
+  **Kind-Route** von `chat/:project`, damit die Chat-Seite über beiden Adressen dieselbe Instanz bleibt —
+  eine eigene Seiten-Route würde den Chat neu mounten und den laufenden Turn samt Stream zerschlagen
+  ([UC-WP-70 G2](ui.md)). `project.files.tsx` bleibt props-getrieben; **wer** „offen" nennt, entscheidet
+  die Route. Der „Files"-Tab im Chat ([R-WP-33](files.md)) und der Sider-Eintrag sind zwei Griffe auf
+  dieselbe Adressänderung, kein zweiter Mechanismus.
+
 
 ## Abbildung Core → Factory
 

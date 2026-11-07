@@ -1,7 +1,9 @@
 import { expect, test } from 'vitest'
 
 import {
+  chatFilesPath,
   chatPath,
+  filesKeyOf,
   navKeyOfPathname,
   projectKeyOf,
   projectOfSegment,
@@ -25,6 +27,30 @@ test('theAddressNamesTheEntryThatShows', () => {
   expect(navKeyOfPathname('/chat/deep%20dive')).toBe(projectKeyOf('deep dive'))
   // an address that cannot be decoded names what it spells; reading it is no reason to throw
   expect(navKeyOfPathname('/chat/%E0%A4%A')).toBe(projectKeyOf('%E0%A4%A'))
+})
+
+/**
+ * The file area has an address of its own and the reading tells the two apart (R-WP-38, UC-WP-70 G2): the
+ * unit is read **before** the chat, so `/chat/x/files` names x's area and not x's chat. The edges are what
+ * makes this a reading and not a prefix match — a trailing slash names the same place, a second segment
+ * that is no unit names nothing (it is no page either, R-WP-1), and the unit keeps its own prefix so a
+ * project may be called `files`.
+ */
+// R-WP-38
+test('theUnitAddressIsItsOwnEntry', () => {
+  expect(chatFilesPath('demo')).toBe('/chat/demo/files')
+  expect(navKeyOfPathname(chatFilesPath('demo'))).toBe(filesKeyOf('demo'))
+  expect(navKeyOfPathname('/chat/demo/files/')).toBe(filesKeyOf('demo'))
+  expect(navKeyOfPathname('/chat/demo/')).toBe(projectKeyOf('demo'))
+  expect(navKeyOfPathname('/chat/demo/unknown')).toBeNull()
+  // the unit of an escaped name decodes like the chat does, and an undecodable one is read as it stands
+  expect(navKeyOfPathname('/chat/deep%20dive/files')).toBe(filesKeyOf('deep dive'))
+  expect(navKeyOfPathname('/chat/%E0%A4%A/files')).toBe(filesKeyOf('%E0%A4%A'))
+  // the bare chat root answers with nothing: it is a question about the last project, not a unit
+  expect(navKeyOfPathname('/chat')).toBeNull()
+  // a project called `files` is still a project, and its unit is still something else
+  expect(navKeyOfPathname(chatPath('files'))).toBe(projectKeyOf('files'))
+  expect(navKeyOfPathname(chatFilesPath('files'))).toBe(filesKeyOf('files'))
 })
 
 /**

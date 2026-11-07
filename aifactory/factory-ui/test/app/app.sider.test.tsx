@@ -2,8 +2,9 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 
 import { AppSider, SIDER_BREAKPOINT } from '../../src/app/app.sider'
-import { projectKeyOf, siderRootKey } from '../../src/app/app.paths'
+import { filesKeyOf, projectKeyOf, siderRootKey } from '../../src/app/app.paths'
 import { content } from '../../src/shared/content'
+import { declarations } from '../shared/sheets'
 import { project } from '../shared/fixtures'
 import type { Project } from '../../src/shared/dto'
 
@@ -47,13 +48,14 @@ function sider(): HTMLElement {
   return document.querySelector('.app-sider') as HTMLElement
 }
 
-function show(props: Partial<{ projects: Project[]; activeKey: string | null; onOpen: (p: Project) => void; onProjects: () => void }>) {
+function show(props: Partial<{ projects: Project[]; activeKey: string | null; onOpen: (p: Project) => void; onProjects: () => void; onFiles: (p: Project) => void }>) {
   return render(
     <AppSider
       projects={props.projects ?? [DEMO, OTHER]}
       activeKey={props.activeKey ?? null}
       onOpen={props.onOpen ?? vi.fn()}
       onProjects={props.onProjects ?? vi.fn()}
+      onFiles={props.onFiles ?? vi.fn()}
     />,
   )
 }
@@ -75,7 +77,7 @@ test('theSiderShowsOneEntryPerProject', () => {
   // what the frame added has to be in the tree without the tree asking again
   expect(entries().map(entry => entry.textContent)).toEqual([content.nav.projects, DEMO.name])
   view.rerender(
-    <AppSider projects={[DEMO, OTHER]} activeKey={siderRootKey} onOpen={vi.fn()} onProjects={vi.fn()} />,
+    <AppSider projects={[DEMO, OTHER]} activeKey={siderRootKey} onOpen={vi.fn()} onProjects={vi.fn()} onFiles={vi.fn()} />,
   )
   expect(entries().map(entry => entry.textContent)).toEqual([
     content.nav.projects,
@@ -147,6 +149,82 @@ test('noAddressMeansNoMark', () => {
   expect(
     entries().filter(entry => entry.getAttribute('aria-current') !== null),
   ).toEqual([])
+  // and no unit of any project either: an area nobody named is not offered (R-WP-38)
+  expect(within(nav()).queryByRole('menuitem', { name: content.nav.files })).toBeNull()
+})
+
+/**
+ * The file area is an address of its own and gets its own entry — under the one project the address names
+ * and nowhere else (R-WP-38): two handles of one address change, and the entry hangs one step behind its
+ * project instead of opening a subtree, so there is no open-state to keep in step.
+ */
+// R-WP-38
+// UC-WP-70
+test('theUnitsOfTheOpenProjectHangUnderIt', () => {
+  const onFiles = vi.fn()
+  const onOpen = vi.fn()
+  const onProjects = vi.fn()
+  show({ activeKey: filesKeyOf(DEMO.name), onFiles, onOpen, onProjects })
+
+  // directly behind its project, and the other project keeps no such entry
+  expect(entries().map(entry => entry.textContent)).toEqual([
+    content.nav.projects,
+    DEMO.name,
+    content.nav.files,
+    OTHER.name,
+  ])
+
+  // the indent is the entry's own class and the sheet gives it a measure — jsdom lays out nothing, so the
+  // contract is read where it is written
+  const unit = within(nav()).getByRole('menuitem', { name: content.nav.files })
+  expect(unit.className).toContain('app-sider-unit')
+  expect(declarations('.app-sider .ant-menu-item.app-sider-unit')).toContain('padding-inline-start')
+
+  // the second handle names the area and nothing else
+  fireEvent.click(unit)
+  expect(onFiles).toHaveBeenCalledTimes(1)
+  expect(onFiles).toHaveBeenCalledWith(DEMO)
+  expect(onOpen).not.toHaveBeenCalled()
+  expect(onProjects).not.toHaveBeenCalled()
+})
+
+/**
+ * One address, one mark: when the address names the unit, the unit is what shows — the project beside it
+ * is not marked as well, or the tree would answer the same question twice (R-WP-38).
+ */
+// R-WP-38
+test('theUnitIsTheOnlyMarkOfTheAddress', () => {
+  show({ activeKey: filesKeyOf(DEMO.name) })
+
+  const marked = entries().filter(entry => entry.className.includes('ant-menu-item-selected'))
+  expect(marked, 'exactly one entry of the tree shows').toHaveLength(1)
+  expect(marked[0].textContent).toBe(content.nav.files)
+
+  const current = entries().filter(entry => entry.getAttribute('aria-current') === 'page')
+  expect(current, 'exactly one entry says it is the current page').toHaveLength(1)
+  expect(current[0]).toBe(marked[0])
+
+  const named = within(nav()).getByRole('menuitem', { name: DEMO.name })
+  expect(named.className).not.toContain('ant-menu-item-selected')
+  expect(named.getAttribute('aria-current')).toBeNull()
+})
+
+/**
+ * The chat of a project names the project, so its area hangs under it — and under that one only: a unit
+ * beside every project would be a mark the address never gave, and a tree of areas to keep in step with
+ * a page that has one (R-WP-38).
+ */
+// R-WP-38
+test('theUnitHangsUnderTheNamedProjectAlone', () => {
+  show({ activeKey: projectKeyOf(OTHER.name) })
+
+  // `other` is named, so it carries the one unit; `demo` carries none
+  expect(entries().map(entry => entry.textContent)).toEqual([
+    content.nav.projects,
+    DEMO.name,
+    OTHER.name,
+    content.nav.files,
+  ])
 })
 
 // UC-WP-70

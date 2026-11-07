@@ -99,10 +99,17 @@ auf das Projekt öffnet seinen Chat** — es gibt **keinen eigenen „Jon"-Eintr
 in der Navigation (Paul 2026-11-06: „Jon … muss weg"; der Agent heißt in den Docs weiter Jon, und
 seine Kachel behält den Namen, [R-WP-7](chat.md)). Unter dem Projekt stehen seine **Einheiten**:
 **Files**, und **Paco**, sobald dessen Story gebaut ist (mehrere Paco-Instanzen je Projekt sind die
-spätere Vision — der Sider ist der Ort dafür, kein zweiter Mechanismus). Der **Header** trägt nur
+spätere Vision — der Sider ist der Ort dafür, kein zweiter Mechanismus). Einheiten zeigt der Sider **nur
+unter dem Projekt, das die Adresse nennt** — ein Projekt, das nicht offen ist, hat keine eigene
+Einheits-Adresse. Der **Header** trägt nur
 noch Marke, gewählten Nutzer und **Settings** — keine „Projekte"/„Chat"-Einträge, die der Sider schon
 zeigt. Eine **Breadcrumb-Zeile gibt es nicht**: der Sider sagt, wo man ist. Die gewählte Einheit ist
-im Sider markiert, und Sider-Markierung und URL sind einig (R-WP-1). Fällt das Fenster unter den
+im Sider markiert, und Sider-Markierung und URL sind einig (R-WP-1). Der **Datei-Bereich ist eine eigene
+Adresse je Projekt**: sein Auf- und Zuklappen **ist** der Adresswechsel — es gibt keinen zweiten
+Panel-Zustand, und der „Files"-Tab im Chat ([R-WP-33](files.md)) wie der Sider-Eintrag sind zwei Griffe
+auf dieselbe Adresse. Die Chat-Seite bleibt dabei **dieselbe Instanz**: ein laufender Turn endet nicht am
+Klick auf eine Einheit, und der Chat bleibt neben dem Panel sichtbar ([R-WP-33](files.md)). Fällt das
+Fenster unter den
 Sider-Breakpoint, **klappt der Sider** und die Chat-Fläche nutzt die Breite; die Auswahl bleibt über
 den ausgeklappten Sider erreichbar. Die **Chat-Eingabe** gehört zur **Chat-Spalte** (dockt unten
 innerhalb ihrer Spalte, [R-WP-35](chat.md)) — sie läuft nicht unter dem Sider durch, der Sider läuft
@@ -113,7 +120,8 @@ in voller Höhe daneben.
   Projekt**, ohne „Jon"-Eintrag und ohne „Jon"-Label; ein Klick auf das Projekt öffnet dessen Chat, ein
   Klick auf „Projects" die Projektliste (Hinzufügen, Entfernen) — Markierung und URL einig.
 - GIVEN ein geöffnetes Projekt WHEN der Nutzer die Einheit **Files** wählt THEN wechseln
-  Sider-Markierung und URL einig auf dieselbe Einheit, und ein Reload landet wieder dort.
+  Sider-Markierung und URL einig auf dieselbe Einheit, der Chat bleibt daneben sichtbar, und ein Reload
+  landet wieder dort; ein laufender Turn endet nicht an diesem Klick.
 - GIVEN ein Fenster unter dem Sider-Breakpoint WHEN die App zeichnet THEN ist der Sider auf **Breite 0**
   eingeklappt und die Chat-Fläche füllt die Zeile allein; über den ausgeklappten Sider bleibt die Auswahl
   erreichbar (auch „Projects"). Der Beleg nennt die Breite des Siders (0) und die Rankenlage — das

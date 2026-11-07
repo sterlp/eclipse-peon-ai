@@ -4,7 +4,14 @@ import { Button, Layout } from 'antd'
 
 import { AppSider } from './app.sider'
 import { AppUser } from './app.user'
-import { chatPath, navKeyOfPathname, projectSegment, projectsPath, settingsPath } from './app.paths'
+import {
+  chatFilesPath,
+  chatPath,
+  navKeyOfPathname,
+  projectSegment,
+  projectsPath,
+  settingsPath,
+} from './app.paths'
 import type { AppContext } from './app.context'
 import { content } from '../shared/content'
 import { useProjectList } from '../project/project.list'
@@ -40,6 +47,16 @@ export default function AppShell() {
     navigate(chatPath(segment))
   }
 
+  /**
+   * The second handle to the same place: the file area is an address of its own (R-WP-38), and `/chat` on
+   * its own still answers with the chat — the area is a chosen address, not a place to return to.
+   */
+  function openFiles(project: Project): void {
+    const segment = projectSegment(project)
+    writeLastProject(segment)
+    navigate(chatFilesPath(segment))
+  }
+
   const context = {
     user,
     projects,
@@ -69,6 +86,7 @@ export default function AppShell() {
           activeKey={navKeyOfPathname(pathname)}
           onOpen={openProject}
           onProjects={() => navigate(projectsPath)}
+          onFiles={openFiles}
         />
         <Layout.Content className="app-main">
           <Outlet context={context} />

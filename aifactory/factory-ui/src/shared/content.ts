@@ -14,6 +14,8 @@ export const content = {
     views: 'Views',
     /** The sider's first entry: the list itself, where projects are added and removed (R-WP-38). */
     projects: 'Projects',
+    /** The one unit a project has (R-WP-38): the file area, hung under its project in the tree. */
+    files: 'Files',
     settings: 'Settings',
   },
 

@@ -103,6 +103,86 @@ test('aDeepLinkShowsTheSameState', async () => {
   expect(markedEntry().textContent).toBe(project().name)
 })
 
+/** How often the mounted app asked for the chat history — a second read is a second mount (UC-WP-70 G2). */
+function historyReads(): number {
+  return vi
+    .mocked(fetch)
+    .mock.calls.filter(([input]) => String(input).endsWith('/messages')).length
+}
+
+// R-WP-38
+// UC-WP-70
+test('theUnitAddressIsARouteOfTheChat', async () => {
+  // the address of the file area, opened cold: a bookmark and a reload show the area beside the chat
+  stubAppServer()
+  const app = renderApp(`${CHAT_PATH}/files`)
+
+  // the chat did not step aside: the unit is a child of its address and not a page of its own (R-WP-1)
+  const chat = await screen.findByRole('region', { name: content.chat.title })
+  expect(within(chat).getByRole('heading', { name: project().name })).toBeInTheDocument()
+  expect(await screen.findByTestId('files-panel')).toBeInTheDocument()
+  expect(app.path()).toBe(`${CHAT_PATH}/files`)
+  await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.files))
+  // one read of the history for one chat: naming the unit is no reason to read the conversation again
+  expect(historyReads(), 'the chat history is read once').toBe(1)
+})
+
+// R-WP-38
+// UC-WP-70
+test('theTabOpensTheUnitAddressAndBack', async () => {
+  stubAppServer()
+  const app = renderApp(CHAT_PATH)
+  await screen.findByRole('region', { name: content.chat.title })
+  expect(screen.queryByTestId('files-panel')).toBeNull()
+
+  // the tab is a handle to an address now: mark, URL and panel move together (R-WP-38)
+  fireEvent.click(screen.getByTestId('files-open'))
+  expect(await screen.findByTestId('files-panel')).toBeInTheDocument()
+  expect(app.path()).toBe(`${CHAT_PATH}/files`)
+  expect(screen.getByTestId('files-open')).toHaveAttribute('aria-expanded', 'true')
+  await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.files))
+
+  // the same tab closes it, and the address is the chat again — nothing is left behind to reload into
+  fireEvent.click(screen.getByTestId('files-open'))
+  await waitFor(() => expect(app.path()).toBe(CHAT_PATH))
+  expect(screen.queryByTestId('files-panel')).toBeNull()
+  expect(screen.getByTestId('files-open')).toHaveAttribute('aria-expanded', 'false')
+  await waitFor(() => expect(markedEntry().textContent).toBe(project().name))
+})
+
+// R-WP-38
+// UC-WP-70
+test('theSiderEntryAndTheTabNameTheSameAddress', async () => {
+  // two handles, one address change: the entry of the tree and the tab of the chat name the same place
+  stubAppServer()
+  const app = renderApp(CHAT_PATH)
+  await screen.findByRole('region', { name: content.chat.title })
+
+  fireEvent.click(await within(nav()).findByRole('menuitem', { name: content.nav.files }))
+  expect(await screen.findByTestId('files-panel')).toBeInTheDocument()
+  expect(app.path()).toBe(`${CHAT_PATH}/files`)
+  await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.files))
+
+  // and the project's own entry is the way back to the chat address
+  fireEvent.click(within(nav()).getByRole('menuitem', { name: project().name }))
+  await waitFor(() => expect(app.path()).toBe(CHAT_PATH))
+  expect(screen.queryByTestId('files-panel')).toBeNull()
+  await waitFor(() => expect(markedEntry().textContent).toBe(project().name))
+})
+
+// R-WP-1
+// UC-WP-70
+test('anUnknownUnitIsNoPage', async () => {
+  // the child grammar knows one unit: anything else under a project address is no page, and a fourth view
+  // of the chat is what R-WP-1 forbids — so it lands on the list, where a project is picked again
+  stubAppServer()
+  const app = renderApp(`${CHAT_PATH}/unknown`)
+
+  expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
+  expect(app.path()).toBe('/projects')
+  expect(screen.queryByTestId('files-panel')).toBeNull()
+})
+
 // UC-WP-70
 test('theNameAddressOpensTheProjectItNames', async () => {
   // the counter-proof of C-3: two projects are in the registry, the address names the second one, so a

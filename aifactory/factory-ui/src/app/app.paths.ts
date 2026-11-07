@@ -21,6 +21,17 @@ export function chatPath(segment: string): string {
 }
 
 /**
+ * The address of one project's file area (R-WP-38, UC-WP-70 G2): a **child** of the chat address, so naming
+ * the unit never leaves the chat — a fourth top-level address would be a fourth view (R-WP-1).
+ */
+export const filesSuffix = '/files'
+
+/** The address of one project's file area (UC-WP-70 G2) — same rule as {@link chatPath}: raw segment. */
+export function chatFilesPath(segment: string): string {
+  return `${chatPath(segment)}${filesSuffix}`
+}
+
+/**
  * The one producer of the part of the address that names a project (R-WP-38): the **name**, so the address
  * reads as what the tree shows (C-3). The backend keeps a name single — a second folder of that name is
  * refused case-insensitively (`ProjectService.add`) — and its `SAFE_NAME` keeps it free of `/` and spaces, so
@@ -46,11 +57,28 @@ export function projectKeyOf(segment: string): string {
   return `project:${segment}`
 }
 
+/** The sider key of one project's unit — its own prefix, because a project may be called `files`. */
+export function filesKeyOf(segment: string): string {
+  return `files:${segment}`
+}
+
+/** The project a raw path segment names: decoded, and as it stands when it cannot be decoded. */
+function readSegment(raw: string): string {
+  try {
+    return decodeURIComponent(raw)
+  } catch {
+    return raw
+  }
+}
+
 /**
- * Which entry of the sider an address names (UC-WP-52, R-WP-1): a reading of the path and nothing else, so
- * the mark survives a reload and follows an address nobody clicked. An address that names no entry —
- * `/settings`, the bare `/chat` — marks nothing, which is the honest answer rather than a guess at the first
- * entry.
+ * Which entry of the sider an address names (UC-WP-52, R-WP-1, UC-WP-70 G2): a reading of the path and
+ * nothing else, so the mark survives a reload and follows an address nobody clicked. An address that names no
+ * entry — `/settings`, the bare `/chat`, `/chat/x/anything-else` — marks nothing, which is the honest answer
+ * rather than a guess at the first entry.
+ *
+ * The **unit is read before the chat**: `/chat/x/files` names x's file area, not x's chat — reading the first
+ * segment alone would mark the project and leave the panel owner without an answer.
  *
  * The segment is read **decoded**, because the chat resolves what `useParams` hands it — already decoded —
  * and a mark that disagreed with the chat about the spelling would be a second answer. An address that cannot
@@ -63,13 +91,15 @@ export function navKeyOfPathname(pathname: string): string | null {
   if (!pathname.startsWith(`${chatRoot}/`)) {
     return null
   }
-  const [raw = ''] = pathname.slice(chatRoot.length + 1).split('/')
+  // a trailing slash names the same thing: `/chat/x/` is x's chat, `/chat/x/files/` is x's unit
+  const path = pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
+  const [raw = '', ...rest] = path.slice(chatRoot.length + 1).split('/')
   if (raw === '') {
     return null
   }
-  try {
-    return projectKeyOf(decodeURIComponent(raw))
-  } catch {
-    return projectKeyOf(raw)
+  const segment = readSegment(raw)
+  if (rest.length === 0) {
+    return projectKeyOf(segment)
   }
+  return `/${rest.join('/')}` === filesSuffix ? filesKeyOf(segment) : null
 }

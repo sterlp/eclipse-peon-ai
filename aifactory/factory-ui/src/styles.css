@@ -45,6 +45,12 @@
   border-inline-end: 0;
 }
 
+/* The unit of the addressed project hangs under its project (R-WP-38) — one step in from the flat entries,
+   and the mark stays on exactly one of them. Specificity over the basis' own item rule, no `!important`. */
+.app-sider .ant-menu-item.app-sider-unit {
+  padding-inline-start: 2.25rem;
+}
+
 /* Settings at the end of the header speaks in the heading colour like the brand beside it. */
 .app-settings {
   color: var(--text-h);
@@ -717,8 +723,10 @@ button {
   }
 }
 
-/* an open file widens the panel, and the tab moves to the new edge with it */
-.files-tab[data-open='true'][data-wide='true'] {
+/* an open file widens the panel, and the tab moves to the new edge with it. Read off the panel beside it:
+   the width is the area's own state, and a second copy of it on the tab would be the second owner this
+   increment removes (INC-5B-D1). */
+.files-panel[data-wide='true'] + .files-tab {
   right: var(--files-wide);
 }
 

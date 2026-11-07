@@ -342,6 +342,45 @@ test('anUrgentLineGoesToTheServerAsTyped', async () => {
 })
 
 
+// R-WP-38
+// UC-WP-70
+test('aRunningTurnSurvivesTheUnitClick', async () => {
+  // the file area is an address now, and an address change may not cost a running turn: a new mount would
+  // read the history again and open the stream again, and the answer half way to the screen would be gone
+  const chat = stubChat({ messages: [QUESTION], projects: [project()] })
+  renderApp()
+  fireEvent.click(await screen.findByRole('button', { name: 'demo' }))
+  await screen.findByTestId('chat-log')
+  await flush()
+
+  await chat.push(event('partial', { kind: 'answer', text: 'Im Root liegen' }))
+  expect(screen.getByTestId('chat-live')).toHaveTextContent('Im Root liegen')
+  // the two wires of this project only — the list beside the chat has a work-state stream of its own, and
+  // counting that one would answer a different question
+  const readsBefore = chat.countOf(`/${project().id}/messages`, 'GET')
+  const streamsBefore = chat.countOf(`/${project().id}/events`, 'GET')
+  expect(streamsBefore, 'the open chat streams on exactly one wire').toBe(1)
+
+  // the second handle of the same place: the tree names the file area while the answer is still arriving
+  fireEvent.click(
+    within(screen.getByRole('navigation', { name: content.nav.views })).getByRole('menuitem', {
+      name: content.nav.files,
+    }),
+  )
+
+  expect(await screen.findByTestId('files-panel')).toBeInTheDocument()
+  // the chat beside it is the same instance — no read, no second wire, the live line still stands (G2)
+  expect(screen.getByTestId('chat-live')).toHaveTextContent('Im Root liegen')
+  expect(chat.countOf(`/${project().id}/messages`, 'GET'), 'the running chat is not read again').toBe(
+    readsBefore,
+  )
+  expect(chat.countOf(`/${project().id}/events`, 'GET'), 'one live stream stays open').toBe(streamsBefore)
+
+  // and the turn goes on: opening a folder is not the end of an answer
+  await chat.push(event('partial', { kind: 'answer', text: ': pom.xml' }))
+  expect(screen.getByTestId('chat-live')).toHaveTextContent('Im Root liegen: pom.xml')
+})
+
 // UC-WP-7
 test('streamingUpdatesChatWithoutReload', async () => {
   const chat = stubChat({ messages: [QUESTION] })
