@@ -50,11 +50,15 @@ interface Row {
 }
 
 /**
- * A live item that speaks: an answer or a failure. A tool step, a diff block and a delegation are drawn as
- * themselves and never as a line of speech, so they are out of this type by construction (R-WP-28, R-WP-36,
- * R-WP-40).
+ * A live item that speaks: an answer or a failure. A tool step, a Think section, a diff block and a
+ * delegation are drawn as themselves and never as a line of speech, so they are out of this type by
+ * construction (R-WP-28, R-WP-36, R-WP-40). A Think section is what a model thought on its way to the
+ * answer and not the answer: only what the turn says is speech (R-WP-28).
  */
-type SpokenItem = Exclude<LiveItem, { kind: 'tool' } | { kind: 'diff' } | { kind: 'delegation' }>
+type SpokenItem = Exclude<
+  LiveItem,
+  { kind: 'tool' } | { kind: 'think' } | { kind: 'diff' } | { kind: 'delegation' }
+>
 
 /**
  * One thing the log draws: a line of the conversation, a live answer, one timeline of the trace, or one diff
@@ -63,9 +67,10 @@ type SpokenItem = Exclude<LiveItem, { kind: 'tool' } | { kind: 'diff' } | { kind
 type Entry =
   | { type: 'row'; row: Row }
   | { type: 'live'; item: SpokenItem }
-  /** The trace of one place of the log: its steps and its delegations in the order they arrived, in the one
-   *  timeline they share (R-WP-40). `open` is the one entry the open turn works on and stands in at most one
-   *  of the widgets the log draws — identity, so neither the cap nor the place in the list decides it. */
+  /** The trace of one place of the log: its steps, its Think sections and its delegations in the order they
+   *  arrived, in the one timeline they share (R-WP-40). `open` is the one entry the open turn works on and
+   *  stands in at most one of the widgets the log draws — identity, so neither the cap nor the place in the
+   *  list decides it. */
   | { type: 'trace'; items: TraceItem[]; open: TraceItem | null }
   | { type: 'diff'; file: string; text: string }
 
@@ -82,7 +87,8 @@ type Entry =
  * A user's line always names its author — the person the server named, or the role label of the doc —
  * because the chat is shared and every viewer has to read the same thing (R-WP-25, UC-WP-48). An agent's
  * line stays nameless when the server named none: no "System", no "Peon", no invented agent (R-WP-4).
- * A thinking delta never reaches here (§3.3.3, Q7).
+ * A thinking delta is no speech either — it is an entry of the trace, a link of the account of what the
+ * turn did, and it names no author because the wire stamps none on a thought (R-WP-40).
  *
  * Tool activity is not a voice: it keeps the grey of `chat.html`, and a step names only the agent the wire
  * stamped on it — never one the log invented (R-WP-37, R-WP-40). A diff block is of the same family — a fact
@@ -176,8 +182,8 @@ export function ChatLog({ messages, outgoing, live, pending, openTurn = null, lo
  * number of rows its turn was anchored at, and inside the run the arrival order holds. The anchor counts
  * what stood at that moment — the history plus the inputs that were still pending then — so it names the
  * same place before and after the read that confirms those inputs, and a run pointing past the rows that
- * stand today falls to the end (D-A, UC-WP-54). The steps and delegations of one run become ONE timeline, a
- * diff block stands beside it as a block of its own (R-WP-36, R-WP-40).
+ * stand today falls to the end (D-A, UC-WP-54). The steps, Think sections and delegations of one run become
+ * ONE timeline, a diff block stands beside it as a block of its own (R-WP-36, R-WP-40).
  */
 function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entry[] {
   const entries: Entry[] = []
@@ -196,9 +202,9 @@ function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entr
 
   for (const run of liveRuns(live)) {
     pushRows(run[0].afterLines)
-    // the trace of this place: the steps and the delegations of one run are ONE account and end only where
-    // the account is interrupted — by a voice, by a failure, by a block of its own, or by the next turn
-    // (R-WP-40, D6 of the increment)
+    // the trace of this place: the steps, the Think sections and the delegations of one run are ONE account
+    // and end only where the account is interrupted — by a voice, by a failure, by a block of its own, or by
+    // the next turn (R-WP-40: a message of the model ends the group; a diff is a block of its own, R-WP-36)
     let trace: TraceItem[] = []
     const flushTrace = () => {
       if (trace.length === 0) {
@@ -208,9 +214,10 @@ function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entr
       trace = []
     }
     for (const item of run) {
-      if (item.kind === 'tool' || item.kind === 'delegation') {
-        // a delegation joins the run instead of breaking it: the indicator still moves to it, because ONE
-        // decider names the entry that works (`openTimelineItem`) and not the order of the widgets
+      if (item.kind === 'tool' || item.kind === 'think' || item.kind === 'delegation') {
+        // a Think section and a delegation join the run instead of breaking it: the indicator still moves to
+        // them, because ONE decider names the entry that works (`openTimelineItem`) and not the order of the
+        // widgets
         trace.push(item)
         continue
       }

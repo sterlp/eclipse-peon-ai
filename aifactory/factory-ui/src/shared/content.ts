@@ -80,6 +80,9 @@ export const content = {
     /** The one word of a running delegation (R-WP-40): the entry names the member, never a task — the wire
      *  carries none, so there is nothing else this screen could say about it (UC-WP-72 GIVEN 3). */
     working: 'working',
+    /** The word a Think entry names itself with (R-WP-40): the kind of the entry, never an author — the wire
+     *  stamps none on a thought, so the screen has no name to show and says what it is instead. */
+    thinking: 'Thinking',
     message: 'Message',
     messageToJon: 'Message to Jon',
     send: 'Send',

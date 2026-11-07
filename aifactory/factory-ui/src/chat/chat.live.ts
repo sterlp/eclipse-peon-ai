@@ -25,6 +25,10 @@ export type LiveItem =
       at: number | null
       turn: number | null
     }
+  /** One Think section of the turn, drawn as an entry of the trace like a step (R-WP-40). `text` is the
+   *  wire's wording and never Markdown, `at` the moment its FIRST delta reached this browser, `turn` the
+   *  identity of the turn that reported it. The wire names no author of a thought, so the entry names none. */
+  | { kind: 'think'; text: string; afterLines: number; at: number | null; turn: number | null }
   /** One file the turn changed: `text` is its unified diff, `file` the path the block names. */
   | { kind: 'diff'; file: string; text: string; afterLines: number }
   /** One delegation of the turn. `member` is the member the order went to and `at` the moment this browser
@@ -44,15 +48,18 @@ export type LiveItem =
 /** One step of a tool run, as the timeline draws it. */
 export type ToolItem = Extract<LiveItem, { kind: 'tool' }>
 
+/** One Think section, as the timeline draws it. */
+export type ThinkItem = Extract<LiveItem, { kind: 'think' }>
+
 /** One delegation, as the timeline draws it. */
 export type DelegationItem = Extract<LiveItem, { kind: 'delegation' }>
 
 /**
- * One entry of the trace — the steps and the delegations of a turn, which the screen draws in ONE timeline
- * (R-WP-40). A diff and a text of the answer are of no such family: the first is a block of its own
- * (R-WP-36), the second is a voice.
+ * One entry of the trace — the steps, the Think sections and the delegations of a turn, which the screen
+ * draws in ONE timeline (R-WP-40). A diff and a text of the answer are of no such family: the first is a
+ * block of its own (R-WP-36), the second is a voice.
  */
-export type TraceItem = ToolItem | DelegationItem
+export type TraceItem = ToolItem | ThinkItem | DelegationItem
 
 /** What `chat.html` keeps of a tool block: the tail, so a chatty turn cannot push the answer away. */
 export const MAX_TOOL_LINES = 10
@@ -83,13 +90,34 @@ export function appendLiveTool(
 }
 
 /**
- * The ONE entry of the timeline that works: the last step of the turn this view holds open — a tool step or
- * a delegation entry, never both, because this is the only place the log asks who works (R-WP-40,
- * UC-WP-72 GIVEN 2 and 3). A step of a turn that has ended never works for the next one, and an open turn
- * that has reported no step of its own has no indicator — the core reports no end of a single tool, so only
- * the next step, the entry's own end or the end of the turn takes the indicator away. The answer a turn is
- * writing, and the file changes it reports, are steps of neither: a step keeps its indicator while the
- * answer streams to it.
+ * A Think delta continues the Think entry that stands last, and only that one: the wire streams one thought
+ * in pieces and one thought is ONE entry of the timeline. A delta behind a step, behind an answer or behind
+ * a thought of another turn opens a new entry — the merge is by the turn's identity and never by a place,
+ * so a second turn cannot append itself to the first one's thought (R-WP-40, UC-WP-72 GIVEN 1). `at` stays
+ * the moment of the FIRST delta: an entry that has been growing since 09:05 is titled by 09:05.
+ */
+export function appendLiveThink(
+  items: LiveItem[],
+  text: string,
+  afterLines: number,
+  at: number | null = null,
+  turn: number | null = null,
+): LiveItem[] {
+  const last = items[items.length - 1]
+  if (last !== undefined && last.kind === 'think' && last.turn === turn) {
+    return [...items.slice(0, -1), { ...last, text: last.text + text }]
+  }
+  return [...items, { kind: 'think', text, afterLines, at, turn }]
+}
+
+/**
+ * The ONE entry of the timeline that works: the last step of the turn this view holds open — a tool step, a
+ * Think section or a delegation entry, never both, because this is the only place the log asks who works
+ * (R-WP-40, UC-WP-72 GIVEN 2 and 3). A step of a turn that has ended never works for the next one, and an
+ * open turn that has reported no step of its own has no indicator — the core reports no end of a single
+ * tool, so only the next step, the entry's own end or the end of the turn takes the indicator away. The
+ * answer a turn is writing, and the file changes it reports, are steps of neither: a step keeps its
+ * indicator while the answer streams to it.
  */
 export function openTimelineItem(
   items: LiveItem[],
@@ -100,7 +128,9 @@ export function openTimelineItem(
   }
   for (let index = items.length - 1; index >= 0; index -= 1) {
     const item = items[index]
-    if (item.kind === 'tool') {
+    if (item.kind === 'tool' || item.kind === 'think') {
+      // a Think section is a step of the account like a tool: it works while it is the last thing the turn
+      // reported and stops with the next one (R-WP-40)
       return item.turn === turn ? item : null
     }
     if (item.kind === 'delegation') {
@@ -190,9 +220,9 @@ export function endLiveDelegation(items: LiveItem[], member: string, turn: numbe
 
 /**
  * What a history read leaves of the live list: the answer has become a line of the history and would
- * stand there twice, while tool lines, diff blocks and delegation entries exist on the wire only — losing
- * them at `done` is exactly what UC-WP-54 forbids, and R-WP-36 puts its block in the same family, as does
- * R-WP-40 its delegation.
+ * stand there twice, while tool lines, Think sections, diff blocks and delegation entries exist on the wire
+ * only — losing them at `done` is exactly what UC-WP-54 forbids, and R-WP-36 puts its block in the same
+ * family, as does R-WP-40 its delegation and its thinking.
  *
  * `mark` is how many items stood when that read was issued. Everything behind it arrived while the server
  * was already answering, so the read cannot carry it and it stays on the screen: a read may only give up
@@ -202,7 +232,12 @@ export function endLiveDelegation(items: LiveItem[], member: string, turn: numbe
  */
 export function liveLinesAfterHistory(items: LiveItem[], mark = items.length): LiveItem[] {
   return items.filter(
-    (item, index) => item.kind === 'tool' || item.kind === 'diff' || item.kind === 'delegation' || index >= mark,
+    (item, index) =>
+      item.kind === 'tool' ||
+      item.kind === 'think' ||
+      item.kind === 'diff' ||
+      item.kind === 'delegation' ||
+      index >= mark,
   )
 }
 
@@ -227,6 +262,7 @@ export function liveRuns(items: LiveItem[]): LiveItem[][] {
 /**
  * What the waiting bar of the running turn shows (R-WP-31): the last thing the stream reported, on one
  * line. It is a preview beside the log and never a second copy of the answer, so markup shows as typed.
+ * A Think section needs no branch of its own: it has a text and reads like one.
  */
 export function livePreview(items: LiveItem[]): string {
   const last = items[items.length - 1]

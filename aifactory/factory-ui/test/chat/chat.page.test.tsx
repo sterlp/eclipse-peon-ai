@@ -452,10 +452,19 @@ test('streamingUpdatesChatWithoutReload', async () => {
   await chat.push(event('tool', { text: 'Running: `ls` in /home/me/.aifactory/projects/demo' }))
   expect(screen.getByTestId('chat-timeline')).toHaveTextContent('Running: `ls`')
 
-  // thinking is streamed too, but it is not an answer: the chat shows the answer only
+  // thinking is streamed too, and since R-WP-40 it is an entry of the trace — an entry of the timeline and
+  // never a line of the answer, which is what the live line still holds alone (UC-WP-72 GIVEN 1)
   await chat.push(event('partial', { kind: 'think', text: 'Ich überlege gerade…' }))
   expect(screen.getByTestId('chat-live')).toHaveTextContent('Im Root liegen: pom.xml und README.md')
-  expect(screen.getByTestId('chat-log').textContent).not.toContain('Ich überlege gerade')
+  const thoughtEntries = () => [
+    ...screen.getByTestId('chat-log').querySelectorAll('.chat-trace-item[data-trace="think"]'),
+  ]
+  expect(thoughtEntries(), 'the think delta is one entry beside the step').toHaveLength(1)
+  expect(thoughtEntries()[0]).toHaveTextContent('Ich überlege gerade')
+  expect(
+    screen.getByTestId('chat-timeline').querySelectorAll('.chat-trace-item').length,
+    'the thought joins the widget of the step instead of drawing a box of its own',
+  ).toBe(2)
 
   // the finished text is no event: done means read the history once, and it replaces the live line
   chat.setMessages([QUESTION, { role: 'user', text: 'zähl die Dateien' }, ANSWER])
@@ -467,6 +476,10 @@ test('streamingUpdatesChatWithoutReload', async () => {
   // the trace of the turn is not lost by the read: it stays where it happened, while the streaming text
   // gives way to the history that carries it now (R-WP-28, UC-WP-54)
   expect(screen.getByTestId('chat-timeline')).toHaveTextContent('Running: `ls`')
+  expect(
+    thoughtEntries(),
+    'a think entry is of the same family — it exists on the wire only, so the read may not drop it',
+  ).toHaveLength(1)
   // the own input lives in the history only now — the pending copy is gone, no line twice
   expect(screen.getAllByTestId('chat-line-user')).toHaveLength(2)
 })
@@ -805,9 +818,22 @@ test('onlyFinalAnswersFromTheTeam', async () => {
   render(<ChatPage project={project()} />)
   await flush()
 
-  // GIVEN 2 — a member's thinking line is not an answer and never reaches the screen
-  await chat.push(event('partial', { kind: 'think', text: 'DENKTEXT-AUS-MITGLIED' }))
-  expect(screen.getByTestId('chat-log').textContent).not.toContain('DENKTEXT-AUS-MITGLIED')
+  // GIVEN 2 — what the model thinks on its way to the answer is no speech: it is an entry of the trace, it
+  // names nobody and it opens no line of the conversation (R-WP-40, R-WP-4). A MEMBER's thinking never
+  // reaches this wire at all — the core forwards only the thinking of the turn that answers, proven on the
+  // core side by DelegatedAnswerTest and TeamInternalsTest — so the screen has nothing to filter and this
+  // case proves the one channel it owns (R-WP-40, rewritten 2026-11-07)
+  const thoughtEntries = () => [
+    ...screen.getByTestId('chat-log').querySelectorAll('.chat-trace-item[data-trace="think"]'),
+  ]
+  await chat.push(event('partial', { kind: 'think', text: 'DENKTEXT-VON-JON' }))
+  expect(screen.queryByTestId('chat-line-jon'), 'a think delta opens no line of the conversation').toBeNull()
+  expect(thoughtEntries(), 'it is an entry of the trace and nothing else').toHaveLength(1)
+  expect(
+    thoughtEntries()[0].querySelector('.chat-step-name')?.textContent,
+    'the entry says what it is and lends no author to the thought',
+  ).toBe(content.chat.thinking)
+  expect(thoughtEntries()[0]).toHaveTextContent('DENKTEXT-VON-JON')
 
   // GIVEN 1 — and a member's final answer is no live event either: while the turn runs, Jon's own trace
   // is the only named thing on the wire, and no line of the conversation carries a member's text
@@ -822,7 +848,14 @@ test('onlyFinalAnswersFromTheTeam', async () => {
   expect(agentAuthorsOnScreen()).toEqual(['Dev', 'Jon'])
   expect(screen.getAllByTestId('chat-line-jon')).toHaveLength(2)
   expect(screen.getAllByText('Eine Banane.')).toHaveLength(1)
-  expect(screen.getByTestId('chat-log').textContent).not.toContain('DENKTEXT-AUS-MITGLIED')
+  expect(
+    agentLinesSaying('DENKTEXT-VON-JON'),
+    'a think text never becomes a line of the conversation, not even after the read',
+  ).toEqual([])
+  expect(
+    thoughtEntries(),
+    'the thought stays an entry of the trace through the read, like the steps beside it (UC-WP-54)',
+  ).toHaveLength(1)
 })
 
 test('reconnectReadsTeamAnswerFromTheHistory', async () => {
