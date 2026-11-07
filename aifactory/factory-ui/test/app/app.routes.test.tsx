@@ -9,9 +9,9 @@ import { project } from '../shared/fixtures'
  * The address is the state of the frame (R-WP-1, UC-WP-52): every test here starts from an address or
  * ends at one, because "the same view after a reload" cannot be shown with a component's state. The
  * memory router is the honest stand-in for a browser reload — mounting again at the same path is what a
- * reload is to this app.
+ * reload is to this app. The address names its project (`CHAT_PATH`), not a database key (C-3).
  */
-const CHAT_PATH = `/chat/${project().id}`
+const CHAT_PATH = `/chat/${project().name}`
 
 function nav() {
   return screen.getByRole('navigation', { name: content.nav.views })
@@ -75,7 +75,19 @@ test('openingAProjectChangesTheUrl', async () => {
   expect(await screen.findByRole('region', { name: content.chat.title })).toBeInTheDocument()
   expect(app.path()).toBe(CHAT_PATH)
   // the same click is what the `/chat` address needs next time (UC-WP-51)
-  expect(localStorage.getItem('aifactory.lastProject')).toBe(project().id)
+  expect(localStorage.getItem('aifactory.lastProject')).toBe(project().name)
+})
+
+// UC-WP-70
+test('theChatAddressUsesTheProjectName', async () => {
+  // C-3: the address reads as what the tree shows — a click on an entry answers with that entry's name
+  stubAppServer()
+  const app = renderApp('/projects')
+  fireEvent.click(await within(nav()).findByRole('menuitem', { name: project().name }))
+
+  expect(await screen.findByRole('region', { name: content.chat.title })).toBeInTheDocument()
+  expect(app.path()).toBe(`/chat/${project().name}`)
+  expect(app.path()).not.toContain(project().id)
 })
 
 // UC-WP-52
@@ -89,6 +101,38 @@ test('aDeepLinkShowsTheSameState', async () => {
   expect(app.path()).toBe(CHAT_PATH)
   // the entry that shows is the one the address names, not one a click left behind
   expect(markedEntry().textContent).toBe(project().name)
+})
+
+// UC-WP-70
+test('theNameAddressOpensTheProjectItNames', async () => {
+  // the counter-proof of C-3: two projects are in the registry, the address names the second one, so a
+  // reading that took the first entry it knows would answer with another project's chat
+  const second = project({
+    id: 'other-9f8e7d6',
+    name: 'other',
+    gitUrl: 'https://git.example.com/acme/other.git',
+  })
+  stubAppServer([project(), second])
+  const app = renderApp(`/chat/${second.name}`)
+
+  const chat = await screen.findByRole('region', { name: content.chat.title })
+  expect(within(chat).getByRole('heading', { name: second.name })).toBeInTheDocument()
+  expect(within(chat).queryByRole('heading', { name: project().name })).toBeNull()
+  expect(app.path()).toBe(`/chat/${second.name}`)
+  expect(markedEntry().textContent).toBe(second.name)
+})
+
+// UC-WP-70
+test('anOldIdAddressStillOpensTheSameChat', async () => {
+  // additive, not a break (C-3): the address speaks names now, a bookmark written in ids still opens its chat
+  stubAppServer()
+  const app = renderApp(`/chat/${project().id}`)
+
+  const chat = await screen.findByRole('region', { name: content.chat.title })
+  expect(within(chat).getByRole('heading', { name: project().name })).toBeInTheDocument()
+  expect(app.path()).toBe(`/chat/${project().id}`)
+  // and this browser speaks names from here on — `/chat` answers with the name, not with the old bookmark
+  expect(localStorage.getItem('aifactory.lastProject')).toBe(project().name)
 })
 
 // UC-WP-43
@@ -137,7 +181,7 @@ test('anUnknownAddressShowsTheApp', async () => {
 // redirect are what this use case is about. Both claims below are the ones that were already here.
 test('chatOpensTheLastActiveProject', async () => {
   stubAppServer()
-  localStorage.setItem('aifactory.lastProject', project().id)
+  localStorage.setItem('aifactory.lastProject', project().name)
   const app = renderApp('/chat')
 
   expect(await screen.findByRole('region', { name: content.chat.title })).toBeInTheDocument()
@@ -158,7 +202,7 @@ test('aProjectThatIsGoneLeadsToTheList', async () => {
   stubAppServer([])
   const app = renderApp(CHAT_PATH)
 
-  // no chat for an id the registry does not hold, and no new page either (R-WP-1)
+  // no chat for a segment the registry does not hold, and no new page either (R-WP-1)
   expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
   expect(app.path()).toBe('/projects')
   expect(screen.queryByRole('region', { name: content.chat.title })).toBeNull()

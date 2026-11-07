@@ -3,7 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-
 
 import AppShell from './app.shell'
 import { useAppContext } from './app.context'
-import { chatPath, projectsPath, projectSegment } from './app.paths'
+import { chatPath, projectOfSegment, projectSegment, projectsPath } from './app.paths'
 import { ChatPage } from '../chat/chat.page'
 import { ConfigPage } from '../config/config.page'
 import { ProjectFiles } from '../project/project.files'
@@ -44,7 +44,7 @@ export function AppRoutes() {
         <Route index element={<Navigate to={projectsPath} replace />} />
         <Route path="projects" element={<ProjectsRoute />} />
         <Route path="chat" element={<LastChatRoute />} />
-        <Route path="chat/:projectId" element={<ChatRoute />} />
+        <Route path="chat/:project" element={<ChatRoute />} />
         <Route path="settings" element={<ConfigPage />} />
         <Route path="*" element={<Navigate to={projectsPath} replace />} />
       </Route>
@@ -78,30 +78,30 @@ function LastChatRoute() {
 
 /**
  * The chat of the project the address names (UC-WP-43). The list is read because it is the only edge that
- * knows a project's name — there is no `GET /api/projects/{id}` and this increment adds none. While it is
- * read the view says so instead of guessing an empty chat.
+ * turns a name into a project — there is no `GET /api/projects/{name}` and this increment adds none. While it
+ * is read the view says so instead of guessing an empty chat.
  *
- * An id the list does not hold is a project that is gone: the address is replaced by the list, which is
+ * A segment the list does not hold is a project that is gone: the address is replaced by the list, which is
  * where a missing project can be added again. A fourth view for that case is what R-WP-1 forbids.
  */
 function ChatRoute() {
-  const { projectId } = useParams<{ projectId: string }>()
+  const { project: segment } = useParams<{ project: string }>()
   const { user } = useAppContext()
   const [project, setProject] = useState<Project | null>(null)
   const [unknown, setUnknown] = useState(false)
 
   useEffect(() => {
-    if (projectId === undefined) {
+    if (segment === undefined) {
       return
     }
-    // the id came from the address, so only this effect may say what it found (no write after unmount)
+    // the segment came from the address, so only this effect may say what it found (no write after unmount)
     let mine = true
     listProjects()
       .then(projects => {
         if (!mine) {
           return
         }
-        const found = projects.find(entry => entry.id === projectId) ?? null
+        const found = projectOfSegment(projects, segment)
         setProject(found)
         setUnknown(found === null)
         if (found !== null) {
@@ -117,7 +117,7 @@ function ChatRoute() {
     return () => {
       mine = false
     }
-  }, [projectId])
+  }, [segment])
 
   if (unknown) {
     return <Navigate to={projectsPath} replace />

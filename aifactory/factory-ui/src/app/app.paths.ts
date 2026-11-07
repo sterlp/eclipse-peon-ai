@@ -18,12 +18,28 @@ export function chatPath(segment: string): string {
 }
 
 /**
- * The one producer of the part of the address that names a project (R-WP-38). The sider's keys, the
- * navigation and what this browser remembers as its last project all read it here — the alternative is
- * three places that have to agree about one string.
+ * The one producer of the part of the address that names a project (R-WP-38): the **name**, so the address
+ * reads as what the tree shows (C-3). The backend keeps a name single — a second folder of that name is
+ * refused case-insensitively (`ProjectService.add`) — and its `SAFE_NAME` keeps it free of `/` and spaces, so
+ * a name is always a legal path segment. The sider's keys, the navigation and what this browser remembers as
+ * its last project all read it here — the alternative is three places that have to agree about one string.
  */
 export function projectSegment(project: Project): string {
-  return project.id
+  return project.name
+}
+
+/**
+ * The project an address segment names: the name first, the id second. The second reading is what keeps a
+ * bookmark written before the address spoke names working; it is dropped once no such bookmark is expected.
+ * `null` is a project the registry does not hold — a gone project, which is where the address leads to the
+ * list rather than to a fourth page (R-WP-1).
+ */
+export function projectOfSegment(projects: Project[], segment: string): Project | null {
+  return (
+    projects.find(entry => projectSegment(entry) === segment) ??
+    projects.find(entry => entry.id === segment) ??
+    null
+  )
 }
 
 /** The sider key of one project — prefixed, because a project is free to be called `root` or `projects`. */

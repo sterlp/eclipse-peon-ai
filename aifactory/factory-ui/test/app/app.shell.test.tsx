@@ -5,8 +5,8 @@ import { closeAppStream, renderApp, stubAppServer } from '../shared/app.harness'
 import { content } from '../../src/shared/content'
 import { project } from '../shared/fixtures'
 
-/** The chat of the one project the harness answers with (UC-WP-52). */
-const CHAT_PATH = `/chat/${project().id}`
+/** The chat of the one project the harness answers with — the address names it (UC-WP-52, C-3). */
+const CHAT_PATH = `/chat/${project().name}`
 
 async function flush(): Promise<void> {
   await act(async () => {

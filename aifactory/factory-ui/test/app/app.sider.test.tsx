@@ -123,7 +123,8 @@ test('theRootEntryOpensTheProjectList', () => {
 // R-WP-1
 // UC-WP-52
 test('theSiderMarksTheEntryTheAddressNames', () => {
-  show({ activeKey: projectKeyOf(OTHER.id) })
+  // the frame reads this key out of the address, and the address names a project (C-3, R-WP-38)
+  show({ activeKey: projectKeyOf(OTHER.name) })
 
   // the basis marks its entry with its own item state (ANTD-A1), and the same entry carries the answer a
   // screen reader reads (ANTD-A9) — one mark, not two that can disagree
