@@ -1,8 +1,9 @@
 /*
- * Design tokens — the one owner of every colour (R-WP-39): one table per colour mode, which our own sheet
- * reads and the design basis translates (`shared/theme.ts` is the one reader, so no rule and no component
- * paints a value of its own). Which table paints is the `data-theme` attribute on the document, written by
- * `main.tsx` before the first render and kept by `app/app.root.tsx`.
+ * Design tokens — the one owner of every colour and every measure (R-WP-39): one table per colour mode,
+ * which our own sheet reads and the design basis translates (`shared/theme.ts` is the one reader, so no rule
+ * and no component paints a value of its own). Which table paints is the `data-theme` attribute on the
+ * document, written by `main.tsx` before the first render and kept by `app/app.root.tsx`. The measures come
+ * from the design sheet `aifactory/ant-design.md` (body-md 14/22, code 13/20, 4px grid, surface radius 8).
  */
 
 :root,
@@ -28,6 +29,9 @@
   --tool: #6b7280;
   --problem: #dc2626;
   --question: #d97706;
+  /* the contour of a line the history has not confirmed yet (R-WP-29): a frame says "waiting", only a voice
+     says "said" — so this is the neutral grey, never an accent */
+  --frame-pending: #9ca3af;
 
   --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, 'Cascadia Code', 'Fira Code', Menlo, Consolas, monospace;
@@ -36,6 +40,20 @@
      itself, so its scrollbar stays at the edge of the surface (`padding-inline` of `.view`) */
   --content-max: 1100px;
   --content-gutter: max(1rem, calc((100% - var(--content-max)) / 2));
+
+  /* the measures of the design sheet: two voices of type (body-md, code) with a mini label, a 4px grid and
+     one radius for surfaces — a rule that needs a length reads one of these, never a number of its own */
+  --fs-body: 14px;
+  --lh-body: 22px;
+  --fs-code: 13px;
+  --lh-code: 20px;
+  --fs-mini: 12px;
+  --lh-mini: 20px;
+  --radius-surface: 8px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
 
   color-scheme: light;
   font-family: var(--sans);
@@ -65,12 +83,16 @@
   --tool: #9ca3af;
   --problem: #f87171;
   --question: #fbbf24;
+  --frame-pending: #6b7280;
 
   color-scheme: dark;
 }
 
 body {
   margin: 0;
+  /* the app speaks body-md (sheet): our own text used to sit on the browser's 16px next to the basis' 14 */
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   background: var(--bg);
   color: var(--text-h);
 }
@@ -110,7 +132,8 @@ p {
 
 code {
   font-family: var(--mono);
-  font-size: 0.85em;
+  font-size: var(--fs-code);
+  line-height: var(--lh-code);
   border-radius: 4px;
   padding: 0.1em 0.35em;
   color: var(--text-h);

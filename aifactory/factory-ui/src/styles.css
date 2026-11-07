@@ -308,7 +308,7 @@ button {
   list-style: none;
   margin: 0 0 1rem;
   display: grid;
-  gap: 0.4rem;
+  gap: var(--space-2);
   padding-inline: var(--content-gutter);
 }
 
@@ -321,16 +321,16 @@ button {
 
 /* An answer is the card on the left, the surface of the page's cards with the app's own border (R-WP-29);
    `justify-self` because the log is a grid, and never a `margin` or a `text-align` — those would take the
-   answers out of the flow of the conversation, which UC-WP-55 rules out. The name above it stays the agent's
-   own green (`.chat-role`). */
+   answers out of the flow of the conversation, which UC-WP-55 rules out. The border carries the hierarchy,
+   not a shadow: an answer in the flow does not float. The name above it stays the agent's own green
+   (`.chat-role`). */
 .chat-log .chat-line.agent {
   justify-self: start;
   max-width: min(85%, var(--content-max));
-  padding: 0.6rem 0.9rem;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
-  border-radius: 0.8rem;
+  border-radius: var(--radius-surface);
   background: var(--surface);
-  box-shadow: var(--shadow);
 }
 
 /* The person's own input stands alone on its side: the reference's blue bubble with its own text colour,
@@ -339,8 +339,8 @@ button {
 .chat-log .chat-line.user {
   justify-self: end;
   max-width: min(85%, var(--content-max));
-  padding: 0.6rem 0.9rem;
-  border-radius: 0.8rem;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-surface);
   background: var(--user);
   color: var(--on-user);
 }
@@ -351,8 +351,8 @@ button {
 .chat-log .chat-line.error {
   justify-self: start;
   max-width: min(85%, var(--content-max));
-  padding: 0.6rem 0.9rem;
-  border-radius: 0.8rem;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-surface);
   background: var(--surface);
   color: var(--problem);
 }
@@ -472,8 +472,8 @@ button {
   margin: 0;
   padding: 0.4rem 0.6rem;
   font-family: var(--mono);
-  font-size: 0.78rem;
-  line-height: 1.4;
+  font-size: var(--fs-code);
+  line-height: var(--lh-code);
   white-space: pre;
   overflow-x: auto;
 }
@@ -511,8 +511,15 @@ button {
 .chat-log .chat-markdown p,
 .chat-log .chat-markdown ul,
 .chat-log .chat-markdown ol,
-.chat-log .chat-markdown blockquote {
-  margin: 0 0 0.35rem;
+.chat-log .chat-markdown blockquote,
+.chat-log .chat-markdown table {
+  margin: 0 0 var(--space-1);
+}
+
+/* The last block of an answer keeps no margin of its own: that margin is the empty height under the text,
+   and the log's own gap is the space between two rows (R-WP-29). */
+.chat-log .chat-markdown > :last-child {
+  margin-bottom: 0;
 }
 
 .chat-log .chat-markdown ul,
@@ -526,7 +533,7 @@ button {
 .chat-log .chat-markdown h3,
 .chat-log .chat-markdown h4 {
   font-size: 0.95rem;
-  margin: 0.15rem 0 0.3rem;
+  margin: var(--space-1) 0;
 }
 
 /* A line the model drew inside an answer is content of that answer (R-WP-29): ours, short and quiet, in
@@ -544,7 +551,7 @@ button {
 .chat-log .chat-markdown-table {
   max-width: 100%;
   overflow-x: auto;
-  margin: 0 0 0.35rem;
+  margin: 0 0 var(--space-1);
 }
 
 /* An image of an answer is content of it and never wider than the answer (R-WP-29). */
@@ -558,7 +565,7 @@ button {
    style attribute, so only !important can outvote them. `.code-view` is the hook of every highlighted
    block — a fenced answer and the file viewer are the same component (R-WP-28, R-WP-33). */
 .chat-code {
-  margin: 0.35rem 0;
+  margin: var(--space-1) 0;
   border: 1px solid var(--border);
   border-radius: 0.4rem;
   background: var(--code-bg);
@@ -569,8 +576,8 @@ button {
   margin: 0;
   padding: 0.5rem 0.6rem;
   font-family: var(--mono);
-  font-size: 0.8rem;
-  line-height: 1.45;
+  font-size: var(--fs-code);
+  line-height: var(--lh-code);
   background: none;
 }
 
@@ -605,11 +612,11 @@ button {
   color: var(--on-user);
 }
 
-/* An own line the history has not confirmed yet: the accent is not a fact yet — a dashed contour, and an
-   outline because a border would sit under the bubble's radius and, on the person's side, under its own
-   background (R-WP-29). Last, so it outvotes the voice's own form on the row it shares with it. */
+/* An own line the history has not confirmed yet: a dashed contour in the waiting grey — an accent would read
+   as "said" (R-WP-29, R-WP-31). An outline, because a border would sit under the bubble's radius and, on the
+   person's side, under its own background. Last, so it outvotes the voice's own form on the shared row. */
 .chat-log .chat-line.pending {
-  outline: 1px dashed var(--accent);
+  outline: 1px dashed var(--frame-pending);
   outline-offset: 2px;
 }
 

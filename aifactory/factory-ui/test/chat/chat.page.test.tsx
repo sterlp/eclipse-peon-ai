@@ -1863,8 +1863,8 @@ test('readingUpIsNotRippedDown', async () => {
 
 
 /**
- * The lines wearing the waiting frame — the dashed accent of R-WP-31, whatever voice they speak with. The
- * frame is a class the page hands down, so the screen is the place to ask for it (UC-WP-65).
+ * The lines wearing the waiting frame — the dashed grey contour of R-WP-31, whatever voice they speak with.
+ * The frame is a class the page hands down, so the screen is the place to ask for it (UC-WP-65).
  */
 function framedLines(): Element[] {
   return Array.from(document.querySelectorAll('.chat-line.pending'))
