@@ -1174,5 +1174,24 @@ Drei Punkte, **kein Verhalten** — zwei Nachweislücken und ein Kommentar mit w
   `+`-Regel des Tabs in 5b-1-N1.
 - **Doc-Lint wieder 28** (nur die fremden `UC-CR-*`/`UC-PC-*`): `UC-WP-76` und `UC-WP-77` sind jetzt belegt.
 
+## Inkrement 1 N1 (Nachweise nachgezogen, 2026-11-07)
+
+- **Ein Klick auf denselben Ort beweist nichts:** der Turn-Test startete auf `/chat/demo` und klickte die
+  Chat-Einheit — derselbe Schlüssel, ein toter Eintrag ist ein No-op und bleibt grün. Start jetzt eine
+  Adresse **tiefer** (`/chat/demo/files`) und die Fläche muss danach **weg** sein ⇒ Chat-Zweig in
+  `app.sider.tsx` gestrichen = `aRunningTurnSurvivesTheChatUnitClick` rot (`/chat/demo/files` ≠
+  `/chat/demo`) und `theChatUnitLeadsBackFromTheFileArea` rot. **Regel:** ein Klick-Test braucht eine
+  Behauptung, die der Nicht-Klick nicht erfüllt (Adresswechsel oder entferntes Element).
+- **AntD-Optik ist in jsdom nur über die Klassen der Basis beweisbar:** `theme="dark"` und
+  `mode="horizontal"` waren nirgends gepinnt — `Menu.dark*`-Tokens zeigen nur, was die Basis malt, **wenn**
+  sie dunkel zeichnet. Pin jetzt `ant-menu-dark` + `ant-menu-horizontal` an
+  `theHeaderCarriesTheBrandThePagesAndTheName`; je eine Mutation ⇒ **genau dieser** Test rot.
+- **Zwei Navigationen, eine Adresse ⇒ ein Render:** die Einigkeit von Kopf- und Sider-Marke ist nur im
+  **selben** Render beweisbar (`theTopMarkAndTheTreeMarkAgreeInOneRender`) — zwei Mounts können je eine andere
+  Adresse richtig haben. Gegenprobe: Seiten-Deuter auf das nackte `/chat` verengt ⇒ 4 rot (der neue darunter).
+- **Toter Zweig ist ein Befund, kein Schmuck:** `activeKey === key` an der Projekt-Marke war seit D6
+  unerreichbar (der Deuter antwortet nie `project:<seg>`; `AppSider` hat nur `app.shell.tsx` als Producer; kein
+  Test setzt den Key) ⇒ **nur-löschend** entfernt. `projectKeyOf` bleibt Item-Key und Klick-Griff.
+
 
 

@@ -46,11 +46,13 @@ export function AppSider({ projects, activeKey, onOpen, onProjects, onFiles }: P
     const key = keyOf(project)
     const chat = chatUnitKeyOf(project)
     const unit = unitKeyOf(project)
-    items.push(entry(key, project.name, activeKey === key))
+    // INC-L1-LOW-1: no address names a project entry — since UC-WP-77 every chat address names one of its
+    // units — so the entry is a handle (`project:<seg>` reaches `onOpen` below) and never a mark
+    items.push(entry(key, project.name, false))
     // the units hang under the project the address names and under no other: entries beside a project the
-    // viewer is not in would be marks beside the URL (R-WP-38). The project's own entry shows only while no
-    // unit of it is named — the unit is the finer handle, so it is the one that marks (UC-WP-77)
-    if (activeKey === key || activeKey === chat || activeKey === unit) {
+    // viewer is not in would be marks beside the URL (R-WP-38). The unit is the finer handle, so it is the
+    // one that marks (UC-WP-77)
+    if (activeKey === chat || activeKey === unit) {
       items.push({
         ...entry(chat, content.nav.chat, activeKey === chat),
         className: 'app-sider-unit',

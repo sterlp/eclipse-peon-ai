@@ -81,7 +81,9 @@
 - **Routing macht Navigation async** → `findBy*`. Quellen-Scan nur über `import.meta.glob` mit `?raw`
   (`node:fs`/`process` sind in `src`+`test` nicht typisiert). **Kein Mount-Beweis über
   Schwesterrouten:** gleiche Komponente an derselben Stelle behält React Router die Instanz — „bleibt
-  gemountet" beweist nur ein erzwungener Remount (`key={pathname}`).
+  gemountet" beweist nur ein erzwungener Remount (`key={pathname}`). **Ein Klick-Test braucht eine Behauptung,
+  die der Nicht-Klick nicht erfüllt** (andere Adresse, entferntes Element): auf derselben Adresse ist ein
+  toter Eintrag ein grüner No-op.
 - **Zwei Drähte enden auf `/events`** — `/api/projects/events` (Arbeitsstand, Rahmen) und
   `/api/projects/<id>/events` (Chat): Ströme und Reads **projektbezählt** zählen (`/${project().id}/events`).
 - **Chat-Draht-Griffe nicht umbenennen**: `chat-line-jon` / `chat-live` / `chat-line-author` (Stimme

@@ -385,12 +385,14 @@ test('aRunningTurnSurvivesTheUnitClick', async () => {
 // UC-WP-70
 // UC-WP-77
 test('aRunningTurnSurvivesTheChatUnitClick', async () => {
-  // the second handle of the same address: the tree's chat unit names the chat that is already open. An entry
-  // that answered with `/chat` instead of the project's own address would walk through the redirect, mount the
-  // chat again and cost the turn that is half way to the screen (UC-WP-77, UC-WP-70 G2)
+  // the way **back** from the file area, with a turn running: the tree's chat unit names the chat one address
+  // up. An entry that answered with `/chat` instead of the project's own address would walk through the
+  // last-project redirect, mount the chat again and cost the answer half way to the screen (UC-WP-77, G2).
+  // INC-L1-BUG-2: started on the file area on purpose — started on the chat the click asks for the address the
+  // view already has, so an entry wired to nothing would survive this test as neatly as the turn does.
   const chat = stubChat({ messages: [QUESTION], projects: [project()] })
-  const app = renderApp()
-  fireEvent.click(await screen.findByRole('button', { name: project().name }))
+  const app = renderApp(`/chat/${project().name}/files`)
+  await screen.findByTestId('files-panel')
   await screen.findByTestId('chat-log')
   await flush()
 
@@ -406,8 +408,12 @@ test('aRunningTurnSurvivesTheChatUnitClick', async () => {
     }),
   )
 
+  // the click moved one address up: the area is gone, which is what makes „no new mount" a claim about a
+  // changed address and not about a click that did nothing
+  await waitFor(() => expect(app.path()).toBe(`/chat/${project().name}`))
+  expect(screen.queryByTestId('files-panel'), 'the chat unit leaves the file area').toBeNull()
+
   // no third address and no new mount: the same chat instance keeps the live line and both wires (G2)
-  expect(app.path()).toBe(`/chat/${project().name}`)
   expect(screen.getByTestId('chat-live'), 'the live line stands through the click').toHaveTextContent(
     'Im Root liegen',
   )

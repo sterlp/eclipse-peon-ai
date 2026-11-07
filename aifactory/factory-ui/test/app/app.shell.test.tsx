@@ -114,6 +114,14 @@ test('theHeaderCarriesTheBrandThePagesAndTheName', async () => {
   expect(markedTopEntries().map(entry => entry.textContent)).toEqual([content.nav.projects])
   expect(header.querySelectorAll('[aria-current]'), 'exactly one entry of the header shows').toHaveLength(1)
 
+  // INC-L1-BUG-1: R-WP-43 asks for **dark** and **horizontal**, and jsdom paints no colour — so the claim is
+  // pinned on the two classes the basis puts on its own list (ANTD-A1). Without them the header holds a light
+  // inline tree and the `Menu.dark*` tokens of theme.ts paint a menu that is never drawn.
+  const pages = topNav().querySelector('.ant-menu') as HTMLElement
+  expect(pages, 'the basis renders its own list inside our navigation').not.toBeNull()
+  expect(pages.className, 'the pages menu is the dark one of R-WP-43').toContain('ant-menu-dark')
+  expect(pages.className, 'the pages menu lies horizontal in the band').toContain('ant-menu-horizontal')
+
   // INC-L1-D3: the page is reached through its entry alone — no button of the header carries a mark beside it
   expect(within(header).queryAllByRole('button', { name: content.nav.settings })).toEqual([])
   // the brand is a word and not a way to navigate
@@ -192,6 +200,32 @@ test('theTopMarkFollowsAnAddressNobodyClicked', async () => {
   await screen.findByRole('region', { name: content.chat.title })
   expect(app.path()).toBe(CHAT_PATH)
   expect(markedTopEntries().map(entry => entry.textContent)).toEqual([content.nav.chat])
+})
+
+// R-WP-38
+// R-WP-43
+// UC-WP-76
+// UC-WP-77
+test('theTopMarkAndTheTreeMarkAgreeInOneRender', async () => {
+  // INC-L1-LOW-3: the two menus read one address, so „die Markierung folgt der Adresse und ist einig" only
+  // holds **within one render** — two mounts could each be right about another URL. One chat address, both
+  // navigations read in the same render: each carries exactly one mark and both name the chat unit.
+  stubAppServer()
+  renderApp(CHAT_PATH)
+  await screen.findByRole('region', { name: content.chat.title })
+
+  const top = within(topNav()).getByRole('menuitem', { name: content.nav.chat })
+  const tree = within(nav()).getByRole('menuitem', { name: content.nav.chat })
+
+  expect(top, 'the header names the page the address names').toHaveAttribute('aria-current', 'page')
+  expect(tree, 'the tree names the unit the address names').toHaveAttribute('aria-current', 'page')
+
+  // one mark per navigation, so nothing can disagree with the other: the header says nothing about the
+  // projects and the settings page, the tree nothing about the project entry or the file area (R-WP-38)
+  expect(markedTopEntries(), 'exactly the chat page marks in the header').toEqual([top])
+  expect(markedEntries(), 'exactly the chat unit marks in the tree').toEqual([tree])
+  expect(topNav().querySelectorAll('[aria-current]')).toHaveLength(1)
+  expect(nav().querySelectorAll('[aria-current]')).toHaveLength(1)
 })
 
 // R-WP-43
