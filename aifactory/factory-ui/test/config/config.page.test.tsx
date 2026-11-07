@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { ConfigPage } from '../../src/config/config.page'
 import { content } from '../../src/shared/content'
 import { appSheet, block, declarations } from '../shared/sheets'
+import { chooseOption, openChoice, shownChoice } from '../shared/choices'
 import type { Settings } from '../../src/config/config.client'
 
 const KEY = 'sk-file-secret-0123456789'
@@ -131,11 +132,18 @@ function settingsAnswer(overrides: Partial<Settings> = {}): Record<string, unkno
  */
 async function valueOf(label: string): Promise<string> {
   const field = await screen.findByText(label)
-  const value = field.parentElement?.querySelector('dd')?.querySelector('input, select')
+  const row = field.parentElement?.querySelector('dd')
+  // ANTD-A3 (AntD 6): a choice shows itself in the base's display, not in a `<select>`. What stands there is the
+  // catalog label — the wire value is pinned in the body by `theChoiceSendsItsWireValue`.
+  const choice = row?.querySelector('.ant-select-content')
+  if (choice) {
+    return choice.getAttribute('title') ?? choice.textContent ?? ''
+  }
+  const value = row?.querySelector('input, select')
   if (value) {
     return (value as HTMLInputElement).value
   }
-  return field.parentElement?.querySelector('dd')?.textContent ?? ''
+  return row?.textContent ?? ''
 }
 
 /** What really sits in the form — text content cannot see the value of an input. */
@@ -177,7 +185,9 @@ test('settingsShowsMaskedConfig', async () => {
   expect(await valueOf(content.config.url)).toBe('https://api.example.com/v1')
   expect(await valueOf(content.config.tokenWindow)).toBe('64000')
   expect(await valueOf(content.config.timeout)).toBe('45')
-  expect(await valueOf(content.config.sendThinking)).toBe('no')
+  // the choice shows the catalog label ("No") while the body carries `false` — that difference is pinned by
+  // `theChoiceSendsItsWireValue`, because a label is never a wire value
+  expect(await valueOf(content.config.sendThinking)).toBe(content.config.no)
   expect(screen.getByText(content.config.keySet)).toBeInTheDocument()
   expect(
     screen.getByText(`${content.config.keySource}: ${content.config.source.FILE}`),
@@ -254,6 +264,8 @@ test('settingsOverrideNeverWritesSharedStore', async () => {
   // cleared field is deleted from the file (UC-WP-46). The url was empty here, so it says "delete", which
   // the file answers by keeping nothing.
   expect(sent).toHaveProperty('url', '')
+  // the choice's wire value travels as text next to it — the row shows a label, the file reads a boolean
+  expect(sent).toHaveProperty('sendThinking', 'false')
   // only the key is never named when empty: its field is write-only, so empty means unchanged and an empty
   // body cannot delete a stored key
   expect(Object.keys(sent)).not.toContain('apiKey')
@@ -277,27 +289,73 @@ test('settingsOverrideNeverWritesSharedStore', async () => {
   expect(screen.getByLabelText(content.config.model)).toHaveValue('kept-model')
 })
 
+/**
+ * The bodies the page saved, in the order it sent them. A choice shows its catalog label on the screen and
+ * its wire value in the request — the value only exists here, so this is where it has to be pinned.
+ */
+function sentBodies(server: { calls: Call[] }): Record<string, unknown>[] {
+  return server
+    .calls.filter((call) => call.method === 'PUT')
+    .map((call) => JSON.parse(call.body ?? '{}') as Record<string, unknown>)
+}
+
+/**
+ * UC-WP-24 over the basis' choice: the think row is the one field whose label and value differ by contract
+ * (`docs/config.md`: the file holds text, the core reads a boolean). Reading the displayed label would let a
+ * swapped option pass — the body is the contract.
+ */
+// UC-WP-24
+test('theChoiceSendsItsWireValue', async () => {
+  const server = stubServer({ GET: settingsAnswer(), PUT: settingsAnswer() })
+  render(<ConfigPage />)
+  await screen.findByText(content.config.provider)
+
+  // the stored answer says false: the field reads as "No" and the body says the wire value of that label
+  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
+  await waitFor(() => expect(sentBodies(server)).toHaveLength(1))
+  expect(sentBodies(server)[0], 'the untouched choice sends its own wire value').toHaveProperty(
+    'sendThinking',
+    'false',
+  )
+
+  await chooseOption(content.config.sendThinking, content.config.yes)
+  expect(shownChoice(content.config.sendThinking), 'the screen shows the label').toBe(content.config.yes)
+  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
+
+  await waitFor(() => expect(sentBodies(server)).toHaveLength(2))
+  expect(sentBodies(server)[1], 'the chosen label sends its wire value, never its text').toHaveProperty(
+    'sendThinking',
+    'true',
+  )
+})
+
+
 // UC-WP-62
 test('changingTheProviderUpdatesTheUrl', async () => {
   const server = stubServer({
     GET: settingsAnswer({ url: 'https://old.example' }),
+    PUT: settingsAnswer({ provider: 'GOOGLE_GEMINI', url: null, model: null }),
   })
   render(<ConfigPage />)
   expect(await valueOf(content.config.url)).toBe('https://old.example')
 
-  fireEvent.change(screen.getByLabelText(content.config.provider), {
-    target: { value: 'OLLAMA' },
-  })
+  await chooseOption(content.config.provider, 'OLLAMA')
 
   // the default the server named for that provider, at once and without a save in between (R-WP-16)
   expect(screen.getByLabelText(content.config.url)).toHaveValue('https://ollama.example')
   expect(server.calls.filter((call) => call.method === 'PUT')).toEqual([])
 
   // a provider without a default leaves the field empty — the page invents nothing
-  fireEvent.change(screen.getByLabelText(content.config.provider), {
-    target: { value: 'GOOGLE_GEMINI' },
-  })
+  await chooseOption(content.config.provider, 'GOOGLE_GEMINI')
   expect(screen.getByLabelText(content.config.url)).toHaveValue('')
+
+  // and the choice of the list is what the file is told: the entry's name on the wire, not a display text
+  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
+  await waitFor(() => expect(sentBodies(server)).toHaveLength(1))
+  expect(sentBodies(server)[0], 'the provider travels as the name the server listed').toHaveProperty(
+    'provider',
+    'GOOGLE_GEMINI',
+  )
 })
 
 // UC-WP-62
@@ -306,9 +364,7 @@ test('theModelFieldIsClearedOnProviderChange', async () => {
   render(<ConfigPage />)
   expect(await valueOf(content.config.model)).toBe('gpt-demo')
 
-  fireEvent.change(screen.getByLabelText(content.config.provider), {
-    target: { value: 'OLLAMA' },
-  })
+  await chooseOption(content.config.provider, 'OLLAMA')
 
   // empty, not the old provider's model and not a guessed one: the core knows no model default (Q2)
   expect(screen.getByLabelText(content.config.model)).toHaveValue('')
@@ -324,15 +380,13 @@ test('unsupportedThinkIsShownAndDisabled', async () => {
   expect(screen.getByLabelText(content.config.sendThinking)).toBeEnabled()
   expect(screen.queryByText(content.config.thinkUnsupported)).toBeNull()
 
-  fireEvent.change(screen.getByLabelText(content.config.provider), {
-    target: { value: 'GOOGLE_GEMINI' },
-  })
+  await chooseOption(content.config.provider, 'GOOGLE_GEMINI')
 
   // shown and disabled — not hidden: the row still says what the form is talking about (Q3)
   expect(screen.getByLabelText(content.config.sendThinking)).toBeDisabled()
   expect(screen.getByText(content.config.thinkUnsupported)).toBeInTheDocument()
   // disabled is not cleared: the stored value stands until a save says otherwise (UC-WP-46)
-  expect(screen.getByLabelText(content.config.sendThinking)).toHaveValue('no')
+  expect(await valueOf(content.config.sendThinking)).toBe(content.config.no)
 })
 
 /**
@@ -358,22 +412,20 @@ test('agentThinkFollowsTheProviderOfTheForm', async () => {
   })
   render(<ConfigPage />)
 
-  // OPEN_AI answers a fixed list, so the agent field is that list and not a text box
-  const think = (await screen.findByLabelText(content.agents.thinkDefault)) as HTMLSelectElement
-  expect(think.tagName).toBe('SELECT')
-  expect(Array.from(think.options).map((option) => option.value)).toEqual([
-    '',
+  // OPEN_AI answers a fixed list, so the agent field is that list and not a text box. ANTD-A3 (AntD 6): the list
+  // is the dropdown of the base — opened and read there, since a choice renders no `<option>`s.
+  await screen.findByLabelText(content.agents.thinkDefault)
+  expect(await openChoice(content.agents.thinkDefault)).toEqual([
+    content.agents.inheritOption,
     'minimal',
     'low',
     'medium',
     'high',
   ])
-  expect(think.value).toBe('medium')
+  expect(shownChoice(content.agents.thinkDefault)).toBe('medium')
 
   // the provider chosen on the page decides, at once and without a save in between (as R-WP-16 does for the URL)
-  fireEvent.change(screen.getByLabelText(content.config.provider), {
-    target: { value: 'GOOGLE_GEMINI' },
-  })
+  await chooseOption(content.config.provider, 'GOOGLE_GEMINI')
   expect(screen.queryByLabelText(content.agents.thinkDefault)).toBeNull()
   expect(screen.getByTestId('agent-dev-think-unsupported')).toBeInTheDocument()
 
@@ -510,20 +562,17 @@ test('showsErrorMessageWhenSettingsCannotLoad', async () => {
 })
 
 test('settingsUsesTheChatCard', async () => {
-  // Look only (A6): the config page speaks the chat's language. No UC behind it — the wording of the look
+  // Look only: the config page speaks the chat's language. No UC behind it — the wording of the look
   // paragraph is the docs owner's, so the contract is read where it is written: the classes and the sheet.
   stubServer({ GET: settingsAnswer(), AGENTS: [agentAnswer()] })
   const { container } = render(<ConfigPage />)
   const slot = await screen.findByTestId('agent-slot-dev')
 
-  expect(container.querySelector('.settings-form'), 'the default level is a card').toHaveClass('ui-card')
-  expect(slot, 'every slot is a card of the same language').toHaveClass('ui-card')
-
-  // painted, not only classed: the border, the radius and the padding of the chat's cards
-  const card = declarations('.ui-card')
-  expect(card, 'the theme border, as on a file card').toContain('1px solid var(--border)')
-  expect(card, 'a radius, not a square frame').toContain('border-radius')
-  expect(card, 'and its own padding').toContain('padding')
+  expect(container.querySelector('.settings-form'), 'the form keeps its layout class').toBeInTheDocument()
+  // ANTD-A3 (AntD 6): the card is the basis' own — its classes are the library's, and its surface is the theme's
+  // (border and the transparent background are pinned token by token in test/shared/theme.test.ts)
+  expect(container.querySelector('.settings-card'), 'the default level is a card').toHaveClass('ant-card')
+  expect(slot, 'every slot is a card of the same language').toHaveClass('ant-card')
 
   // the fields take the measure of the chat's own field; the shared rule is readable at its last selector
   const chatField = paddingOf(block('.chat-composer'))

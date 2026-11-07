@@ -1,22 +1,19 @@
-/* The app's own layer over Bootstrap: full width, one small gutter, compact top bar (R-WP-1, R-WP-27). */
+/* The app's own layer over the design basis (R-WP-1): full width, one small gutter, compact top bar.
+   Geometry the basis already states — its layout column, its header height, its field surfaces — is not
+   repeated here; where it had to move, `shared/theme.ts` moved it (R-WP-39). */
 
 .app {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
   padding: 0 1rem 2rem;
 }
 
+/* The basis' header carries its own height and gutter (theme tokens); what is ours is the rule below it
+   and the order of its parts. */
 .app-header {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
   margin: 0 -1rem 1rem;
-  padding: 0.4rem 1rem;
   border-bottom: 1px solid var(--border);
-  background: var(--bg);
 }
 
 .app-title {
@@ -29,45 +26,37 @@
 .app-user {
   margin-left: auto;
   width: 9rem;
-  padding: 0.25rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 0.4rem;
-  background: var(--bg);
+}
+
+/* The row the tree and the view share (R-WP-38). `min-height: 0` is what lets the view scroll inside its
+   own column instead of stretching the page (R-WP-35). */
+.app-body {
+  min-height: 0;
+}
+
+/* The project tree (R-WP-38): only its edge is ours — its surface is the theme's `lightSiderBg`, which is
+   mapped in `shared/theme.ts`, and the mark on its entry is the basis' own accent (R-WP-39). */
+.app-sider {
+  border-right: 1px solid var(--border);
+}
+
+/* the inline menu draws its own edge on the same side, which beside the one above reads as a double line */
+.app-sider .ant-menu {
+  border-inline-end: 0;
+}
+
+/* The unit of the addressed project hangs under its project (R-WP-38) — one step in from the flat entries,
+   and the mark stays on exactly one of them. Specificity over the basis' own item rule, no `!important`. */
+.app-sider .ant-menu-item.app-sider-unit {
+  padding-inline-start: 2.25rem;
+}
+
+/* Settings at the end of the header speaks in the heading colour like the brand beside it. */
+.app-settings {
   color: var(--text-h);
 }
 
-/* Top navigation (R-WP-1): three entries, the active one marked — it is a menu, not a tab strip. */
-.app-nav {
-  gap: 0.15rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.app-nav .nav-link {
-  border: 1px solid transparent;
-  border-radius: 0.4rem;
-  padding: 0.2rem 0.6rem;
-  font: inherit;
-  color: var(--text);
-  cursor: pointer;
-
-  &:hover {
-    color: var(--text-h);
-    background: var(--code-bg);
-  }
-
-  &.active {
-    border-color: var(--border);
-    background: var(--code-bg);
-    color: var(--text-h);
-    font-weight: 600;
-  }
-}
-
 .app-main {
-  flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -86,16 +75,15 @@
   display: flex;
   gap: 0.5rem;
 
+  /* the field of the basis takes the width the button leaves; its surface is the basis' own */
   input {
     flex: 1;
-    padding: 0.4rem 0.6rem;
-    border: 1px solid var(--border);
-    border-radius: 0.4rem;
-    background: var(--bg);
-    color: var(--text-h);
+    min-width: 0;
   }
 }
 
+/* The plain buttons of the chat and of the file area (R-WP-29: their own compact language). A Button of
+   the basis states itself through its own class and is not reached by this element rule. */
 button {
   border: 1px solid var(--border);
   border-radius: 0.4rem;
@@ -103,16 +91,6 @@ button {
   color: var(--text-h);
   padding: 0.4rem 0.8rem;
   cursor: pointer;
-}
-
-.form-error {
-  color: var(--problem);
-  border: 1px solid currentColor;
-  border-radius: 0.4rem;
-  padding: 0.4rem 0.6rem;
-  white-space: pre-wrap;
-  font-family: var(--mono);
-  font-size: 0.85rem;
 }
 
 .empty-state {
@@ -124,15 +102,6 @@ button {
   color: var(--text);
 }
 
-/* A card in the app's own language, taken from the chat's cards (`.files-root-card`,
-   `.chat-insight-line`): the border names the block, the surface stays the page's. Named `ui-card` and not
-   `card` because Bootstrap paints `.card` as well, and its flex column would move these blocks. */
-.ui-card {
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  padding: 0.6rem 0.75rem;
-}
-
 .project-list {
   list-style: none;
   margin: 1rem 0 0;
@@ -140,21 +109,15 @@ button {
   display: grid;
   gap: 0.4rem;
 
-  li {
+  /* the order inside the card of the basis is ours (R-WP-39) */
+  .project-row {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: 0.4rem;
-    padding: 0.45rem 0.6rem;
   }
 
   .project-name {
-    border: none;
-    background: none;
-    padding: 0;
     font-weight: 600;
-    color: var(--text-h);
   }
 
   .project-url {
@@ -186,10 +149,6 @@ button {
 
   .project-queued {
     color: var(--text);
-  }
-
-  .remove {
-    font-size: 0.85rem;
   }
 }
 
@@ -381,6 +340,73 @@ button {
   display: block;
 }
 
+/* The agent the core stamped on a step, above its report (R-WP-40): information and not typography — small
+   capitals in the trace grey, upright, on no surface of its own. A step the wire left unstamped draws no
+   such line at all (UC-WP-72 GIVEN 1). Own block, no grouped selector: the sheet is read rule by rule. */
+.chat-log .chat-line.tool .chat-step-name {
+  display: block;
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-style: normal;
+  color: var(--tool);
+}
+
+/* The step a running turn works on (R-WP-40): the blink of the waiting bar, small and behind the report. It
+   ends with the next step or with the turn — the core reports no end of one tool, so nothing here measures a
+   duration (UC-WP-72 GIVEN 2). */
+.chat-log .chat-line.tool .chat-step-running {
+  display: inline-block;
+  inline-size: 0.4rem;
+  block-size: 0.7rem;
+  margin-inline-start: 0.3rem;
+  background: currentColor;
+  animation: chat-waiting-blink 1s steps(2, start) infinite;
+}
+
+/* Own block and no comma with the waiting caret: a grouped rule is only readable at its last selector, and
+   both answers stand on their own (R-WP-31 for the caret, R-WP-40 for the step). */
+@media (prefers-reduced-motion: reduce) {
+  .chat-log .chat-line.tool .chat-step-running {
+    animation: none;
+  }
+}
+
+/* One delegation of the turn is a link of the timeline and not a voice (R-WP-40): the member the order went
+   to, in the trace's own quiet — mono, small, no surface and no frame of its own. */
+.chat-log .chat-line.delegation {
+  border-left-color: var(--tool-line);
+  padding-top: 0.1rem;
+  padding-bottom: 0.2rem;
+  color: var(--tool);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+
+/* The member above his entry, in the idiom of a step's stamp: small capitals in the trace grey, upright, on
+   no surface. Nothing else stands on the line — the wire carries no order text to paint (UC-WP-72 GIVEN 3). */
+.chat-log .chat-line.delegation .chat-delegation-name {
+  display: block;
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--tool);
+}
+
+/* The word that says he works: the blink of the waiting bar. It ends with the entry's own end event or with
+   the turn — a duration stays the statement of the turn alone (R-WP-40, UC-WP-72 GIVEN 3). */
+.chat-log .chat-line.delegation .chat-delegation-working {
+  animation: chat-waiting-blink 1s steps(2, start) infinite;
+}
+
+/* Own block instead of a comma with the rules above: a grouped rule is only readable at its last selector,
+   and the sheet is read block by block — by the browser and by the test that proves this one. */
+@media (prefers-reduced-motion: reduce) {
+  .chat-log .chat-line.delegation .chat-delegation-working {
+    animation: none;
+  }
+}
+
 /* A file the turn changed (R-WP-36) is a block of the log and neither a voice nor a trace line: the accent
    stays the trace grey, the colours are the ones the app already has — an addition is what the agent did
    (the agent token), a removal the problem token, the headers and context dimmed. Flat rules, one selector
@@ -462,6 +488,30 @@ button {
   margin: 0.15rem 0 0.3rem;
 }
 
+/* A line the model drew inside an answer is content of that answer (R-WP-29): ours, short and quiet, in
+   the border grey and at the answer's own left edge — never as wide as the log. The voices themselves
+   separate by the accent on their side. */
+.chat-log .chat-markdown hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  width: 3rem;
+  margin: 0.55rem 0;
+}
+
+/* The wrapper of a wide table is the part that scrolls (R-WP-29): the log keeps its vertical scroll, the
+   page its fixed frame, and the table its own layout. */
+.chat-log .chat-markdown-table {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 0.35rem;
+}
+
+/* An image of an answer is content of it and never wider than the answer (R-WP-29). */
+.chat-log .chat-markdown img {
+  max-width: 100%;
+  height: auto;
+}
+
 /* react-shiki paints the colours and states both themes inline; which one shows is the theme layer's
    call, so the switch reads the same `data-theme` the tokens of index.css read. The values sit in the
    style attribute, so only !important can outvote them. `.code-view` is the hook of every highlighted
@@ -527,22 +577,18 @@ button {
   color: var(--user);
 }
 
-/* One rule where the voice changes, and nowhere else (R-WP-29). */
-.chat-log .chat-rule {
-  border: 0;
-  border-top: 1px solid var(--tool-line);
-  margin: 0 0 0.45rem;
-}
-
 /* An own line the history has not confirmed yet: the accent is not a fact yet — last, so it outvotes
-   the voice's own line on the border it shares with it. */
+   the voice's own line on the border it shares with it. The dashed form belongs to the left accent alone:
+   a style on every side would draw a line above and below the row (R-WP-29). */
 .chat-log .chat-line.pending {
-  border-style: dashed;
+  border-left-style: dashed;
   color: var(--text);
 }
 
-/* Das Feld ist eine Textarea: Enter ist ihr Umbruch, Cmd/Ctrl+Enter ist der Send, den die Tastatur zum
-   Knopf hinzufügt (R-WP-30). Die Knöpfe stehen darunter, damit eine lange Frage ihre Breite behält. */
+/* Das Feld ist die Auto-Grow-Textarea der Basis: eine Zeile bis fünf, danach scrollt sie (R-WP-41); Enter
+   sendet, Shift und Ctrl/Cmd+Enter brechen um (R-WP-30). Die Höhe gehört der Basis — sie steht inline auf dem
+   Feld, darum hier kein min-height und kein resize. Die Fläche bleibt unsere eine Maß: dieselbe Padding
+   tragen die Konfigurationsfelder. Die Knöpfe stehen darunter, damit eine lange Frage ihre Breite behält. */
 .chat-composer {
   display: grid;
   gap: 0.5rem;
@@ -553,14 +599,12 @@ button {
 
   textarea {
     width: 100%;
-    min-height: 4.5rem;
     padding: 0.4rem 0.6rem;
     border: 1px solid var(--border);
     border-radius: 0.4rem;
     background: var(--bg);
     color: var(--text-h);
     font: inherit;
-    resize: vertical;
   }
 }
 
@@ -679,8 +723,10 @@ button {
   }
 }
 
-/* an open file widens the panel, and the tab moves to the new edge with it */
-.files-tab[data-open='true'][data-wide='true'] {
+/* an open file widens the panel, and the tab moves to the new edge with it. Read off the panel beside it:
+   the width is the area's own state, and a second copy of it on the tab would be the second owner this
+   increment removes (INC-5B-D1). */
+.files-panel[data-wide='true'] + .files-tab {
   right: var(--files-wide);
 }
 
@@ -938,12 +984,15 @@ button {
 }
 
 /* The config page (R-WP-16): one column of labeled fields, the key row carrying its own status. Each area
-   is a card (`.ui-card`) — the chat's border-and-radius language, no geometry of its own here. */
+   is a card of the basis — its border and radius are the theme's, so only the width is named here. */
+.settings-card {
+  max-width: 34rem;
+}
+
 .settings-form {
   display: grid;
   justify-items: start;
   gap: 0.5rem;
-  max-width: 34rem;
 }
 
 .settings {
@@ -973,34 +1022,29 @@ button {
     margin: 0;
   }
 
-  /* the field takes the width the label leaves; what travels beside it wraps after that */
+  /* the field takes the width the label leaves; what travels beside it wraps after that. A field the
+     provider makes unusable stays on the screen and says so through the basis' own disabled state (Q3). */
   input,
-  select {
+  .ant-select {
     flex: 1 1 12rem;
-  }
-
-  /* A field the provider makes unusable stays readable and says so — it is not hidden (Q3). */
-  input:disabled,
-  select:disabled {
-    color: var(--tool);
-    background: var(--code-bg);
-    cursor: not-allowed;
   }
 }
 
 /* One measure for every field of the page: the measure of the chat's own input (`.chat-composer`), so the
-   config page reads as the same app rather than as a smaller generation of control. */
+   config page reads as the same app rather than as a smaller generation of control. The surface — border,
+   radius, colours — belongs to the basis and is not repeated here (R-WP-39). */
 .settings input,
-.settings select,
 .config-agents-field input,
 .config-agents-key input {
   min-width: 0;
   padding: 0.4rem 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: 0.4rem;
-  background: var(--bg);
-  color: var(--text-h);
   font: inherit;
+}
+
+/* a selection of the basis takes the room the field beside it takes; its box paces itself */
+.settings .ant-select,
+.config-agents-field .ant-select {
+  min-width: 0;
 }
 
 /* The key status is the status line of its row — the mono measure of the chat's tile metadata. */
@@ -1018,13 +1062,17 @@ button {
 
 /*
  * The agent section under the default form (R-WP-23): one card per slot, the checkbox above the fields it
- * unlocks. The card tokens are those of the form above (`.ui-card`) — two areas of one page, one language.
+ * unlocks. The card is the basis' own, the same as the form above — two areas of one page, one language.
  */
 .config-agents {
   display: grid;
   gap: 0.4rem;
   margin-top: 1.5rem;
   max-width: 34rem;
+}
+
+.config-agents-card {
+  width: 100%;
 }
 
 .config-agents-slot {
@@ -1037,13 +1085,6 @@ button {
 .config-agents-name {
   margin: 0;
   font-size: 0.9rem;
-}
-
-.config-agents-override {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.8rem;
 }
 
 .config-agents-fields {

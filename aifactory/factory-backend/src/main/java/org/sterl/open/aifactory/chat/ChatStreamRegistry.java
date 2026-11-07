@@ -177,8 +177,7 @@ public class ChatStreamRegistry {
         return switch (event) {
             case ChatEvent.Partial partial -> SseEmitter.event().name("partial")
                     .data(payload("kind", partial.kind(), "text", partial.text()), MediaType.APPLICATION_JSON);
-            case ChatEvent.ToolLine toolLine -> SseEmitter.event().name("tool")
-                    .data(payload("text", toolLine.text()), MediaType.APPLICATION_JSON);
+            case ChatEvent.ToolLine toolLine -> toolLineEvent(toolLine);
             case ChatEvent.Done done -> SseEmitter.event().name("done")
                     .data(payload("millis", done.millis()), MediaType.APPLICATION_JSON);
             case ChatEvent.Failed failed -> SseEmitter.event().name("error")
@@ -187,7 +186,24 @@ public class ChatStreamRegistry {
                     .data(payload("tiles", agents.tiles()), MediaType.APPLICATION_JSON);
             case ChatEvent.Diff diff -> SseEmitter.event().name("diff")
                     .data(payload("file", diff.file(), "diff", diff.diff()), MediaType.APPLICATION_JSON);
+            // both fields always: the receiver needs the member to find his entry and the flag to know
+            // whether it opens or closes — one of them alone would be a statement without a subject
+            case ChatEvent.Delegation delegation -> SseEmitter.event().name("delegation")
+                    .data(payload("member", delegation.member(), "working", delegation.working()),
+                            MediaType.APPLICATION_JSON);
         };
+    }
+
+    /**
+     * The stamp of a step rides on the wire only where the core gave one: an unstamped line keeps the
+     * payload it always had, so no browser reads a field of nothing and no name is invented downstream
+     * (R-WP-16, UC-WP-72).
+     */
+    private SseEmitter.SseEventBuilder toolLineEvent(ChatEvent.ToolLine event) throws IOException {
+        return event.origin() == null
+                ? SseEmitter.event().name("tool").data(payload("text", event.text()), MediaType.APPLICATION_JSON)
+                : SseEmitter.event().name("tool").data(
+                        payload("text", event.text(), "origin", event.origin()), MediaType.APPLICATION_JSON);
     }
 
     private String payload(Object... nameAndValue) throws IOException {

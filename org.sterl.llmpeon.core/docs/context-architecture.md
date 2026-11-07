@@ -23,7 +23,15 @@ Geladen als `persistentContext: List<ContextItem>` → gerendert in `buildSystem
 
 | Item | Wer | Quelle |
 |------|-----|--------|
-| OS/Date-Regeln (Datum, OS, File-Access, User-Language-Fallback) | Alle | `PeonAiService.initStaticContext()` |
+| OS/Date-Regeln (Datum + Training-Cutoff-Hinweis, OS, File-Access, User-Language-Fallback) | Alle | `PeonAiService.initStaticContext()` |
+
+**File-Access-Hinweis (2026-11-07, Paul):** der Static Context trägt die Tool-Familien-Schärfe —
+Workspace-Dateien **ausschließlich** über `eclipse*`, außerhalb des Workspace **nur** `disk*`
+(kein „prefer"-Vorrang mehr, sondern ausschließliche Zuständigkeit); nach einem `disk*`-Write
+folgen `eclipseRefreshProject`/`eclipseBuildProject` zum Eclipse-Sync; File-I/O nie über
+shell/terminal. Dazu der Training-Cutoff-Hinweis: APIs können sich geändert haben — für
+Java-Projekte statt API-Annahmen `readTypeSource` (`EclipseCodeNavigationTool.GET_TYPE_SOURCE`)
+nutzen. Implementierung: `StaticContextItem` (Plugin).
 
 **User-Language-Fallback (2026-09-23, Paul):** der Static Context trägt
 `user language: <user.language> — respond in the user's language; if unsure or not otherwise

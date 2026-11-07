@@ -332,7 +332,9 @@ test('theFilesTabOpensTheSlideOut', async () => {
   expect(tab).toHaveTextContent(content.files.open)
   expect(tab).toHaveAttribute('aria-expanded', 'false')
   expect(tab.getAttribute('aria-label')).toBe(content.files.openArea)
-  expect(tab.querySelector('i.bi-chevron-left'), 'a closed tab points inwards').not.toBeNull()
+  // ANTD-A4 (R-WP-39): the icon set of the basis names the direction in its class (`anticon-left`,
+  // `anticon-right`) — the same claim about the arrow, read where the new set states it
+  expect(tab.querySelector('.anticon-left'), 'a closed tab points inwards').not.toBeNull()
   // the tab stands sideways at the edge — jsdom lays out nothing, so the look is read where it is written
   expect(declarations('.files-tab'), 'the tab is vertical').toContain('writing-mode: vertical-rl')
 
@@ -340,7 +342,7 @@ test('theFilesTabOpensTheSlideOut', async () => {
   await screen.findByTestId('files-panel')
   expect(tab).toHaveAttribute('aria-expanded', 'true')
   expect(tab.getAttribute('aria-label')).toBe(content.files.collapseArea)
-  expect(tab.querySelector('i.bi-chevron-right'), 'an open tab points back out').not.toBeNull()
+  expect(tab.querySelector('.anticon-right'), 'an open tab points back out').not.toBeNull()
 
   // the two roots as cards, each one naming what it holds
   const checkout = screen.getByTestId('files-root-checkout')
@@ -350,7 +352,7 @@ test('theFilesTabOpensTheSlideOut', async () => {
   expect(within(screen.getByTestId('files-panel')).getByRole('group', { name: content.files.root }))
     .toBeInTheDocument()
   // and the panel carries its own way out: the icon of the tab, repeated where the eye is
-  expect(screen.getByTestId('files-close').querySelector('i.bi-chevron-right')).not.toBeNull()
+  expect(screen.getByTestId('files-close').querySelector('.anticon-right')).not.toBeNull()
 })
 
 // UC-WP-60
@@ -461,7 +463,20 @@ test('theChatStaysVisibleWhileTheViewerIsOpen', async () => {
 })
 
 // UC-WP-60
-test('filesTabSitsOnThePanelTop', () => {
+test('filesTabSitsOnThePanelTop', async () => {
+  // the sheet below is read as text — but the wide edge is a **sibling** rule, and jsdom sees neither the
+  // edge nor the order it depends on, so the mount that order has to be true for is made right here
+  stubFactory()
+  await openProjectChat()
+  await openFileInTree('app.tsx (12 B)')
+  await screen.findByTestId('files-viewer')
+  const panel = screen.getByTestId('files-panel')
+  const handle = screen.getByTestId('files-open')
+  expect(panel, 'a read file is what makes the panel wide').toHaveAttribute('data-wide', 'true')
+  expect(handle.previousElementSibling, 'the wide rule can only read the panel directly beside the tab').toBe(
+    panel,
+  )
+
   const tab = declarations('.files-tab')
 
   // a fixed tab at a percentage height met the panel top by accident, at one window height only; hung on
@@ -476,7 +491,9 @@ test('filesTabSitsOnThePanelTop', () => {
   expect(appSheet(), 'the open tab rides the edge of the panel').toMatch(
     /&\[data-open='true'\]\s*\{\s*right:\s*var\(--files-width\)/,
   )
-  expect(declarations(".files-tab[data-open='true'][data-wide='true']")).toContain('right: var(--files-wide)')
+  // INC-5B-D1: the same claim, read where the width lives. The area is wide, the tab beside it rides that
+  // edge — a second copy of the width-state on the tab would be the second owner this increment removes.
+  expect(declarations(".files-panel[data-wide='true'] + .files-tab")).toContain('right: var(--files-wide)')
 
   // the row is the box it hangs on, and the panel keeps the height the frame gives it — `100vh` would cut
   // it below the frame, which is the other half of a top edge that has to stay shared

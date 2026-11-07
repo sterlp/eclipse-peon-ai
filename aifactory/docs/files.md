@@ -67,8 +67,8 @@ Der Datei-Bereich ist ein **Slide-out am rechten Rand** mit einem **vertikalen �
 sichtbar, dass hier aufklappbar ist. Der Tab hängt **am Panel, nicht am Bildschirm**: er sitzt **bündig
 an der Oberkante** des Panels, an dem er hängt, und **wandert mit der Panelbreite** mit; im
 geschlossenen Zustand sitzt er am **rechten Rand der Chat-Fläche** — nicht am Viewport — damit sich Tab-
-und Panel-Oberkante bei jeder Fensterhöhe treffen. Auf- und Zuklappen steuern **Icons**
-(`bootstrap-icons`, `<` / `>`), Schließen ist immer möglich. Im Panel: **Baum-Navigation**
+und Panel-Oberkante bei jeder Fensterhöhe treffen. Auf- und Zuklappen steuern **Icons** (`<` / `>` —
+welche Bibliothek die liefert, regelt [R-WP-39](ui.md)), Schließen ist immer möglich. Im Panel: **Baum-Navigation**
 über die zwei Wurzeln ([R-WP-14](files.md)), die als **Cards** erscheinen (Checkout, TMP —
 Paul-Vorschlag); der **Projektname wird im Panel nicht wiederholt** (er steht in der Kopfzeile des
 Chats). Eine geöffnete Datei zeigt der Viewer mit **Syntax-Highlighting** (react-shiki),

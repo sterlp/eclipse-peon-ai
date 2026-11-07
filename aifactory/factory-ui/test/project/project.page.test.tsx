@@ -6,13 +6,14 @@ import {
   render,
   screen,
   waitFor,
-  within,
 } from '@testing-library/react'
+import { useState } from 'react'
 
-import { renderApp } from '../shared/app.harness'
 import { ProjectPage } from '../../src/project/project.page'
+import { listProjects } from '../../src/project/project.client'
 import { project } from '../shared/fixtures'
 import { content } from '../../src/shared/content'
+import type { Project } from '../../src/shared/dto'
 
 beforeEach(() => {
   cleanup()
@@ -104,25 +105,24 @@ function response(status: number, body: unknown): Response {
   })
 }
 
-// UC-WP-1
-test('showsExactlyThreeViews', async () => {
-  stubServer({ GET: [] })
-  renderApp()
-
-  // the frame is a menu (R-WP-1): exactly the three views, the showing one marked with aria-current
-  const entries = within(screen.getByRole('navigation', { name: content.nav.views })).getAllByRole('button')
-  expect(entries.map(entry => entry.textContent)).toEqual([
-    content.nav.projects,
-    content.nav.chat,
-    content.nav.settings,
-  ])
-  expect(entries[0]).toHaveAttribute('aria-current', 'page')
-  await screen.findByText(content.projects.empty)
-})
+/**
+ * The frame in miniature: it owns the list (D1) exactly as `useProjectList` does, only without the tree —
+ * so a test of this page reads nothing at mount and the row appears through `onReload` alone.
+ */
+function Host({ initial = [] }: { initial?: Project[] }) {
+  const [projects, setProjects] = useState<Project[]>(initial)
+  return (
+    <ProjectPage
+      projects={projects}
+      onOpen={() => undefined}
+      onReload={async () => setProjects(await listProjects())}
+    />
+  )
+}
 
 test('showsEmptyStateWhenRegistryIsEmpty', async () => {
   stubServer({ GET: [] })
-  render(<ProjectPage onOpen={() => undefined} />)
+  render(<Host />)
 
   expect(await screen.findByText(content.projects.empty)).toBeInTheDocument()
 })
@@ -131,7 +131,7 @@ test('showsEmptyStateWhenRegistryIsEmpty', async () => {
 test('listsProjectAfterSuccessfulAdd', async () => {
   const added = project()
   const server = stubServer({ GET: [] })
-  render(<ProjectPage onOpen={() => undefined} />)
+  render(<Host />)
   await screen.findByText(content.projects.empty)
 
   server.script = { GET: [added], POST: added, DELETE: undefined }
@@ -153,7 +153,7 @@ test('showsGitErrorAtInputAndKeepsList', async () => {
     GET: [],
     POST: new Error('fatal: repository not found'),
   })
-  render(<ProjectPage onOpen={() => undefined} />)
+  render(<Host />)
   await screen.findByText(content.projects.empty)
 
   fireEvent.change(screen.getByLabelText(content.projects.gitUrl), {
@@ -170,7 +170,7 @@ test('showsGitErrorAtInputAndKeepsList', async () => {
 test('sameUrlReusesExistingClone', async () => {
   const existing = project()
   const server = stubServer({ GET: [existing], POST: existing })
-  render(<ProjectPage onOpen={() => undefined} />)
+  render(<Host initial={[existing]} />)
   await screen.findByText('demo')
 
   fireEvent.change(screen.getByLabelText(content.projects.gitUrl), {
@@ -190,7 +190,7 @@ test('credentialUrlRejectedAndNothingStored', async () => {
     GET: [],
     POST: new Error('git urls must not carry credentials — public https repositories only'),
   })
-  render(<ProjectPage onOpen={() => undefined} />)
+  render(<Host />)
   await screen.findByText(content.projects.empty)
 
   fireEvent.change(screen.getByLabelText(content.projects.gitUrl), {
@@ -206,26 +206,31 @@ test('credentialUrlRejectedAndNothingStored', async () => {
 })
 
 // UC-WP-28
+/**
+ * ANTD-A2 (R-WP-39): the confirmation is the basis' `Popconfirm` at the row instead of `window.confirm` — the
+ * question is on the screen, so it is read there, and "nothing deleted while it stands" is read off the
+ * calls to the edge rather than off a spy of a browser dialog.
+ */
 test('asksForConfirmationBeforeDelete', async () => {
-  stubServer({ GET: [project()] })
-  const confirmed = vi.spyOn(window, 'confirm').mockImplementation(() => false)
-  render(<ProjectPage onOpen={() => undefined} />)
+  const server = stubServer({ GET: [project()] })
+  render(<Host initial={[project()]} />)
   await screen.findByText('demo')
 
   fireEvent.click(screen.getByRole('button', { name: content.projects.remove }))
 
-  expect(confirmed).toHaveBeenCalledTimes(1)
+  expect(await screen.findByText(content.projects.removeQuestion('demo'))).toBeInTheDocument()
+  expect(server.calls.filter(call => call.method === 'DELETE')).toEqual([])
   expect(screen.getByText('demo')).toBeInTheDocument()
 })
 
 test('removesProjectAfterConfirmation', async () => {
   const server = stubServer({ GET: [project()] })
-  vi.spyOn(window, 'confirm').mockImplementation(() => true)
-  render(<ProjectPage onOpen={() => undefined} />)
+  render(<Host initial={[project()]} />)
   await screen.findByText('demo')
 
   server.script = { GET: [], POST: undefined, DELETE: undefined }
   fireEvent.click(screen.getByRole('button', { name: content.projects.remove }))
+  fireEvent.click(await screen.findByRole('button', { name: content.common.yes }))
 
   expect(await screen.findByText(content.projects.empty)).toBeInTheDocument()
   expect(
@@ -238,7 +243,7 @@ test('removesProjectAfterConfirmation', async () => {
 test('theListShowsWorkingAndQueued', async () => {
   const demo = project()
   const server = stubServer({ GET: [demo] })
-  render(<ProjectPage onOpen={() => undefined} />)
+  render(<Host initial={[demo]} />)
   const row = (await screen.findByText('demo')).closest('li') as HTMLElement
 
   // nothing told about a project means free — the same answer a restart gives (R-WP-24)
@@ -252,9 +257,13 @@ test('theListShowsWorkingAndQueued', async () => {
   expect(row).toHaveTextContent(content.projects.working)
   expect(row).toHaveTextContent(content.projects.queued(1))
 
+  // the page no longer reads the list at all — the frame owns that read (D1), so counting here is counting
+  // something this view could only do to itself
   const reads = server.calls.filter(call => call.path === '/api/projects').length
+  expect(reads, 'the rows came from the props, not from a read of this page').toBe(0)
   await server.push('project', { projectId: demo.id, working: false, queued: 0 })
   expect(row).toHaveTextContent(content.projects.free)
   expect(row.textContent).not.toContain(content.projects.working)
+  // a work state is a picture of the runtime and never a reason to read the registry again (R-WP-24)
   expect(server.calls.filter(call => call.path === '/api/projects')).toHaveLength(reads)
 })

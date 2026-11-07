@@ -2,73 +2,127 @@
 
 Paul: **ein Thema pro Nachricht**, kurz. Nur Jon schreibt `docs/`. Paul committet selbst (Core);
 Fabrik-Inkremente committet Dev je Schritt und pusht. **Core-Änderungen NUR mit Pauls Approval, per
-Proposal mit WARUM** (2026-10-29) — gilt auch für Core-Tests.
+Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwissen (Plan-Dateien und
+`peon-plan/review-findings.md` sind das Memory); Docs duplizieren nie Core-Regeln; Plan-Archive werden
+**gelöscht**, nie committet.
 
-## Zyklus 2026-11-02 LÄUFT — UI-Nacharbeiten nach Pauls Smoke-Test
+## Zyklus 2026-11-06/07 — Runde 4: AntD-Umbau („durchbauen"; Paul inzwischen wieder da, parallel im Core)
 
-Branch `web-factory-mvp`, Spitze `cf8133ec` (= origin). **Runde 2 abgeschlossen + Review bestanden**
-(2026-11-02): alle 7 Inkremente + Follow-up gebaut — Inc 1 `321cb3ea` (Turn-Fehler = Verlaufszeile,
-R-WP-34/UC-WP-64) · Inc 2 `6027bbe4` (Warte-Rahmen endet, R-WP-31/UC-WP-65) · Inc 3 `72e97e6d`
-(Chat scrollt, Eingabe fixed, R-WP-35/UC-WP-66) · Inc 4 `99560a9b` (Akzent links, R-WP-29/UC-WP-55) ·
-Inc 5 `f069dd17` (Files-Tab bündig, Zeilenhöhe — Shiki-`\n`-Knoten, R-WP-33/UC-WP-60/61) · Inc 6
-`7cc5b54f` (Think je Agent nach Provider-Form, R-WP-23/UC-WP-67) · Inc 7 `e682e7cc` (Config-Look,
-Cards) · Review-Followup `cf8133ec` (UC-WP-64 GIVEN 2 gepinnt, `ranTurn` gepinnt, Historien-Warten
-ein Helfer, Marker). Stand: Backend **208/0/0**, UI **129 Tests/16 Dateien**, oxlint 0/0,
-UC **67/67**, Doc-Lint 0 Findings (250 Ids). Alle 10 Feedback-Punkte verarbeitet. Dev-Slot-Lücke ⏳.
-Trailer-Regel: kein Modellname.
+Branch `web-factory-mvp-2`, Spitze `2ec9d4f5` = origin. Kette Inc 4: `832a9772` (4a) → `b51571b2` (N1)
+→ `6249d59a` (N2) → `eb103276` (4b) → `9704013a` → `98f55700` (4c) → `8da14901` (N1) → `a0a2c3f2`
+(N2 + Docs-Flip) → `5cfd251e` (memory). Inc 5a: `c04f8ed1` (Sider + Docs) → `a32409ad` (URL = Name) →
+`87949a90` (Cleanup) → `680f2239` (5a-N1). Inc 5b: `b4c202b0` (5b-1) → `6578719d` (N1 Docs) →
+`83a63547` (N1 Code) → `583719d0` (Jons Docs) → **`2ec9d4f5` (5b-2)**.
 
-## Zyklus 2026-11-03 — Runde 3 LÄUFT
+**Inkrement 4 — Timeline ✅ abgenommen** ([R-WP-40/UC-WP-72](chat.md), [R-WP-29/UC-WP-55](chat.md)):
+kein `hr`; Werkzeug-Stempel = Name + Ankunftszeit am **geschlossenen** Schritt; Indikator am letzten
+Schritt **des offenen Turns** (Identität, nie Position; `chat.live.ts::openTimelineItem` ist der **eine**
+Entscheider); Delegation als typisiertes Paar `{member, working}` aus den Core-Listenern (kein
+Core-Eingriff), Eintrag **steht an seiner Stelle**, Auftrag wird **nie** geparst (PK-2, ⏳ unten).
 
-**✅ F6/F7 abgeschlossen (Review CONCERNS ohne Bug, Delta S1/L1 nachgebaut, Inc 9):** 23 → **1**
-Spring-Kontext, Wanduhr **118 → 42,1 s**, 216 Tests/0, null Produktionscode. Commits `c47c4aa7`…`30c42754`
-auf `web-factory-mvp`. Regel + Messgröße jetzt in [AGENTS.md](../AGENTS.md), Fakten in
-`AGENTS-DEV.md` (Abschnitt „Build-Geschwindigkeit / Test-Kontext"); Guard `SingleContextGuardTest`
-(härtet Meta-Annotationen + Nicht-`*Test`-Klassen), Lifecycle-Netz 120 s, TurnGate statt Schlaf,
-ein Home `target/test-home`. F6/F7 aus open-points entfernt (Fakten leben in AGENTS-DEV).
+**Inkrement 5a — Sider + URL gebaut und reviewed** ([R-WP-38/UC-WP-70](ui.md) G1+G3, R-WP-1, UC-WP-51/52,
+R-WP-35). Review 2026-11-07: **ein BUG, nur im Test** — „Markierung = Funktion der Adresse" war nicht
+bewiesen (drei Mutationen grün: geseedeter Klick-State, beim Mount eingefrorene Auswahl, eingefrorenes
+Settings-`aria-current`). Behoben in 5a-N1: Markierung jetzt in vier Weiterleitungs-Fällen **und** über
+einen Adress-Walk in einem Mount behauptet (M1b/M1c/M10 ⇒ 5/5/1 Tests rot). Dazu `navKeyOfPathname`
+dekodiert das Segment (Adresse mit `%20` markiert denselben Eintrag), Leichen-Pfad im Guard-Test ersetzt.
+**G2 (Einheit Files) kam mit 5b-1** — nach dessen N1-Delta ist der Flip erfolgt:
+**R-WP-38/UC-WP-70 ✅**, Feature **UI ✅** in der [index.md](index.md) (offen bleibt nur der Look am
+Browser).
+Befunde + Zurückgestelltes: [../peon-plan/review-findings.md](../peon-plan/review-findings.md).
 
-**Offen Runde 3 (Backlog in [open-points.md](open-points.md)):** F3 Kacheln · F4/F6-C hr raus, Linien
-wie Eclipse · F5 Optik/Config · F8 Config-Umfang (reasoning_effort, Header) · F9 Clear-Layout ·
-F10 Bootstrap docs-Laden · C-1 TurnClaim-Timeout · C-2 Compact-Anzeige · C-3 URL-Hash ·
-C-5 Verlauf out of order (Referenz: `/Users/sterlp/dev/workset/ai-schulung/app/frontend`) ·
-C-7 Agent-Chat = Haupt-Widget read-only. **C-4 Diffs 🔒 entschieden (live only)** — als nächstes
-Inkrement mit Regel+UC in chat.md. Bild-Support-Anzeige weiter ⏳.
-**✅ C-4 Diffs gebaut + reviewt (2026-11-03):** [R-WP-36/UC-WP-68](chat.md) ✅ — Diff live im Chat
-(Bestandsdatei-Inhalts-Änderungen; Anlegen/Löschen/Shell = Werkzeug-Zeile, Doc auf Core-Umfang geschärft
-nach Review-BUG-1). Commits `32bb05fd`/`d7ca61b3`/`5e0956dd`. **Core-Proposal geparkt** (open-points):
-1. Anlegen = +Diff (`diskWriteFile` feuert auch bei Neuanlage), 2. SimpleDiff partzieller Diff statt
-Skip (Cap ~500 Zeilen/60k Zeichen — kein Byte-Buffer, String[]+int[][]-LCS; mildert S1 MB-Diff- und
-Binary-Risiko). Pauls Freigabe per Proposal nötig.
-Arbeitsregel (Paul): Nur-UI-Änderung ⇒ nur UI-Tests; Backend anfassen ⇒ Backend-Tests.
-Trailer-Regel: kein Modellname. Commit nur `aifactory/`-Pfade scopen (Core im selben Repo).
+**Inkrement 5b-1 — Einheit = Adresse** ([UC-WP-70 G2](ui.md)), gebaut `b4c202b0`: `chat/:project/files`
+als Adresse (Kind-Route, rendert nichts), „offen" entscheidet **ausschließlich** die Adresse, die
+Panel-**Fläche** mountet nur mit ihr („Schließen vergisst die Position" per Konstruktion), der Tab bleibt
+außen gemountet; Sider-Eintrag „Files" **nur unter dem Projekt, das die Adresse nennt**, genau **ein**
+`aria-current`. Review: **REJECTED — 2 BUGs, beide Nachweis/Kommentar, kein Verhalten**: (1) die
+Sibling-CSS-Regel der breiten Tab-Kante war unbewiesen (Mutation „Fläche hinter den Tab" ⇒ grün) ⇒
+DOM-Assertion `previousElementSibling` folgt; (2) der Kommentar in `app.routes.tsx` behauptete, eine
+**Schwesterroute** remounte — **gemessen falsch** (React Router 7.18.5, kein zweiter `/messages`-Read);
+Architektur-Doc korrigiert, Kommentar zieht nach. Dauerhaft: **CSS mit `+`/`~` braucht einen
+Nestungs-Beweis** (jsdom sieht die Kante nicht). Alles Weitere:
+[../peon-plan/review-findings.md](../peon-plan/review-findings.md).
 
-Runde 1/2-Befundlisten und die Design-Entscheidungen vom 2026-11-02 sind verarbeitet und leben in den
-Feature-Docs (ui/chat/files/config.md) — hier gelöscht.
+**Inkrement 5b-1-N1 — nur Nachweis + Kommentar** (Docs `6578719d`, Code `83a63547`): DOM-Assertion
+`expect(tab.previousElementSibling).toBe(panel)` in `filesTabSitsOnThePanelTop` — Mutation „Fläche hinter
+den Tab" ist damit **rot**; Kommentar in `app.routes.tsx` sagt jetzt **Grammatik, nicht Mount**, und das
+Architektur-Doc hält den gemessenen Befund (eine **Schwesterroute** remountet den Chat **nicht**,
+React Router 7.18.5 — Mount-Kontinuität beweist nur ein erzwungener Remount).
 
-## Offen für Paul (❓ in [open-points.md](open-points.md))
+**Inkrement 5b-2 — Aufräumen, abgenommen ohne zweite Review-Runde** (`2ec9d4f5`): Chat löst seinen Namen
+aus der Rahmen-Lesung (`useAppContext`), **zweiter Registry-Read weg**; `loaded` = „Antwort da, **auch eine
+abgelehnte**" — sonst hinge ein Deep-Link für immer in der Ladezeile (beides neu gepinnt:
+`aChatReadsTheProjectListOnce`, `aRefusedProjectListShowsTheListNotALoadingLine`, je eine Mutation ⇒ rot).
+Rahmen-Test `theFrameShowsTheProjectTree` nach `test/app/app.shell.test.tsx` **verschoben** (`// UC-WP-1`
+wanderte mit), Kommentar-Prosa in `app.sider.tsx`/`project.list.ts`/`last.project.ts` auf Regel-IDs
+gekürzt — WHY blieb (`collapsed` nie controlled, `matchMedia` beim Mount, Segment = Name).
 
-1. Core-Queue-Verlust bei Stop (UC-WP-50) — Core-Story, nur per Proposal
-2. C-2 Core-Test-Proposal (archivierter Inc-4-Plan, Anhang B)
-3. Paco-Story (SOLL-Fragen: Nutzer-Räume, Write-Roots `paco/<nutzer>/`)
+**Gemessen (Spitze `2ec9d4f5`):** UI **216 Tests / 22 Dateien**, `tsc -b` 0, oxlint 0/0 (73 Dateien),
+`AGENTS-DEV.md` 120 Zeilen · Backend **227/0** (in 5b nicht gebaut) · Doc-Lint **28** Findings = nur
+Fremd-Docs (PC 14, CR 14), kein `UNBELEGT_ERLEDIGT`. Dev/Review scoppen enger — **immer selbst messen.**
+
+**Nächste Schritte:** AntD-Umbau ist **durch** (Inc 1–5b ✅, Plan archiviert). Weiter im Backlog:
+**C-7** (Agent-Blick read-only live im gleichen Chat-Widget — neuer Plan nötig), dann C-2a,
+C-1 TurnClaim-Timeout (`ProjectRuntime.java:348`), F8/F10, Mini 3c (`data:`-Bild ⇒ Alt statt leerem
+`src`). **Look-Abnahme am Browser steht aus** (Pixel, dunkel, Sider-Breite — open-points #3/#6).
+Stagehand ⏳ parked (Node ≥22.18 vs. Bau 22.12). `peon-plan/review-findings.md` ist **ungetrackt**
+(siehe #3).
+
+## Entscheidungen dieser Runde (Kurzfassung)
+
+AntD wird Design-Basis, Bootstrap raus ([R-WP-39](ui.md)); Navigation = **Projektbaum im Sider** mit
+**Wurzeleintrag „Projects"**, Klick aufs Projekt öffnet den Chat, **kein „Jon"-Label**
+([R-WP-38](ui.md)); Adresse = **klarer Projektname** statt Registry-Id (C-3, Entscheidung gegen die Id
+in [resolved-points.md](resolved-points.md)); Breakpoint `lg` = 991,98 px, `collapsedWidth={0}`,
+`collapsed` **uncontrolled**; **UC-WP-51 bleibt** (Mechanik auf der Adresse `/ui/chat`, kein Eintrag);
+G3-Breite wird als **„Sider auf Breite 0"** belegt, Pixel erst bei der Look-Abnahme am Browser. Dazu
+Inc 4: kein `hr` ([R-WP-29](chat.md)), Timeline ([R-WP-40](chat.md)), GFM-Markdown
+([R-WP-28](chat.md)), Auto-Grow/Refocus ([R-WP-41](chat.md)), Zeiten bleiben **live**. Tastatur: Enter
+sendet, Shift+Enter **und** Ctrl/Cmd+Enter = neue Zeile ([R-WP-30](chat.md)). `!` = Prio-Nachricht des
+Cores ([`queued-user-messages.md`](../../org.sterl.llmpeon.core/docs/queued-user-messages.md) R8/R11).
+Grenze: [AF-ADR-003](adr/003-reference-ui-is-a-donor-not-a-source.md) — die Referenz `ai-schulung` gibt
+Muster, **nie** unseren Zustand. [glossary.md](glossary.md) definiert **Jon** und **Paco**.
+
+## Offen für Paul (❓/⏳ in [open-points.md](open-points.md))
+
+1. **PK-2 entschieden (⏳):** ein Delegations-Eintrag nennt das **Mitglied**, der **Auftrag** bleibt der
+   Wortlaut der Werkzeugzeile darüber — der Listener trägt keinen Prompt, ihn zu lesen wäre das
+   Parse-Verbot. Auftrag **im** Eintrag = Core-Erweiterung, nur mit Proposal.
+2. **❓ Turn ohne Endereignis** (unbestätigt): `ProjectRuntime.java:400` sendet `done` nur bei nicht-null
+   Antwort; ein entkommener `Error` könnte Indikator + Warteschleife stehen lassen. Empfehlung: eigene
+   Story „je Turn genau ein Endereignis".
+3. **⏳ Mechanik, bitte zur Kenntnis:** `aifactory/peon-plan/` ist **nicht** ignoriert und
+   `dev-notes-antd.md` bereits getrackt. Plan-Archive lösche ich, aber ein `git add -A` könnte sie
+   wieder einfangen — `.gitignore`-Eintrag `peon-plan/` gefällig? (Ändere ich nicht ohne dich.)
+4. Core: abgebrochener Turn verliert eine gepollte Queue-Eingabe (`UC-WP-50` bleibt ❌); C-2
+   Core-Test-Proposal; Paco-Story; C-1, C-7, F3/F5/F8/F9/F10; Bild-Support-Anzeige.
 
 ## Fallstricke (gemessen)
 
-* Baureihenfolge: Kern `clean test` → `install -DskipTests` → Fabrik `clean verify`; immer `clean`.
-  Einzeltest: `-Dsurefire.failIfNoSpecifiedTests=false`.
-* `MockLlmServer`: kein `getRequestCount()`, keine `system`-Nachrichten, SSE in einem Stück ⇒
-  Cancel-mitten-im-Stream nur mit später antwortendem Endpoint (`DelayedModel`, >1500-ms-Latch).
-* Guards `OneChatPerProjectTest`/`SharedProjectChatTest`/`ChatTurnTest` nur **verschärfen** (Feldlisten
-  exakt, positive Ersetzung, benannte Abweichung) — Stand: 4 Gesprächs-Routen (messages, messages/stop,
-  events), Kachel-Familie `agents(+/{name})`, `SendMessageRequest(text, user)`.
-* Port 8080 = IDE → Nachweise auf 8099; `~/.peon` vor/nach vergleichen; `@TempDir` liegt auf macOS unter
-  TMP → Test-Homes nach `target/`.
-* `lintDocsAndTests`/`nextIds`: Pfade relativ zum Session-cwd (aifactory) — `docRoots:["docs"]` reicht
-  (kein Präfix `aifactory/`, kein `root`-Parameter); `testRoots` ebenso relativ (Fabrik + UI).
-* eclipseEditFile verliert `oldString` bei langen Blöcken → `diskEditFile` (kurz ankern); sonst
-  `eclipseWriteFile`/`eclipseReplaceLines`.
-* `TurnClaim`-Tests: Kachel-Handshake (COMPACTING⇒IDLE) statt Core-Flags als Warte-Bedingung.
-* Dev-Agent kann eigenmächtig „Review-Blöcke"/Entscheidungen in den Plan schreiben — Review-Verdicts
-  und neue Inkremente kommen nur von Jon; nach garbled Antworten erst Statusanfrage (memory-Regel 3).
+* Bauen: Kern `clean test` → `install -DskipTests` → Fabrik `clean verify`; immer `clean`. Backend
+  `mvn -o -f aifactory/pom.xml -pl factory-backend clean test`; UI `cd factory-ui &&
+  COREPACK_ENABLE_PROJECT_SPEC=0 pnpm test` (pnpm 10.28.0, Node 22.12). Nur-UI-Änderung ⇒ nur UI-Tests.
+  Smoke: `spring-boot:run -Dspring-boot.run.arguments=--server.port=8099` → `http://localhost:8099/ui/`.
+* **Bei „Zustand kommt aus Quelle X" muss die Mutation geseedeten State UND Mount-Einfrieren treffen**;
+  `unmount()` + Neu-Mount prüft zwei Mounts, nie eine Zustandsänderung. Und: Anzeige eines offenen
+  Zustands immer an das **laufende Objekt** binden, nie an „Flag + letztes Element"; **Identität schützt
+  das _Ob_, nicht das _Wo_** (Anker-Beweis, Idiom `chat.page.test.tsx::toolLinesSurviveTheDoneRefresh`).
+* AntD 6.7.0: hell malt **`lightSiderBg`** (nicht `siderBg`); Responsive-Effekt ruft `matchMedia` **beim
+  Mount** ⇒ `matches: true` genügt, aber **gefiltert** stubben (`includes('max-width')`); `collapsed`
+  controlled ⇒ Effekt ignoriert; Zero-Width-Trigger ist ein **`span` ohne Rolle**; `Menu` liefert **keine**
+  `navigation`-Landmarke ⇒ eigenes `<nav aria-label>`; `aria-current` am Eintrag = ANTD-A9.
+* `sheets.ts::declarations()` trifft nur den **ersten** Block ⇒ `allDeclarations`; Selektorwortlaut nie in
+  CSS-Prosa; jsdom 26.1.0 ohne Layout/Farbe; Vitest ohne `.as()`; `act()`-Rauschen bei AntD+React 19 ist
+  Baseline.
+* `MockLlmServer`: kein `getRequestCount()`, keine `system`-Nachrichten, SSE in einem Stück. Guards
+  `OneChatPerProjectTest`/`SharedProjectChatTest`/`ChatTurnTest`/`TeamInternalsTest` nur **verschärfen**.
+* `lintDocsAndTests`/`nextIds`: Pfade relativ zum Session-cwd (`docRoots:["docs"]`,
+  `testRoots`: `factory-backend/src/test`, `factory-ui/test`, `factory-ui/src`) — **`idPattern`
+  weglassen**.
+* Git mit Paul im selben Repo: **nie amend/rebase auf seinen Commits**, nur `aifactory/`-Pfade,
+  **kein Modell-/Tool-Name und kein `Assisted-by`-Trailer**. Tool-Quirks: `eclipseEditFile` verliert
+  `oldString` bei langen Blöcken → `diskEditFile` kurz ankern; `*InsertLines` scheitern an Dateiende mit
+  Leerzeile; Mutations-Restore nur per `cp` + `diff -q`, nie `git checkout`.
+* Dev-Antworten kommen manchmal als rohes Tool-Fragment ⇒ **nie neu bauen**, Text-Status verlangen.
+  Review-Verdicts und neue Inkremente kommen **nur von Jon**. Dev-Kontext >85 % → `compactDev`.
 * `web-prototype.md` existiert nicht mehr — SOLL in `chat.md`/`files.md`.
-* Plan-Archive: **nicht committen, sondern löschen** — Pauls Regel (2026-11-02, Runde 2): sobald die
-  Docs stehen, löscht Jon jedes Plan-Archiv selbst. Erledigt: 6 Plugin-/Core-Archive (Repo-Root
-  `peon-plan/`, Zyklen 27.–31.10.) + eigenes Archiv `overview-done-2026-11-02-17-15.md`.

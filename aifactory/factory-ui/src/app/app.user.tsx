@@ -1,3 +1,5 @@
+import { Input } from 'antd'
+
 import { writeUserName } from '../shared/user.name'
 import { content } from '../shared/content'
 
@@ -18,7 +20,7 @@ interface Props {
  */
 export function AppUser({ user, onChange }: Props) {
   return (
-    <input
+    <Input
       className="app-user"
       type="text"
       aria-label={content.user.name}

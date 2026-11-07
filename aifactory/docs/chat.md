@@ -89,11 +89,35 @@ Queue sind die des Cores — die Web-Schicht erfindet keinen zweiten Turn-Pfad.
 ### R-WP-10 — Ein Turn je Projekt, weitere Eingaben in der Queue ✅
 
 Eingaben während eines laufenden Turns gehen in die Queue des Cores; verschiedene Projekte dürfen
-parallel laufen.
+parallel laufen. **Bündelung, Reihenfolge und Ablieferung sind die des Cores** —
+[`queued-user-messages.md`](../../org.sterl.llmpeon.core/docs/queued-user-messages.md) (R1, R2). Die
+Fabrik hält **keinen** eigenen Queue-Speicher vor und mischt sich in die Reihenfolge nicht ein.
 
 #### UC-WP-14 — secondInputDuringTurnQueues ✅
 - GIVEN ein laufender Turn WHEN der Nutzer erneut sendet THEN wird die Nachricht gequeued und erst
   nach dem Turn verarbeitet — kein zweiter paralleler Turn auf derselben Memory.
+
+### R-WP-42 — `!` am Anfang ist die Prio-Nachricht des Cores ✅ (Paul 2026-11-06)
+
+Eine Eingabe, die **während eines laufenden Turns** mit `!` **beginnt**, ist die **Prio-Nachricht**;
+Verhalten, Lane und Zustellung regelt der Core
+([`queued-user-messages.md`](../../org.sterl.llmpeon.core/docs/queued-user-messages.md) R8, R11 — dort
+nachlesen, hier nicht wiederholt). **Der Fabrik-Anteil ist nur:** die Eingabe **unparsed** an genau
+denselben Core-Eingang zu geben, den auch das Plugin nutzt — statt sie als normalen Turn-Text
+aufzunehmen — und die Zeile im Verlauf **so zu zeigen, wie sie getippt wurde** ([R-WP-37](chat.md):
+die Fabrik parst und kürzt nichts). Läuft **kein** Turn, ist `!` schlicht Text (Core R8.1) — die
+Fabrik kennt keinen eigenen Sonderfall. Ein `!` **ohne** Text danach ist konsumiert und löst nichts aus
+(Core R8.6). Auch die Prio-Nachricht ist eine Nachricht an Jon: sie trägt den Absendernamen wie jede
+andere Eingabe ([R-WP-25](user.md)).
+
+#### UC-WP-75 — urgentMarkerIsHandedToTheCore ✅
+- GIVEN im Projekt läuft ein Turn WHEN der Nutzer `! <Text>` sendet THEN nimmt der Core die Eingabe als
+  Prio-Nachricht auf — **kein** zweiter Turn, kein zweiter Weg durch die Fabrik.
+- GIVEN dieselbe Eingabe WHEN die Oberfläche zeichnet THEN steht sie **als vorläufige Zeile des
+  Absenders** mit `!`, genau einmal ([R-WP-37](chat.md)). Eine dauerhafte Verlaufszeile ist sie bewusst
+  **nicht**: der Core schreibt die Prio-Nachricht nie in die Memory, und die nächste bestätigte
+  Nutzerzeile desselben Absenders löst sie ab.
+- GIVEN es läuft **kein** Turn WHEN der Nutzer mit `!` sendet THEN ist `!` Teil der Nachricht.
 
 ### R-WP-15 — Je Projekt genau ein Jon, ein Chat für alle ✅
 
@@ -108,6 +132,35 @@ Jons, nie in eine private Kopie. Andere Projekte laufen unabhängig und parallel
 #### UC-WP-22 — inputOnBusyProjectQueuesNotParallel ✅
 - GIVEN im Projekt läuft ein Turn WHEN ein anderer Nutzer sendet THEN geht die Nachricht in die
   Queue genau dieses Jons — kein zweiter paralleler Turn auf derselben Memory.
+
+
+### R-WP-37 — Die eigene Eingabe steht genau einmal im Verlauf ✅ (Paul 2026-11-03, C-5)
+
+Solange der Verlauf die Eingabe nicht trägt, zeigt der Chat sie als **vorläufige Zeile**; sobald der
+Verlaufs-Read sie liefert, ersetzt die Verlaufszeile die vorläufigen **an ihrer Stelle**. Die
+Bestätigung erfolgt über die **Position** im Verlauf, nie über Textvergleich — ein gequeueter Marker
+wäre sonst nie erkennbar. Bestätigt wird je **Absender**: eine Verlaufs-Nutzerzeile ersetzt die
+vorläufigen Zeilen **desselben Absenders**, die vor ihr gesendet wurden (Wasserlinie je Absender);
+Absender ist die Herkunft der Zeile — ohne Namen tragen alle Eingaben keinen Absender und bilden
+**eine** Absenderklasse ([R-WP-25](user.md)). Der Bündel-Fall ist die Realität im Verlauf: sendet
+derselbe Absender mehrfach innerhalb des Bündel-Fensters des Cores, liefert der Verlauf **eine**
+gebündelte Zeile — sie ersetzt alle vorläufigen Zeilen dieses Absenders. Außerhalb des Fensters ist
+dieselbe Eingabe zweimal **zwei** Zeilen. Der Marker bleibt sichtbar: er ist der Realitätsstand im
+Verlauf, die Fabrik parst und kürzt nichts
+([AF-ADR-002](adr/002-origin-in-core-display-in-factory.md)).
+
+#### UC-WP-69 — ownInputStandsExactlyOnce ✅
+- GIVEN ein Turn läuft und derselbe Absender sendet zweimal innerhalb des Bündel-Fensters WHEN der
+  Verlauf die gebündelte Zeile liefert THEN verschwinden **beide** vorläufigen Zeilen und die
+  gebündelte Zeile steht an ihrer Stelle — Verbatim inklusive Marker und Zeilenumbruch, Zeit des
+  ersten Eintrags (R9 des Cores).
+- GIVEN ein Turn läuft und Nutzer A sendet vor Nutzer B WHEN der Verlauf A-s Zeile zuerst liefert
+  THEN ersetzt sie nur A-s vorläufige Zeile; B-s vorläufige bleibt sichtbar, bis B-s eigene
+  Verlaufszeile kommt — eine fremde Zeile bestätigt nie eine fremde vorläufige.
+- GIVEN derselbe Text zweimal außerhalb des Bündel-Fensters gesendet WHEN der Verlauf beide Zeilen
+  trägt THEN stehen zwei Zeilen, beide bestätigt — keine Dublette der vorläufigen.
+- GIVEN der Verlauf trägt die Eingabe als gequeuete Zeile mit Marker WHEN der Log gezeichnet wird
+  THEN zeigt die Zeile den Wortlaut des Verlaufs inklusive Marker — kein Abgleich über den Text.
 
 ### R-WP-11 — Projekte und ihr Chat überleben einen Neustart auf demselben Node ✅
 
@@ -190,19 +243,80 @@ leer. **WEIL** „warum hat Dev das gebaut?" sonst nur über die finale Antwort 
 - GIVEN ein Neustart WHEN der Blick geöffnet wird THEN ist er leer (R-WP-11) — kein zweiter
   Speicher und kein Mitschnitt im Jon-Chat.
 
-### R-WP-28 — Markdown-Streaming: markstream-react, Code mit react-shiki ✅ (Paul 2026-11-02)
+### R-WP-28 — Markdown der Antworten: GFM, Zeilenumbrüche, Code mit react-shiki ✅ (Paul 2026-11-02; Schärfung 2026-11-06)
 
-Antworten rendern als Markdown mit **Streaming-Unterstützung** (`markstream-react`): unvollständiges
-Markdown wird beim Streaming sauber gerendert, Code-Blöcke mit **react-shiki**; Fallback, falls
-markstream im Prototypen nicht hält: `react-markdown`. **Tool-Zeilen bleiben sichtbar** und stehen
-**inline im Verlauf** an der Stelle, wo sie passieren — nicht als separate Liste hinter dem Verlauf;
-kompakt (klein, grau, Tool-Zeilen gemerged wie in `chat.html`).
+Antworten rendern als Markdown mit **Streaming-Unterstützung**; Code-Blöcke mit **react-shiki**.
+Der Renderer ist Mittel, kein Ziel — **er muss liefern**: **GFM** (Tabellen, Durchstreichen,
+Aufgabenlisten) und **ein einzelner Zeilenumbruch im Text bleibt eine Zeile** auf dem Schirm
+(Soft-Breaks, die zu einem Absatz laufen, sind der gemessene Defekt von `markstream-react`: eigenes
+CSS nie eingebunden, keine `breaks`-Option). Halten die Zusagen im Prototypen nicht, gilt der
+Fallback **`react-markdown` + `remark-gfm` + `remark-breaks`** (Referenz `ai-schulung`, wo Paul das
+Rendering gut findet; `remark-breaks` ist nötig, weil `react-markdown` v10 keine `breaks`-Option hat).
+**„Kein kaputtes Markup" heißt:** kein rohes HTML und kein Abbruch, während halbe Syntax über den
+Draht kommt; **rohe Syntax-Zeichen (z. B. ein offenes `**`) während des Streams sind erlaubt** und
+müssen nach dem letzten Token gerendert sein.
+**Nur Antworten sind Markdown**: Nutzer-, Fehler- und Werkzeug-Zeilen bleiben Wortlaut im Text-Element
+([AF-ADR-002](adr/002-origin-in-core-display-in-factory.md)). **Tool-Zeilen bleiben sichtbar** und
+stehen **inline im Verlauf** an der Stelle, wo sie passieren — nicht als separate Liste hinter dem
+Verlauf; kompakt (klein, grau, Tool-Zeilen gemerged wie in `chat.html`) und nach
+[R-WP-40](chat.md) als Timeline-Einträge.
 
 #### UC-WP-54 — streamingMarkdownWithInlineToolLines ✅
 - GIVEN ein laufender Turn WHEN die Antwort streamt THEN wächst das Markdown sichtbar und bleibt
-  während des Streams lesbar — unvollständige Syntax-Bruchstücke erzeugen kein kaputtes Markup.
+  während des Streams lesbar — **kein rohes HTML, kein Abbruch**; ein noch offenes Syntax-Zeichen
+  steht solange als Text und ist nach dem letzten Token gerendert.
 - GIVEN Tool-Aktivität WHEN Zeilen erscheinen THEN stehen sie im Verlauf an ihrer Stelle, kompakt,
   und bleiben nach dem Turn sichtbar.
+
+#### UC-WP-73 — markdownKeepsLineBreaksAndGfm ✅
+- GIVEN eine Antwort mit zwei durch **ein** Zeilenumbruch getrennten Sätzen WHEN sie gezeichnet wird
+  THEN stehen die Sätze auf **zwei** Zeilen.
+- GIVEN eine Antwort mit Tabelle und Durchstreichung WHEN sie gezeichnet wird THEN ist sie eine
+  Tabelle und durchgestrichener Text — kein Quelltext.
+- GIVEN eine Nutzer-Eingabe mit Markdown-Zeichen WHEN sie im Verlauf steht THEN erscheint sie als
+  Wortlaut, nicht als Markup.
+
+### R-WP-40 — Werkzeug- und Delegationsschritte stehen als Timeline im Verlauf ✅ (Paul 2026-11-06)
+
+Die Schritte eines Turns — Werkzeug, Think-Abschnitt, Delegation — werden als **Timeline**
+dargestellt, **an der Stelle im Verlauf, wo sie passieren** (R-WP-28: kein Block hinter dem
+Verlauf). Ein Eintrag trägt den **Namen des arbeitenden Agenten**, einen **laufenden Indikator**,
+solange er arbeitet, und die **Uhrzeit seiner Ankunft**, sobald er fertig ist. **Den Auftrag erfindet
+die Fabrik nicht:** was der Core über die Leitung schickt, steht als **Wortlaut** in dem Eintrag
+darüber — aus einem Text wird **nie** etwas herausgeparst, und ein Auftrag, den der Draht nicht trägt,
+hat keinen eigenen Eintrag. Eine **Delegation ist ein Eintrag**: während das Mitglied arbeitet,
+zeigt sein Eintrag „working", das Ergebnis erscheint unter ihm; der Blick in den Gesprächsverlauf
+des Mitglieds bleibt davon unberührt ([R-WP-26](chat.md)). **Zeiten sind live und lückenhaft:** Der
+Draht trägt je Schritt **nur den Augenblick des Eintreffens** (Browser-Uhr) — eine **Dauer hat allein
+der Turn** (`done.millis`) und steht an seiner Antwort, **nie je Werkzeug**; die Fabrik erfindet keine
+Zeit und **parst auch keine** aus dem Text des Cores. Wo keine Zeit bekannt ist, trägt der Eintrag
+**keinen Titel**. Nach einem Reload zeigen die Zeilen, was der Memory enthält
+([R-WP-11](chat.md): Dauer und `HH:mm` stehen dort, wo der Core sie selbst in den Text geschrieben
+hat), und einen zweiten Speicher dafür gibt es nicht. **Was zeigbar ist, entscheidet der Draht — nichts
+wird erfunden:** der Name des arbeitenden Agenten ist sein **Stempel** ([R-WP-37](chat.md): ohne Stempel
+kein Name); **arbeitet** heißt am Bildschirm, dass der Eintrag der **letzte Schritt eines laufenden Turns**
+ist — mit dem nächsten Schritt oder dem Ende der Antwort endet sein Indikator, denn je Werkzeug meldet der
+Core kein eigenes Ende. **Die Delegation ist die Ausnahme:** Anfang und Ende ihres Auftrags stehen
+**typisiert** am Draht, und ihr Eintrag trägt den **Namen des Mitglieds**, nicht den Jons. Der
+**Think-Abschnitt** ist heute **kein** Eintrag: Jons Denken zeigt der Chat nicht
+([R-WP-5](chat.md), Mitglieder-Denken ohnehin nicht [R-WP-4](chat.md)) — was der Schirm nicht zeigt,
+kann keine Timeline-Zeile haben; seine Sichtbarkeit wäre eine eigene Regel (⏳ in
+[Open Points](open-points.md)).
+
+#### UC-WP-72 — toolStepsAsTimelineEntries ✅
+- GIVEN ein Turn ruft Werkzeuge WHEN die Zeilen erscheinen THEN stehen sie als Timeline-Einträge an
+  ihrer Stelle im Verlauf, jeder mit dem Namen des arbeitenden Agenten; nennt der Draht zu einem
+  Schritt keinen Agenten, nennt auch der Eintrag keinen.
+- GIVEN ein Werkzeug läuft WHEN die Timeline zeichnet THEN trägt sein Eintrag einen laufenden
+  Indikator; WHEN der nächste Schritt erscheint oder die Antwort des Turns endet THEN endet der
+  Indikator und der Eintrag bleibt mit seiner Ankunftszeit stehen. GIVEN die Antwort des Turns endet WHEN deren Indikator endet THEN trägt **nur sie** die
+  Turn-Dauer — kein Werkzeugeintrag zeigt eine eigene Dauer.
+- GIVEN Jon delegiert an ein Mitglied WHEN die Delegation läuft THEN zeigt ihr Eintrag „working", und
+  das Ergebnis erscheint unter diesem Eintrag — nicht am Ende des Verlaufs.
+- GIVEN ein Reload nach dem Turn WHEN der Verlauf neu gezeichnet wird THEN stehen die Zeilen ohne
+  erfundene Zeiten; ein Eintrag ohne Zeit hat keinen Titel.
+- GIVEN ein Turn mit mehr Werkzeugzeilen als die Anzeige fasst WHEN die ältesten fallen THEN
+  **behalten** die verbleibenden Einträge ihre Ankunftszeit.
 
 ### R-WP-36 — Datei-Änderungen erscheinen live als Diff im Chat ✅ (Paul 2026-11-03, C-4)
 
@@ -227,8 +341,7 @@ Datei-Bereich ([Dateien](files.md)).
 #### UC-WP-68 — fileChangesShowAsLiveDiff ✅
 - GIVEN ein laufender Turn WHEN ein Agent eine Datei (bestehende oder neu angelegte) inhaltlich ändert
   THEN erscheint im Chat ein Diff-Block mit Dateinamen und den geänderten Zeilen (+/− gefärbt), live
-  und ohne manuelles
-  Aktualisieren ([R-WP-5](chat.md)).
+  und ohne manuelles Aktualisieren ([R-WP-5](chat.md)).
 - GIVEN ein Agent legt eine Datei **neu** an (oder überschreibt sie) WHEN der Turn läuft THEN erscheint
   ein Diff-Block — beim Anlegen aus reinen `+`-Zeilen, zusätzlich zur Werkzeug-Zeile (R-SD-1); per
   **Shell** geschriebene Dateien erscheinen weiterhin nur als Werkzeug-Zeile.
@@ -239,31 +352,74 @@ Datei-Bereich ([Dateien](files.md)).
   ist im Datei-Bereich sichtbar.
 
 
-### R-WP-29 — Farben und Fließtext der Chat-Zeilen ✅ (Paul 2026-11-02; Korrektur auf Akzent-links in Runde 2, Inc 4)
+### R-WP-29 — Farben und Fließtext der Chat-Zeilen ✅ (Paul 2026-11-02; Akzent-links Runde 2; **Trennung ohne `hr`** Paul 2026-11-06, C-6)
 
 Beide Stimmen stehen **im Fluss** und tragen ihre Farbkante **links** — die Kante ist der **Akzent der
 Zeile**, kein Rahmen um den Chat (wie `chat.html`: Label „You" blau, Agent-Label grün). Keine Zeile ist
 **rechtsbündig**, nichts ist **mittig zentriert**. Jons Antworten haben **keinen grauen
-Hintergrund-Block** und keine eingestreuten Markierungen oder Cards im Fließtext; wo die Rolle wechselt,
-trennt **eine** einfache Trennlinie (`<hr>`) — nie zwei.
+Hintergrund-Block** und keine eingestreuten Markierungen oder Cards im Fließtext. Wo die Rolle wechselt,
+**trennt keine Linie**: die seitlichen Akzentlinien der Zeilen sind die Trennung — **kein `<hr>`** und
+keine andere horizontale Linie **zwischen zwei Zeilen** (Paul 2026-11-06: „hr raus, Linien treffen sich
+seitlich wie in Eclipse"). Ein `---` **innerhalb einer Antwort** ist deren Inhalt und wird nicht
+unterdrückt — es zeichnet als **unsere** kurze, ruhige Linie **im Antwortblock**, nie linienbreit über
+den Verlauf; ein Beweis für „keine Trennlinie" prüft deshalb den **ganzen Verlauf** und nicht nur eine
+eigene Klasse. **Breite Kost** verbreitert nie die Seite: eine **Tabelle** scrollt innerhalb des
+Antwortblocks horizontal, ein **Bild** bleibt innerhalb der Antwortbreite.
 
 #### UC-WP-55 — colorsFollowChatHtmlBaseline ✅
 - GIVEN eine Nutzer- und eine Agent-Antwort WHEN beide im Verlauf stehen THEN trägt die Nutzer-Zeile
   den blauen Akzent **links** (nicht rechtsbündig), die Agent-Zeile den grünen — ohne grauen
   Hintergrund-Block.
-- GIVEN dieselben beiden Zeilen WHEN zwischen ihnen die Rolle wechselt THEN trennt **genau eine**
-  Trennlinie, und keine der beiden Zeilen ist mittig zentriert.
+- GIVEN dieselben beiden Zeilen WHEN zwischen ihnen die Rolle wechselt THEN verläuft **keine**
+  horizontale Linie durch den Verlauf (kein `<hr>`), und keine der beiden Zeilen ist mittig zentriert.
+- GIVEN eine Antwort mit `---` WHEN sie gezeichnet wird THEN steht die Linie **innerhalb** der Antwort
+  und nicht als Trennung über die Verlaufsbreite; **kein** Beweis für „keine Trennlinie" darf ein
+  modell-gemalenes `hr` übersehen.
+- GIVEN eine Antwort mit einer breiten Tabelle und einem Bild WHEN sie gezeichnet wird THEN scrollt die
+  Tabelle **im Antwortblock**, die Seite bleibt ungeändert breit, und das Bild bleibt in der
+  Antwortbreite.
 
-### R-WP-30 — Eingabe: Enter ist Zeilenumbruch, Cmd/Ctrl+Enter sendet ✅ (Paul 2026-11-02)
+### R-WP-41 — Die Eingabe wächst mit und findet ihren Fokus zurück ✅ (Paul 2026-11-06, Muster aus `ai-schulung`)
 
-Im Eingabefeld (Textarea) macht **Enter eine neue Zeile**; **Cmd/Ctrl+Enter** sendet — so bleiben
-Mehrzeiler möglich. Der Send-Knopf bleibt die klickbare Alternative. Zusätzlich kann der Nutzer die
-**letzte gesendete Nachricht erneut senden**, ohne sie neu zu tippen — etwa nach einem Fehler
+Das Eingabefeld ist eine **Auto-Grow-Textarea** (von einer Zeile bis ca. fünf, danach scrollt sie) und
+steht **unten seiner Spalte** ([R-WP-35](chat.md)). **Senden kann nur, wer etwas getippt hat**: bei
+leerer Eingabe ist der Send-Knopf deaktiviert, nicht versteckt. **Während eines laufenden Turns bleibt
+die Eingabe benutzbar und der Send-Knopf aktiv** — eine weitere Eingabe geht in die Queue
+([R-WP-10](chat.md)); die Referenz-App sperrt ihr Feld im Stream, weil sie keine Queue kennt, und
+genau deshalb folgen wir ihr hier **nicht** ([AF-ADR-003](adr/003-reference-ui-is-a-donor-not-a-source.md)).
+Ist der Turn vorbei, **kehrt der Fokus in die Eingabe zurück** (Refocus beim Übergang von deaktiviert
+zu aktiviert) — der Nutzer tippt weiter, ohne zu klicken. Tastatur und Resend bleiben, wie sie sind
+([R-WP-30](chat.md)). Sichtbare Texte kommen aus dem String-Catalog ([R-WP-27](ui.md)).
+
+#### UC-WP-74 — inputGrowsAndRefocuses ✅
+- GIVEN eine leere Eingabe WHEN die App zeichnet THEN ist der Send-Knopf deaktiviert; WHEN Text
+  entsteht THEN wird er aktiv.
+- GIVEN ein Turn läuft WHEN der Nutzer tippt und sendet THEN ist der Knopf **aktiv** und die Eingabe
+  geht in die Queue ([UC-WP-14](chat.md)) — kein Sperren des Feldes, kein Deaktivieren im Turn.
+- GIVEN ein langer Mehrzeiler WHEN der Nutzer tippt THEN wächst das Feld bis zu seiner Obergrenze
+  und scrollt danach, statt die Chat-Fläche zu verdrängen.
+- GIVEN ein Turn war läuft und ist jetzt vorbei WHEN die Eingabe wieder aktiv wird THEN steht der
+  Fokus in ihr.
+
+### R-WP-30 — Eingabe: Enter sendet, Shift+Enter macht die neue Zeile ✅ (Paul 2026-11-06, **bedeutet die Umkehrung** von Paul 2026-11-02)
+
+Im Eingabefeld (Textarea) **sendet Enter**; **Shift+Enter** setzt eine neue Zeile — das ist die
+Bewegung, die der Nutzer aus jedem Chat-Tool mitbringt (Paul 2026-11-06, nach Blick auf die
+Referenz-App). **`Shift+Enter` UND `Ctrl/Cmd+Enter` setzen eine neue Zeile** (Paul 2026-11-06: am Mac
+ist `Cmd` das `Ctrl`) — die neue Zeile hat damit zwei Wege, das Senden nur einen. Der
+Send-Knopf bleibt die klickbare Alternative und ist bei leerer Eingabe deaktiviert
+([R-WP-41](chat.md)). **Mehrzeilige Eingaben bleiben möglich** — über Shift+Enter, und ein Text mit
+eingebetteten Umbrüchen wird so gesendet, wie er dasteht. Zusätzlich kann der Nutzer die **letzte
+gesendete Nachricht erneut senden**, ohne sie neu zu tippen — etwa nach einem Fehler
 („Resend"); sie läuft wie jede Eingabe in die Queue ([R-WP-10](chat.md)), wenn ein Turn läuft.
 
-#### UC-WP-56 — enterNewlinesCtrlEnterSends ✅
-- GIVEN das Eingabefeld WHEN der Nutzer Enter drückt THEN entsteht eine neue Zeile; WHEN er
-  Cmd/Ctrl+Enter drückt THEN sendet die Eingabe.
+#### UC-WP-56 — enterSendsShiftEnterNewlines ✅ (war `enterNewlinesCtrlEnterSends` ✅, Umkehrung Paul 2026-11-06)
+- GIVEN das Eingabefeld mit Text WHEN der Nutzer Enter drückt THEN wird gesendet und das Feld ist
+  danach leer; WHEN er **Shift+Enter** drückt THEN entsteht eine neue Zeile und es wird **nicht**
+  gesendet. GIVEN leere Eingabe WHEN Enter THEN passiert nichts (der Knopf ist deaktiviert, die
+  Eingabe bleibt, kein leerer Turn).
+- GIVEN ein Text mit zwei per Shift+Enter gesetzten Zeilen WHEN der Nutzer Enter drückt THEN kommen
+  beide Zeilen **gemeinsam und in der Reihenfolge** in einem Turn an.
 
 #### UC-WP-57 — resendWithoutNewInput ✅
 - GIVEN der Nutzer hat eine Nachricht gesendet WHEN er „Resend" wählt THEN geht dieselbe Nachricht

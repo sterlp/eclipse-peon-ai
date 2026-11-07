@@ -2,6 +2,120 @@
 
 Status: ❓ offen · ⏳ selbst entschieden (Rückversicherung steht aus) · 🔒 geklärt.
 Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entfällt.
+## Runde 3 — AntD-Umbau der Oberfläche (Paul 2026-11-06)
+
+Entschieden: **AntD als neue Design-Basis**, Bootstrap verlässt die App
+([R-WP-39](ui.md)), Navigation wird der **Projektbaum im Sider** ([R-WP-38](ui.md)), Zeiten bleiben
+**live** ([AF-ADR-003](adr/003-reference-ui-is-a-donor-not-a-source.md)). Geber der Muster ist
+`/Users/sterlp/dev/workset/ai-schulung/app/frontend` — **nie** ihr Zustandsmodell (AF-ADR-003).
+Reihenfolge, je ein grünes Inkrement:
+
+1. **AntD-Basis** — Provider, Theme-Tokens auf unsere Farben, Bootstrap raus (Hülle, Buttons,
+   Karten, Formulare, Dialoge). Chat-Log bleibt unangetastet. Zieht **F5** (Optik Config) und
+   **F9** (Clear-Layout) mit hoch.
+2. **Markdown** — ✅ gebaut 2026-11-06: `react-markdown` + `remark-gfm` + `remark-breaks`
+   ([R-WP-28/UC-WP-73](chat.md)); `markstream` hielt die Zusage nicht (CSS nie importiert, keine
+   `breaks`-Option — gemessen). C-2(b) damit erledigt.
+3. **Eingabe** — Auto-Grow, Send nur bei Text, Refocus nach dem Turn ([R-WP-41/UC-WP-74](chat.md));
+   **Enter sendet, `Shift+Enter` und `Ctrl/Cmd+Enter` = neue Zeile** ([R-WP-30/UC-WP-56](chat.md),
+   Paul 2026-11-06). **3b** schleift die Prio-Nachricht `!` durch ([R-WP-42/UC-WP-75](chat.md)).
+4. **Timeline** — Werkzeuge und Delegationen als Einträge mit Agentenname, `loading` und
+   Ankunftszeit; **Dauer nur je Turn** an der Antwort ([R-WP-40/UC-WP-72](chat.md)); kein `hr`
+   zwischen Zeilen ([R-WP-29/UC-WP-55](chat.md), C-6). F3 (Agent-Arbeit unsichtbar) wird hier
+   mitbehandelt: der Eintrag zeigt, wer arbeitet.
+5. **Sider-Navigation + URL** — **5a gebaut 2026-11-07**: Projektbaum im Sider, Klick aufs Projekt öffnet
+   seinen Chat, URL auf den **klaren Projektnamen** (C-3 damit erledigt, Entscheidung gegen die Id steht
+   in [resolved-points.md](resolved-points.md)). Offen **5b**: die Einheit **Files** als Sider-Einheit und
+   Adresse ([UC-WP-70 GIVEN 2](ui.md)) — erst danach der Flip von [R-WP-38/UC-WP-70](ui.md).
+
+* **⏳ Dunkel = eine Tabelle, App setzt `data-theme`** (2026-11-06, Review-Fund zu Inc 1,
+  Rückversicherung ausstehend) — das Grundblatt schrieb Dunkel bisher zweimal (Media-Block für die
+  Betriebssystem-Vorliebe, `[data-theme='dark']` für eine explizite Wahl, die niemand setzt); die
+  Basis-Tokens lasen die ungenutzte Kopie → zwei Dunkellooks möglich, bei grüner Suite.
+  [R-WP-39/UC-WP-71](ui.md) jetzt: die App setzt `data-theme` am Dokument auf die
+  Betriebssystem-Vorliebe, die Tokens kommen aus **derselben** Tabelle, jedes Feld wird gegengeprüft.
+  *Andersfall:* willst du einen **manuellen** Hell/Dunkel-Umschalter im Header, ist das eine neue Regel
+  (Umschalter + Merkmal über Reload hinweg) — die Umsetzung bliebe kompatibel, nur die Queue der
+  Entscheidung wäre eine andere.
+
+* **⏳ Refocus nach dem Turn meidet das andere Feld** (2026-11-06, Ableitung zu
+  [UC-WP-74 GIVEN 4](chat.md), Rückversicherung ausstehend) — der Fokus kehrt in die Eingabe zurück,
+  **außer** der Nutzer tippt inzwischen in einem anderen Feld (Suche, Config). *Andersfall:* Fokus immer
+  in die Eingabe = verlorene Eingabe an der anderen Stelle.
+
+* **⏳ „Jon muss weg" als Navigation LABEL verstanden** (2026-11-06, Paul per Zuruf, Rückversicherung
+  ausstehend) — [R-WP-38](ui.md): es gibt **keinen „Jon"-Eintrag** und kein „Jon"-Label im Sider, ein
+  Klick aufs Projekt öffnet dessen Chat. Die **Kachel** des Agenten behält ihren Namen
+  ([R-WP-7](chat.md)) und die Docs nennen den Agenten weiter Jon. *Andersfall:* war gemeint, dass der
+  Name auch auf der Kachel/ im Header verschwindet („Chat" statt „Jon"), ist das eine Umbenennung der
+  Anzeige plus UC-Änderung in [chat.md](chat.md) — kein Umbau der Kachel-Regel selbst.
+* **⏳ Einheiten nur unter dem geöffneten Projekt** (2026-11-07, Schärfung zu
+  [R-WP-38](ui.md) vor Inkrement 5b, Rückversicherung ausstehend) — der Sider zeigt „Files" **nur** unter
+  dem Projekt, das die Adresse nennt. Abgeleitet: die Regel will sagen, **wo man ist**, und ein Projekt,
+  das nicht offen ist, hat nichts aufzuklappend. *Andersfall:* Einheiten unter **jedem** Projekt = die
+  doppelte Zeilenzahl im Sider und Adressen für Projekte, die niemand offen hat.
+* **⏳ „Ein laufender Turn endet nicht am Klick auf die Einheit" steht jetzt ausdrücklich in
+  [R-WP-38](ui.md)/[UC-WP-70 G2](ui.md)** (2026-11-07, abgeleitet aus [R-WP-33](files.md) „der Chat
+  bleibt daneben sichtbar" und R-WP-15 „je Projekt ein Chat") — nötig wird das, weil der Datei-Bereich
+  eine **Adresse** bekommt: würde die Adresse eine neue Seite rendern, würde der Chat neu mounten und der
+  Stream neu öffnen. Angenommen: ein Adresswechsel **innerhalb** eines Projekts behält die Seite.
+  *Andersfall:* „Klick auf Files darf den Turn abbrechen" wäre eine neue Regel und sichtbarer Datenverlust.
+* **🔒 Berichtigt (2026-11-07, kein neuer Punkt):** [R-WP-33](files.md) nannte für die Tab-Icons noch
+  `bootstrap-icons` — Rest vor Pauls AntD-Entscheidung ([R-WP-39](ui.md), 2026-11-06: Bootstrap raus).
+  Die Regel nennt jetzt **keine** Bibliothek mehr; die Icon-Wahl regelt R-WP-39.
+* **🔒 Tastatur entschieden (2026-11-06, Paul: „A")** — **Enter sendet, Shift+Enter und Ctrl/Cmd+Enter =
+  neue Zeile**; gebaut und abgenommen in [R-WP-30/UC-WP-56](chat.md) ✅ (Inkrement 3). Der Konflikt mit
+  Pauls Regel vom 02.11. ist damit gelöst, nicht offen; Merkposten gegen Wiederaufmachen steht in
+  [resolved-points.md](resolved-points.md). Pauls Zusatz dazu (12:40): **„es gibt kein Lock vom Input"** —
+  Eingabe ist auch im laufenden Turn benutzbar, sie geht in die Queue ([R-WP-41](chat.md) ✅).
+* **🔒 `!` = Prio-Nachricht — Core-Regel, Fabrik reicht sie nur durch (2026-11-06, Paul)** — Regeln
+  stehen im Core ([`queued-user-messages.md`](../../org.sterl.llmpeon.core/docs/queued-user-messages.md)
+  R8, R11), hier nur der Fabrik-Anteil: [`R-WP-42/UC-WP-75`](chat.md) ✅ (Inkrement 3b).
+* **⏳ Prio-Zeile ist nur eine vorläufige Zeile (2026-11-06, Jon nach Review; Paul: „mit deiner
+  Empfehlung")** — [UC-WP-75 GIVEN 2](chat.md) versprach die `!` Zeile **im Verlauf**; der Core schreibt
+  eine Prio-Nachricht nie in die Memory (Core R8.7), also trägt der Verlauf sie nie. Angenommen: die Zeile
+  ist die **vorläufige** Zeile des Absenders (von der nächsten bestätigten Nutzerzeile geschluckt) und die
+  Regel sagt das jetzt so. *Andersfall:* eine dauerhafte Prio-Spur (Inc 3d) braucht einen zweiten Speicher
+  neben der Memory (widerspricht R-WP-11) — eigenes Inkrement, frühestens nach deinem Smoke-Test. Ebenso
+  neu in der Regel: ein `!` ohne Text ist konsumiert (Core R8.6) und die Prio trägt den Absendernamen
+  ([R-WP-25](user.md)) — beides war schon gebaut, aber nicht behauptet.
+* **⏳ „Arbeitet" heißt „letzter Schritt eines laufenden Turns" (2026-11-06, Jon für Inkrement 4)** —
+  [R-WP-40/UC-WP-72](chat.md) verlangt einen laufenden Indikator „solange er arbeitet"; der Core meldet je
+  **Werkzeug** kein Ende (nur die Zeile bei Ankunft), also endet der Indikator am nächsten Schritt oder am
+  Ende der Antwort. Der **Name** des Schritts ist der Core-Stempel auf der Zeile — ohne Stempel kein Name
+  ([R-WP-37](chat.md)). Die **Delegation** ist die Ausnahme: Anfang und Ende kommen typisiert über den
+  Factory-Listener der Delegation, ihr Eintrag nennt das **Mitglied**. Da die Fabrik Mitglieder-Zeilen
+  filtert ([R-WP-4](chat.md)), ist der Stempel eines Werkzeug-Schritts praktisch immer **„Jon"** — ehrlich,
+  aber laut; das Mitglied nennt erst der Delegations-Eintrag. **Ebenfalls angenommen:** Jons
+  **Think-Abschnitt** wird kein Eintrag — der Chat zeigt sein Denken nicht, und R-WP-40 nannte ihn trotzdem
+  als Schritt (Widerspruch **innerhalb** einer Regel, jetzt im Doc aufgelöst). *Andersfall:* eine echte
+  je-Werkzeug-Dauer oder ein sichtbarer Think-Abschnitt bräuchten je eine eigene Regel (Dauer zusätzlich den
+  Core) — beides wäre neu und nicht Nebenprodukt der Timeline. **Nachschärfung (2026-11-06, vor Inc 4c):**
+  R-WP-40 forderte je Eintrag auch „und seinen Auftrag (`Dev: <Prompt>`)". Der Draht trägt den Prompt **nur im
+  Wortlaut der Werkzeugzeile** (`"<Name> start:\n<Prompt>"`), der Delegations-Listener liefert ihn nicht — ihn
+  aus dem Text zu lesen wäre genau das Parse-Verbot der Regel. Angenommen: der **Delegations-Eintrag nennt das
+  Mitglied**, der **Auftrag steht unverändert in der Werkzeugzeile darüber**; die Klammer ist aus der Regel
+  geworfen. *Andersfall:* ein Auftrag im Delegations-Eintrag verlangt eine **Core-Erweiterung** (Prompt im
+  Listener) — Core-Änderung, nur mit deinem Proposal. **Und:** ein **Diff-Block** ist kein „nächster Schritt"
+  (R-WP-40 zählt Werkzeug, Think und Delegation) — er lässt den Indikator am Werkzeugschritt, der vor ihm
+  stand. *Andersfall:* Diff als Schrittende gelesen = eine Zeile Code und eine Assertion.
+* **⏳ Screenshot-Werkzeug (Stagehand) parked** (2026-11-06) — `@browserbasehq/stagehand` v4 kann den
+  Dev-Server öffnen und Screenshots/Layout-Messungen **ohne** LLM-Call (nur `page`-API); verlangt
+  aber **Node ≥ 22.18**, der Bau fährt **22.12** (v23.4 ist vorhanden). Angenommen: kein neues
+  Werkzeug, solange die F-Befunde unpräzise sind — Look-Abnahme bleibt Pauls Smoke-Test.
+  *Andersfall:* eigenes Script unter Node 23.4, kein Vitest-/Maven-Eingriff.
+* **❓ Ein Turn kann enden, ohne dass der Draht ein Endereignis sendet** (2026-11-06, Review-Fund zu
+  Inkrement 4, **unbestätigt**) — `ProjectRuntime` publiziert `done` nur, wenn die Antwort nicht `null`
+  ist; ein `Error`, der allen `catch`-Zweigen entkommt, und ein Submit, das der Core einreiht statt einen
+  Turn zu öffnen, senden möglicherweise weder `done` noch `error`. Sichtbare Folge wäre eine Warteschleife
+  und ein Indikator, der weiterblinkt. Nicht gemessen, deshalb keine Regel und kein Bug-Verdikt.
+  **Empfehlung:** eigene, kleine Story nach der Timeline — Regel „je Turn genau ein Endereignis auf dem
+  Draht" plus Backend-Test; die Fabrik repariert das allein (kein Core-Eingriff nötig, der `finally`-Pfad
+  gehört ihr). *Andersfall:* ist der Pfad real und häufig, wäre das ein Look-Defekt beim nächsten
+  Smoke-Test — melde mich dann mit dem Messwert.
+
+
+
 ## Runde 3 — Pauls Smoke-Test-Befunde (2026-11-03, Backlog)
 
 Positiv bestätigt: **(1)** Chat-Restore geht. **(2)** Gemeinsam ein RAG-Chat gebaut
@@ -30,18 +144,10 @@ Defekte/Fragen, je eine Story je Punkt erst nach Klärung (❓ = präzisieren, b
   claimed action` — `TurnClaim.awaitNoAction` wirft nach 10 000 ms (`ProjectRuntime.java:348`).
   Aufgetreten beim Compact. Verwandt zur ⏳ TurnClaim-Lücke; Ursache im Code klären (Dev), bevor eine
   Regel steht.
-* **❓ C-2 · Compact-Ergebnis im UI** — (a) live: nur „error" in der Agent-Karte, weder Ergebnis noch
-  Fehlermeldung sichtbar; (b) nach Reload: Ergebnis da, aber **ohne Markdown** (nur Text). Regel in
-  [chat.md](chat.md) fehlt: wie Compact live + im Verlauf erscheint.
-* **❓ C-3 · URL mit Hash-Suffix** — `/ui/chat/spring-persistent-tasks-071d14a` statt
-  `/ui/chat/spring-persistent-tasks`. Paul will den klaren Namen. Prüfen, ob die Registry-ID den Hash
-  braucht (Namens-Kollision) — wenn Namen eindeutig sind, URL auf den Namen legen.
-* **❓ C-5 · Verlauf out of order / Antwort weg** — bei langer Konversation total defekt; eine
-  gestreamte Antwort verschwindet (Reload repariert). Chat-Log-Defekt: Reihenfolge/Live-Fragment-
-  Ersetzung. Im Umfeld von [R-WP-34](chat.md); Ursache im SSE-/Log-Merge klären. Referenz (Paul):
-  Chat-Log/Input in `/Users/sterlp/dev/workset/ai-schulung/app/frontend` funktioniert — dort abschauen.
-* **🔒 C-6 · hr raus, Linien treffen sich seitlich wie in Eclipse** — F4 bestätigt und präzisiert:
-  keine `hr`, die Voices-Trennung läuft über die seitlichen Akzentlinien. In R-WP-29 nachziehen.
+* **❓ C-2 · Compact-Ergebnis live** — in der Agent-Karte erscheint nur „error", weder Ergebnis noch
+  Fehlermeldung sichtbar; Regel in [chat.md](chat.md) fehlt (wie Compact live erscheint).
+  *(b) „nach Reload ohne Markdown" ist erledigt (2026-11-06, Inkrement 2): Markdown zeichnet jetzt
+  überall dasselbe Renderer-Pfad, auch im Verlauf — [R-WP-28/UC-WP-73](chat.md).*
 * **❓ C-7 · Agent-Chat ist ein anderes Widget** — der aufgeklappte Blick auf ein Team-Mitglied nutzt
   ein eigenes Chat-Widget: anderes Look&Feel, aktualisiert nicht während der Agent arbeitet, zieht
   alle Daten erneut (= Totalschaden). SOLL: dasselbe Chat-Widget wie der Haupt-Chat, an den
@@ -92,7 +198,9 @@ Defekte/Fragen, je eine Story je Punkt erst nach Klärung (❓ = präzisieren, b
 * **⏳ Der Urheber-Name gehört zur dauerhaften Zeile, nicht zum Live-Fragment**
   ([UC-WP-39](chat.md), 2026-10-26 gebaut, 2026-10-27 mit dem Core-Rückbau wieder ❌) — die Live-Zeile eines laufenden Turns trägt **keinen** Namen, weil live nur Jon spricht
   und damit nichts zu verwechseln ist. *Andersfall:* soll auch das wachsende Live-Fragment ein Label
-  tragen, ist das eine kleine UI-Zeile — dann sagt das Doc es ausdrücklich.
+  tragen, ist das eine kleine UI-Zeile — dann sagt das Doc es ausdrücklich. **Ausnahme seit Inkrement 4:**
+  die **Timeline-Schritte** nennen ihren Core-Stempel ([R-WP-40](chat.md)) — betroffen ist die Schritt-Zeile,
+  nie das wachsende Antwort-Fragment.
 
 
 * **⏳ Config-Quelle ist eine eigene Datei der Factory** (`~/.aifactory/config/config.properties`, Keys auch

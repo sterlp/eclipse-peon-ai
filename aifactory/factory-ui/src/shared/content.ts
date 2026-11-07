@@ -12,8 +12,10 @@ export const content = {
   nav: {
     /** The name of the frame's menu, for the screen reader. */
     views: 'Views',
+    /** The sider's first entry: the list itself, where projects are added and removed (R-WP-38). */
     projects: 'Projects',
-    chat: 'Chat',
+    /** The one unit a project has (R-WP-38): the file area, hung under its project in the tree. */
+    files: 'Files',
     settings: 'Settings',
   },
 
@@ -27,6 +29,12 @@ export const content = {
     close: 'Close',
     back: 'Back',
     seconds: 'seconds',
+    /**
+     * The two answers of a confirmation. The library's own dialog would speak its locale's words — the
+     * catalog is the only source of copy here (R-WP-27), so both are named.
+     */
+    yes: 'Yes',
+    no: 'No',
   },
 
   projects: {
@@ -56,6 +64,9 @@ export const content = {
     you: 'YOU',
     /** The label of a merged tool box — the word `chat.html` paints above the trace (R-WP-28). */
     toolActivity: 'Tool',
+    /** The one word of a running delegation (R-WP-40): the entry names the member, never a task — the wire
+     *  carries none, so there is nothing else this screen could say about it (UC-WP-72 GIVEN 3). */
+    working: 'working',
     message: 'Message',
     messageToJon: 'Message to Jon',
     send: 'Send',

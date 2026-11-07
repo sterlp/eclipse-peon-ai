@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Alert, Button, Card, Input, Select } from 'antd'
 
 import { errorMessage } from '../shared/api.client'
 import { content } from '../shared/content'
@@ -99,9 +100,9 @@ export function ConfigPage() {
       .catch((error) => setMessage(errorMessage(error)))
   }, [])
 
+  /** The one way a field changes: by its new value, whatever control reported it. */
   function edit(field: keyof Draft) {
-    return (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      const value = event.target.value
+    return (value: string) => {
       setDraft((current) => (current ? { ...current, [field]: value } : current))
       // typing a key while one is queued for removal is two intents — the newer one wins
       if (field === 'apiKey' && value !== '') {
@@ -115,8 +116,7 @@ export function ConfigPage() {
    * default for the chosen provider, and the model is *cleared* rather than carried over — a model
    * belongs to a provider, and inventing a default for it is not the page's (Q2).
    */
-  function editProvider(event: React.ChangeEvent<HTMLSelectElement>) {
-    const name = event.target.value
+  function editProvider(name: string) {
     const chosen = providers.find((entry) => entry.name === name)
     setDraft((current) =>
       current
@@ -157,135 +157,138 @@ export function ConfigPage() {
   // Q3: the think value stays a boolean; a provider that cannot carry it says so and gets no field to try
   const thinkUnsupported = chosen !== undefined && !chosen.thinkSupported
 
+  // a stored provider the core list does not offer still has to show what the file holds
+  const offered = providers.map((entry) => entry.name)
+  const providerOptions = (
+    draft !== null && !offered.includes(draft.provider) ? [draft.provider, ...offered] : offered
+  ).map((name) => ({ value: name, label: name }))
+
   return (
     <section className="view" aria-label={content.config.title}>
       <h1>{content.config.title}</h1>
-      {message && (
-        <p className="form-error" role="alert">
-          {message}
-        </p>
-      )}
+      {message && <Alert type="error" title={message} />}
       {settings && draft && (
-        <form className="settings-form ui-card" onSubmit={(event) => void save(event)}>
-          <dl className="settings">
-            <div>
-              <dt>{content.config.provider}</dt>
-              <dd>
-                <select
-                  aria-label={content.config.provider}
-                  value={draft.provider}
-                  onChange={editProvider}
-                >
-                  {/* a stored provider the core list does not offer still has to show what the file holds */}
-                  {!providers.some((entry) => entry.name === draft.provider) && (
-                    <option value={draft.provider}>{draft.provider}</option>
+        <Card size="small" className="settings-card">
+          <form className="settings-form" onSubmit={(event) => void save(event)}>
+            <dl className="settings">
+              <div>
+                <dt>{content.config.provider}</dt>
+                <dd>
+                  <Select
+                    id="settings-provider"
+                    aria-label={content.config.provider}
+                    value={draft.provider}
+                    onChange={editProvider}
+                    options={providerOptions}
+                  />
+                </dd>
+              </div>
+              {saveMessage && (
+                <Alert
+                  type="error"
+                  // the rejected field is named by the server's answer; a value never comes back
+                  title={saveMessage}
+                />
+              )}
+              <div>
+                <dt>{content.config.model}</dt>
+                <dd>
+                  <Input
+                    aria-label={content.config.model}
+                    value={draft.model}
+                    onChange={(event) => edit('model')(event.target.value)}
+                  />
+                </dd>
+              </div>
+              <div>
+                <dt>{content.config.url}</dt>
+                <dd>
+                  <Input
+                    aria-label={content.config.url}
+                    value={draft.url}
+                    onChange={(event) => edit('url')(event.target.value)}
+                  />
+                </dd>
+              </div>
+              {/*
+                Text fields, not `type="number"`: a number input reports its own garbage as empty, and empty
+                now means "delete" — the browser would turn a typo into a deletion. As text the value reaches
+                the server, which refuses it and names the field.
+              */}
+              <div>
+                <dt>{content.config.tokenWindow}</dt>
+                <dd>
+                  <Input
+                    inputMode="numeric"
+                    aria-label={content.config.tokenWindow}
+                    value={draft.tokenWindow}
+                    onChange={(event) => edit('tokenWindow')(event.target.value)}
+                  />
+                </dd>
+              </div>
+              <div>
+                <dt>{content.config.timeout}</dt>
+                <dd>
+                  <Input
+                    inputMode="numeric"
+                    aria-label={content.config.timeout}
+                    value={draft.timeoutSeconds}
+                    onChange={(event) => edit('timeoutSeconds')(event.target.value)}
+                  />
+                  <span className="hint">{content.common.seconds}</span>
+                </dd>
+              </div>
+              <div>
+                <dt>{content.config.sendThinking}</dt>
+                <dd>
+                  <Select
+                    id="settings-send-thinking"
+                    aria-label={content.config.sendThinking}
+                    value={draft.sendThinking}
+                    onChange={edit('sendThinking')}
+                    disabled={thinkUnsupported}
+                    options={[
+                      { value: YES, label: content.config.yes },
+                      { value: NO, label: content.config.no },
+                    ]}
+                  />
+                  {thinkUnsupported && (
+                    <span className="hint">{content.config.thinkUnsupported}</span>
                   )}
-                  {providers.map((entry) => (
-                    <option key={entry.name} value={entry.name}>
-                      {entry.name}
-                    </option>
-                  ))}
-                </select>
-              </dd>
-            </div>
-            {saveMessage && (
-              <p className="form-error" role="alert">
-                {/* the rejected field is named by the server's answer; a value never comes back */}
-                {saveMessage}
-              </p>
-            )}
-            <div>
-              <dt>{content.config.model}</dt>
-              <dd>
-                <input
-                  aria-label={content.config.model}
-                  value={draft.model}
-                  onChange={edit('model')}
-                />
-              </dd>
-            </div>
-            <div>
-              <dt>{content.config.url}</dt>
-              <dd>
-                <input aria-label={content.config.url} value={draft.url} onChange={edit('url')} />
-              </dd>
-            </div>
-            {/*
-              Text fields, not `type="number"`: a number input reports its own garbage as empty, and empty
-              now means "delete" — the browser would turn a typo into a deletion. As text the value reaches
-              the server, which refuses it and names the field.
-            */}
-            <div>
-              <dt>{content.config.tokenWindow}</dt>
-              <dd>
-                <input
-                  inputMode="numeric"
-                  aria-label={content.config.tokenWindow}
-                  value={draft.tokenWindow}
-                  onChange={edit('tokenWindow')}
-                />
-              </dd>
-            </div>
-            <div>
-              <dt>{content.config.timeout}</dt>
-              <dd>
-                <input
-                  inputMode="numeric"
-                  aria-label={content.config.timeout}
-                  value={draft.timeoutSeconds}
-                  onChange={edit('timeoutSeconds')}
-                />
-                <span className="hint">{content.common.seconds}</span>
-              </dd>
-            </div>
-            <div>
-              <dt>{content.config.sendThinking}</dt>
-              <dd>
-                <select
-                  aria-label={content.config.sendThinking}
-                  value={draft.sendThinking}
-                  onChange={edit('sendThinking')}
-                  disabled={thinkUnsupported}
-                >
-                  <option value={YES}>{content.config.yes}</option>
-                  <option value={NO}>{content.config.no}</option>
-                </select>
-                {thinkUnsupported && (
-                  <span className="hint">{content.config.thinkUnsupported}</span>
-                )}
-              </dd>
-            </div>
-            <div>
-              <dt>{content.config.key}</dt>
-              <dd>
-                <input
-                  type="password"
-                  aria-label={content.config.key}
-                  autoComplete="off"
-                  placeholder={content.config.unchanged}
-                  value={draft.apiKey}
-                  onChange={edit('apiKey')}
-                />
-                <span className={settings.keySet ? 'key-set' : 'key-missing'}>
-                  {settings.keySet ? content.config.keySet : content.config.keyMissing}
-                </span>
-                <span className="hint">
-                  {content.config.keySource}: {SOURCE_LABEL[settings.keySource]}
-                </span>
-                {/* a key from the environment can be reported but never removed here (UC-WP-63 GIVEN 2) */}
-                {settings.keySource === 'FILE' && (
-                  <button type="button" disabled={removeKey} onClick={() => setRemoveKey(true)}>
-                    {content.config.removeKey}
-                  </button>
-                )}
-                {removeKey && <span className="hint">{content.config.removeKeyQueued}</span>}
-              </dd>
-            </div>
-          </dl>
-          <button type="submit" disabled={busy}>
-            {busy ? content.config.saving : content.config.save}
-          </button>
-        </form>
+                </dd>
+              </div>
+              <div>
+                <dt>{content.config.key}</dt>
+                <dd>
+                  <Input
+                    type="password"
+                    aria-label={content.config.key}
+                    autoComplete="off"
+                    placeholder={content.config.unchanged}
+                    value={draft.apiKey}
+                    onChange={(event) => edit('apiKey')(event.target.value)}
+                  />
+                  <span className={settings.keySet ? 'key-set' : 'key-missing'}>
+                    {settings.keySet ? content.config.keySet : content.config.keyMissing}
+                  </span>
+                  <span className="hint">
+                    {content.config.keySource}: {SOURCE_LABEL[settings.keySource]}
+                  </span>
+                  {/* a key from the environment can be reported but never removed here (UC-WP-63 GIVEN 2) */}
+                  {settings.keySource === 'FILE' && (
+                    <Button size="small" disabled={removeKey} onClick={() => setRemoveKey(true)}>
+                      {content.config.removeKey}
+                    </Button>
+                  )}
+                  {removeKey && <span className="hint">{content.config.removeKeyQueued}</span>}
+                </dd>
+              </div>
+            </dl>
+            <Button type="primary" htmlType="submit" disabled={busy}>
+              {busy ? content.config.saving : content.config.save}
+            </Button>
+          </form>
+        </Card>
       )}
       {/* R-WP-23: the agent overrides below the default — their own read, their own save per slot. The
           think field is built from the provider the form names (UC-WP-67), so the section reads the

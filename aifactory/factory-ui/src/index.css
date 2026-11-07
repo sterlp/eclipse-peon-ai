@@ -1,8 +1,14 @@
 /*
  * Design tokens — the colours of the plugin's chat.html (org.sterl.llmpeon/resources/chat/chat.html) as
- * custom properties, so Bootstrap supplies the building blocks and this layer supplies the look (R-WP-27).
- * Dark values are stated twice on purpose: once for the OS preference and once for an explicit
- * `data-theme="dark"`; CSS cannot share one rule between a media query and an attribute selector.
+ * custom properties: this layer supplies the look, and the design basis reads its colours from here
+ * (R-WP-27, R-WP-39 — `shared/theme.ts` is the one reader).
+ *
+ * The dark values are stated twice because CSS cannot share one rule between an attribute selector and a
+ * media query: `[data-theme='dark']` is the table the app puts on the document (`app/app.root.tsx` asks the
+ * operating system once and names the answer here), and the media rule is the same table for a browser that
+ * runs no script. One colour mode therefore has one table on every path — and `theme.test.ts`
+ * (`theDarkSheetIsOneTable`) compares the two copies field by field, so a copy cannot drift into a page
+ * painted half dark.
  */
 
 :root,
@@ -36,16 +42,6 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  /* Bootstrap reads its colours from these, so the theme is an overlay and not a Sass fork */
-  --bs-body-bg: var(--bg);
-  --bs-body-color: var(--text-h);
-  --bs-emphasis-color: var(--text-h);
-  --bs-border-color: var(--border);
-  --bs-link-color: var(--accent);
-  --bs-link-hover-color: var(--accent);
-  --bs-secondary-bg: var(--code-bg);
-  --bs-tertiary-bg: var(--code-bg);
 }
 
 [data-theme='dark'] {
@@ -65,15 +61,6 @@
   --question: #d29922;
 
   color-scheme: dark;
-
-  --bs-body-bg: var(--bg);
-  --bs-body-color: var(--text-h);
-  --bs-emphasis-color: var(--text-h);
-  --bs-border-color: var(--border);
-  --bs-link-color: var(--accent);
-  --bs-link-hover-color: var(--accent);
-  --bs-secondary-bg: var(--code-bg);
-  --bs-tertiary-bg: var(--code-bg);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -94,15 +81,6 @@
     --question: #d29922;
 
     color-scheme: dark;
-
-    --bs-body-bg: var(--bg);
-    --bs-body-color: var(--text-h);
-    --bs-emphasis-color: var(--text-h);
-    --bs-border-color: var(--border);
-    --bs-link-color: var(--accent);
-    --bs-link-hover-color: var(--accent);
-    --bs-secondary-bg: var(--code-bg);
-    --bs-tertiary-bg: var(--code-bg);
   }
 }
 

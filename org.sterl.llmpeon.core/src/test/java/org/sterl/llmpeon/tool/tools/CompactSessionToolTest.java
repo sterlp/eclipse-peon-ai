@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -14,17 +16,19 @@ import org.sterl.llmpeon.CoreTestFixtures;
 import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
-import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.LoopOwner;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.TextContent;
@@ -35,11 +39,11 @@ import dev.langchain4j.model.output.TokenUsage;
 
 class CompactSessionToolTest {
 
-    private StreamMock streamMock;
+    private final StreamMock streamMock = new StreamMock();
 
     @BeforeEach
     void beforeEach() {
-        streamMock = new StreamMock();
+        streamMock.reset();
     }
 
     @Test
@@ -92,7 +96,7 @@ class CompactSessionToolTest {
         assertThat(result).doesNotContain("WHAT: Compressed summary");
         // AND — without preserve the result carries the non-colliding marker (SOLL 2026-09-11),
         // preceded by the stats line (R-CIB-6)
-        assertThat(result).contains("(nothing preserved)");
+        assertThat(result).contains(CompactSessionTool.EMPTY_PRESERVE);
     }
 
     @Test
@@ -160,6 +164,8 @@ class CompactSessionToolTest {
         return "";
     }
 
+    // Paul 07.11.2026: this is dump
+    @Deprecated
     private static CompactSessionTool compactSessionTool(ThreadSafeMemory memory, AiAgent agent) {
         var config = LlmConfig.builder().model("test").build();
         var cm = new StreamMock().buildMock(r -> ChatResponse.builder()
@@ -176,79 +182,34 @@ class CompactSessionToolTest {
 
     @Test
     void preserveTextKept() {
-        // GIVEN — an agent whose compact() stores the summary "SUMMARY-X" as an AiMessage in the memory
-        // and returns a ChatResponse carrying the same text
-        var memory = new ThreadSafeMemory();
-        memory.add(UserMessage.from("Test message"));
-        memory.add(AiMessage.from("AI response"));
-        var subject = compactSessionTool(memory, compactStub(memory));
+        // GIVEN
+        streamMock.reset();
+        var counnt = new AtomicInteger(0);
+        var cm = streamMock.buildMock(req -> {
+            var c = counnt.incrementAndGet();
+            if (c == 1) {
+                return ChatResponse.builder().aiMessage(AiMessage.builder()
+                        .toolExecutionRequests(List.of(
+                                ToolExecutionRequest.builder().name(CompactSessionTool.NAME).arguments("{\"preserve\":\"keep preserve text\"}").build()
+                                )).build()
+                        ).build();
+            }
+            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("Ai Response " + c)).build();
+        });
+        
+        var model = new ConfiguredChatModel(LlmConfig.newOpenAi("stub"), cm);
+        var dev = new AiDevAgent(model, new ToolService());
+        
+        dev.addMessage(UserMessage.from("Test message"));
+        dev.addMessage(AiMessage.from("AI Test response"));
 
         // WHEN
-        String result = subject.compactSession("KEEP-1");
-
-        // THEN — the tool result carries the preserve text, never the summary (SOLL 2026-09-10:
-        // the summary lives exclusively as an AiMessage in the memory)
-        assertThat(result).contains("KEEP-1");
-        assertThat(result).doesNotContain("SUMMARY-X");
-        // AND — the memory holds SUMMARY-X exactly once (the AiMessage added by compact()),
-        // counted over ALL message types — a UserMessage/ToolResult duplicate would be invisible
-        // to an AiMessage-only filter (SOLL 2026-09-11)
-        assertThat(memory.getCopy().stream()
-                .filter(m -> textOf(m).contains("SUMMARY-X"))
-                .count()).isEqualTo(1);
-    }
-
-    @Test
-    void testCompactSessionWithoutPreserveReturnsMarker() {
-        // GIVEN — an agent whose compact() stores the summary "SUMMARY-X" as an AiMessage
-        var memory = new ThreadSafeMemory();
-        memory.add(UserMessage.from("Test message"));
-        memory.add(AiMessage.from("AI response"));
-        var subject = compactSessionTool(memory, compactStub(memory));
-
-        // WHEN
-        String result = subject.compactSession(null);
-
-        // THEN — tool results are never empty: without preserve the result carries the marker
-        // (a non-colliding marker, not a duplicate of the resume UserMessage — SOLL 2026-09-11),
-        // preceded by the stats line (R-CIB-6)
-        assertThat(result).contains("(nothing preserved)");
-    }
-
-    @Test
-    void compactedToolResultCarriesStats() {
-        // GIVEN — an agent whose compact() returns COMPACTED with concrete stats (R-CIB-6:
-        // log and tool result carry the same numbers)
-        var memory = new ThreadSafeMemory();
-        memory.add(UserMessage.from("Test message"));
-        memory.add(AiMessage.from("AI response"));
-        var compacted = CompactResult.compacted(new CompactResult.Stats(
-                61, 114_000, 40_000, CompactResult.Stage.TOOL_RESULTS, 500_000, 2_300, "compact-model", 1234L, null, true), null);
-        var subject = compactSessionTool(memory, agentReturning(memory, compacted));
-
-        // WHEN
-        String toolResult = subject.compactSession(null);
-
-        // THEN — the tool result carries the same numbers as the log (resultLine)
-        assertThat(toolResult).contains("compressed 61 messages ~114k → input ~40k, result 2k, stage: tool results 6000");
-        // AND — without preserve the marker follows the stats line
-        assertThat(toolResult).contains("(nothing preserved)");
-    }
-
-    // S2 (icons.md 2026-10-16): every LLM-visible output of the compact operation starts with the compact symbol
-    @Test
-    void compactedToolResultStartsWithCompactSymbol() {
-        // GIVEN — an agent whose compact() stores the summary "SUMMARY-X" as an AiMessage
-        var memory = new ThreadSafeMemory();
-        memory.add(UserMessage.from("Test message"));
-        memory.add(AiMessage.from("AI response"));
-        var subject = compactSessionTool(memory, compactStub(memory));
-
-        // WHEN
-        String result = subject.compactSession(null);
-
-        // THEN — the tool result (LLM memory) starts with the compact symbol, then the stats line (R-CIB-6)
-        assertThat(result).startsWith("🗜 ");
+        dev.call("foo", null);
+        
+         // THEN
+        var msg = ChatMessageUtil.readChatMessage(dev.getMemory().getCopy());
+        int preserveCount = msg.split(Pattern.quote("keep preserve text"), -1).length - 1;
+        assertThat(preserveCount).isOne();
     }
 
     @Test

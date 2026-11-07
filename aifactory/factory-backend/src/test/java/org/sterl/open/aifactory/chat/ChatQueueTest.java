@@ -42,6 +42,7 @@ import com.jayway.jsonpath.JsonPath;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 
+import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.poagent.AiPoAgent;
@@ -311,12 +312,137 @@ class ChatQueueTest extends FactorySpringTest {
     }
 
     // ------------------------------------------------------------------
+    // the `!` of R-WP-42: the core's prio message, not a turn of the factory
+    // ------------------------------------------------------------------
+
+    /**
+     * UC-WP-75 GIVEN 1 + 3: the same gate as the queue tests above, so the turn is provably inside a tool
+     * when the {@code !} arrives. What separates it from {@code secondInputDuringTurnQueues} is the lane:
+     * the core's urgent entry rides on the running turn's tool result (core R11) and is never written to the
+     * memory (core R8.7) — so the marker of the normal lane stays away and no history line appears.
+     *
+     * <p>The {@code !} alone (core R8.6) is asked in the same turn, because only a turn that is provably
+     * running can tell "consumed" from "enqueued": it answers with nothing at all — no entry, no delivery,
+     * no turn. The named send is what lets this test claim the entry carries its sender (R-WP-25).</p>
+     */
+    @Test
+    @Timeout(60)
+    // UC-WP-75
+    void urgentMessageJoinsTheRunningTurn() throws Exception {
+        writeFactoryConfig("inc3b-urgent-75");
+        CreatedProject project = createProject("urgent-75");
+
+        try (ChatStream stream = new ChatStream(project.id())) {
+            model.queueResponse(toolCall("call_gate", "shellRunCommand", GATE_TOOL));
+            model.queueResponse("Antwort mit der Prio am Werkzeug-Ergebnis");
+
+            assertThat(send(project.id(), "frage, die arbeitet").getStatusCode())
+                    .as("die erste Eingabe startet einen Turn")
+                    .isEqualTo(HttpStatus.ACCEPTED);
+            ProjectRuntime runtime = runtimes.runtime(project.id());
+            AiPoAgent jon = runtime.jon();
+            awaitUntil(jon::isWorking, 2_000, "Jon arbeitet an der ersten Eingabe");
+            stream.awaitShellRunning(5_000, "die Shell des ersten Turns läuft");
+
+            // mit Absender gesendet: die Prio-Zeile ist eine Eingabe wie jede andere, also trägt sie ihn
+            assertThat(send(project.id(), "! bitte abbrechen", "Anna").getStatusCode())
+                    .as("die Prio-Eingabe wird angenommen — als Eingabe, nicht als Turn")
+                    .isEqualTo(HttpStatus.ACCEPTED);
+
+            awaitUntil(() -> jon.getQueuedMessageCount() == 1, 2_000,
+                    "die Prio liegt in der Queue desselben Jon — über beide Lanes gezählt");
+            assertThat(model.getLastRequestBody())
+                    .as("kein zweiter Turn: die Prio war nachweislich nie beim Anbieter")
+                    .doesNotContain("bitte abbrechen");
+
+            // R8.6 am laufenden Turn, mit demselben Absender: ohne ihn wäre das Payload selbst blank und
+            // die Verwerfung wäre nicht von der Core-Regel zu unterscheiden — mit ihm wäre die eingereihte
+            // Zeile eine Namenszeile ohne Inhalt. Einzureihen ist die Arbeit des Request-Threads, darum ist
+            // die Zählung unmittelbar danach entschieden.
+            assertThat(send(project.id(), "!", "Anna").getStatusCode())
+                    .as("das einsame `!` wird ebenso angenommen")
+                    .isEqualTo(HttpStatus.ACCEPTED);
+            assertThat(jon.getQueuedMessageCount())
+                    .as("und reiht nichts ein — der eine Eintrag bleibt der einzige")
+                    .isEqualTo(1);
+
+            TurnGate.release(project.localPath());
+            stream.awaitEvent("done", 1);
+            assertThat(stream.countOf("done"))
+                    .as("ein Turn, ein done — weder die Prio noch das einsame `!` sind ein zweiter Turn")
+                    .isEqualTo(1);
+            assertThat(jon.getQueuedMessageCount())
+                    .as("der laufende Turn hat sie verbraucht — nichts bleibt für einen Follow-up")
+                    .isZero();
+        }
+
+        assertThat(capturedText())
+                .as("der Core stellt sie als queued_user_message-Block am Werkzeug-Ergebnis zu (R11)")
+                .contains(TaggedResult.PREFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE)
+                .contains("bitte abbrechen")
+                .as("und nicht als normalen Queue-Eintrag mit seinem Marker")
+                .doesNotContain(UserMessageQueue.QUEUED_MARKER_PREFIX);
+        // das Leerzeichen nach dem `!` bleibt, wo es der Core gelassen hat, deshalb das Muster und kein
+        // Wortlaut: behauptet wird der Absender vor dem Text (R-WP-25), nicht die Zahl der Leerzeichen
+        assertThat(capturedText())
+                .as("die Prio-Zeile trägt den Absendernamen wie jede andere Eingabe an Jon (R-WP-25)")
+                .containsPattern("\\[User Anna]:\\s+bitte abbrechen");
+        assertThat(capturedText())
+                .as("das konsumierte `!` hat nichts zugestellt — es bleibt bei dem einen Block (R8.6)")
+                .containsOnlyOnce(TaggedResult.PREFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE);
+        // und es bleibt bei dem einen Absender: eingereiht wäre hier sonst eine Namenszeile ohne Inhalt
+        assertThat(capturedText())
+                .as("genau eine Absenderzeile ist zugestellt — das einsame `!` hat keine leere hinterlassen")
+                .containsOnlyOnce("[User Anna]");
+
+        assertThat(messages(project.id()))
+                .as("die Prio wird nie in die Memory geschrieben (R8.7) — keine Nutzerzeile damit")
+                .extracting(ChatMessageDto::text)
+                .noneMatch(text -> text.contains("bitte abbrechen"));
+    }
+
+    /** UC-WP-75 GIVEN 3: läuft kein Turn, ist {@code !} schlicht Text (Core R8.1) — ein normaler Turn. */
+    @Test
+    @Timeout(60)
+    // UC-WP-75
+    void exclamationStaysTextWhenNoTurnRuns() throws Exception {
+        writeFactoryConfig("inc3b-idle-75");
+        CreatedProject project = createProject("idle-75");
+
+        model.queueResponse("Antwort auf die Eingabe mit Ausrufezeichen");
+        assertThat(send(project.id(), "! prio").getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+
+        awaitUntil(() -> messages(project.id()).stream()
+                .map(ChatMessageDto::text)
+                .anyMatch("Antwort auf die Eingabe mit Ausrufezeichen"::equals), 20_000,
+                "die Eingabe lief als normaler Turn durch");
+
+        assertThat(capturedText())
+                .as("das Ausrufezeichen ist Teil der Nachricht, wie getippt (R-WP-37)")
+                .contains("! prio");
+        // nach dem Turn entschieden und ohne Zustand, der verschwinden kann: keine Prio-Lane, also auch
+        // nirgends ein Block — eine Queue-Zählung hier hinge vom Augenblick des Lesens ab
+        assertThat(capturedText())
+                .as("im Idle gibt es keine Prio-Lane, also auch keine Zustellung an einen laufenden Turn")
+                .doesNotContain(TaggedResult.PREFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE);
+        assertThat(messages(project.id()))
+                .as("und der Verlauf trägt genau die eine Nutzerzeile damit")
+                .extracting(ChatMessageDto::text)
+                .containsExactlyInAnyOrder("! prio", "Antwort auf die Eingabe mit Ausrufezeichen");
+    }
+
+    // ------------------------------------------------------------------
     // the three edges
     // ------------------------------------------------------------------
 
     private ResponseEntity<String> send(String projectId, String text) {
+        return send(projectId, text, null);
+    }
+
+    /** A send with the sender's label (R-WP-25) — the shape the browser carries, name included. */
+    private ResponseEntity<String> send(String projectId, String text, String user) {
         return http.postForEntity("http://127.0.0.1:" + port + "/api/projects/" + projectId + "/messages",
-                jsonEntity(new SendMessageRequest(text)), String.class);
+                jsonEntity(new SendMessageRequest(text, user)), String.class);
     }
 
     private HttpEntity<Object> jsonEntity(Object body) {

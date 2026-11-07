@@ -61,8 +61,12 @@ function toEvent(name: string, payload: string): ChatStreamEvent | null {
   switch (name) {
     case 'partial':
       return { kind: 'partial', thinking: fields.kind === 'think', text: String(fields.text ?? '') }
-    case 'tool':
-      return { kind: 'tool', text: String(fields.text ?? '') }
+    case 'tool': {
+      // the stamp of the agent that worked, and nothing else: a field of another type or an empty name is
+      // no author, so the step simply carries none (R-WP-37, R-WP-40)
+      const stamp = typeof fields.origin === 'string' && fields.origin !== '' ? fields.origin : null
+      return { kind: 'tool', text: String(fields.text ?? ''), origin: stamp }
+    }
     case 'done':
       return { kind: 'done', millis: Number(fields.millis ?? 0) }
     case 'error':
@@ -74,6 +78,17 @@ function toEvent(name: string, payload: string): ChatStreamEvent | null {
         return null
       }
       return { kind: 'diff', file: fields.file, diff: fields.diff }
+    }
+    case 'delegation': {
+      // the pair or nothing, like `diff`: an entry naming no member could never be closed again, and one
+      // without its flag would not say whether it opens or ends (R-WP-40, UC-WP-72 GIVEN 3)
+      if (typeof fields.member !== 'string' || fields.member.trim() === '') {
+        return null
+      }
+      if (typeof fields.working !== 'boolean') {
+        return null
+      }
+      return { kind: 'delegation', member: fields.member, working: fields.working }
     }
     case 'agents': {
       // the whole roster, and the view replaces its list with it — a snapshot never accumulates, so it

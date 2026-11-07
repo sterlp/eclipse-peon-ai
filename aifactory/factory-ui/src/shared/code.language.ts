@@ -1,6 +1,6 @@
 /**
  * The suffix of a path to the language the viewer highlights with. Only what the loaded Shiki bundle
- * carries is named (checked against `shiki/bundle/web` of react-shiki 0.11.2, AGENTS-DEV Inc 3b): a
+ * carries is named (the list was read off `shiki/bundle/web` of react-shiki 0.11.2): a
  * suffix outside it becomes `text`, which is what it renders as anyway — naming a grammar the bundle
  * does not hold would only promise a colour that never arrives.
  */

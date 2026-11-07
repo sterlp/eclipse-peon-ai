@@ -26,7 +26,8 @@ import org.sterl.open.aifactory.project.ProjectStatusStream;
 /**
  * The runtime on its own, without a server and without a model: what building it costs, and what the
  * conversation is made of. Both are R-WP-11 statements — one chat per project, no second store — so the
- * empty-team half is here as well, where it is cheap to see.
+ * empty-team half is here as well, where it is cheap to see. The {@code !}-decision belongs here for the
+ * same reason: a pure function of the typed text, needing neither a server nor a model.
  */
 class ProjectRuntimeTest {
 
@@ -59,6 +60,22 @@ class ProjectRuntimeTest {
                 .allSatisfy(member -> assertThat(member.getMemory().size())
                         .as("%s starts empty", member.getName())
                         .isZero());
+    }
+
+    @Test
+    // UC-WP-75
+    void urgentTextIsTheCoresDecision() {
+        // R-WP-42 is all of passing the text to the core's resolver and taking its answer: the `!` goes off,
+        // the rest stays exactly as typed — trim of the input only, never of the body
+        assertThat(ProjectRuntime.urgentTextOf("! prio", true)).contains(" prio");
+        assertThat(ProjectRuntime.urgentTextOf("!", true)).contains(""); // consumed, nothing queued (R8.6)
+        // a rest that opens a slash is looked up — the factory has neither commands nor skills, and an unknown
+        // name still lands as raw text: two empty services, `null` there is the NullPointerException. Only the
+        // `!` goes off, never the space behind it (contains of an Optional is equality, never a substring)
+        assertThat(ProjectRuntime.urgentTextOf("! /unbekannt", true)).contains(" /unbekannt");
+        assertThat(ProjectRuntime.urgentTextOf("!/unbekannt", true)).contains("/unbekannt");
+        assertThat(ProjectRuntime.urgentTextOf("! prio", false)).isEmpty(); // R8.1: idle means `!` is text
+        assertThat(ProjectRuntime.urgentTextOf("hallo", true)).isEmpty();
     }
 
     @Test

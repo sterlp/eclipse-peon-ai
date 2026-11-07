@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Alert, Button, Card, Input, Popconfirm } from 'antd'
 
-import { addProject, listProjects, removeProject } from './project.client'
+import { addProject, removeProject } from './project.client'
 import { openProjectStatusStream } from './project.status.client'
 import { errorMessage } from '../shared/api.client'
 import { content } from '../shared/content'
@@ -10,30 +11,25 @@ import type { Project, ProjectWork } from '../shared/dto'
 const RECONNECT_MS = 500
 
 interface Props {
+  /** The registry as the frame read it — this page owns no copy of it (D1, R-WP-38). */
+  projects: Project[]
+  /** Why the tree beside this page is empty, when the registry could not be read. */
+  listError?: string | null
   onOpen: (project: Project) => void
+  /** Asks the frame to read the registry again: what this page added or removed has to show in the tree. */
+  onReload: () => Promise<void>
 }
 
-export function ProjectPage({ onOpen }: Props) {
-  const [projects, setProjects] = useState<Project[]>([])
+export function ProjectPage({ projects, listError, onOpen, onReload }: Props) {
   const [work, setWork] = useState<Record<string, ProjectWork>>({})
   const [gitUrl, setGitUrl] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
-  const reload = useCallback(async () => {
-    const loaded = await listProjects()
-    setProjects(loaded)
-  }, [])
-
   const showError = useCallback((error: unknown) => {
     // the reason belongs next to the input; a swallowed error would read as "nothing happened"
     setMessage(errorMessage(error))
   }, [])
-
-  useEffect(() => {
-    // mount = synchronize with the registry, an external system; the update lands after the await
-    listProjects().then(setProjects).catch(showError)
-  }, [showError])
 
   useEffect(() => {
     // what the server is working on arrives by itself (R-WP-24): the snapshot of a new connection
@@ -85,7 +81,7 @@ export function ProjectPage({ onOpen }: Props) {
     try {
       await addProject(gitUrl.trim())
       setGitUrl('')
-      await reload()
+      await onReload()
     } catch (error) {
       // the list stays unchanged, the reason lands at the input (UC-WP-4)
       showError(error)
@@ -95,38 +91,34 @@ export function ProjectPage({ onOpen }: Props) {
   }
 
   async function remove(project: Project) {
-    if (!window.confirm(content.projects.removeQuestion(project.name))) {
-      return
-    }
     setMessage(null)
     try {
       await removeProject(project.id)
-      await reload()
+      await onReload()
     } catch (error) {
       showError(error)
     }
   }
 
+  // this page's own refusal reads before the frame's: the viewer just caused it (UC-WP-4)
+  const problem = message ?? listError
+
   return (
     <section className="view" aria-label={content.projects.title}>
       <h1>{content.projects.title}</h1>
       <form className="add-project" onSubmit={event => void submit(event)}>
-        <input
+        <Input
           type="url"
           placeholder={content.projects.gitUrlSample}
           aria-label={content.projects.gitUrl}
           value={gitUrl}
           onChange={event => setGitUrl(event.target.value)}
         />
-        <button type="submit" disabled={busy}>
+        <Button type="primary" htmlType="submit" disabled={busy}>
           {busy ? content.projects.cloning : content.projects.add}
-        </button>
+        </Button>
       </form>
-      {message && (
-        <p className="form-error" role="alert">
-          {message}
-        </p>
-      )}
+      {problem && <Alert type="error" title={problem} />}
       {projects.length === 0 ? (
         <p className="empty-state">{content.projects.empty}</p>
       ) : (
@@ -139,19 +131,30 @@ export function ProjectPage({ onOpen }: Props) {
             const queued = state?.queued ?? 0
             return (
               <li key={project.id}>
-                <button type="button" className="project-name" onClick={() => onOpen(project)}>
-                  {project.name}
-                </button>
-                <span className="project-work" data-working={working}>
-                  {working ? content.projects.working : content.projects.free}
-                  {working && queued > 0 && (
-                    <span className="project-queued">{content.projects.queued(queued)}</span>
-                  )}
-                </span>
-                <span className="project-url">{project.gitUrl}</span>
-                <button type="button" className="remove" onClick={() => void remove(project)}>
-                  {content.projects.remove}
-                </button>
+                {/* the card of the basis names the row (R-WP-39) */}
+                <Card size="small">
+                  <div className="project-row">
+                    <Button type="link" className="project-name" onClick={() => onOpen(project)}>
+                      {project.name}
+                    </Button>
+                    <span className="project-work" data-working={working}>
+                      {working ? content.projects.working : content.projects.free}
+                      {working && queued > 0 && (
+                        <span className="project-queued">{content.projects.queued(queued)}</span>
+                      )}
+                    </span>
+                    <span className="project-url">{project.gitUrl}</span>
+                    {/* the removal asks before it deletes: the clone folder goes with the row (UC-WP-28) */}
+                    <Popconfirm
+                      title={content.projects.removeQuestion(project.name)}
+                      okText={content.common.yes}
+                      cancelText={content.common.no}
+                      onConfirm={() => void remove(project)}
+                    >
+                      <Button size="small">{content.projects.remove}</Button>
+                    </Popconfirm>
+                  </div>
+                </Card>
               </li>
             )
           })}

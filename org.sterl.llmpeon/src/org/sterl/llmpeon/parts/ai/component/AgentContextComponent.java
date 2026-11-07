@@ -140,6 +140,13 @@ public class AgentContextComponent {
         if ((agent instanceof AiScaffoldAgent)) {
             appendScaffoldContext(result);
         } else {
+            result.addAll(userContext.get());
+
+            if ((agent instanceof AiPoAgent)) {
+                result.add(new EclipseFileContextItem("docs/memory.md", projectRef));
+                result.add(new EclipseFileContextItem("docs/index.md", projectRef));
+            }
+
             if (handoffLine == null) {
                 appendPlanReference(result);
             } else {
@@ -148,23 +155,15 @@ public class AgentContextComponent {
                 handoffLine = null;
             }
             result.addAll(AgentsMdContextItem.itemsFor(agent.getName(), projectRef));
+
+            // R-CG-7 / R-CG-12: the codegraph context item — non-scaffold agents only
+            result.add(codegraph);
         }
 
         // Shared memory live per turn (ADR-0032): the dedupKey carries an entries-hash, so an
         // unchanged memory is skipped (already in history) while a change reinjects a fresh snapshot.
         result.add(workspaceMemoryTool);
 
-        if ((agent instanceof AiPoAgent)) {
-            result.add(new EclipseFileContextItem("docs/memory.md", projectRef));
-            result.add(new EclipseFileContextItem("docs/index.md", projectRef));
-        }
-        result.addAll(userContext.get());
-
-        // R-CG-7 / R-CG-12: the codegraph context item — non-scaffold agents only (the scaffold
-        // has its own registry without MCP and never receives the item).
-        if (!(agent instanceof AiScaffoldAgent)) {
-            result.add(codegraph);
-        }
         return result;
     }
 
@@ -220,6 +219,9 @@ public class AgentContextComponent {
     /**
      * R-PT-3: the file comes from the injected supplier — the same refreshed view the query paths
      * use — so a plan written past the workspace tree by the disk tools is offered like any other.
+     * 
+     * TODO remove this, an add existing and found plans to the project info in which we e.g. show already the pom.xml
+     * EclipseUtil.projectInfo
      */
     private void appendPlanReference(LinkedList<ContextItem> result) {
         final var visible = planFile.get();

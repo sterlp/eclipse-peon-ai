@@ -42,7 +42,7 @@ import org.sterl.llmpeon.parts.shared.SwtUtil;
  */
 public class AiAgentStatusWidget extends Composite {
 
-    private static final String SEP = "   ·   ";
+    private static final String SEP = "  ·  ";
     private static final String WORKING = "🟢 ";
     /** R-CT-4 — a compacting member gets its own dot, never the generic 🟢. */
     private static final String COMPACTING = "🟡 ";
@@ -71,9 +71,9 @@ public class AiAgentStatusWidget extends Composite {
         // overflow clips from the right (Review drops first)
         layout.wrap = false;
         layout.center = true;
-        layout.spacing = 2; // small gap between a member's label and its compact button
         layout.marginHeight = 0;
         layout.marginWidth = 0;
+        layout.spacing = 0;
         setLayout(layout);
         setBackgroundMode(SWT.INHERIT_DEFAULT);
 
@@ -132,9 +132,7 @@ public class AiAgentStatusWidget extends Composite {
             Image icon = null;
             Button button = null;
             if (entry.slave()) { // Jon's row: no button — the action bar owns his compact
-                icon = ImageUtil.loadImage(this,
-                        EclipseUiUtil.DARK_THEME_NAME.equals(EclipseUiUtil.resolveTheme())
-                                ? ImageUtil.COMPACT_DARK : ImageUtil.COMPACT);
+                icon = ImageUtil.loadImage(this, ImageUtil.Icon.COMPACT);
                 button = SwtUtil.createIconButton(this, icon, "Compact " + member.getName());
                 button.setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_HEADER_BAR_WIDGET);
                 button.addListener(SWT.Selection, e -> {
