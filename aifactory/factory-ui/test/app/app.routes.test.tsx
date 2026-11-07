@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 
 import { closeAppStream, renderApp, stubAppServer } from '../shared/app.harness'
 import { content } from '../../src/shared/content'
@@ -122,6 +122,25 @@ test('theNameAddressOpensTheProjectItNames', async () => {
   expect(markedEntry().textContent).toBe(second.name)
 })
 
+// UC-WP-70
+test('anEscapedNameAddressOpensItsChatAndMarksItsEntry', async () => {
+  // a name with a space is what a hand-edited `projects.json` can carry — the backend refuses it (`SAFE_NAME`)
+  // — and then the address speaks the escaped form while the chat resolves the decoded one: one answer, not
+  // two that disagree about the spelling of the same project (R-WP-38, UC-WP-52)
+  const spaced = project({
+    id: 'deep-1b2c3d4',
+    name: 'deep dive',
+    gitUrl: 'https://git.example.com/acme/deep-dive.git',
+  })
+  stubAppServer([spaced])
+  const app = renderApp('/chat/deep%20dive')
+
+  const chat = await screen.findByRole('region', { name: content.chat.title })
+  expect(within(chat).getByRole('heading', { name: spaced.name })).toBeInTheDocument()
+  expect(app.path()).toBe('/chat/deep%20dive')
+  expect(markedEntry().textContent).toBe(spaced.name)
+})
+
 // UC-WP-43
 test('aReloadStaysOnThePage', async () => {
   stubAppServer()
@@ -161,6 +180,9 @@ test('anUnknownAddressShowsTheApp', async () => {
   // a page of its own would be a fourth view (R-WP-1)
   expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
   expect(app.path()).toBe('/projects')
+  // the mark follows the address and not the way it was reached: the redirect lands on the list, whose own
+  // entry the tree shows (R-WP-38) — an address nobody clicked in the tree
+  await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.projects))
 })
 
 // UC-WP-51
@@ -173,6 +195,9 @@ test('chatOpensTheLastActiveProject', async () => {
 
   expect(await screen.findByRole('region', { name: content.chat.title })).toBeInTheDocument()
   expect(app.path()).toBe(CHAT_PATH)
+  // same mount, address nobody clicked in the tree: `/chat` became this project's chat, so the tree shows
+  // exactly that entry (R-WP-38) — the mark is the address, not what the mount found first
+  await waitFor(() => expect(markedEntry().textContent).toBe(project().name))
 })
 
 // UC-WP-51
@@ -183,6 +208,8 @@ test('chatWithoutAProjectGoesToProjects', async () => {
 
   expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
   expect(app.path()).toBe('/projects')
+  // and the tree answers the address it landed on, not the one it was called with (R-WP-38)
+  await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.projects))
 })
 
 test('aProjectThatIsGoneLeadsToTheList', async () => {
@@ -193,6 +220,9 @@ test('aProjectThatIsGoneLeadsToTheList', async () => {
   expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
   expect(app.path()).toBe('/projects')
   expect(screen.queryByRole('region', { name: content.chat.title })).toBeNull()
+  // the redirect left the tree nothing to name but the list: an unknown segment marks no project, the address
+  // it landed on marks the list's own entry (R-WP-38, `navKeyOfPathname`)
+  await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.projects))
 })
 
 // UC-WP-70

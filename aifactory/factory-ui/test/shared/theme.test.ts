@@ -231,7 +231,7 @@ test('theGuardSeesTheCssImportAsWellAsTheComponent', () => {
     'a stylesheet import without a `from` is the dangerous form',
   ).not.toEqual([])
   expect(
-    arrives('src/app/app.nav.tsx', `import { Nav } from 'react-bootstrap'\n`),
+    arrives('src/app/app.sider.tsx', `import { Nav } from 'react-bootstrap'\n`),
     'the component library is seen',
   ).not.toEqual([])
   expect(

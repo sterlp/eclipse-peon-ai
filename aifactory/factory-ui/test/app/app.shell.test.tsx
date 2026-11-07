@@ -83,23 +83,49 @@ test('theHeaderCarriesBrandUserAndSettingsOnly', async () => {
   expect(within(header).queryAllByRole('link')).toEqual([])
 })
 
+/** The entry the tree marks as showing — the mark that has to answer the address, not the last click. */
+function markedEntries(): HTMLElement[] {
+  return within(nav())
+    .getAllByRole('menuitem')
+    .filter(entry => entry.className.includes('ant-menu-item-selected'))
+}
+
+function settingsEntry(): HTMLElement {
+  return screen.getByRole('button', { name: content.nav.settings })
+}
+
 // R-WP-38
 // R-WP-1
 test('theSettingsEntryIsCurrentOnSettings', async () => {
+  // one mount walked through four addresses: a mark that is read from a state — the mount's first reading or
+  // the last click — survives a reload-test and fails here
   stubAppServer()
-  const onSettings = renderApp('/settings')
+  renderApp('/settings')
   await screen.findByText(content.config.provider)
 
-  expect(screen.getByRole('button', { name: content.nav.settings })).toHaveAttribute(
-    'aria-current',
-    'page',
-  )
+  // settings is a page, the tree answers which project (R-WP-38): the header carries the mark, the tree
+  // names nothing because `/settings` names no project
+  expect(settingsEntry()).toHaveAttribute('aria-current', 'page')
+  expect(markedEntries()).toEqual([])
 
-  // the mark is the address and not the last click: the same entry says nothing where another page shows
-  onSettings.unmount()
-  renderApp('/projects')
+  fireEvent.click(within(nav()).getByRole('menuitem', { name: content.nav.projects }))
   await screen.findByLabelText(content.projects.gitUrl)
-  expect(screen.getByRole('button', { name: content.nav.settings })).not.toHaveAttribute('aria-current')
+  expect(settingsEntry(), 'the header entry marks nothing where another page shows').not.toHaveAttribute(
+    'aria-current',
+  )
+  expect(markedEntries().map(entry => entry.textContent)).toEqual([content.nav.projects])
+
+  // and here the address changes without any click in the tree — the list row opened the chat while the
+  // frame stayed mounted, so only a reading of the address can know which entry shows now
+  fireEvent.click(await screen.findByRole('button', { name: project().name }))
+  await screen.findByRole('region', { name: content.chat.title })
+  expect(markedEntries().map(entry => entry.textContent)).toEqual([project().name])
+  expect(settingsEntry()).not.toHaveAttribute('aria-current')
+
+  fireEvent.click(settingsEntry())
+  await screen.findByText(content.config.provider)
+  expect(settingsEntry()).toHaveAttribute('aria-current', 'page')
+  expect(markedEntries()).toEqual([])
 })
 
 // UC-WP-70

@@ -8,7 +8,8 @@ idPrefix: WP
 
 ## Ziel
 
-Eine schlanke Browser-App mit Top-Navigation, die unter `/ui/` ausgeliefert wird und einen Reload übersteht.
+Eine schlanke Browser-App mit dem **Projektbaum im Sider** ([R-WP-38](ui.md)), die unter `/ui/`
+ausgeliefert wird und einen Reload übersteht.
 
 **Look — AntD als Basis, Chat-Zeilen eigenes Theme (Paul 2026-11-06, Umbau; zuvor Bootstrap, Paul 2026-11-02):**
 Basis ist **Ant Design** mit Theme-Tokens auf unsere Farben — Details und Abgrenzung in
@@ -113,9 +114,10 @@ in voller Höhe daneben.
   Klick auf „Projects" die Projektliste (Hinzufügen, Entfernen) — Markierung und URL einig.
 - GIVEN ein geöffnetes Projekt WHEN der Nutzer die Einheit **Files** wählt THEN wechseln
   Sider-Markierung und URL einig auf dieselbe Einheit, und ein Reload landet wieder dort.
-- GIVEN ein Fenster unter dem Sider-Breakpoint WHEN die App zeichnet THEN ist der Sider eingeklappt
-  und die Chat-Fläche nutzt die volle Breite; über den ausgeklappten Sider bleibt die Auswahl
-  erreichbar (auch „Projects").
+- GIVEN ein Fenster unter dem Sider-Breakpoint WHEN die App zeichnet THEN ist der Sider auf **Breite 0**
+  eingeklappt und die Chat-Fläche füllt die Zeile allein; über den ausgeklappten Sider bleibt die Auswahl
+  erreichbar (auch „Projects"). Der Beleg nennt die Breite des Siders (0) und die Rankenlage — das
+  Nachmessen der Pixel gehört zur Look-Abnahme am Browser (Look-Absatz oben).
 
 ### R-WP-39 — Eine Design-Basis: AntD, Chat-Zeilen eigenes CSS ✅ (Paul 2026-11-06)
 

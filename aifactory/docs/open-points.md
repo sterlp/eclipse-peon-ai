@@ -23,8 +23,10 @@ Reihenfolge, je ein grünes Inkrement:
    Ankunftszeit; **Dauer nur je Turn** an der Antwort ([R-WP-40/UC-WP-72](chat.md)); kein `hr`
    zwischen Zeilen ([R-WP-29/UC-WP-55](chat.md), C-6). F3 (Agent-Arbeit unsichtbar) wird hier
    mitbehandelt: der Eintrag zeigt, wer arbeitet.
-5. **Sider-Navigation + URL** — Projektbaum, Klick aufs Projekt öffnet seinen Chat, Einheiten
-   Files (Paco später); URL auf den **klaren Projektnamen** (C-3, Namens-Kollision vorher prüfen).
+5. **Sider-Navigation + URL** — **5a gebaut 2026-11-07**: Projektbaum im Sider, Klick aufs Projekt öffnet
+   seinen Chat, URL auf den **klaren Projektnamen** (C-3 damit erledigt, Entscheidung gegen die Id steht
+   in [resolved-points.md](resolved-points.md)). Offen **5b**: die Einheit **Files** als Sider-Einheit und
+   Adresse ([UC-WP-70 GIVEN 2](ui.md)) — erst danach der Flip von [R-WP-38/UC-WP-70](ui.md).
 
 * **⏳ Dunkel = eine Tabelle, App setzt `data-theme`** (2026-11-06, Review-Fund zu Inc 1,
   Rückversicherung ausstehend) — das Grundblatt schrieb Dunkel bisher zweimal (Media-Block für die
@@ -132,9 +134,6 @@ Defekte/Fragen, je eine Story je Punkt erst nach Klärung (❓ = präzisieren, b
   Fehlermeldung sichtbar; Regel in [chat.md](chat.md) fehlt (wie Compact live erscheint).
   *(b) „nach Reload ohne Markdown" ist erledigt (2026-11-06, Inkrement 2): Markdown zeichnet jetzt
   überall dasselbe Renderer-Pfad, auch im Verlauf — [R-WP-28/UC-WP-73](chat.md).*
-* **❓ C-3 · URL mit Hash-Suffix** — `/ui/chat/spring-persistent-tasks-071d14a` statt
-  `/ui/chat/spring-persistent-tasks`. Paul will den klaren Namen. Prüfen, ob die Registry-ID den Hash
-  braucht (Namens-Kollision) — wenn Namen eindeutig sind, URL auf den Namen legen.
 * **❓ C-7 · Agent-Chat ist ein anderes Widget** — der aufgeklappte Blick auf ein Team-Mitglied nutzt
   ein eigenes Chat-Widget: anderes Look&Feel, aktualisiert nicht während der Agent arbeitet, zieht
   alle Daten erneut (= Totalschaden). SOLL: dasselbe Chat-Widget wie der Haupt-Chat, an den

@@ -979,5 +979,37 @@ R-WP-38 / UC-WP-70 G1+G3, R-WP-1, R-WP-35, R-WP-27. Rahmen (`app.shell.tsx`) bes
   **dieselbe** Referenz.
 - Bewusst offen: **G2 „Files"-Einheit** (5b), Id-Fallback der Route (5a-3), Namens-Segment (5a-2).
 
+## Inkrement 5a-N1 (2026-11-07): Markierung als Funktion der Adresse bewiesen
+
+Review-Verdict REJECTED, Grund nur im Test: drei Mutationen blieben grün (Auswahl aus **Klick-State**,
+`activeKey` beim **Mount eingefroren**, Settings-`aria-current` beim Mount eingefroren).
+
+- **Dauerhafte Regel daraus:** eine Markierung, die aus der Adresse gelesen wird, wird **nach einer
+  Adressänderung behauptet, die nicht per Klick in dasselbe Element entstand**. Ein `unmount()` + Neu-Mount
+  beweist die Regel **nicht** — er prüft zwei Mounts, nie eine Zustandsänderung. Derselbe Maßstab gilt für
+  jedes „State kommt aus Quelle X": die platte Variante (`useState` ohne Pflege) ist zu leicht rot zu machen,
+  getroffen werden muss **geseedeter State** und **beim Mount eingefroren**.
+- **Bauort:** `app.routes.test.tsx` — die vier Weiterleitungs-Fälle (`/chat` mit und ohne letztes Projekt,
+  verschwundenes Projekt, unbekannte Adresse) behaupten je die markierte Zeile gegen die Zieladresse;
+  `app.shell.test.tsx::theSettingsEntryIsCurrentOnSettings` — **ein Mount, vier Adressen**
+  (Einstellungen → Projekte-Liste → Chat über die **Listen-Zeile** → Einstellungen), `unmount()`-Weg ersetzt,
+  nicht ergänzt (er bewies nichts zusätzliches).
+- **Proben, je einzeln:** M1b (`selected = useState(activeKey)` + `setSelected(key)` im `onClick`) ⇒ **5 rot**;
+  M1c (`const [frozenKey] = useState(navKeyOfPathname(pathname))`) ⇒ **dieselben 5**; M10
+  (`const [settingsIsCurrent] = useState(pathname.startsWith(settingsPath))`) ⇒
+  `theSettingsEntryIsCurrentOnSettings`. Die fünf: `chatOpensTheLastActiveProject`,
+  `chatWithoutAProjectGoesToProjects`, `aProjectThatIsGoneLeadsToTheList`, `anUnknownAddressShowsTheApp`,
+  `theSettingsEntryIsCurrentOnSettings`. **`app.sider.test.tsx` bleibt bei beiden Einfriermutationen grün**
+  (Props ohne Adresswechsel) ⇒ Abnahmeort für „Mark = URL" ist der **Rahmen**, nie der Sider-Test allein.
+- **LOW-2 (Decode):** `navKeyOfPathname` dekodiert das Segment, unzulässige Escape-Folge ⇒ Rückfall auf den
+  Rohwert (kein Wurf); `chatPath` bleibt roh — zwei Antworten auf das Entkommen wären ein zweiter Eigner.
+  Sonde „decode entfernt" ⇒ `anEscapedNameAddressOpensItsChatAndMarksItsEntry` +
+  `theAddressNamesTheEntryThatShows` rot. Der Fall kommt **nur** aus einer hand-editierten `projects.json`
+  (`SAFE_NAME` lehnt Leerzeichen ab) — Absicherung des Restrisikos aus 5a-2, kein Backend-Fall.
+- **LOW-5 (Leiche):** `test/shared/theme.test.ts` bot sein synthetisches Beispiel unter
+  `src/app/app.nav.tsx` an — Datei seit 5a-1 weg ⇒ `src/app/app.sider.tsx` (existiert, gleiche Form).
+- **Zahlen:** UI **205 Tests / 22 Dateien**, `tsc -b` 0, oxlint **0/0** (73 Dateien), Doc-Lint **28**
+  (identische Liste, kein neues Finding; R-WP-38/UC-WP-70 weiterhin ❌ bis 5b). Kein Backend, kein Core.
+
 
 

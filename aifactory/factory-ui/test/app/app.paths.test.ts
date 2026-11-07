@@ -21,6 +21,10 @@ test('theAddressNamesTheEntryThatShows', () => {
   expect(navKeyOfPathname('/settings')).toBeNull()
   expect(navKeyOfPathname('/chat')).toBeNull()
   expect(navKeyOfPathname('/no/such/route')).toBeNull()
+  // an escaped name marks the entry whose chat opens: the chat resolves what `useParams` hands it — decoded
+  expect(navKeyOfPathname('/chat/deep%20dive')).toBe(projectKeyOf('deep dive'))
+  // an address that cannot be decoded names what it spells; reading it is no reason to throw
+  expect(navKeyOfPathname('/chat/%E0%A4%A')).toBe(projectKeyOf('%E0%A4%A'))
 })
 
 /**

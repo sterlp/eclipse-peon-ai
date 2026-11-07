@@ -12,7 +12,10 @@ export const chatRoot = '/chat'
 /** The key of the sider's first entry — the list itself, not a fourth page (R-WP-38). */
 export const siderRootKey = 'root'
 
-/** The address of one project's Jon-Chat (UC-WP-52). */
+/**
+ * The address of one project's Jon-Chat (UC-WP-52) — segment as it stands, never escaped here: that would be
+ * a second answer beside the one {@link navKeyOfPathname} reads back.
+ */
 export function chatPath(segment: string): string {
   return `${chatRoot}/${segment}`
 }
@@ -45,8 +48,13 @@ export function projectKeyOf(segment: string): string {
 
 /**
  * Which entry of the sider an address names (UC-WP-52, R-WP-1): a reading of the path and nothing else, so
- * the mark survives a reload. An address that names no entry — `/settings`, the bare `/chat` — marks
- * nothing, which is the honest answer rather than a guess at the first entry.
+ * the mark survives a reload and follows an address nobody clicked. An address that names no entry —
+ * `/settings`, the bare `/chat` — marks nothing, which is the honest answer rather than a guess at the first
+ * entry.
+ *
+ * The segment is read **decoded**, because the chat resolves what `useParams` hands it — already decoded —
+ * and a mark that disagreed with the chat about the spelling would be a second answer. An address that cannot
+ * be decoded is no reason to throw: then the raw reading is the answer.
  */
 export function navKeyOfPathname(pathname: string): string | null {
   if (pathname === projectsPath) {
@@ -55,6 +63,13 @@ export function navKeyOfPathname(pathname: string): string | null {
   if (!pathname.startsWith(`${chatRoot}/`)) {
     return null
   }
-  const [segment = ''] = pathname.slice(chatRoot.length + 1).split('/')
-  return segment === '' ? null : projectKeyOf(segment)
+  const [raw = ''] = pathname.slice(chatRoot.length + 1).split('/')
+  if (raw === '') {
+    return null
+  }
+  try {
+    return projectKeyOf(decodeURIComponent(raw))
+  } catch {
+    return projectKeyOf(raw)
+  }
 }
