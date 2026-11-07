@@ -25,7 +25,9 @@ bewiesen (drei Mutationen grün: geseedeter Klick-State, beim Mount eingefrorene
 Settings-`aria-current`). Behoben in 5a-N1: Markierung jetzt in vier Weiterleitungs-Fällen **und** über
 einen Adress-Walk in einem Mount behauptet (M1b/M1c/M10 ⇒ 5/5/1 Tests rot). Dazu `navKeyOfPathname`
 dekodiert das Segment (Adresse mit `%20` markiert denselben Eintrag), Leichen-Pfad im Guard-Test ersetzt.
-**G2 (Einheit Files) fehlt bewusst** — darum bleiben R-WP-38/UC-WP-70 **❌**, bis 5b gebaut ist.
+**G2 (Einheit Files) kam mit 5b-1** — nach dessen N1-Delta ist der Flip erfolgt:
+**R-WP-38/UC-WP-70 ✅**, Feature **UI ✅** in der [index.md](index.md) (offen bleibt nur der Look am
+Browser).
 Befunde + Zurückgestelltes: [../peon-plan/review-findings.md](../peon-plan/review-findings.md).
 
 **Inkrement 5b-1 — Einheit = Adresse** ([UC-WP-70 G2](ui.md)), gebaut `b4c202b0`: `chat/:project/files`
@@ -40,15 +42,23 @@ Architektur-Doc korrigiert, Kommentar zieht nach. Dauerhaft: **CSS mit `+`/`~` b
 Nestungs-Beweis** (jsdom sieht die Kante nicht). Alles Weitere:
 [../peon-plan/review-findings.md](../peon-plan/review-findings.md).
 
-**Gemessen (Spitze `b4c202b0`):** UI **214 Tests / 22 Dateien**, `tsc -b` 0, oxlint 0/0 (73 Dateien) ·
-Backend **227/0** (in 5b nicht gebaut) · Doc-Lint **28** Findings = nur Fremd-Docs (PC 14, CR 14), kein
-`UNBELEGT_ERLEDIGT`. Dev/Review scoppen enger — **immer selbst messen.**
+**Inkrement 5b-1-N1 — nur Nachweis + Kommentar** (Docs `6578719d`, Code `83a63547`): DOM-Assertion
+`expect(tab.previousElementSibling).toBe(panel)` in `filesTabSitsOnThePanelTop` — Mutation „Fläche hinter
+den Tab" ist damit **rot**; Kommentar in `app.routes.tsx` sagt jetzt **Grammatik, nicht Mount**, und das
+Architektur-Doc hält den gemessenen Befund (eine **Schwesterroute** remountet den Chat **nicht**,
+React Router 7.18.5 — Mount-Kontinuität beweist nur ein erzwungener Remount).
 
-**Nächste Schritte:** (1) **5b-1-N1** = die zwei Review-Punkte (DOM-Assertion + Kommentar), danach
-**Flip R-WP-38/UC-WP-70 ❌→✅**; (2) **5b-2** = Aufräumen (LOW-1 zweiter Listen-Fetch in `app.routes.tsx`,
-LOW-3 Rahmen-Test nach `test/app/`, LOW-4 Prosa kürzen); (3) Rest-Backlog: C-7 (Agent-Blick read-only live),
-C-2a, C-1 TurnClaim-Timeout,
-F8/F10, Mini 3c (`data:`-Bild ⇒ Alt statt leerem `src`). Stagehand ⏳ parked (Node ≥22.18 vs. Bau 22.12).
+**Gemessen (Spitze `83a63547`):** UI **214 Tests / 22 Dateien**, `tsc -b` 0, oxlint 0/0 (73 Dateien),
+`AGENTS-DEV.md` 120 Zeilen · Backend **227/0** (in 5b nicht gebaut) · Doc-Lint **28** Findings = nur
+Fremd-Docs (PC 14, CR 14), kein `UNBELEGT_ERLEDIGT`. Dev/Review scoppen enger — **immer selbst messen.**
+
+**Nächste Schritte:** (1) **5b-2 = nur Aufräumen** (Plan §9, abgenommen): LOW-1 zweiter
+`listProjects()`-Read in `app.routes.tsx` → Kontext + `loaded`-Tor, LOW-3 `theFrameShowsTheProjectTree`
+nach `test/app/app.shell.test.tsx`, LOW-4 R-WP-38-Prosa in Kommentaren kürzen (WHY bleibt) — Erwartung
+**216 / 22**, kein neues Verhalten, **keine zweite Review-Runde** (Jon misst selbst); danach Plan
+archivieren + Archiv löschen. (2) Rest-Backlog: C-7 (Agent-Blick read-only live), C-2a,
+C-1 TurnClaim-Timeout (`ProjectRuntime.java:348`), F8/F10, Mini 3c (`data:`-Bild ⇒ Alt statt leerem
+`src`). Stagehand ⏳ parked (Node ≥22.18 vs. Bau 22.12).
 
 ## Entscheidungen dieser Runde (Kurzfassung)
 

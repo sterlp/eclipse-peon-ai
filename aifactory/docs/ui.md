@@ -89,33 +89,33 @@ adressieren können (Befund Paul 2026-11-02; [AGENTS.md](../AGENTS.md): „UI: E
 - GIVEN die App WHEN sie gerendert wird THEN ist die Oberfläche englisch und kein sichtbarer UI-Text
   ist im Komponenten-Code hart verdrahtet — er kommt aus dem String-Catalog.
 
-### R-WP-38 — Navigation: Projektbaum im Sider, Einheiten je Projekt ❌ (Paul 2026-11-06, AntD-Umbau)
+### R-WP-38 — Navigation: Projektbaum im Sider, Einheiten je Projekt ✅ (Paul 2026-11-06, AntD-Umbau; gebaut Inkremente 5a und 5b, 2026-11-07)
 
 Die Navigation ist ein **Sider** (`Layout.Sider`) links mit einem Eintrag **je Projekt**. **Sein erster
 Eintrag ist „Projects"** — die Projektliste, in der Projekte **hinzugefügt und entfernt** werden
 ([R-WP-2](project.md)); er ist keine weitere Seite, sondern die bestehende Projekte-Seite im Sider.
-**Ein Klick
-auf das Projekt öffnet seinen Chat** — es gibt **keinen eigenen „Jon"-Eintrag** und kein „Jon"-Label
+**Ein Klick auf das Projekt öffnet seinen Chat** — es gibt **keinen eigenen „Jon"-Eintrag** und kein „Jon"-Label
 in der Navigation (Paul 2026-11-06: „Jon … muss weg"; der Agent heißt in den Docs weiter Jon, und
-seine Kachel behält den Namen, [R-WP-7](chat.md)). Unter dem Projekt stehen seine **Einheiten**:
+seine Kachel behält den Namen, [R-WP-7](chat.md)). Unter dem Projekt stehen seine **Einheiten** —
+die Bereiche eines Projekts mit eigener Adresse:
 **Files**, und **Paco**, sobald dessen Story gebaut ist (mehrere Paco-Instanzen je Projekt sind die
 spätere Vision — der Sider ist der Ort dafür, kein zweiter Mechanismus). Einheiten zeigt der Sider **nur
 unter dem Projekt, das die Adresse nennt** — ein Projekt, das nicht offen ist, hat keine eigene
-Einheits-Adresse. Der **Header** trägt nur
-noch Marke, gewählten Nutzer und **Settings** — keine „Projekte"/„Chat"-Einträge, die der Sider schon
+Einheits-Adresse. Der **Header** trägt nur noch Marke, gewählten Nutzer und **Settings** — keine
+„Projekte"/„Chat"-Einträge, die der Sider schon
 zeigt. Eine **Breadcrumb-Zeile gibt es nicht**: der Sider sagt, wo man ist. Die gewählte Einheit ist
 im Sider markiert, und Sider-Markierung und URL sind einig (R-WP-1). Der **Datei-Bereich ist eine eigene
 Adresse je Projekt**: sein Auf- und Zuklappen **ist** der Adresswechsel — es gibt keinen zweiten
 Panel-Zustand, und der „Files"-Tab im Chat ([R-WP-33](files.md)) wie der Sider-Eintrag sind zwei Griffe
 auf dieselbe Adresse. Die Chat-Seite bleibt dabei **dieselbe Instanz**: ein laufender Turn endet nicht am
 Klick auf eine Einheit, und der Chat bleibt neben dem Panel sichtbar ([R-WP-33](files.md)). Fällt das
-Fenster unter den
-Sider-Breakpoint, **klappt der Sider** und die Chat-Fläche nutzt die Breite; die Auswahl bleibt über
+Fenster unter den Sider-Breakpoint, **klappt der Sider** und die Chat-Fläche nutzt die Breite; die
+Auswahl bleibt über
 den ausgeklappten Sider erreichbar. Die **Chat-Eingabe** gehört zur **Chat-Spalte** (dockt unten
 innerhalb ihrer Spalte, [R-WP-35](chat.md)) — sie läuft nicht unter dem Sider durch, der Sider läuft
 in voller Höhe daneben.
 
-#### UC-WP-70 — projectTreeAndUnitEntries ❌
+#### UC-WP-70 — projectTreeAndUnitEntries ✅
 - GIVEN die App WHEN sie öffnet THEN zeigt der Sider **zuerst „Projects"** und darunter **ein Eintrag je
   Projekt**, ohne „Jon"-Eintrag und ohne „Jon"-Label; ein Klick auf das Projekt öffnet dessen Chat, ein
   Klick auf „Projects" die Projektliste (Hinzufügen, Entfernen) — Markierung und URL einig.
@@ -123,9 +123,9 @@ in voller Höhe daneben.
   Sider-Markierung und URL einig auf dieselbe Einheit, der Chat bleibt daneben sichtbar, und ein Reload
   landet wieder dort; ein laufender Turn endet nicht an diesem Klick.
 - GIVEN ein Fenster unter dem Sider-Breakpoint WHEN die App zeichnet THEN ist der Sider auf **Breite 0**
-  eingeklappt und die Chat-Fläche füllt die Zeile allein; über den ausgeklappten Sider bleibt die Auswahl
-  erreichbar (auch „Projects"). Der Beleg nennt die Breite des Siders (0) und die Rankenlage — das
-  Nachmessen der Pixel gehört zur Look-Abnahme am Browser (Look-Absatz oben).
+  eingeklappt und die Chat-Fläche füllt die Zeile allein; über den ausgeklappten Sider bleibt die
+  Auswahl erreichbar — **auch „Projects"**. Der Beleg nennt die Breite des Siders (0) **und** den
+  ausgeklappten Griff; das Nachmessen der Pixel gehört zur Look-Abnahme am Browser (Look-Absatz oben).
 
 ### R-WP-39 — Eine Design-Basis: AntD, Chat-Zeilen eigenes CSS ✅ (Paul 2026-11-06)
 
