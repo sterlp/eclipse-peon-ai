@@ -1,7 +1,7 @@
 import { Layout, Menu } from 'antd'
-import type { MenuItemType } from 'antd/es/menu/interface'
 
 import { content } from '../shared/content'
+import { entry, type NavItem } from './app.menu'
 import { filesKeyOf, projectKeyOf, projectSegment, siderRootKey } from './app.paths'
 import type { Project } from '../shared/dto'
 
@@ -12,13 +12,6 @@ import type { Project } from '../shared/dto'
  */
 export const SIDER_BREAKPOINT = 'lg'
 
-/**
- * The basis carries a menu's selection as the item state of its entry and states no `aria-current` of its
- * own (ANTD-A1); it does pass an unknown item prop through to the `li` it renders, so R-WP-38's "markierung
- * und URL einig" is provable to a screen reader as well. Named deviation ANTD-A9.
- */
-export type NavItem = MenuItemType & { 'aria-current'?: 'page' }
-
 interface Props {
   projects: Project[]
   /** `navKeyOfPathname(pathname)` — what the frame read from the address; this component holds no state. */
@@ -27,10 +20,6 @@ interface Props {
   onProjects: () => void
   /** The second handle of one address change: the file area of the project the address names. */
   onFiles: (project: Project) => void
-}
-
-function entry(key: string, label: string, active: boolean): NavItem {
-  return active ? { key, label, 'aria-current': 'page' } : { key, label }
 }
 
 const keyOf = (project: Project): string => projectKeyOf(projectSegment(project))

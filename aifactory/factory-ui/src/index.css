@@ -20,6 +20,9 @@
   --code-bg: #f6f8fa;
   --accent: #0969da;
   --accent-bg: rgba(9, 105, 218, 0.1);
+  /* the header band of the pages' menu (R-WP-43): one tone for the band and the dark menu on it (R-WP-39) */
+  --top-bg: #1f2328;
+  --top-text: #f0f6fc;
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
@@ -52,6 +55,8 @@
   --code-bg: #26282b;
   --accent: #58a6ff;
   --accent-bg: rgba(88, 166, 255, 0.16);
+  --top-bg: #101316;
+  --top-text: #d4d4d4;
 
   --user: #58a6ff;
   --agent: #7ee787;
@@ -72,6 +77,8 @@
     --code-bg: #26282b;
     --accent: #58a6ff;
     --accent-bg: rgba(88, 166, 255, 0.16);
+    --top-bg: #101316;
+    --top-text: #d4d4d4;
 
     --user: #58a6ff;
     --agent: #7ee787;

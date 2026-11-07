@@ -17,6 +17,11 @@ function nav() {
   return screen.getByRole('navigation', { name: content.nav.views })
 }
 
+/** The header's pages (R-WP-43) — a navigation of its own, so the tree's helpers stay unambiguous. */
+function topNav() {
+  return screen.getByRole('navigation', { name: content.nav.pages })
+}
+
 /**
  * The entry the frame marks as showing. ANTD-A1: the design basis states a menu's selection as the item state
  * of its entry (`ant-menu-item-selected`), so the mark is read there — the claim itself is unchanged: exactly
@@ -54,7 +59,7 @@ test('theMvpPagesAreReachable', async () => {
     project().name,
   ])
 
-  fireEvent.click(screen.getByRole('button', { name: content.nav.settings }))
+  fireEvent.click(within(topNav()).getByRole('menuitem', { name: content.nav.settings }))
   expect(await screen.findByText(content.config.provider)).toBeInTheDocument()
 
   fireEvent.click(within(nav()).getByRole('menuitem', { name: content.nav.projects }))
@@ -247,8 +252,10 @@ test('aReloadStaysOnSettings', async () => {
   renderApp('/settings')
   expect(await screen.findByText(content.config.provider)).toBeInTheDocument()
   // the mark of this page sits on the header's entry, not in the tree: Settings is a page and the tree
-  // answers which project (R-WP-38)
-  expect(screen.getByRole('button', { name: content.nav.settings })).toHaveAttribute('aria-current', 'page')
+  // answers which project (R-WP-38, R-WP-43) — the reload reached it without a single click
+  expect(
+    within(topNav()).getByRole('menuitem', { name: content.nav.settings }),
+  ).toHaveAttribute('aria-current', 'page')
 })
 
 // UC-WP-43

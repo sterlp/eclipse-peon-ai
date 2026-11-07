@@ -6,6 +6,34 @@ Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwiss
 `peon-plan/review-findings.md` sind das Memory); Docs duplizieren nie Core-Regeln; Plan-Archive werden
 **gelöscht**, nie committet.
 
+## Runde 4b — Look-Restart (2026-11-07)
+
+Paul hat `web-factory-mvp-2` in **main gemergt** (`542d9f4`, Branch remote gelöscht) — alles Gebaute
+ist auf main; andere Branches (`web-factory-mvp`, `web-factory-goon`) sind Vorgänger und drin. Worktree = main.
+
+Pauls Befund: IST ≈ altes Design — **Top-Menü weg, Text-Links statt Buttons, Mockup/Referenz nie
+übernommen**. Konflikt gelöst: die R-WP-38-Fassung „Sider statt Top-Menü" (2026-11-06) ist
+zurückgenommen. **[R-WP-43](ui.md) ❌** (Restart, Mockup + `ai-schulung`): dunkles Top-Menü
+(Projekte · Chat · Settings), Sider-Einheiten **Chat · Paco · Files als letztes**, Chat-Eingabe =
+Footer-Zeile, **Aktionen = echte Buttons/Selects** (auch Clear/Compact an den Kacheln). Look-Absatz in
+[ui.md](ui.md) neu: AntD-6-Elemente modern, Referenz-Muster in **AntD-6-Pendants** (nie antd-5-Code
+kopieren), alte chat.html-Optik **kein Ziel mehr**, Farben bleiben unsere Tokens. **UC-WP-76/77 ❌**.
+[index.md](index.md): UI → ◐. Offen für Paul: mehrere Chats je Agent (❓, widerspricht PR-5),
+Modell-Auswahl + Kontextanzeige (❓ MVP?), Chat-Optionen-Platzierung (⏳), Sprechblasen/Zeit unten
+(⏳ später), Top-Menü-Einträge + Ordnung (⏳) — siehe open-points „Runde 4b".
+
+**Nächster Schritt:** Inkrement 1 = Rahmen (Top-Menü + Sider-Einheiten), je Look-Inkrement **am
+Browser abnehmen**. Paul parallel: Plugin-Bugfixes **auf main** — Fabrik-Änderungen brauchen wieder
+einen eigenen Branch (Vorschlag: `web-factory-look`).
+
+Übernehmbare Muster aus `ai-schulung` (Survey 2026-11-07): dunkles horizontales Menü
+(`app/frontend/src/App.tsx`), Sidebar-Collapse je Agent + Hover-Aktionen (`ThreadNav.tsx`),
+Modell-`Select` mit Label (`ModelDropdown.tsx`), Steps + Collapse-ghost für Tools
+(`ToolCallSteps.tsx`/`ToolResultCard.tsx`), Badge+Popover (`AgentToolsBadge.tsx`), FloatButton +
+Drop-Zone, fixe Bottom-Bar mit TextArea+primärem Button. Farben der Referenz **nicht** übernehmen
+(unere Tokens gelten).
+
+
 ## Zyklus 2026-11-06/07 — Runde 4: AntD-Umbau („durchbauen"; Paul inzwischen wieder da, parallel im Core)
 
 Branch `web-factory-mvp-2`, Spitze `2ec9d4f5` = origin. Kette Inc 4: `832a9772` (4a) → `b51571b2` (N1)

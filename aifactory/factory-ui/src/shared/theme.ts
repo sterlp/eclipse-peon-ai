@@ -79,12 +79,24 @@ export function factoryTheme(dark: boolean): ThemeConfig {
       Card: { colorBgContainer: 'transparent' },
       Layout: {
         bodyBg: read('--bg'),
-        headerBg: read('--bg'),
-        headerColor: read('--text-h'),
+        // the header is a band of its own (R-WP-43): its colours are the band's, not the page's
+        headerBg: read('--top-bg'),
+        headerColor: read('--top-text'),
         headerPadding: FRAME_GUTTER,
         // the light sider paints this one, not `siderBg` — that token belongs to the dark variant and
         // would leave the tree in a second grey beside our own (R-WP-39)
         lightSiderBg: read('--bg'),
+      },
+      /**
+       * The dark menu of the header sits **on** that band, so it paints the band's own colour and not the
+       * library's stock `#001529` — two dark tones in one surface would be two looks in one place (R-WP-39).
+       * The selection is left to the basis: it derives it from `colorPrimary`, which is our `--accent`.
+       */
+      Menu: {
+        darkItemBg: read('--top-bg'),
+        darkItemColor: read('--top-text'),
+        darkItemHoverColor: read('--top-text'),
+        darkSubMenuItemBg: read('--top-bg'),
       },
     },
   }

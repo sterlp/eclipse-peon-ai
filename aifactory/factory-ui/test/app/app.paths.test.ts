@@ -3,10 +3,14 @@ import { expect, test } from 'vitest'
 import {
   chatFilesPath,
   chatPath,
+  chatRoot,
   filesKeyOf,
   navKeyOfPathname,
+  pageKeyOfPathname,
   projectKeyOf,
   projectOfSegment,
+  projectsPath,
+  settingsPath,
   siderRootKey,
 } from '../../src/app/app.paths'
 import { project } from '../shared/fixtures'
@@ -75,4 +79,25 @@ test('theSegmentResolvesTheName', () => {
   expect(projectOfSegment(registry, other.id)).toBeNull()
   expect(projectOfSegment(registry, 'gone')).toBeNull()
   expect(projectOfSegment(registry, '')).toBeNull()
+})
+
+/**
+ * The header answers another question than the tree (R-WP-43, UC-WP-76): which **page** an address is. Every
+ * chat address is the chat page — a unit of it included, because the header names the page and only the tree
+ * names the unit — and the answer is an address itself, which is what lets a menu entry navigate to its key
+ * instead of carrying a second table of where entries lead.
+ */
+// R-WP-43
+// UC-WP-76
+test('theMenuReadsThePageOfTheAddress', () => {
+  expect(pageKeyOfPathname(projectsPath)).toBe(projectsPath)
+  // a trailing slash names the same page. The tree answers nothing there — that is its own, other question
+  expect(pageKeyOfPathname(`${projectsPath}/`)).toBe(projectsPath)
+  expect(pageKeyOfPathname(chatRoot)).toBe(chatRoot)
+  expect(pageKeyOfPathname(chatPath('demo'))).toBe(chatRoot)
+  expect(pageKeyOfPathname(chatFilesPath('demo'))).toBe(chatRoot)
+  expect(pageKeyOfPathname(settingsPath)).toBe(settingsPath)
+  // an address of no page names no page: guessing the first entry would mark a page that is not showing
+  expect(pageKeyOfPathname('/no/such')).toBeNull()
+  expect(pageKeyOfPathname('/')).toBeNull()
 })

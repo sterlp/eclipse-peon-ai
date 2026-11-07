@@ -103,3 +103,24 @@ export function navKeyOfPathname(pathname: string): string | null {
   }
   return `/${rest.join('/')}` === filesSuffix ? filesKeyOf(segment) : null
 }
+
+/**
+ * Which page of the header an address names (R-WP-43, UC-WP-76) — the second reading of the path, in the
+ * same file and for the same reason: the menu shows what the address says, so a reload marks the page a click
+ * marked. The two readers answer different questions and never overwrite each other: `navKeyOfPathname` names
+ * an entry of the tree, this one names a page.
+ *
+ * Every chat address is the **chat page**, including a unit of it: the header names the page, the tree names
+ * the unit. The keys returned are addresses themselves, which is what lets a menu entry navigate to its key.
+ */
+export function pageKeyOfPathname(pathname: string): string | null {
+  // a trailing slash names the same page as the bare address, like everywhere else in this file
+  const path = pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
+  if (path === projectsPath) {
+    return projectsPath
+  }
+  if (path === chatRoot || path.startsWith(`${chatRoot}/`)) {
+    return chatRoot
+  }
+  return path === settingsPath ? settingsPath : null
+}

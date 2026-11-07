@@ -8,38 +8,45 @@ idPrefix: WP
 
 ## Ziel
 
-Eine schlanke Browser-App mit dem **Projektbaum im Sider** ([R-WP-38](ui.md)), die unter `/ui/`
-ausgeliefert wird und einen Reload übersteht.
+Eine schlanke Browser-App mit **Top-Menü und Projektbaum im Sider** ([R-WP-43](ui.md),
+[R-WP-38](ui.md)), die unter `/ui/` ausgeliefert wird und einen Reload übersteht.
 
-**Look — AntD als Basis, Chat-Zeilen eigenes Theme (Paul 2026-11-06, Umbau; zuvor Bootstrap, Paul 2026-11-02):**
-Basis ist **Ant Design** mit Theme-Tokens auf unsere Farben — Details und Abgrenzung in
-[R-WP-39](ui.md). Die Farben und die kompakte Optik bleiben die der alten `chat.html` des Plugins —
+**Look — AntD 6 als Basis, Rahmen nach Mockup (Restart Paul 2026-11-07; zuvor AntD-Basis, Paul 2026-11-06, davor Bootstrap):**
+Basis ist **Ant Design 6** mit Theme-Tokens auf unsere Farben — Details und Abgrenzung in
+[R-WP-39](ui.md). Der **Rahmen** folgt dem Mockup (`factory-ui-mockup.tsx`) und der Referenz
+`ai-schulung`: **dunkles horizontales Top-Menü** und **Projektbaum im Sider** ([R-WP-43](ui.md)),
+die Chat-Eingabe als untere Zeile ([R-WP-35](chat.md)). **Aktionen sind echte Buttons, Auswahlen
+echte Selects/Dropdowns** — kein nachgebauter Text-Link (auch Clear/Compact an den Kacheln,
+[R-WP-7](chat.md)). Von der Referenz `ai-schulung` werden **Muster und Widgets** übernommen (Steps,
+Badge+Popover, Card, FloatButton), **nie ihr Zustandsmodell** (Queue/Anker/Bestätigung bleiben die
+unseren, [R-WP-37](chat.md), [AF-ADR-003](adr/003-reference-ui-is-a-donor-not-a-source.md)) — und in
+den **neueren AntD-6-Pendants**, nicht als Kopie ihres antd-5-Codes. Die Farb-Tokens bleiben unsere:
 Nutzer-Zeile blau (`#0969da`, dunkel `#58a6ff`), Agent-Zeile grün (`#1a7f37`, dunkel `#7ee787`),
-**Akzent beider Stimmen links** (keine Rechtsbündigkeit, kein Rahmen um den Chat — die Kante gehört
-der Zeile), flache kompakte Zeilen statt Bubbles, Tool-/Think-Zeilen klein und grau. Der Chat nutzt
-die **volle Fensterbreite abzüglich eines kleinen Randes** — kein zentrierter Container, keine
-statischen Seitenränder, keine Karte um die Hauptfläche (Befund Paul am AntD-Mockup: der Rand der
-Demo-Karte stört). Die **Config-Seite** bleibt Card-Struktur (AntD `Card`, Rand `--border`, Radius,
+**Akzent beider Stimmen links** ([R-WP-29](chat.md)) — die kompakte Optik der alten `chat.html` ist
+**kein Ziel mehr**; Sprechblasen und die Zeit unter der Zeile sind ein späterer Wunsch
+(⏳ [open-points](open-points.md)). Der Chat nutzt die **volle Fensterbreite abzüglich eines kleinen
+Randes** — kein zentrierter Container, keine statischen Seitenränder, keine Karte um die
+Hauptfläche. Die **Config-Seite** bleibt Card-Struktur (AntD `Card`, Rand `--border`, Radius,
 Padding, kein Hintergrund); Eingaben tragen die **Maße der Chat-Eingabe**, Statuszeilen (Key-Status)
-**Mono**. Von der Referenz `ai-schulung` werden Muster und Widgets übernommen, **nie ihr
-Zustandsmodell** (Queue/Anker/Bestätigung bleiben unsere, [R-WP-37](chat.md)). Die endgültige
-Look-Abnahme erfolgt im Smoke-Test am Prototypen.
+**Mono**. Jedes Look-Inkrement wird **am Browser abgenommen** (Pixel, Dunkel, Elemente) — jsdom
+beweist Verdrahtung, nie Optik.
 
 ## Regeln
 
-### R-WP-1 — Seiten, stabile Adressen, Reload ✅ (geschärft Paul 2026-11-02; Form der Navigation 2026-11-06 nach [R-WP-38](ui.md))
+### R-WP-1 — Seiten, stabile Adressen, Reload ✅ (geschärft Paul 2026-11-02; Rahmen 2026-11-07 nach [R-WP-43](ui.md))
 
 Die App erreicht **genau diese Seiten**: global *Projekte* und *Settings* (Config,
 [R-WP-16](config.md)), je Projekt den *Jon-Chat* und den Datei-Bereich; die *Paco*-Seite kommt mit
-seiner Story ([Paco](paco.md)). Wie diese Seiten erreichbar sind, regelt
-[R-WP-38](ui.md) (Projektbaum im Sider) — die frühere Top-Navigation mit drei Einträgen und dem
-Grundsatz „keine linke Sidebar" ist durch Pauls AntD-Entscheidung vom 2026-11-06 ersetzt.
+seiner Story ([Paco](paco.md)). Wie diese Seiten erreichbar sind, regeln [R-WP-43](ui.md)
+(Top-Menü) und [R-WP-38](ui.md) (Projektbaum im Sider) — die Fassung „Sider **statt** Top-Menü"
+(2026-11-06) hat Paul am 2026-11-07 zugunsten des Mockup-Rahmens (Top-Menü **und** Sider)
+zurückgenommen.
 
 **URL-stabil:** jede Navigation (Projekt öffnen, Einheit wählen, View wechseln) ändert die URL
 (**Aktion → URL → UI-Change**) — kein rein funktionierender `useState`-Zustand; ein Reload bleibt auf
 der Seite (UC-WP-43). Die Adresse `/ui/chat` **ohne** Projekt führt auf **Projekte**; war zuletzt ein
-Projekt aktiv, öffnet sich dessen Chat (UC-WP-51) — einen „Chat"-**Eintrag** in der Navigation gibt es
-nicht mehr ([R-WP-38](ui.md)).
+Projekt aktiv, öffnet sich dessen Chat (UC-WP-51) — der Menüeintrag „Chat" führt dorthin
+([R-WP-43](ui.md)).
 
 #### UC-WP-1 — pagesOfTheMvpApp ✅ (früher „showsExactlyTheseFourPages", umgebaut Paul 2026-11-02)
 - GIVEN die App WHEN der Nutzer navigiert THEN erreicht er global *Projekte* und *Settings* (Config,
@@ -55,7 +62,7 @@ nicht mehr ([R-WP-38](ui.md)).
 
 #### UC-WP-51 — chatOpensLastActiveProject ✅
 - GIVEN mehrere Projekte WHEN `/ui/chat` **ohne** Projekt geöffnet wird (Adresse, Lesezeichen,
-  Weiterleitung — einen „Chat"-Eintrag gibt es seit [R-WP-38](ui.md) nicht mehr) THEN öffnet der Chat des
+  Weiterleitung oder der Menüeintrag „Chat", [R-WP-43](ui.md)) THEN öffnet der Chat des
   zuletzt aktiven Projekts; ohne zuletzt aktives Projekt führt die Adresse auf die Projektliste.
 
 #### UC-WP-52 — everyNavigationChangesTheUrl ✅
@@ -89,7 +96,7 @@ adressieren können (Befund Paul 2026-11-02; [AGENTS.md](../AGENTS.md): „UI: E
 - GIVEN die App WHEN sie gerendert wird THEN ist die Oberfläche englisch und kein sichtbarer UI-Text
   ist im Komponenten-Code hart verdrahtet — er kommt aus dem String-Catalog.
 
-### R-WP-38 — Navigation: Projektbaum im Sider, Einheiten je Projekt ✅ (Paul 2026-11-06, AntD-Umbau; gebaut Inkremente 5a und 5b, 2026-11-07)
+### R-WP-38 — Navigation: Projektbaum im Sider, Einheiten je Projekt ✅ (Paul 2026-11-06, AntD-Umbau; gebaut Inkremente 5a und 5b, 2026-11-07; Header und Einheiten-Ordnung seit 2026-11-07 in [R-WP-43](ui.md))
 
 Die Navigation ist ein **Sider** (`Layout.Sider`) links mit einem Eintrag **je Projekt**. **Sein erster
 Eintrag ist „Projects"** — die Projektliste, in der Projekte **hinzugefügt und entfernt** werden
@@ -97,13 +104,12 @@ Eintrag ist „Projects"** — die Projektliste, in der Projekte **hinzugefügt 
 **Ein Klick auf das Projekt öffnet seinen Chat** — es gibt **keinen eigenen „Jon"-Eintrag** und kein „Jon"-Label
 in der Navigation (Paul 2026-11-06: „Jon … muss weg"; der Agent heißt in den Docs weiter Jon, und
 seine Kachel behält den Namen, [R-WP-7](chat.md)). Unter dem Projekt stehen seine **Einheiten** —
-die Bereiche eines Projekts mit eigener Adresse:
-**Files**, und **Paco**, sobald dessen Story gebaut ist (mehrere Paco-Instanzen je Projekt sind die
-spätere Vision — der Sider ist der Ort dafür, kein zweiter Mechanismus). Einheiten zeigt der Sider **nur
+die Bereiche eines Projekts mit eigener Adresse; die vollständige Ordnung nennt
+[R-WP-43](ui.md). Einheiten zeigt der Sider **nur
 unter dem Projekt, das die Adresse nennt** — ein Projekt, das nicht offen ist, hat keine eigene
-Einheits-Adresse. Der **Header** trägt nur noch Marke, gewählten Nutzer und **Settings** — keine
-„Projekte"/„Chat"-Einträge, die der Sider schon
-zeigt. Eine **Breadcrumb-Zeile gibt es nicht**: der Sider sagt, wo man ist. Die gewählte Einheit ist
+Einheits-Adresse. Der **Header** trägt Marke, gewählten Nutzer und die globale Navigation — geregelt
+in [R-WP-43](ui.md). Eine **Breadcrumb-Zeile gibt es nicht**: der Sider sagt, wo man ist. Die
+gewählte Einheit ist
 im Sider markiert, und Sider-Markierung und URL sind einig (R-WP-1). Der **Datei-Bereich ist eine eigene
 Adresse je Projekt**: sein Auf- und Zuklappen **ist** der Adresswechsel — es gibt keinen zweiten
 Panel-Zustand, und der „Files"-Tab im Chat ([R-WP-33](files.md)) wie der Sider-Eintrag sind zwei Griffe
@@ -162,3 +168,37 @@ App: wo die App mountet, gilt ihr Theme; ein Ausschnitt, der ohne sie montiert, 
   Grundblatts überein — nicht nur zwei Beispiele.
 - GIVEN der Chat WHEN er den Verlauf zeichnet THEN tragen Nutzer-, Jon- und Werkzeug-Zeilen unsere
   Klassen und unsere Akzentlinie; AntD-Elemente stehen nur außerhalb des Verlaufs.
+
+### R-WP-43 — Rahmen: Top-Menü, Einheiten im Sider, Aktionen als Elemente ❌ (Restart Paul 2026-11-07 — Mockup `factory-ui-mockup.tsx` + Referenz `ai-schulung`; nichts davon gebaut)
+
+Der **Header** trägt Marke, das horizontale **Top-Menü** (AntD `Menu`, `mode="horizontal"`, dunkel —
+wie die erste Version der App und wie im Mockup), den gewählten Nutzernamen und **Settings**. Die
+Menü-Einträge sind die globalen Seiten **Projekte · Chat · Settings** (Config, [R-WP-16](config.md)):
+„Chat" öffnet den Chat des zuletzt aktiven Projekts (UC-WP-51), „Projekte" die Projektliste. Die
+**Markierung im Menü folgt der Adresse** ([R-WP-1](ui.md)) — Menü und Sider markieren dieselbe
+Adresse einig.
+
+Der **Sider** bleibt der Projektbaum ([R-WP-38](ui.md)); unter einem geöffneten Projekt stehen dessen
+**Einheiten in dieser Ordnung: Chat, Paco (sobald dessen Story gebaut ist), Files als letztes**. Der
+Chat-Eintrag und der Klick auf das Projekt sind **zwei Griffe auf dieselbe Adresse**
+([R-WP-38](ui.md)) — ein laufender Turn endet an keinem von beiden. Die **Chat-Eingabe** bleibt die
+untere Zeile der Chat-Spalte ([R-WP-35](chat.md)) — sie ist die Footer-Zeile des Mockups.
+**Aktionen** (Clear, Compact, Senden, …) sind **echte AntD-Elemente** — `Button` statt nacktem
+Text-Link, `Select`/`Dropdown` statt Textliste — auch an den Kacheln ([R-WP-7](chat.md)); die
+Chat-Optionen (Clear/Compact je Chat) sind ein eigener Punkt (⏳ [open-points](open-points.md)).
+
+#### UC-WP-76 — topMenuNavigates ❌
+- GIVEN die App WHEN sie zeichnet THEN trägt der Header ein dunkles horizontales Menü mit genau
+  **Projekte · Chat · Settings**.
+- GIVEN der Nutzer wählt „Chat" WHEN kein Projekt aktiv ist THEN öffnet sich die Projektliste; mit
+  zuletzt aktivem Projekt dessen Chat (UC-WP-51).
+- GIVEN die Adresse wechselt WHEN der Rahmen zeichnet THEN folgt die Menü-Markierung der Adresse —
+  Menü- und Sider-Markierung sind einig.
+
+#### UC-WP-77 — unitsInTheProjectTree ❌
+- GIVEN ein geöffnetes Projekt WHEN der Sider zeichnet THEN stehen unter dem Projekt in dieser
+  Ordnung **Chat**, **Paco** (sobald gebaut) und **Files** als letztes; der Chat-Eintrag und der
+  Projekt-Klick öffnen dieselbe Adresse, genau ein Eintrag ist markiert, und ein Reload landet wieder
+  dort.
+- GIVEN der Nutzer wählt im Sider die Einheit Chat WHEN ein Turn läuft THEN endet der Turn nicht
+  (UC-WP-70, GIVEN 2).

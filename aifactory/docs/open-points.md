@@ -2,6 +2,32 @@
 
 Status: ❓ offen · ⏳ selbst entschieden (Rückversicherung steht aus) · 🔒 geklärt.
 Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entfällt.
+## Runde 4b — Look-Restart (Paul 2026-11-07, „docs schreiben, ich will ein Restart machen")
+
+Auslöser: Pauls IST-Screenshots gegen SOLL-Bild (`SOLL.png`) + Mockup (`factory-ui-mockup.tsx`).
+Entschieden: **Rahmen nach Mockup** — dunkles Top-Menü **und** Sider ([R-WP-43](ui.md) ❌ neu;
+die Fassung „Sider statt Top-Menü" vom 2026-11-06 ist zurückgenommen, [R-WP-1](ui.md)). Aktionen
+werden echte Buttons/Selects. Neu im SOLL, Rückprüfung offen:
+
+* **⏳ Top-Menü-Einträge = Projekte · Chat · Settings** (2026-11-07, Jon, abgeleitet aus der ersten
+  Version + Mockup) — [R-WP-43/UC-WP-76](ui.md). *Andersfall:* ohne „Chat" im Menü (nur Sider) oder
+  ein vierter Eintrag.
+* **⏳ Einheiten-Ordnung Chat · Paco · Files als letztes** (2026-11-07, aus dem Mockup-Kommentar
+  „… die chats Jon / Paco / Files als letztes?") — [R-WP-43/UC-WP-77](ui.md). *Andersfall:* wie
+  gebaut (Projekt-Klick öffnet den Chat, kein Chat-Eintrag im Sider).
+* **❓ Mehrere Chats je Agent** („Chat 59" + „+ Neuer Chat" im SOLL-Bild) — widerspricht **PR-5**
+  (ein Jon, **ein** Gespräch je Projekt, [R-WP-15](chat.md)); gehört zur Chats-Übersicht (Vision,
+  unten, Paco-Story). *Frage:* MVP oder später?
+* **⏳ Sprechblasen + Zeit unter der Zeile** (2026-11-07, Paul: „nicht zwingend … mit der Zeit unten,
+  aber wäre gut") — MVP bleibt bei [R-WP-29](chat.md) (flache Zeilen, Akzent links). *Andersfall:*
+  eigene Regel in [chat.md](chat.md), kein Nebenprodukt.
+* **⏳ Modell-Auswahl + Kontextanzeige** (SOLL-Bild: Modell-Dropdown „gpt-6.1-sol", „Kontext ~914") —
+  **neues Feature, steht in keinem Doc**. *Frage:* MVP oder später? Modell je Chat wählbar kollidiert
+  mit [R-WP-23](config.md) (Modell gehört je Agent in die Config).
+* **⏳ Chat-Optionen (Clear/Compact am Chat, nicht nur an den Kacheln)** (2026-11-07, Pauls Punkte 4/5) —
+  die Kachel-Aktionen werden Buttons ([R-WP-43](ui.md)); **wo** die Chat-Optionen liegen (Dropdown im
+  Chat-Kopf wie in der Referenz?), vor dem Inkrement klären. [R-WP-7](chat.md) wird angefasst.
+
 ## Runde 3 — AntD-Umbau der Oberfläche (Paul 2026-11-06)
 
 Entschieden: **AntD als neue Design-Basis**, Bootstrap verlässt die App

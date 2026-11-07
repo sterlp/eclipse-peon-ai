@@ -4,7 +4,7 @@ import { theme } from 'antd'
 
 import { factoryTheme } from '../../src/shared/theme'
 import { usePrefersDark } from '../../src/shared/prefers.dark'
-import { tokenTable, tokenValues } from './sheets'
+import { declarations, declares, tokenTable, tokenValues } from './sheets'
 import {
   isDesignLibrary,
   manifestPackageNames,
@@ -131,13 +131,57 @@ test('theSurfacesTheBasisPaintsOnItsOwnFollowTheFrame', () => {
   // page stays the surface — the look says "kein Hintergrund", which is a token, not a CSS override
   expect(card.colorBgContainer, 'a card fills nothing').toBe('transparent')
   expect(layout.bodyBg, 'the frame behind the content is the sheet background').toBe(tokenValues('--bg')[0])
-  expect(layout.headerBg, 'the header is the same surface, not a library band').toBe(tokenValues('--bg')[0])
-  expect(layout.headerColor, 'and it speaks in the heading colour').toBe(tokenValues('--text-h')[0])
+  // INC-L1-D1: since R-WP-43 the header is a band of its own. The claim is the one that was here — its colour
+  // comes from the sheet and not from the library — only the field it reads is the band's own
+  expect(layout.headerBg, 'the header band is a token of the sheet, not a library band').toBe(
+    tokenValues('--top-bg')[0],
+  )
+  expect(layout.headerColor, 'and it speaks in the colour of the band').toBe(tokenValues('--top-text')[0])
   // R-WP-38's sider is the light variant, and the light variant paints `lightSiderBg` — `siderBg` is a
   // token of the dark one and would leave the tree in a library grey beside our own page
   expect(layout.lightSiderBg, 'the project tree stands on the sheet, not on a second grey').toBe(
     tokenValues('--bg')[0],
   )
+})
+
+/**
+ * R-WP-43 gives the header a dark menu, R-WP-39 keeps its colours ours: band and menu have to answer with the
+ * same two tokens, in both colour modes. The geometry of that row is read from the sheet as well — jsdom lays
+ * out nothing, so it proves the wiring and never the look, which is accepted in a browser.
+ */
+// R-WP-43
+// UC-WP-76
+test('theTopBandAndItsMenuComeFromOurTokens', () => {
+  for (const dark of [false, true]) {
+    const components = factoryTheme(dark).components ?? {}
+    const layout = (components.Layout ?? {}) as Record<string, string>
+    const menu = (components.Menu ?? {}) as Record<string, string>
+    const band = dark ? DARK_TABLE['--top-bg'] : tokenValues('--top-bg')[0]
+    const ink = dark ? DARK_TABLE['--top-text'] : tokenValues('--top-text')[0]
+
+    expect(layout.headerBg, `the band, ${dark ? 'dark' : 'light'}`).toBe(band)
+    expect(layout.headerColor, 'the ink of the band').toBe(ink)
+    // the menu sits ON the band: the library's stock dark would be a second dark tone inside one surface
+    expect(menu.darkItemBg, 'the menu paints the band, not the library dark').toBe(band)
+    expect(menu.darkItemColor, 'and speaks in the ink of the band').toBe(ink)
+    expect(menu.darkSubMenuItemBg, 'a part of the band is still the band').toBe(band)
+  }
+
+  // the band is a field of the dark table in its own right (R-WP-39: dark is another table, not a filter)
+  expect(DARK_TABLE['--top-bg'], 'the dark sheet states the band').toBeDefined()
+  expect(DARK_TABLE['--top-bg'], 'and the dark band is not the light one').not.toBe(
+    tokenValues('--top-bg')[0],
+  )
+
+  // the row the three parts share, as the sheet states it
+  const header = declarations('.app-header')
+  expect(header).toMatch(/display:\s*flex/)
+  expect(header).toMatch(/align-items:\s*center/)
+  const top = declarations('.app-top')
+  expect(top).toMatch(/flex:\s*1/)
+  expect(top, 'the menu shrinks instead of stretching the header').toMatch(/min-width:\s*0/)
+  // and no second way to the settings page is left beside the menu's entry (R-WP-43)
+  expect(declares('.app-settings'), 'the settings button of the header is gone').toBe(false)
 })
 
 // UC-WP-71

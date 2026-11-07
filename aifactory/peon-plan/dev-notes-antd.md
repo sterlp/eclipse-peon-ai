@@ -1140,5 +1140,22 @@ Drei Punkte, **kein Verhalten** — zwei Nachweislücken und ein Kommentar mit w
 - **Umzug aus `AGENTS-DEV.md` hierher (Cap):** „Could not parse CSS stylesheet" bei **kaltem vite-Cache**
   ist Rauschen — erst `rm -rf node_modules/.vite`, dann auf HEAD vergleichen, bevor es als Befund zählt.
 
+## Inkrement 1a (Top-Menü, 2026-11-07)
+
+- **`Menu mode="horizontal" theme="dark"` läuft unter jsdom ohne Eingriff:** der bestehende `ResizeObserver`-Stub
+  (`test/shared/setup.ts`) ruft nie zurück ⇒ kein Overflow, alle Einträge als `menuitem` erreichbar.
+  **`disabledOverflow` war nicht nötig** (Plan R1) — also auch keine neue Zeile in `AGENTS-DEV.md`.
+- **„Menü-Key = Adresse" ist am Chat-Eintrag nicht beweisbar:** `onNavigate(chatRoot)` statt `key` lässt
+  `theTopChatEntryLeadsToTheLastChat` **grün** — `/chat` leitet auf das letzte Projekt um, die Zieladresse ist
+  dieselbe. Gefangen haben die Mutation `theMvpPagesAreReachable`, `theUiSpeaksEnglish`,
+  `theSettingsEntryIsCurrentOnSettings`. **Regel:** so eine Gleichung über die Einträge pinnen, deren Ziel
+  sichtbar auseinanderfällt (`/projects`, `/settings`), nicht über den, in dem ein Redirect beide deckungsgleich macht.
+- **Ein Band, zwei Leser:** `Layout.headerBg` **und** `Menu.darkItemBg` müssen denselben Token lesen
+  (INC-L1-D1), sonst liegt AntDs Vorratston `#001529` auf unserem Band. Neuer Token ⇒ **drei** Stellen in
+  `index.css` (hell, `[data-theme='dark']`, Media-Kopie), sonst spaltet `theDarkSheetIsOneTable`.
+- **Zweites `<nav>` braucht eigenen Namen** (`content.nav.pages`), sonst werden alle
+  `getByRole('navigation', { name: content.nav.views })`-Helfer mehrdeutig.
+- **Doc-Lint-Baseline 28 → 29:** Jons Docs-Änderung bringt `UNBELEGT UC-WP-77` (Slice 1b) — kein eigener Befund.
+
 
 

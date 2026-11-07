@@ -16,9 +16,10 @@
   border-bottom: 1px solid var(--border);
 }
 
+/* the brand stands on the dark band, so it speaks in the band's colour and does not inherit the page's */
 .app-title {
   font-weight: 650;
-  color: var(--text-h);
+  color: var(--top-text);
   white-space: nowrap;
 }
 
@@ -51,9 +52,19 @@
   padding-inline-start: 2.25rem;
 }
 
-/* Settings at the end of the header speaks in the heading colour like the brand beside it. */
-.app-settings {
-  color: var(--text-h);
+/* The pages' menu fills the header between the brand and the name (R-WP-43). `min-width: 0` is what lets it
+   shrink: the menu's own overflow is the basis' problem to solve, not one that stretches the header. Its
+   colours are the band's own, mapped in `shared/theme.ts` (R-WP-39). */
+.app-top {
+  flex: 1;
+  min-width: 0;
+}
+
+/* a horizontal menu carries a bottom edge and a container of its own; beside the band those read as a second
+   strip inside one surface, which is what R-WP-39 rules out */
+.app-top .ant-menu {
+  background: transparent;
+  border-bottom: 0;
 }
 
 .app-main {
