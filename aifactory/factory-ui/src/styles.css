@@ -4,16 +4,17 @@
 
 .app {
   padding: 0 1rem 2rem;
+  background: var(--bg);
 }
 
-/* The basis' header carries its own height and gutter (theme tokens); what is ours is the rule below it
-   and the order of its parts. */
+/* The basis' header carries its own height and gutter (theme tokens); what is ours is the order of its
+   parts and the way it reaches the edges of the window. The band is a surface of its own (`--top-bg`), so
+   nothing separates it from the page with a second line (R-WP-39). */
 .app-header {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   margin: 0 -1rem 1rem;
-  border-bottom: 1px solid var(--border);
 }
 
 /* the brand stands on the dark band, so it speaks in the band's colour and does not inherit the page's */
@@ -35,8 +36,9 @@
   min-height: 0;
 }
 
-/* The project tree (R-WP-38): only its edge is ours — its surface is the theme's `lightSiderBg`, which is
-   mapped in `shared/theme.ts`, and the mark on its entry is the basis' own accent (R-WP-39). */
+/* The project tree (R-WP-38): only its edge is ours — its surface is the theme's `lightSiderBg`, mapped to
+   `--surface` in `shared/theme.ts`, so the tree is a surface of its own beside the page; the mark on its
+   entry is the basis' own accent (R-WP-39). */
 .app-sider {
   border-right: 1px solid var(--border);
 }
@@ -73,13 +75,16 @@
   min-width: 0;
 }
 
-/* A view scrolls in its own area, never the page (R-WP-35). The chat view replaces this with a column of
-   its own further down, because its scroll belongs to the log and not to the view. */
+/* A view scrolls in its own area, never the page (R-WP-35), and it reaches the edge of the window: the
+   content is centred **inside** the scroll area by the gutter, so the scrollbar stays at the side of the
+   surface instead of running down the middle of the page. The chat view replaces this with a column of its
+   own further down, because its scroll belongs to the log and not to the view. */
 .view {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   min-width: 0;
+  padding-inline: var(--content-gutter);
 }
 
 .add-project {
@@ -98,7 +103,7 @@
 button {
   border: 1px solid var(--border);
   border-radius: 0.4rem;
-  background: var(--code-bg);
+  background: var(--surface);
   color: var(--text-h);
   padding: 0.4rem 0.8rem;
   cursor: pointer;
@@ -200,6 +205,7 @@ button {
     gap: 0.25rem;
     border: 1px solid var(--border);
     border-radius: 0.4rem;
+    background: var(--surface);
     padding: 0.3rem 0.5rem;
     font-size: 0.82rem;
   }
@@ -613,7 +619,7 @@ button {
     padding: 0.4rem 0.6rem;
     border: 1px solid var(--border);
     border-radius: 0.4rem;
-    background: var(--bg);
+    background: var(--surface);
     color: var(--text-h);
     font: inherit;
   }
@@ -715,7 +721,7 @@ button {
   border: 1px solid var(--border);
   border-right: none;
   border-radius: 0.5rem 0 0 0.5rem;
-  background: var(--bg);
+  background: var(--surface);
   color: var(--text);
   writing-mode: vertical-rl;
   font-size: 0.8rem;
@@ -783,7 +789,7 @@ button {
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--border);
   border-radius: 0.5rem;
-  background: none;
+  background: var(--surface);
   text-align: left;
   cursor: pointer;
 
@@ -918,7 +924,7 @@ button {
   width: min(24rem, 92vw);
   padding: 1rem 1.25rem 2rem;
   overflow-y: auto;
-  background: var(--bg);
+  background: var(--surface);
   border-left: 1px solid var(--border);
   box-shadow: var(--shadow);
 

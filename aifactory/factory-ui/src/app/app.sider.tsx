@@ -68,6 +68,9 @@ export function AppSider({ projects, activeKey, onOpen, onProjects, onFiles }: P
     <Layout.Sider
       className="app-sider"
       theme="light"
+      // the width the look names (R-WP-43) — the basis' own default is the same number, stated here so the
+      // frame of the tree is a decision and not a coincidence
+      width={200}
       breakpoint={SIDER_BREAKPOINT}
       collapsedWidth={0}
     >

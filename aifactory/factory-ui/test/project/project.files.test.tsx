@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-libra
 
 import { renderApp } from '../shared/app.harness'
 import { project } from '../shared/fixtures'
-import { appSheet, declarations } from '../shared/sheets'
+import { declarations } from '../shared/sheets'
 import { content } from '../../src/shared/content'
 import type { DirectoryResponse, FileResponse, FileEntry, FileRoot } from '../../src/project/files.client'
 
@@ -335,8 +335,6 @@ test('theFilesTabOpensTheSlideOut', async () => {
   // ANTD-A4 (R-WP-39): the icon set of the basis names the direction in its class (`anticon-left`,
   // `anticon-right`) — the same claim about the arrow, read where the new set states it
   expect(tab.querySelector('.anticon-left'), 'a closed tab points inwards').not.toBeNull()
-  // the tab stands sideways at the edge — jsdom lays out nothing, so the look is read where it is written
-  expect(declarations('.files-tab'), 'the tab is vertical').toContain('writing-mode: vertical-rl')
 
   fireEvent.click(tab)
   await screen.findByTestId('files-panel')
@@ -379,11 +377,6 @@ test('theTreeExpandsALevel', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'src/' }))
   expect(await screen.findByRole('button', { name: 'test/' })).toBeInTheDocument()
   expect(factory.filesCalls, 'an answered level is not asked twice').toHaveLength(2)
-
-  // a level is indented against a rail
-  expect(appSheet(), 'a level is indented against a rail').toMatch(
-    /\.files-level\s*\{[\s\S]*?\.files-level\s*\{[^}]*border-left/,
-  )
 })
 
 // UC-WP-60
@@ -412,13 +405,6 @@ test('theViewerHighlightsTheFile', async () => {
   expect(viewer.textContent).toContain('export const app = 1')
   expect(viewer.querySelector('span[style]'), 'a token carries the colour of the theme').not.toBeNull()
   expect(viewer.querySelector('pre.shiki')?.getAttribute('style') ?? '').toContain('--shiki-dark')
-
-  // code and tree read from the left — the centred column is what the doc rejects
-  expect(declarations('.files-panel')).toContain('text-align: left')
-  expect(declarations('.files-viewer')).toContain('text-align: left')
-  expect(filesBlock(), 'nothing in the file area centres or self-centres a block').not.toMatch(
-    /text-align:\s*center|margin:\s*0 auto/,
-  )
 })
 
 // UC-WP-61
@@ -454,18 +440,12 @@ test('theChatStaysVisibleWhileTheViewerIsOpen', async () => {
   expect(within(chat).getByRole('textbox')).toBeEnabled()
   // and the panel shares the row with it instead of standing over it
   expect(panel.parentElement?.contains(chat), 'chat and panel are columns of one row').toBe(true)
-
-  // an overlay would leave the row; the sheet keeps the panel in it and only the tab out
-  expect(declarations('.chat-workspace'), 'the row holds both').toContain('display: flex')
-  expect(declarations('.files-panel'), 'the panel is no overlay').not.toMatch(/position:/)
-  // out of the flow, yes — but hung on the row and not on the viewport, which is what `filesTabSitsOnThePanelTop` pins
-  expect(declarations('.files-tab'), 'the tab hangs on the row').toContain('position: absolute')
 })
 
 // UC-WP-60
-test('filesTabSitsOnThePanelTop', async () => {
-  // the sheet below is read as text — but the wide edge is a **sibling** rule, and jsdom sees neither the
-  // edge nor the order it depends on, so the mount that order has to be true for is made right here
+test('theWideTabRidesTheEdgeOfTheWidePanel', async () => {
+  // the wide edge is a **sibling** rule, and jsdom sees neither the edge nor the order it depends on, so the
+  // mount that order has to be true for is made right here
   stubFactory()
   await openProjectChat()
   await openFileInTree('app.tsx (12 B)')
@@ -477,30 +457,9 @@ test('filesTabSitsOnThePanelTop', async () => {
     panel,
   )
 
-  const tab = declarations('.files-tab')
-
-  // a fixed tab at a percentage height met the panel top by accident, at one window height only; hung on
-  // the row, whose top edge the panel is stretched to, the two meet always (R-WP-33)
-  expect(tab, 'the tab hangs on the row, not on the viewport').toContain('position: absolute')
-  expect(tab).not.toContain('position: fixed')
-  expect(tab, 'the tab shares the top edge of that row').toContain('top: 0')
-  expect(tab).not.toMatch(/top:\s*\d+%/)
-
-  // closed at the right edge of the chat area, open at the edge of the panel, wide along with the panel
-  expect(tab).toContain('right: 0')
-  expect(appSheet(), 'the open tab rides the edge of the panel').toMatch(
-    /&\[data-open='true'\]\s*\{\s*right:\s*var\(--files-width\)/,
-  )
-  // INC-5B-D1: the same claim, read where the width lives. The area is wide, the tab beside it rides that
-  // edge — a second copy of the width-state on the tab would be the second owner this increment removes.
+  // INC-5B-D1: the width is the area's own state and is read where it lives — a second copy of that state on
+  // the tab would be the second owner this increment removed
   expect(declarations(".files-panel[data-wide='true'] + .files-tab")).toContain('right: var(--files-wide)')
-
-  // the row is the box it hangs on, and the panel keeps the height the frame gives it — `100vh` would cut
-  // it below the frame, which is the other half of a top edge that has to stay shared
-  expect(declarations('.chat-workspace'), 'the row is the positioned box').toContain('position: relative')
-  expect(declarations('.files-panel'), 'the panel is capped by the frame, not the viewport').not.toContain(
-    'max-height',
-  )
 })
 
 // UC-WP-60
@@ -524,14 +483,3 @@ test('closingThePanelForgetsThePositionInIt', async () => {
   expect(screen.queryByTestId('files-viewer')).toBeNull()
   expect(screen.getByRole('button', { name: 'src/' })).toHaveAttribute('aria-expanded', 'false')
 })
-
-/** The file area's own run of the sheet: from the row that holds it to the line that refuses a path. */
-function filesBlock(): string {
-  const source = appSheet()
-  const start = source.indexOf('.chat-workspace {')
-  const end = source.indexOf('.files-error {')
-  if (start < 0 || end < start) {
-    throw new Error('the file area has its own run of the sheet: .chat-workspace { … .files-error {')
-  }
-  return source.slice(start, end)
-}

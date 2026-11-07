@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
 import { renderApp } from '../shared/app.harness'
-import { baseDeclarations, declarations, declares, tokenValues } from '../shared/sheets'
+import { baseDeclarations, declarations, declares } from '../shared/sheets'
 import { separatorsOf } from '../shared/log.parts'
 import { ChatPage } from '../../src/chat/chat.page'
 import { project } from '../shared/fixtures'
@@ -965,9 +965,10 @@ test('userLineCarriesTheBlueAccentOnTheLeft', async () => {
   expect(line.className).not.toContain('agent')
 
   // what colour a line has is no fact of the DOM: the sheet paints it. The class the row carries has to be
-  // the class the sheet paints, and the token it paints has to be the blue of chat.html (R-WP-29). The doc
-  // line that asked for the right edge was the source of F2 — the two assertions that pinned it now pin
-  // its opposite, so the old contract is inverted here and not dropped.
+  // the class the sheet paints, and it has to paint it with **our** token (R-WP-29) — which colour that token
+  // answers with is the look's, never a test's. The doc line that asked for the right edge was the source of
+  // F2 — the two assertions that pinned it now pin its opposite, so the old contract is inverted here and not
+  // dropped.
   const painted = declarations('.chat-log .chat-line.user')
   expect(painted, 'the accent of the person is the user token').toContain('var(--user)')
   expect(painted, 'the accent sits on the left, like the agent accent').toContain('border-left')
@@ -975,7 +976,6 @@ test('userLineCarriesTheBlueAccentOnTheLeft', async () => {
   expect(painted, 'the line reads in the flow, not against it').not.toContain('text-align: right')
   expect(declarations('.chat-log .chat-line'), 'and the width of the accent stays with the line rule')
     .toContain('border-left: 3px solid transparent')
-  expect(tokenValues('--user')[0], 'the blue of chat.html, not a lookalike').toBe('#0969da')
 })
 
 // UC-WP-55
@@ -1000,7 +1000,6 @@ test('agentLineIsGreenAndNamedByItsAgent', async () => {
     .toContain('text-transform: uppercase')
   expect(declarations('.chat-log .chat-line.user .chat-role'), 'and the name of a person in their blue')
     .toContain('var(--user)')
-  expect(tokenValues('--agent')[0], 'the green of chat.html, not a lookalike').toBe('#1a7f37')
 })
 
 // UC-WP-55

@@ -19,14 +19,28 @@ werden echte Buttons/Selects. Neu im SOLL, Rückprüfung offen:
   (ein Jon, **ein** Gespräch je Projekt, [R-WP-15](chat.md)); gehört zur Chats-Übersicht (Vision,
   unten, Paco-Story). *Frage:* MVP oder später?
 * **⏳ Sprechblasen + Zeit unter der Zeile** (2026-11-07, Paul: „nicht zwingend … mit der Zeit unten,
-  aber wäre gut") — MVP bleibt bei [R-WP-29](chat.md) (flache Zeilen, Akzent links). *Andersfall:*
-  eigene Regel in [chat.md](chat.md), kein Nebenprodukt.
+  aber wäre gut") — die Sprechblasen-Optik selbst ist Teil der Design-Übernahme ([R-WP-29](chat.md));
+  offen ist nur die **Zeit unter der Zeile**. *Andersfall:* eigene Regel in [chat.md](chat.md), kein
+  Nebenprodukt.
 * **⏳ Modell-Auswahl + Kontextanzeige** (SOLL-Bild: Modell-Dropdown „gpt-6.1-sol", „Kontext ~914") —
   **neues Feature, steht in keinem Doc**. *Frage:* MVP oder später? Modell je Chat wählbar kollidiert
   mit [R-WP-23](config.md) (Modell gehört je Agent in die Config).
 * **⏳ Chat-Optionen (Clear/Compact am Chat, nicht nur an den Kacheln)** (2026-11-07, Pauls Punkte 4/5) —
   die Kachel-Aktionen werden Buttons ([R-WP-43](ui.md)); **wo** die Chat-Optionen liegen (Dropdown im
   Chat-Kopf wie in der Referenz?), vor dem Inkrement klären. [R-WP-7](chat.md) wird angefasst.
+* **🔒 Design-Tests-Regel (2026-11-07, Paul: „keine Tests anlegen, Tests die im Weg sind stabilisieren
+  oder löschen")** — Design-Änderungen ändern **keine** UI-Tests; für Look gibt es keine neuen Tests;
+  Abnahme am Browser. Steht in [R-WP-39](ui.md).
+* **⏳ Bubbles = Teil der Übernahme** (2026-11-07, Jon, abgeleitet aus „übernimm das Design aus der
+  ai-schulung") — der Verlauf folgt der Referenz-Optik (Nutzer-Bubble rechts blau, Antworten links im
+  Fluss); [R-WP-29](chat.md) ist auf diese Optik geschärft. *Andersfall:* flache Zeilen wie
+  `chat.html` — Rückkehr wäre eine Satzänderung, kein Umbau der Grenzregeln.
+* **⏳ Sider-Struktur: kein „Projects"-Eintrag, kein Files-Slide-out** (2026-11-07, Paul in
+  `ui-bugs.md`) — der Projektbaum beginnt mit den Projekten (die Projektliste mit Anlegen/Entfernen
+  ist **nur** im Top-Menü, [R-WP-43](ui.md)), und das rechte Slide-out des Datei-Bereichs entfällt
+  ([R-WP-33](files.md) Tab, [R-WP-38/UC-WP-70](ui.md) „zwei Griffe"); „kein Files-Slider, solange
+  man im Agenten schaut" schärft [R-WP-26](chat.md). Betroffen: R-WP-38, UC-WP-70 G1+G3, R-WP-33 —
+  **wird im Sider-Inkrement nach dem Look umgebaut und dort ins Doc geschrieben**.
 
 ## Runde 3 — AntD-Umbau der Oberfläche (Paul 2026-11-06)
 
@@ -54,15 +68,10 @@ Reihenfolge, je ein grünes Inkrement:
    in [resolved-points.md](resolved-points.md)). Offen **5b**: die Einheit **Files** als Sider-Einheit und
    Adresse ([UC-WP-70 GIVEN 2](ui.md)) — erst danach der Flip von [R-WP-38/UC-WP-70](ui.md).
 
-* **⏳ Dunkel = eine Tabelle, App setzt `data-theme`** (2026-11-06, Review-Fund zu Inc 1,
-  Rückversicherung ausstehend) — das Grundblatt schrieb Dunkel bisher zweimal (Media-Block für die
-  Betriebssystem-Vorliebe, `[data-theme='dark']` für eine explizite Wahl, die niemand setzt); die
-  Basis-Tokens lasen die ungenutzte Kopie → zwei Dunkellooks möglich, bei grüner Suite.
-  [R-WP-39/UC-WP-71](ui.md) jetzt: die App setzt `data-theme` am Dokument auf die
-  Betriebssystem-Vorliebe, die Tokens kommen aus **derselben** Tabelle, jedes Feld wird gegengeprüft.
-  *Andersfall:* willst du einen **manuellen** Hell/Dunkel-Umschalter im Header, ist das eine neue Regel
-  (Umschalter + Merkmal über Reload hinweg) — die Umsetzung bliebe kompatibel, nur die Queue der
-  Entscheidung wäre eine andere.
+* **🔒 Dunkel (2026-11-06, abgelöst 2026-11-07 durch die Design-Übernahme, [R-WP-39](ui.md)):** die
+  Fassung „Dunkel = eine Tabelle, OS setzt `data-theme`, Token-Parität gegen das Grundblatt" ist
+  ersetzt — manueller **Hell/Dunkel-Umschalter** im Header (OS-Vorliebe = Startwert, Auswahl überlebt
+  den Reload), Token-Paritäts-Tests gelöscht (Design-Tests-Regel, [R-WP-39](ui.md)).
 
 * **⏳ Refocus nach dem Turn meidet das andere Feld** (2026-11-06, Ableitung zu
   [UC-WP-74 GIVEN 4](chat.md), Rückversicherung ausstehend) — der Fokus kehrt in die Eingabe zurück,

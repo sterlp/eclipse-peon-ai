@@ -352,12 +352,18 @@ Datei-Bereich ([Dateien](files.md)).
   ist im Datei-Bereich sichtbar.
 
 
-### R-WP-29 — Farben und Fließtext der Chat-Zeilen ✅ (Paul 2026-11-02; Akzent-links Runde 2; **Trennung ohne `hr`** Paul 2026-11-06, C-6)
+### R-WP-29 — Farben und Fließtext der Chat-Zeilen ❌ (Paul 2026-11-07: die **Optik** folgt der Design-Übernahme — [R-WP-39](ui.md); die Fließtext-Grenzen unten bleiben gebaut)
 
-Beide Stimmen stehen **im Fluss** und tragen ihre Farbkante **links** — die Kante ist der **Akzent der
-Zeile**, kein Rahmen um den Chat (wie `chat.html`: Label „You" blau, Agent-Label grün). Keine Zeile ist
-**rechtsbündig**, nichts ist **mittig zentriert**. Jons Antworten haben **keinen grauen
-Hintergrund-Block** und keine eingestreuten Markierungen oder Cards im Fließtext. Wo die Rolle wechselt,
+**Übernahme 2026-11-07:** die Verlaufs-Optik folgt dem Referenz-Design (`ai-schulung` `MessageList` —
+Nutzer-**Bubble** rechts in Blau, Antworten links im Fluss); die frühere Fassung „Akzent links, keine
+Bubbles" ist im Zuge der Design-Übernahme zurückgenommen ([R-WP-39](ui.md)). Was **weitergilt** und
+grün bleibt: kein `<hr>` zwischen Zeilen, `---` innerhalb der Antwort, Tabelle scrollt im Antwortblock,
+Bild bleibt in der Antwortbreite, nichts rechtsbündig. Die untenstehende BDD wird im Bau der
+Übernahme auf die neue Optik umgeschrieben bzw. gelöscht (Design-Tests-Regel, [R-WP-39](ui.md)).
+
+Die **eigene Eingabe steht rechts in ihrer Blase** (Referenz-Optik, oben); **keine Antwort** ist
+rechtsbündig oder mittig zentriert — Antworten stehen links im Fluss. Jons Antworten haben **keinen
+grauen Hintergrund-Block** und keine eingestreuten Markierungen oder Cards im Fließtext. Wo die Rolle wechselt,
 **trennt keine Linie**: die seitlichen Akzentlinien der Zeilen sind die Trennung — **kein `<hr>`** und
 keine andere horizontale Linie **zwischen zwei Zeilen** (Paul 2026-11-06: „hr raus, Linien treffen sich
 seitlich wie in Eclipse"). Ein `---` **innerhalb einer Antwort** ist deren Inhalt und wird nicht
@@ -367,11 +373,11 @@ eigene Klasse. **Breite Kost** verbreitert nie die Seite: eine **Tabelle** scrol
 Antwortblocks horizontal, ein **Bild** bleibt innerhalb der Antwortbreite.
 
 #### UC-WP-55 — colorsFollowChatHtmlBaseline ✅
-- GIVEN eine Nutzer- und eine Agent-Antwort WHEN beide im Verlauf stehen THEN trägt die Nutzer-Zeile
-  den blauen Akzent **links** (nicht rechtsbündig), die Agent-Zeile den grünen — ohne grauen
-  Hintergrund-Block.
+- GIVEN eine Nutzer- und eine Agent-Antwort WHEN beide im Verlauf stehen THEN steht die Eingabe des
+  Nutzers **rechts in ihrer Blase**, die Antwort links im Fluss — keine Antwort ist rechtsbündig
+  oder mittig zentriert.
 - GIVEN dieselben beiden Zeilen WHEN zwischen ihnen die Rolle wechselt THEN verläuft **keine**
-  horizontale Linie durch den Verlauf (kein `<hr>`), und keine der beiden Zeilen ist mittig zentriert.
+  horizontale Linie durch den Verlauf (kein `<hr>`), und keine Antwort ist mittig zentriert.
 - GIVEN eine Antwort mit `---` WHEN sie gezeichnet wird THEN steht die Linie **innerhalb** der Antwort
   und nicht als Trennung über die Verlaufsbreite; **kein** Beweis für „keine Trennlinie" darf ein
   modell-gemalenes `hr` übersehen.

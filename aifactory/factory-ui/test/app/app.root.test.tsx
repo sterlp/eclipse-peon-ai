@@ -4,7 +4,6 @@ import { Button, ConfigProvider, theme } from 'antd'
 
 import { AppRoot } from '../../src/app/app.root'
 import { factoryTheme } from '../../src/shared/theme'
-import { tokenTable, tokenValues } from '../shared/sheets'
 
 afterEach(() => {
   cleanup()
@@ -58,34 +57,13 @@ function answerTheDarkQuery(dark: boolean): void {
 }
 
 /**
- * UC-WP-71 GIVEN 2 (the surfaces come from one basis): jsdom paints no colour, so what is proven here is the
- * wiring — a component of the library, inside the app's own root, reads our token out of the theme. That the
- * token equals our sheet is the other claim, in `theme.test.ts`.
- */
-// UC-WP-71
-test('appRootWearsOurTokenColours', () => {
-  const page = render(
-    <AppRoot>
-      <TokenProbe />
-    </AppRoot>,
-  )
-
-  const probe = page.container.querySelector('[data-testid="token-probe"]')
-  expect(probe, 'the probe speaks the basis, so its token is the basis answer').toHaveClass('ant-btn')
-  expect(probe?.getAttribute('data-color-primary'), 'and the basis was handed the accent of our sheet').toBe(
-    tokenValues('--accent')[0],
-  )
-})
-
-/**
  * UC-WP-71 GIVEN 3 (one colour mode, one table): the app asks the operating system once and names the answer
- * on the document, which is the selector the dark table of `index.css` hangs on. Without it the page would
- * follow the media query while the basis followed an attribute nobody sets — a dark screen with light edges.
+ * on the document — that attribute is the only thing the dark table of `index.css` hangs on, so without it a
+ * dark basis would be handed light tokens.
  *
- * Measured, and the reason the comparison is against our own dark theme rather than against the literal of
- * the table: under `darkAlgorithm` the basis derives its accent from it (`#58a6ff` answers as `#4e90dc`),
- * while the light mode passes the literal through. That the dark theme is asked for is the claim here; that
- * it is the table of the sheet is `darkModeCarriesTheDarkSheetAndTheDarkAlgorithm`.
+ * Compared against our own dark theme rather than against a colour of the sheet: under `darkAlgorithm` the
+ * basis derives the accent it hands a surface from the token, so the value written in the table is not the
+ * value measured here. What this proves is the choice of mode, never the palette.
  */
 // UC-WP-71
 test('appRootSetsTheDocumentTheme', () => {
@@ -111,8 +89,4 @@ test('appRootSetsTheDocumentTheme', () => {
     accentUnder(true),
     'the two answers differ, so the comparison above is not a tautology',
   ).not.toBe(accentUnder(false))
-  expect(
-    tokenTable("[data-theme='dark']")['--accent'],
-    'and the dark answer is asked of the dark table, whose accent is not the light one',
-  ).not.toBe(tokenValues('--accent')[0])
 })
