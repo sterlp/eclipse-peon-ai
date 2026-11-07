@@ -7,10 +7,11 @@ Memory); Docs duplizieren nie Core-Regeln; Plan-Archive werden **gelöscht**, ni
 
 ## Zyklus 2026-11-06/07 — Runde 4: AntD-Umbau (autonom; Paul offline, „durchbauen")
 
-Branch `web-factory-mvp-2`, Spitze `8da14901` = origin. Backlog + Reihenfolge:
+Branch `web-factory-mvp-2`, Spitze `a0a2c3f2` = origin. Backlog + Reihenfolge:
 [open-points.md](open-points.md) („Runde 3 — AntD-Umbau"). Kette Inc 4: `832a9772` (4a) → `b51571b2`
 (N1 Blätter-Guard) → `6249d59a` (N2 `.chat-line.pending`) → `eb103276` (4b) → `9704013a` (Turn-Id-Beweis
-+ Docs) → `98f55700` (4c) → `8da14901` (4c-N1 Positionsnachweis).
++ Docs) → `98f55700` (4c) → `8da14901` (4c-N1 Positionsnachweis) → `a0a2c3f2` (4c-N2 ein Entscheider
++ Docs-Flip).
 
 **Inkrement 4 — Timeline — ist fertig und abgenommen ✅** ([R-WP-40/UC-WP-72](chat.md),
 [R-WP-29/UC-WP-55](chat.md)):
@@ -26,9 +27,15 @@ Branch `web-factory-mvp-2`, Spitze `8da14901` = origin. Backlog + Reihenfolge:
   (nicht am Verlaufsende), Warteleiste nennt das Mitglied. Auftrag wird **nie** geparst — er steht in der
   Werkzeugzeile darüber (PK-2, unten).
 
-**Stand gemessen (Review + Dev unabhängig gleich):** UI **190/190, 21 Dateien ~9 s**, `tsc -b` 0,
+**Stand gemessen (Review + Dev unabhängig gleich):** UI **191/191, 21 Dateien ~9 s**, `tsc -b` 0,
 oxlint 0/0 · Backend **227/0**, `missCount 1` · Doc-Lint **29** Findings = nur Fremd-Docs (PC 14, CR 14)
 + `UC-WP-70` (Inc 5a). Dev/Review melden weniger — deren Lint scopet enger: **immer selbst messen.**
+**Beweislage:** `openTimelineItem` (`chat.live.ts:87`) ist der **eine** Entscheider für „was arbeitet"
+(Schritt **oder** Delegation, Identität, nie Position) — „je Turn genau ein Indikator" ist Konstrukt, kein
+Kommentar; die Position des Delegations-Eintrags ist gegen die Antwortzeilen bewiesen
+(`aDelegationStandsWhereItHappenedAndNotAtTheEndOfTheLog`). Bewusst **offene Restlücken:** zwei
+Delegationen an dasselbe Mitglied paaren LIFO ohne Test (Draht trägt keine Call-Id) und das
+Turn-Endereignis (❓ oben).
 
 **Build-Merkpostel (neu):** `mvn -pl factory-backend` zieht `llmpeon-core` als **`2.8.1-SNAPSHOT` aus
 `~/.m2`**. Pauls `PoDelegateTool`-Listener waren in der Quelle, nicht im Artefakt ⇒ two „Symbol nicht
@@ -36,8 +43,7 @@ gefunden". Lösung war Mechanik, kein Core-Eingriff: Core `clean test` (1482/0) 
 `javap`-Gegenprobe. **Vor dem Fabrik-Bau immer erst das Core-Artefakt frisieren.**
 
 **Nächste Schritte:** **Inc 5a** Sider + URL + Projektbaum ([R-WP-38/UC-WP-70](ui.md), C-3,
-`aria-current` zurück) → **5b** Files-Unit/Responsive. Davor als kleinerAufräum-Schritt: **ein**
-Entscheider für „was arbeitet gerade" (jetzt zwei Orte) + Test „je Turn genau ein Indikator". Danach
+`aria-current` zurück) → **5b** Files-Unit/Responsive. Danach
 Rest-Backlog: C-7 (Agent-Blick read-only live), C-2a, C-1 TurnClaim-Timeout, F8/F10, Mini 3c
 (`data:`-Bild ⇒ Alt statt leerem `src`). Stagehand ⏳ parked (Node ≥22.18 vs. Bau 22.12).
 
