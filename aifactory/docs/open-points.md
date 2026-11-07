@@ -34,12 +34,18 @@ werden echte Buttons/Selects. Neu im SOLL, Rückprüfung offen:
 * **🔒 Bubbles = Teil der Übernahme** (2026-11-07, Jon, abgeleitet aus „übernimm das Design aus der
   ai-schulung") — der Verlauf folgt der Referenz-Optik (Nutzer-Bubble rechts blau, Antworten links als
   Karte), gebaut Inkrement 2 (`web-factory`, 2b), [R-WP-29](chat.md) ist geschärft.
+* **🔒 Timeline-Optik = AntD `Timeline`** (2026-11-07, Paul, nach Look-Abnahme): Werkzeug-/Think-/Delegations-Schritte
+  gruppieren sich zu **einem Widget je zusammenhängender Schritt-Folge** (LLM-Blase, Fehler und Diff-Block
+  beenden die Gruppe), Dots groß, Abstände sehr klein (Steps-Geometrie im Chat-Scope überschrieben — die
+  Basis drückt das Maß nicht per Token), Uhrzeit als HTML-`title`, arbeitender Schritt = loading-Dot,
+  **Think zeigt wie ein Tool** ([R-WP-40](chat.md) umgeschrieben). *Nicht im Doc und nicht gebaut:* Kappung
+  bei 20 Schritten mit Verdrängung — bewusst MVP-nachgelassen (Paul).
 * **⏳ Sider-Struktur: kein „Projects"-Eintrag, kein Files-Slide-out** (2026-11-07, Paul in
   `ui-bugs.md`) — der Projektbaum beginnt mit den Projekten (die Projektliste mit Anlegen/Entfernen
   ist **nur** im Top-Menü, [R-WP-43](ui.md)), und das rechte Slide-out des Datei-Bereichs entfällt
   ([R-WP-33](files.md) Tab, [R-WP-38/UC-WP-70](ui.md) „zwei Griffe"); „kein Files-Slider, solange
   man im Agenten schaut" schärft [R-WP-26](chat.md). Betroffen: R-WP-38, UC-WP-70 G1+G3, R-WP-33 —
-  **wird im Sider-Inkrement nach dem Look umgebaut und dort ins Doc geschrieben**.
+  **wird im Sider-Inkrement umgebaut und dort ins Doc geschrieben**.
 
 ## Runde 3 — AntD-Umbau der Oberfläche (Paul 2026-11-06)
 

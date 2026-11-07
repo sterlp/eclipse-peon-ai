@@ -276,37 +276,45 @@ Verlauf; kompakt (klein, grau, Tool-Zeilen gemerged wie in `chat.html`) und nach
 - GIVEN eine Nutzer-Eingabe mit Markdown-Zeichen WHEN sie im Verlauf steht THEN erscheint sie als
   Wortlaut, nicht als Markup.
 
-### R-WP-40 — Werkzeug- und Delegationsschritte stehen als Timeline im Verlauf ✅ (Paul 2026-11-06)
+### R-WP-40 — Werkzeug- und Delegationsschritte stehen als Timeline im Verlauf ✅ (Paul 2026-11-06; Optik-Umbau AntD `Timeline` gebaut + reviewed 2026-11-07, Inkrement 3 auf `web-factory` — Look-Abnahme am Browser steht aus)
 
-Die Schritte eines Turns — Werkzeug, Think-Abschnitt, Delegation — werden als **Timeline**
-dargestellt, **an der Stelle im Verlauf, wo sie passieren** (R-WP-28: kein Block hinter dem
-Verlauf). Ein Eintrag trägt den **Namen des arbeitenden Agenten**, einen **laufenden Indikator**,
-solange er arbeitet, und die **Uhrzeit seiner Ankunft**, sobald er fertig ist. **Den Auftrag erfindet
-die Fabrik nicht:** was der Core über die Leitung schickt, steht als **Wortlaut** in dem Eintrag
-darüber — aus einem Text wird **nie** etwas herausgeparst, und ein Auftrag, den der Draht nicht trägt,
-hat keinen eigenen Eintrag. Eine **Delegation ist ein Eintrag**: während das Mitglied arbeitet,
-zeigt sein Eintrag „working", das Ergebnis erscheint unter ihm; der Blick in den Gesprächsverlauf
-des Mitglieds bleibt davon unberührt ([R-WP-26](chat.md)). **Zeiten sind live und lückenhaft:** Der
-Draht trägt je Schritt **nur den Augenblick des Eintreffens** (Browser-Uhr) — eine **Dauer hat allein
-der Turn** (`done.millis`) und steht an seiner Antwort, **nie je Werkzeug**; die Fabrik erfindet keine
-Zeit und **parst auch keine** aus dem Text des Cores. Wo keine Zeit bekannt ist, trägt der Eintrag
-**keinen Titel**. Nach einem Reload zeigen die Zeilen, was der Memory enthält
+Die Schritte eines Turns — Werkzeug, Think-Abschnitt, Delegation — werden als **AntD `Timeline`**
+dargestellt: laufen mehrere Schritte **direkt hintereinander** (unterbrochen von einer LLM-Nachricht,
+einem **Fehler** oder einem **Diff-Block** — jeder beendet die Gruppe und das Widget), bilden sie
+**ein Widget an der Stelle des ersten
+Schritts**; **der Punkt eines arbeitenden Schritts ist der loading-Dot**, erledigte Schritte tragen die
+**Uhrzeit ihrer Ankunft als HTML-`title`** (Dots groß, Abstände zwischen den Items sehr klein — Paul
+2026-11-07; die **Geometrie der Items ist unseren Maßen unterworfen**: Minimum-Höhe und
+Default-Abstände der Basis werden im Chat-Scope auf das sehr kleine Maß überschrieben — die Basis
+kann das Maß nicht per Token drücken). **Der Think-Abschnitt ist ein Eintrag wie ein Werkzeug** (Paul 2026-11-07: „think zeigen
+wir wie tool an" — wie im Plugin `chat.html`; die frühere Fassung „Jons Denken zeigt der Chat nicht"
+ist damit zurückgenommen, Mitglieder-Denken bleibt unsichtbar, [R-WP-4](chat.md)). Ein **Den Auftrag
+erfindet die Fabrik nicht:** was der Core über die Leitung schickt, steht als **Wortlaut** in dem
+Eintrag darüber — aus einem Text wird **nie** etwas herausgeparst, und ein Auftrag, den der Draht
+nicht trägt, hat keinen eigenen Eintrag. Eine **Delegation ist ein Eintrag** in derselben Timeline:
+während das Mitglied arbeitet, zeigt sein Eintrag „working", das Ergebnis erscheint unter ihm; der
+Blick in den Gesprächsverlauf des Mitglieds bleibt davon unberührt ([R-WP-26](chat.md)). **Zeiten sind
+live und lückenhaft:** Der Draht trägt je Schritt **nur den Augenblick des Eintreffens** (Browser-Uhr)
+— eine **Dauer hat allein der Turn** (`done.millis`) und steht an seiner Antwort, **nie je Werkzeug**;
+die Fabrik erfindet keine Zeit und **parst auch keine** aus dem Text des Cores. Wo keine Zeit bekannt
+ist, trägt der Eintrag **keinen Titel**. Nach einem Reload zeigen die Zeilen, was der Memory enthält
 ([R-WP-11](chat.md): Dauer und `HH:mm` stehen dort, wo der Core sie selbst in den Text geschrieben
 hat), und einen zweiten Speicher dafür gibt es nicht. **Was zeigbar ist, entscheidet der Draht — nichts
 wird erfunden:** der Name des arbeitenden Agenten ist sein **Stempel** ([R-WP-37](chat.md): ohne Stempel
 kein Name); **arbeitet** heißt am Bildschirm, dass der Eintrag der **letzte Schritt eines laufenden Turns**
 ist — mit dem nächsten Schritt oder dem Ende der Antwort endet sein Indikator, denn je Werkzeug meldet der
 Core kein eigenes Ende. **Die Delegation ist die Ausnahme:** Anfang und Ende ihres Auftrags stehen
-**typisiert** am Draht, und ihr Eintrag trägt den **Namen des Mitglieds**, nicht den Jons. Der
-**Think-Abschnitt** ist heute **kein** Eintrag: Jons Denken zeigt der Chat nicht
-([R-WP-5](chat.md), Mitglieder-Denken ohnehin nicht [R-WP-4](chat.md)) — was der Schirm nicht zeigt,
-kann keine Timeline-Zeile haben; seine Sichtbarkeit wäre eine eigene Regel (⏳ in
-[Open Points](open-points.md)).
+**typisiert** am Draht, und ihr Eintrag trägt den **Namen des Mitglieds**, nicht den Jons. Ein
+Diff ([R-WP-36](chat.md)) bleibt ein **eigener, voller Block** im Fluss — kein Timeline-Item.
 
 #### UC-WP-72 — toolStepsAsTimelineEntries ✅
 - GIVEN ein Turn ruft Werkzeuge WHEN die Zeilen erscheinen THEN stehen sie als Timeline-Einträge an
   ihrer Stelle im Verlauf, jeder mit dem Namen des arbeitenden Agenten; nennt der Draht zu einem
   Schritt keinen Agenten, nennt auch der Eintrag keinen.
+- GIVEN ein Think-Abschnitt von **Jon** streamt WHEN er ankommt THEN erscheint er als Timeline-Item
+  wie ein Werkzeug — ohne erfundenen Urheber (Namenzeile „Thinking"), mit dem Draht-Wortlaut und der
+  Empfangs-Uhr. GIVEN das **Denken eines Mitglieds** WHEN es läuft THEN ist im Jon-Chat **nichts**
+  sichtbar (R-WP-4 — Beleg im Backend, der Draht trägt kein Mitglieder-Denken).
 - GIVEN ein Werkzeug läuft WHEN die Timeline zeichnet THEN trägt sein Eintrag einen laufenden
   Indikator; WHEN der nächste Schritt erscheint oder die Antwort des Turns endet THEN endet der
   Indikator und der Eintrag bleibt mit seiner Ankunftszeit stehen. GIVEN die Antwort des Turns endet WHEN deren Indikator endet THEN trägt **nur sie** die
@@ -362,8 +370,13 @@ Bild bleibt in der Antwortbreite, nichts rechtsbündig. Die untenstehende BDD wi
 Übernahme auf die neue Optik umgeschrieben bzw. gelöscht (Design-Tests-Regel, [R-WP-39](ui.md)).
 
 Die **eigene Eingabe steht rechts in ihrer Blase** (Referenz-Optik, oben); **keine Antwort** ist
-rechtsbündig oder mittig zentriert — Antworten stehen links im Fluss. Jons Antworten haben **keinen
-grauen Hintergrund-Block** und keine eingestreuten Markierungen oder Cards im Fließtext. Wo die Rolle wechselt,
+rechtsbündig oder mittig zentriert — Antworten stehen links im Fluss. Blasen und Karten halten ihr
+Maß an der **AntD-Typografie** (body 14 px / Code 13 px — `ant-design.md`), nicht an einer eigenen
+Wohnerfahrung: Innenmaß eng am Text ([R-WP-29] Präzisierung Paul 2026-11-07, „viel größer als der
+Text"). Jons Antworten haben **keinen
+grauen Hintergrund-Block** und keine eingestreuten Markierungen oder Cards im Fließtext. Der
+**Warte-Rahmen** einer vorläufigen Zeile (UC-WP-65) ist eine **graue gestrichelte Kontur** — nicht blau
+(Paul 2026-11-07: „blauer Rand ist komisch"). Wo die Rolle wechselt,
 **trennt keine Linie**: Blase und Karte trennen die Stimmen optisch — **kein `<hr>`** und
 keine andere horizontale Linie **zwischen zwei Zeilen** (die Begründung „Linien treffen sich
 seitlich" der Akzent-Fassung ist mit den Bubbles entfallen). Ein `---` **innerhalb einer Antwort** ist deren Inhalt und wird nicht

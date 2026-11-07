@@ -61,8 +61,9 @@ MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabi
   kein Files-Slide-out) als nächstes Inkrement, [open-points](open-points.md) Runde 4b)
 * [Projekte](project.md) — Git-Checkout als Projekt: klonen, eindeutig, entfernen, nie interaktiv, Live-Status. ◐
 * [Jon-Chat](chat.md) — ein Jon, ein Gespräch je Projekt: Streaming, Queue, Neustart, Tools, Kacheln. ◐
-  (Herkunft je Zeile ✅ UC-WP-39/40; Kacheln ✅ R-WP-7, Blick je Agent ✅ R-WP-26, **Timeline für
-  Werkzeuge und Delegationen ✅ [R-WP-40/UC-WP-72](chat.md)**)
+  (Herkunft je Zeile ✅ UC-WP-39/40; Kacheln ✅ R-WP-7, Blick je Agent ✅ R-WP-26, **Timeline als AntD-
+  Widget inkl. Think ✅ R-WP-40/UC-WP-72** gebaut 2026-11-07, **Blasen-Maße ⏳ [R-WP-29](chat.md)** bis
+  Look-Abnahme)
 * [Dateien](files.md) — Schreiben nur in Projekt + TMP, Datei-Bereich lesend. ◐ (gebaut, reviewed 2026-11-01)
 * [Config](config.md) — eigene Datei der Factory, Config-Seite maskiert, „überschreiben" je Agent. ◐
 * [Nutzer](user.md) — Name statt Login, `[User Name]:` an Jon und Paco.

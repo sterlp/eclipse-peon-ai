@@ -43,20 +43,20 @@ Referenz-Optik (Bubbles) — flache Zeilen zurückgenommen (⏳). **Design-Tests
 Abnahme am Browser. Vorherige Fassungen („Farb-Tokens bleiben unsere", „kein zentrierter Container")
 sind zurückgenommen.
 
-**Nächster Schritt:** ~~Inkrement 2 = Design-Übernahme~~ **Inkrement 2 GEBAUT + reviewed + geflippt
-(2026-11-07):** Branch `web-factory` — **2a** `193a22e8` (Palette+Rahmen) → **2b** `bd69c101`
-(Verlauf/Bubbles) → **2c** `1b213920` (Hell/Dunkel-Umschalter) → N1 `71bcaef6` (Review-Fixes:
-UC-WP-59-Nadel zurück in `clickingATileOpensTheInsight`, 4 veraltete Akzent-Kommentare) →
-LOW `2b99bcc4` (Umschalter-Klick-Nadel + Regex-scharf). Review 1 war REJECTED (2 Struktur-BUGs), N1
-geschlossen, **Verdict im zweiten Lauf akzeptiert**. Stand: **215 Tests / 22 Dateien** grün, tsc 0,
-oxlint 0/0; Farb-Literale nur noch die 2 Wach-Strings. **R-WP-39 ✅, UC-WP-71 ✅ (Klick-Nadel im
-bestehenden Fall), Bubbles 🔒**, R-WP-29 bleibt ❌ bis zur **Look-Abnahme am Browser** (Paul).
-`AGENTS-DEV.md` F8 nachgezogen (Farb-Modus = Auswahl, keine Doppeltabelle, Sider-200px-Pinn nutzlos).
-Docs von mir: ui.md (R-WP-39 ✅, UC-WP-71, chat.html nur Herkunfts-Hinweis), chat.md (R-WP-29 geschärft:
-Blase rechts, keine Antwort rechtsbündig/mittig; Akzentlinien-Satz raus), open-points (Bubbles 🔒).
+**Nächster Schritt:** ~~Inkrement 2~~ **Inkrement 2 GEBAUT + reviewed + geflippt (2026-11-07):** Branch
+`web-factory` — 2a `193a22e8` (Palette+Rahmen) → 2b `bd69c101` (Verlauf/Bubbles) → 2c `1b213920`
+(Umschalter) → N1 `71bcaef6` → LOW `2b99bcc4` → Close-out `f8aa65b2`. **R-WP-39 ✅, Bubbles 🔒**, R-WP-29
+❌ bis Look-Abnahme. **Inkrement 3 (Nachtzyklus) GEBAUT + reviewed:** 3a `9ef506ec` (Maße ant-design.md +
+grauer Warte-Rahmen) → 3b `95e55fdb` (AntD-Timeline-Widget Werkzeug+Delegation, 22 Fälle umgehängt,
+Mutationen bewiesen) → 3c `c96e6965` (**Think = Item wie Tool**, 218/218) → N1 `71a8866e` (Review-Fix:
+Steps-Geometrie im Chat-Scope überschrieben — AntD liest `itemPaddingBottom` nur im Alternativ-Layout;
+TraceEntry-Helper; 4px-Grid). Review-Verdict nach N1 akzeptiert. **R-WP-40 ✅** (mit Geometrie-Klausel),
+**UC-WP-72 ✅ mit Think-GIVEN**. Browser-Abnahme steht aus: Blasen-Maße, grauer Rahmen, appweit 14 px
+(❓2 — Blatt-Konsequenz, Rücknahme auf `.chat-log` wäre eine Zeile), Timeline-Dots, Think-Slot an (❓1/F5).
+
 **Danach:** Sider-Inkrement (kein „Projects"-Eintrag, kein Files-Slide-out — open-points Runde 4b ⏳),
 Chat-Aktionen-Story (R-WP-43 Buttons), Config-Story (reasoning_effort, Save-Button, Key-Delete —
-`aifactory/ui-bugs.md`, Pauls Liste). Plan archiviert.
+`aifactory/ui-bugs.md`). Plan archiviert.
 
 Übernehmbare Muster aus `ai-schulung` (Survey 2026-11-07): dunkles horizontales Menü
 (`app/frontend/src/App.tsx`), Sidebar-Collapse je Agent + Hover-Aktionen (`ThreadNav.tsx`),
