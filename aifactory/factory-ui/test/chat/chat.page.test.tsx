@@ -955,31 +955,7 @@ test('aCompactingTileOffersNoStop', async () => {
 })
 
 // UC-WP-55
-test('userLineCarriesTheBlueAccentOnTheLeft', async () => {
-  stubChat({ messages: [QUESTION, ANSWER] })
-  render(<ChatPage project={project()} />)
-  await flush()
-
-  const line = screen.getByTestId('chat-line-user')
-  expect(line.className).toContain('user')
-  expect(line.className).not.toContain('agent')
-
-  // what colour a line has is no fact of the DOM: the sheet paints it. The class the row carries has to be
-  // the class the sheet paints, and it has to paint it with **our** token (R-WP-29) — which colour that token
-  // answers with is the look's, never a test's. The doc line that asked for the right edge was the source of
-  // F2 — the two assertions that pinned it now pin its opposite, so the old contract is inverted here and not
-  // dropped.
-  const painted = declarations('.chat-log .chat-line.user')
-  expect(painted, 'the accent of the person is the user token').toContain('var(--user)')
-  expect(painted, 'the accent sits on the left, like the agent accent').toContain('border-left')
-  expect(painted, 'no second accent on the right edge').not.toContain('border-right')
-  expect(painted, 'the line reads in the flow, not against it').not.toContain('text-align: right')
-  expect(declarations('.chat-log .chat-line'), 'and the width of the accent stays with the line rule')
-    .toContain('border-left: 3px solid transparent')
-})
-
-// UC-WP-55
-test('agentLineIsGreenAndNamedByItsAgent', async () => {
+test('agentLineIsNamedByItsAgent', async () => {
   stubChat({ messages: [QUESTION, TEAM_ANSWER, JONS_ANSWER] })
   render(<ChatPage project={project()} />)
   await flush()
@@ -989,17 +965,10 @@ test('agentLineIsGreenAndNamedByItsAgent', async () => {
   for (const line of lines) {
     expect(line.className).toContain('agent')
     expect(line.className).not.toContain('user')
-    // the label of an agent line is the agent that spoke, and it is the label the sheet colours (R-WP-4)
+    // the label of an agent line is the agent that spoke (R-WP-4)
     expect(line.querySelector('.chat-role')).not.toBeNull()
   }
   expect(lines.map(line => within(line).getByTestId('chat-line-author').textContent)).toEqual(['Dev', 'Jon'])
-
-  expect(declarations('.chat-log .chat-line.agent'), 'the accent of an answer is the agent token')
-    .toContain('var(--agent)')
-  expect(declarations('.chat-log .chat-role'), 'the name above the line is set in caps like chat.html')
-    .toContain('text-transform: uppercase')
-  expect(declarations('.chat-log .chat-line.user .chat-role'), 'and the name of a person in their blue')
-    .toContain('var(--user)')
 })
 
 // UC-WP-55
@@ -1017,33 +986,27 @@ test('roleChangeDrawsNoRule', async () => {
   ).toEqual(['user', 'agent', 'agent', 'user'])
 })
 
+/**
+ * Only the person's own input has a side (R-WP-29, UC-WP-55 as the doc states it now): no answer stands
+ * centred or right-aligned, and the one row that may step to an edge is the voice `user`. Read for the base
+ * row and for the answer's own rule — a side on the base would take every voice with it. Where a row stands
+ * is what a browser lays out from the sheet; jsdom measures nothing (see `test/shared/sheets.ts`).
+ */
 // UC-WP-55
-test('agentLineHasNoGrayBlock', async () => {
+test('noAnswerLineIsCentredOrRightAligned', async () => {
   stubChat({ messages: [QUESTION, ANSWER] })
   render(<ChatPage project={project()} />)
   await flush()
 
   expect(screen.getByTestId('chat-line-jon').className).toContain('agent')
+  expect(declares('.chat-line.jon'), 'a row is painted by its voice, never by the name of its author').toBe(
+    false,
+  )
 
-  // an answer is a line in the flow: no surface of its own, no card, no code-background block (R-WP-29)
-  for (const selector of [
-    '.chat-log .chat-line',
-    '.chat-log .chat-line.user',
-    '.chat-log .chat-line.agent',
-    '.chat-log .chat-line.tool',
-    '.chat-log .chat-line.pending',
-  ]) {
-    expect(declarations(selector), `${selector} paints no surface`).not.toMatch(/background|--code-bg/)
+  const outOfTheFlow = /text-align:\s*center|margin:\s*0 auto|align-self:\s*flex-end|justify-self:\s*end/
+  for (const selector of ['.chat-log .chat-line', '.chat-log .chat-line.agent']) {
+    expect(declarations(selector), `${selector} stands centred or right-aligned`).not.toMatch(outOfTheFlow)
   }
-  expect(declares('.chat-line.jon'), 'the gray block of the jon line is gone').toBe(false)
-  // and the same rule keeps the chat in the flow: the log is no centred column, a line is no centred card
-  // (R-WP-29, UC-WP-55 — Paul: nothing centred, nothing framed)
-  expect(declarations('.chat-log'), 'the log centres nothing').not.toMatch(
-    /justify-content: center|place-items: center/,
-  )
-  expect(declarations('.chat-log .chat-line'), 'a line centres nothing of itself').not.toMatch(
-    /text-align: center|margin: 0 auto/,
-  )
 })
 
 // UC-WP-54

@@ -78,7 +78,8 @@
 /* A view scrolls in its own area, never the page (R-WP-35), and it reaches the edge of the window: the
    content is centred **inside** the scroll area by the gutter, so the scrollbar stays at the side of the
    surface instead of running down the middle of the page. The chat view replaces this with a column of its
-   own further down, because its scroll belongs to the log and not to the view. */
+   own further down — and hands the gutter to its own scroll area and its own input, because its scroll
+   belongs to the log and not to the view. */
 .view {
   flex: 1;
   min-height: 0;
@@ -174,6 +175,7 @@ button {
   align-items: baseline;
   gap: 0.5rem;
   margin: 0 0 0.6rem;
+  padding-inline: var(--content-gutter);
 }
 
 .chat-title {
@@ -190,6 +192,7 @@ button {
   list-style: none;
   margin: 0 0 1rem;
   padding: 0;
+  padding-inline: var(--content-gutter);
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
@@ -291,42 +294,61 @@ button {
 }
 
 /* The log is the scroll area of the chat: the tiles above and the input below keep their place while the
-   conversation runs past them (R-WP-35, UC-WP-66). */
+   conversation runs past them (R-WP-35, UC-WP-66). It keeps the full width and centres what it holds inside
+   itself, so its scrollbar stays at the edge of the surface (D8) — the same measure the input below uses. */
 .chat-log {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   list-style: none;
   margin: 0 0 1rem;
-  padding: 0;
   display: grid;
   gap: 0.4rem;
+  padding-inline: var(--content-gutter);
 }
 
-/* A row is speech, not a card: the accent line names the voice, the surface stays the app's one (R-WP-29). */
+/* What every row shares is the wording, not a shape: a line keeps what was typed, and the voice below
+   decides its side and its own box (R-WP-29). No accent edge here — the voice names itself by its form. */
 .chat-log .chat-line {
-  border-left: 3px solid transparent;
-  padding: 0.15rem 0 0.35rem 0.6rem;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-/* Jon's and the team's answer carry the green of chat.html, and nothing else. */
+/* An answer is the card on the left, the surface of the page's cards with the app's own border (R-WP-29);
+   `justify-self` because the log is a grid, and never a `margin` or a `text-align` — those would take the
+   answers out of the flow of the conversation, which UC-WP-55 rules out. The name above it stays the agent's
+   own green (`.chat-role`). */
 .chat-log .chat-line.agent {
-  border-left-color: var(--agent);
+  justify-self: start;
+  max-width: min(85%, var(--content-max));
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: var(--surface);
+  box-shadow: var(--shadow);
 }
 
-/* The person's line is blue the way the agent's is green: the same accent, the same side, in the flow of
-   the text — no right edge and no second line of its own (R-WP-29). The 3px it paints come from the line
-   rule above, so the base rule stays the one owner of the accent's width. */
+/* The person's own input stands alone on its side: the reference's blue bubble with its own text colour,
+   right, in its own shape (R-WP-29, UC-WP-55). No answer reads from this rule — the side belongs to the
+   voice that spoke it, and only to it. */
 .chat-log .chat-line.user {
-  border-left-color: var(--user);
+  justify-self: end;
+  max-width: min(85%, var(--content-max));
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.8rem;
+  background: var(--user);
+  color: var(--on-user);
 }
 
-/* A failed turn is a line of the conversation and nobody's speech: the problem colour, no name above it,
-   no surface of its own — the lesson of UC-WP-55 is that a grey block reads as a card, not as a line. */
+/* A failed turn is a line of the conversation and nobody's speech: the problem's colour says what it is, on
+   the page's surface and on no edge of its own — the lesson of UC-WP-55 is that a grey block reads as an
+   answer, so what separates it from one is the colour of its text and the border it does not paint. */
 .chat-log .chat-line.error {
-  border-left-color: var(--problem);
+  justify-self: start;
+  max-width: min(85%, var(--content-max));
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.8rem;
+  background: var(--surface);
   color: var(--problem);
 }
 
@@ -334,7 +356,6 @@ button {
 /* Tool activity is not a voice of the conversation: the grey italic of chat.html, small, no name of its
    own; the lines of one run share this one box (R-WP-28). */
 .chat-log .chat-line.tool {
-  border-left-color: var(--tool-line);
   padding-top: 0.1rem;
   padding-bottom: 0.2rem;
   color: var(--tool);
@@ -392,7 +413,6 @@ button {
 /* One delegation of the turn is a link of the timeline and not a voice (R-WP-40): the member the order went
    to, in the trace's own quiet — mono, small, no surface and no frame of its own. */
 .chat-log .chat-line.delegation {
-  border-left-color: var(--tool-line);
   padding-top: 0.1rem;
   padding-bottom: 0.2rem;
   color: var(--tool);
@@ -424,13 +444,12 @@ button {
   }
 }
 
-/* A file the turn changed (R-WP-36) is a block of the log and neither a voice nor a trace line: the accent
-   stays the trace grey, the colours are the ones the app already has — an addition is what the agent did
+/* A file the turn changed (R-WP-36) is a block of the log and neither a voice nor a trace line: the trace's
+   grey stays its colour, the colours are the ones the app already has — an addition is what the agent did
    (the agent token), a removal the problem token, the headers and context dimmed. Flat rules, one selector
    each: the colour contract is read off this sheet in a test, and a grouped rule is only readable at its
    last selector. */
 .chat-log .chat-line.diff {
-  border-left-color: var(--tool-line);
   padding-top: 0.1rem;
   padding-bottom: 0.25rem;
 }
@@ -506,8 +525,8 @@ button {
 }
 
 /* A line the model drew inside an answer is content of that answer (R-WP-29): ours, short and quiet, in
-   the border grey and at the answer's own left edge — never as wide as the log. The voices themselves
-   separate by the accent on their side. */
+   the border grey and at the answer's own left edge — never as wide as the log, which would read as a
+   separation of the conversation. */
 .chat-log .chat-markdown hr {
   border: 0;
   border-top: 1px solid var(--border);
@@ -590,16 +609,17 @@ button {
   color: var(--agent);
 }
 
+/* the name of a person reads in the colour of the bubble it stands in, not in its blue */
 .chat-log .chat-line.user .chat-role {
-  color: var(--user);
+  color: var(--on-user);
 }
 
-/* An own line the history has not confirmed yet: the accent is not a fact yet — last, so it outvotes
-   the voice's own line on the border it shares with it. The dashed form belongs to the left accent alone:
-   a style on every side would draw a line above and below the row (R-WP-29). */
+/* An own line the history has not confirmed yet: the accent is not a fact yet — a dashed contour, and an
+   outline because a border would sit under the bubble's radius and, on the person's side, under its own
+   background (R-WP-29). Last, so it outvotes the voice's own form on the row it shares with it. */
 .chat-log .chat-line.pending {
-  border-left-style: dashed;
-  color: var(--text);
+  outline: 1px dashed var(--accent);
+  outline-offset: 2px;
 }
 
 /* Das Feld ist die Auto-Grow-Textarea der Basis: eine Zeile bis fünf, danach scrollt sie (R-WP-41); Enter
@@ -611,6 +631,7 @@ button {
   gap: 0.5rem;
   flex: none;
   padding-top: 0.4rem;
+  padding-inline: var(--content-gutter);
   border-top: 1px solid var(--border);
   background: var(--bg);
 
@@ -633,13 +654,15 @@ button {
 /* Die Warte-Leiste eines Turns (R-WP-31) — die Zeile des Plugins: in beiden Themen dunkel, Mono, mit dem
    Cursor, der während des Turns blinkt. Das Grün ist das Agenten-Grün von chat.html. Sie steht als Block
    über dem Feld: der Chat scrollt in seiner eigenen Fläche, also hängt nichts mehr am Seiten-Scroll
-   (R-WP-35). */
+   (R-WP-35). Sie steht als Bar in demselben Maß wie Verlauf und Feld — darum der Einzug am Rand ihrer
+   eigenen Fläche und nicht in ihrem Innenmaß, das die Zeile des Plugins bleibt. */
 .chat-waiting {
   display: flex;
   flex: none;
   align-items: center;
   gap: 0.4rem;
-  margin: 0 0 0.6rem;
+  margin-block-end: 0.6rem;
+  margin-inline: var(--content-gutter);
   padding: 0.35rem 0.6rem;
   border-radius: 0.4rem;
   background: #1c2128;
@@ -678,6 +701,7 @@ button {
 .chat-error {
   color: var(--problem);
   margin: 0 0 0.75rem;
+  padding-inline: var(--content-gutter);
 }
 
 /* The row a chat view sits in: the conversation and the file panel side by side, so an open file keeps
@@ -697,11 +721,13 @@ button {
 }
 
 /* The chat is a column whose middle scrolls: tiles and head keep their place on top, the input and the
-   wait below, and only the log runs past them (R-WP-35, UC-WP-66). */
+   wait below, and only the log runs past them (R-WP-35, UC-WP-66). No gutter of its own: the log, the wait
+   and the field carry the measure, so the log's scrollbar reaches the edge of the column. */
 .chat-workspace > .view {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  padding-inline: 0;
 }
 
 /* The tab at the right edge, written sideways: the visible promise that this side opens (R-WP-33). Out

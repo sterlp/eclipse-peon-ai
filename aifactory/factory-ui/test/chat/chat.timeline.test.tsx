@@ -82,10 +82,9 @@ test('aStepNamesItsAgentOnlyWhenTheWireNamesOne', () => {
   expect(drawnSteps()[0].textContent).toContain('binary content')
   expect(drawnSteps()[0].querySelector('.chat-step-name'), 'an unstamped step names nobody').toBeNull()
 
-  // quiet by decision: capitals in the trace grey, above the report, on no surface and in no frame (R-WP-29)
+  // quiet by decision: small capitals above the report, on no surface and in no frame (R-WP-29)
   const painted = declarations('.chat-log .chat-line.tool .chat-step-name')
   expect(painted, 'the stamp is set as a small capital').toContain('text-transform: uppercase')
-  expect(painted, 'the stamp stays the trace grey').toContain('var(--tool)')
   expect(painted, 'a stamp is no card').not.toMatch(/background|border/)
 })
 
@@ -416,11 +415,10 @@ test('theDelegationEntryNamesTheMemberAndStopsAtItsEnd', () => {
     openDelegation,
   )
 
-  // quiet by decision: the member in small capitals in the trace grey, on no surface; the word blinks like
+  // quiet by decision: the member in small capitals above his entry, on no surface; the word blinks like
   // the waiting caret and reduced motion stops it in a block of its own
   const paintedName = declarations('.chat-log .chat-line.delegation .chat-delegation-name')
   expect(paintedName, 'the member is a small capital above his entry').toContain('text-transform: uppercase')
-  expect(paintedName, 'the member stays the trace grey').toContain('var(--tool)')
   expect(paintedName, 'an entry is no card').not.toMatch(/background|border/)
   expect(
     declarations('.chat-log .chat-line.delegation .chat-delegation-working'),

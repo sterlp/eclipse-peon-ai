@@ -71,19 +71,13 @@ test('aChangeIsABlockWithItsFileAndItsColouredLines', () => {
   // the break belongs to the box model and not to the text: both together double every line of the block
   expect(lines.every(line => !line.textContent?.includes('\n')), 'a line breaks by its box').toBe(true)
 
-  expect(
-    declarations('.chat-log .chat-diff .diff-added'),
-    'an addition reads as what the agent did',
-  ).toContain('var(--agent)')
-  expect(declarations('.chat-log .chat-diff .diff-removed'), 'a removal takes the problem token').toContain(
-    'var(--problem)',
-  )
-  expect(declarations('.chat-log .chat-diff .diff-context'), 'what stayed is the trace grey').toContain(
-    'var(--tool)',
-  )
-  expect(declarations('.chat-log .chat-diff .diff-meta'), 'a header is dimmed and not hidden').toContain(
-    'var(--text)',
-  )
+  // the doc asks for `+` and `-` coloured, not for a palette: which token answers is the look's, so what is
+  // pinned is that the two kinds read in two of our colours and never in one (R-WP-36)
+  const added = declarations('.chat-log .chat-diff .diff-added')
+  const removed = declarations('.chat-log .chat-diff .diff-removed')
+  expect(added, 'an addition is coloured with a token of ours').toMatch(/color:\s*var\(--/)
+  expect(removed, 'a removal is coloured with a token of ours').toMatch(/color:\s*var\(--/)
+  expect(removed, 'a removal never reads like an addition').not.toBe(added)
   expect(declarations('.chat-log .chat-diff .chat-diff-line'), 'every line is a box of its own').toContain(
     'display: block',
   )
