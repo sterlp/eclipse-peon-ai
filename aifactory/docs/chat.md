@@ -288,7 +288,7 @@ Schritts**; **der Punkt eines arbeitenden Schritts ist der loading-Dot**, erledi
 Default-Abstände der Basis werden im Chat-Scope auf das sehr kleine Maß überschrieben — die Basis
 kann das Maß nicht per Token drücken). **Der Think-Abschnitt ist ein Eintrag wie ein Werkzeug** (Paul 2026-11-07: „think zeigen
 wir wie tool an" — wie im Plugin `chat.html`; die frühere Fassung „Jons Denken zeigt der Chat nicht"
-ist damit zurückgenommen, Mitglieder-Denken bleibt unsichtbar, [R-WP-4](chat.md)). Ein **Den Auftrag
+ist damit zurückgenommen, Mitglieder-Denken bleibt unsichtbar, [R-WP-4](chat.md)). **Den Auftrag
 erfindet die Fabrik nicht:** was der Core über die Leitung schickt, steht als **Wortlaut** in dem
 Eintrag darüber — aus einem Text wird **nie** etwas herausgeparst, und ein Auftrag, den der Draht
 nicht trägt, hat keinen eigenen Eintrag. Eine **Delegation ist ein Eintrag** in derselben Timeline:
