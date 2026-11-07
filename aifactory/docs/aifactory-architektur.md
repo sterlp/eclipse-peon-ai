@@ -262,12 +262,18 @@ flowchart LR
   (Review 2026-11-07): eine Auswahl im State überlebt Back/Forward und jede Weiterleitung — und bleibt
   bei Tests grün, wenn die Mutation nur `useState(null)` trifft. Zu treffen sind **geseedeter** State und
   **beim Mount eingefrorener** Wert; `unmount()` + Neu-Mount prüft zwei Mounts, nie eine Zustandsänderung.
-* **Der Datei-Bereich gehört der Adresse, nicht dem Seiten-State** (Inkrement 5b): `files` ist
-  **Kind-Route** von `chat/:project`, damit die Chat-Seite über beiden Adressen dieselbe Instanz bleibt —
-  eine eigene Seiten-Route würde den Chat neu mounten und den laufenden Turn samt Stream zerschlagen
-  ([UC-WP-70 G2](ui.md)). `project.files.tsx` bleibt props-getrieben; **wer** „offen" nennt, entscheidet
-  die Route. Der „Files"-Tab im Chat ([R-WP-33](files.md)) und der Sider-Eintrag sind zwei Griffe auf
-  dieselbe Adressänderung, kein zweiter Mechanismus.
+* **Der Datei-Bereich gehört der Adresse, nicht dem Seiten-State** (Inkrement 5b): **wer** „offen" nennt,
+  entscheidet die Route — `project.files.tsx` ist props-getrieben, die Panel-**Fläche** wird mit der
+  Adresse geboren und stirbt mit ihr („Schließen vergisst die Position" gilt damit **per Konstruktion**,
+  nicht durch einen Reset-Effekt); der „Files"-Tab bleibt außen gemountet, weil er die sichtbare Öffnung
+  ist. Der Tab im Chat ([R-WP-33](files.md)) und der Sider-Eintrag sind zwei Griffe auf dieselbe
+  Adressänderung, kein zweiter Mechanismus.
+* **Gemessen, nicht geglaubt (5b-1):** die Kind-Route ist die **klare Grammatik** (die Einheit ist ein
+  Unterpfad der Chat-Adresse), aber sie ist **nicht** der Grund, warum die Chat-Seite gemountet bleibt —
+  eine Schwesterroute mit demselben Element an derselben Stelle mountet `chat/:project` ebenfalls **nicht**
+  neu (React Router 7.18.5, gemessen: `/messages` bleibt bei einem Read). Bewiesen wird der bleibende Mount
+  deshalb über einen **erzwungenen** Remount (`key` auf die Adresse ⇒ Test rot), nie über die Routenform
+  ([UC-WP-70 G2](ui.md): „ein laufender Turn endet nicht an diesem Klick").
 
 
 ## Abbildung Core → Factory

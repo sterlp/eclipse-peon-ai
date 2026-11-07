@@ -6,7 +6,7 @@ Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwiss
 `peon-plan/review-findings.md` sind das Memory); Docs duplizieren nie Core-Regeln; Plan-Archive werden
 **gelöscht**, nie committet.
 
-## Zyklus 2026-11-06/07 — Runde 4: AntD-Umbau (autonom; Paul offline, „durchbauen")
+## Zyklus 2026-11-06/07 — Runde 4: AntD-Umbau („durchbauen"; Paul inzwischen wieder da, parallel im Core)
 
 Branch `web-factory-mvp-2`, Spitze `680f2239` = origin. Kette Inc 4: `832a9772` (4a) → `b51571b2` (N1)
 → `6249d59a` (N2) → `eb103276` (4b) → `9704013a` → `98f55700` (4c) → `8da14901` (N1) → `a0a2c3f2`
@@ -26,18 +26,28 @@ Settings-`aria-current`). Behoben in 5a-N1: Markierung jetzt in vier Weiterleitu
 einen Adress-Walk in einem Mount behauptet (M1b/M1c/M10 ⇒ 5/5/1 Tests rot). Dazu `navKeyOfPathname`
 dekodiert das Segment (Adresse mit `%20` markiert denselben Eintrag), Leichen-Pfad im Guard-Test ersetzt.
 **G2 (Einheit Files) fehlt bewusst** — darum bleiben R-WP-38/UC-WP-70 **❌**, bis 5b gebaut ist.
-Befunde + Zurückgestelltes (LOW-1 zweiter Listen-Fetch in `app.routes.tsx`, LOW-3 Rahmen-Test im
-falschen Ordner, LOW-4 Regel-Prosa in Kommentaren): [../peon-plan/review-findings.md](../peon-plan/review-findings.md).
+Befunde + Zurückgestelltes: [../peon-plan/review-findings.md](../peon-plan/review-findings.md).
 
-**Gemessen (Spitze 680f2239):** UI **205 Tests / 22 Dateien** ~9 s, `tsc -b` 0, oxlint 0/0 (73 Dateien) ·
-Backend **227/0**, `missCount 1` (in 5a nicht gebaut) · Doc-Lint **28** Findings = nur Fremd-Docs
-(PC 14, CR 14), kein `UNBELEGT_ERLEDIGT`. Dev/Review melden weniger — deren Lint scopet enger:
-**immer selbst messen.**
+**Inkrement 5b-1 — Einheit = Adresse** ([UC-WP-70 G2](ui.md)), gebaut `b4c202b0`: `chat/:project/files`
+als Adresse (Kind-Route, rendert nichts), „offen" entscheidet **ausschließlich** die Adresse, die
+Panel-**Fläche** mountet nur mit ihr („Schließen vergisst die Position" per Konstruktion), der Tab bleibt
+außen gemountet; Sider-Eintrag „Files" **nur unter dem Projekt, das die Adresse nennt**, genau **ein**
+`aria-current`. Review: **REJECTED — 2 BUGs, beide Nachweis/Kommentar, kein Verhalten**: (1) die
+Sibling-CSS-Regel der breiten Tab-Kante war unbewiesen (Mutation „Fläche hinter den Tab" ⇒ grün) ⇒
+DOM-Assertion `previousElementSibling` folgt; (2) der Kommentar in `app.routes.tsx` behauptete, eine
+**Schwesterroute** remounte — **gemessen falsch** (React Router 7.18.5, kein zweiter `/messages`-Read);
+Architektur-Doc korrigiert, Kommentar zieht nach. Dauerhaft: **CSS mit `+`/`~` braucht einen
+Nestungs-Beweis** (jsdom sieht die Kante nicht). Alles Weitere:
+[../peon-plan/review-findings.md](../peon-plan/review-findings.md).
 
-**Nächster Schritt: Inkrement 5b** — Files-Einheit als **Route + Sider-Einheit** (belegt
-[UC-WP-70 G2](ui.md): Markierung, Adresse und Reload einig) plus Responsive-Rest; dabei die drei
-Review-LOWs mitnehmen. **Erst danach** Flip R-WP-38/UC-WP-70 ❌→✅ (Lint-Gate, vorher `nextIds` nicht
-nötig — IDs existieren). Rest-Backlog: C-7 (Agent-Blick read-only live), C-2a, C-1 TurnClaim-Timeout,
+**Gemessen (Spitze `b4c202b0`):** UI **214 Tests / 22 Dateien**, `tsc -b` 0, oxlint 0/0 (73 Dateien) ·
+Backend **227/0** (in 5b nicht gebaut) · Doc-Lint **28** Findings = nur Fremd-Docs (PC 14, CR 14), kein
+`UNBELEGT_ERLEDIGT`. Dev/Review scoppen enger — **immer selbst messen.**
+
+**Nächste Schritte:** (1) **5b-1-N1** = die zwei Review-Punkte (DOM-Assertion + Kommentar), danach
+**Flip R-WP-38/UC-WP-70 ❌→✅**; (2) **5b-2** = Aufräumen (LOW-1 zweiter Listen-Fetch in `app.routes.tsx`,
+LOW-3 Rahmen-Test nach `test/app/`, LOW-4 Prosa kürzen); (3) Rest-Backlog: C-7 (Agent-Blick read-only live),
+C-2a, C-1 TurnClaim-Timeout,
 F8/F10, Mini 3c (`data:`-Bild ⇒ Alt statt leerem `src`). Stagehand ⏳ parked (Node ≥22.18 vs. Bau 22.12).
 
 ## Entscheidungen dieser Runde (Kurzfassung)
