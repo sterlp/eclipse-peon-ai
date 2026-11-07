@@ -1,11 +1,7 @@
-- Only facts you cannot derive from code, docs, or build files, and that stay true
-  regardless of the current plan. No plan/increment references, no status.
-- Add an entry when a fresh session would otherwise waste time or fail
-  (wrong assumption, hidden requirement, tool quirk).
-- Skip anything derivable from code, docs, or build files.
-- Max ~120 lines. Merge into an existing entry before adding a new one;
-  remove entries that are outdated or covered by code/docs.
-- Working notes, progress, and episodic findings go to the plan file(s)
+- Never test CSS
+- UI elements are small, composable units with a single clear responsibility — like well-designed
+  Java classes. Split when a unit has more than one reason to change, not by line count alone.
+  Avoid both monoliths and premature fragmentation. (read component-architecture for more details)
 
 ## Build
 
