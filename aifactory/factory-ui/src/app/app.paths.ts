@@ -29,17 +29,13 @@ export function projectSegment(project: Project): string {
 }
 
 /**
- * The project an address segment names: the name first, the id second. The second reading is what keeps a
- * bookmark written before the address spoke names working; it is dropped once no such bookmark is expected.
- * `null` is a project the registry does not hold — a gone project, which is where the address leads to the
- * list rather than to a fourth page (R-WP-1).
+ * The project an address segment names: its name and nothing else (C-3). A database key names no project — a
+ * bookmark that still speaks one lands on the list, where the project is picked again by name; that is the
+ * accepted cost of a single, readable address. `null` is the same reading: a project the registry does not
+ * hold, which is where the address leads to the list rather than to a fourth page (R-WP-1).
  */
 export function projectOfSegment(projects: Project[], segment: string): Project | null {
-  return (
-    projects.find(entry => projectSegment(entry) === segment) ??
-    projects.find(entry => entry.id === segment) ??
-    null
-  )
+  return projects.find(entry => projectSegment(entry) === segment) ?? null
 }
 
 /** The sider key of one project — prefixed, because a project is free to be called `root` or `projects`. */

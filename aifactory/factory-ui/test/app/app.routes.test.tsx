@@ -122,19 +122,6 @@ test('theNameAddressOpensTheProjectItNames', async () => {
   expect(markedEntry().textContent).toBe(second.name)
 })
 
-// UC-WP-70
-test('anOldIdAddressStillOpensTheSameChat', async () => {
-  // additive, not a break (C-3): the address speaks names now, a bookmark written in ids still opens its chat
-  stubAppServer()
-  const app = renderApp(`/chat/${project().id}`)
-
-  const chat = await screen.findByRole('region', { name: content.chat.title })
-  expect(within(chat).getByRole('heading', { name: project().name })).toBeInTheDocument()
-  expect(app.path()).toBe(`/chat/${project().id}`)
-  // and this browser speaks names from here on — `/chat` answers with the name, not with the old bookmark
-  expect(localStorage.getItem('aifactory.lastProject')).toBe(project().name)
-})
-
 // UC-WP-43
 test('aReloadStaysOnThePage', async () => {
   stubAppServer()

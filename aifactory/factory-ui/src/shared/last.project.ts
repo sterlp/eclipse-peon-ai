@@ -18,7 +18,7 @@ export function readLastProject(): string | null {
 /**
  * Remember which project this browser was working on; a blank segment stores nothing. What is kept is a
  * project's name (`projectSegment`), so a bookmark and this answer speak one language (UC-WP-51). An older
- * browser holds an id here: `projectOfSegment` still resolves it, and the next open rewrites the name.
+ * browser can hold an id: it names no project, so `/chat` leads to the list instead of guessing one.
  */
 export function writeLastProject(segment: string): void {
   if (segment.trim() === '') {

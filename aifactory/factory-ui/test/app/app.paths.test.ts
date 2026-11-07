@@ -24,26 +24,25 @@ test('theAddressNamesTheEntryThatShows', () => {
 })
 
 /**
- * The address names a project by its name (C-3), so a name is what resolves and nothing else: the id reads
- * second, which is what keeps a bookmark written in ids working, and a segment that names no project is
- * `null` — the reading a gone project needs to land on the list (R-WP-1).
+ * The address names a project by its name (C-3), so a name is what resolves and nothing else — not the
+ * git url, which is free to repeat another project's name, not the database key either. Both readings end in
+ * `null`, which is what sends an address that names no project to the list (R-WP-1).
  */
 // UC-WP-70
-test('theSegmentResolvesNameOrId', () => {
+test('theSegmentResolvesTheName', () => {
   const demo = project()
   const other = project({ id: 'other-9f8e7d6', name: 'other' })
   const registry = [demo, other]
 
   expect(projectOfSegment(registry, 'demo')).toBe(demo)
   expect(projectOfSegment(registry, 'other')).toBe(other)
-  expect(projectOfSegment(registry, other.id)).toBe(other)
-  // the name is what answers, not a piece of the git url, which is free to repeat another project's name
   const elsewhere = project({
     id: 'else-4c5d6e7',
     name: 'elsewhere',
     gitUrl: 'https://git.example.com/acme/demo.git',
   })
   expect(projectOfSegment([elsewhere], 'demo')).toBeNull()
+  expect(projectOfSegment(registry, other.id)).toBeNull()
   expect(projectOfSegment(registry, 'gone')).toBeNull()
   expect(projectOfSegment(registry, '')).toBeNull()
 })
