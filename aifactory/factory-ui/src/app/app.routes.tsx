@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
 
 import AppShell from './app.shell'
 import { useAppContext } from './app.context'
-import { chatPath, projectsPath } from './app.paths'
+import { chatPath, projectsPath, projectSegment } from './app.paths'
 import { ChatPage } from '../chat/chat.page'
 import { ConfigPage } from '../config/config.page'
 import { ProjectFiles } from '../project/project.files'
 import { ProjectPage } from '../project/project.page'
 import { listProjects } from '../project/project.client'
 import { content } from '../shared/content'
-import { writeLastProject } from '../shared/last.project'
+import { readLastProject, writeLastProject } from '../shared/last.project'
 import type { Project } from '../shared/dto'
 
 /** The address the app is built under (R-WP-22) — every route below is relative to it. */
@@ -33,6 +33,9 @@ export function AppBrowser() {
  *
  * The file area and the team tiles are not routes: they live inside the chat (R-WP-1), and the insight
  * opens and closes without ever changing the address.
+ *
+ * `/chat` on its own is the one address that is a question and not a view: it answers with the project this
+ * browser last opened, or with the list (R-WP-1, UC-WP-51). It is a redirect and not a fourth page.
  */
 export function AppRoutes() {
   return (
@@ -40,6 +43,7 @@ export function AppRoutes() {
       <Route element={<AppShell />}>
         <Route index element={<Navigate to={projectsPath} replace />} />
         <Route path="projects" element={<ProjectsRoute />} />
+        <Route path="chat" element={<LastChatRoute />} />
         <Route path="chat/:projectId" element={<ChatRoute />} />
         <Route path="settings" element={<ConfigPage />} />
         <Route path="*" element={<Navigate to={projectsPath} replace />} />
@@ -48,18 +52,28 @@ export function AppRoutes() {
   )
 }
 
-/** The list, wired to the URL: opening a project is a navigation, not a state of the frame (UC-WP-52). */
+/** The list as the frame reads it — the tree beside it shows the same projects for the same reason (D1). */
 function ProjectsRoute() {
-  const navigate = useNavigate()
+  const { projects, listError, reloadProjects, openProject } = useAppContext()
 
   return (
     <ProjectPage
-      onOpen={project => {
-        writeLastProject(project.id)
-        navigate(chatPath(project.id))
-      }}
+      projects={projects}
+      listError={listError}
+      onOpen={openProject}
+      onReload={reloadProjects}
     />
   )
+}
+
+/**
+ * The chat this browser was working on (UC-WP-51): an address, a bookmark, a redirect all land on it. With
+ * nothing stored the address leads to the list, where a project can be opened — guessing one would be a
+ * second answer beside the URL (R-WP-1).
+ */
+function LastChatRoute() {
+  const last = readLastProject()
+  return <Navigate to={last === null ? projectsPath : chatPath(last)} replace />
 }
 
 /**
@@ -91,8 +105,8 @@ function ChatRoute() {
         setProject(found)
         setUnknown(found === null)
         if (found !== null) {
-          // opening a chat makes it the active project of this browser — the menu's "Chat" needs it (UC-WP-51)
-          writeLastProject(found.id)
+          // opening a chat makes it the active project of this browser — the `/chat` address needs it (UC-WP-51)
+          writeLastProject(projectSegment(found))
         }
       })
       .catch(() => {

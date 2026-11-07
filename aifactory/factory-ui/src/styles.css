@@ -28,9 +28,26 @@
   width: 9rem;
 }
 
-/* Top navigation (R-WP-1): the basis' horizontal menu, its own accent marking the entry that shows. */
-.app-nav-bar {
-  min-width: 0;
+/* The row the tree and the view share (R-WP-38). `min-height: 0` is what lets the view scroll inside its
+   own column instead of stretching the page (R-WP-35). */
+.app-body {
+  min-height: 0;
+}
+
+/* The project tree (R-WP-38): only its edge is ours — its surface is the theme's `lightSiderBg`, which is
+   mapped in `shared/theme.ts`, and the mark on its entry is the basis' own accent (R-WP-39). */
+.app-sider {
+  border-right: 1px solid var(--border);
+}
+
+/* the inline menu draws its own edge on the same side, which beside the one above reads as a double line */
+.app-sider .ant-menu {
+  border-inline-end: 0;
+}
+
+/* Settings at the end of the header speaks in the heading colour like the brand beside it. */
+.app-settings {
+  color: var(--text-h);
 }
 
 .app-main {

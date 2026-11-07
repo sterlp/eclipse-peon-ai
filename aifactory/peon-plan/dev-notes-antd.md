@@ -911,5 +911,73 @@ jsdom ist die **Obergrenze**, der Browser ist schneller. Über 30 ms/Render im Z
 Risiko (Timeline zeichnet jede Antwort neu) — gemessen ist es die Hälfte, deshalb ist **kein** Cache und
 keine Optimierung gebaut worden, und die Suite enthält keine Zeit-Assertion.
 
+## Aus `AGENTS-DEV.md` ausgezogen (2026-11-07, Cap ~120 Zeilen)
+
+Wissen, das nicht jeder Build braucht (Episodisches); der Wortlaut ist original:
+
+Abschnitt **Backend-Tests**:
+
+- **Lange absolute Pfade erreichen den SSE-Draht nicht**: `SmartToolExecutor.reportProblem` kürzt auf 180
+  Zeichen, `allowed roots […]` fällt weg (das Modell sieht sie weiter) → Draht-Verweigerung am Präfix
+  `<tool>: Write denied:` prüfen, Wurzeln nur im nächsten Provider-Payload (`getCapturedMessages()`).
+- **AssertJ `assertThat(Optional).contains(x)` ist Gleichheit, nicht Substring** (`" /unbekannt"` fällt gegen
+  `contains("/unbekannt")`). — **Prio-Block am Kopf behaupten**: `TaggedResult.PREFIX + TAG_QUEUED_USER_MESSAGE`;
+  das nackte Tag-Wort steht auch im System-Prompt (`TaggedResult.INFO`) ⇒ als Substring von
+  `getLastRequestBody()` ist es immer drin, die Behauptung liefe offen.
+- `@Timeout` gilt je Testmethode, **nie** für Lifecycle-Methoden → dafür steht
+  `junit.jupiter.execution.timeout.lifecycle.method.default=120s` in `junit-platform.properties`.
+
+Abschnitt **Factory-UI**:
+
+- **Ein offener Zustand wird an das laufende Objekt gebunden, nie an „Flag + letztes Element"** — ein
+  Indikator sonst beim nächsten Turn auf dem alten Eintrag weiterblinkt (live-Items überleben den Turn). Und:
+  eine Draht-Eigenschaft, die erst **nach** dem Zustandsende sichtbar wird (Zeit am geschlossenen Schritt),
+  braucht **beide Zustände im selben Test** — sonst bleibt ihr Löscher grün. Und: **Identität schützt das
+  _Ob_, nicht das _Wo_** — ein neuer Timeline-Eintrag braucht neben der Turn-Id den **Anker-Beweis** gegen
+  die Antwortzeilen (Idiom `chat.page.test.tsx::toolLinesSurviveTheDoneRefresh`).
+
+## Inkrement 5a-1: Sider statt Top-Navigation (2026-11-07)
+
+R-WP-38 / UC-WP-70 G1+G3, R-WP-1, R-WP-35, R-WP-27. Rahmen (`app.shell.tsx`) besitzt die Projektliste
+(`useProjectList`), `ProjectPage` stellt nur dar; `app.nav.tsx` + `app.nav.test.tsx` entfallen, neu
+`app.sider.tsx` + `app.sider.test.tsx` (8) + `app.paths.test.ts` (1).
+
+- **Messzahlen**: UI **201 Tests / 22 Dateien**, `tsc -b` 0, oxlint **0/0** (73 Dateien). Plan-Rechnung war
+  200 — die eine Zeile mehr ist ein Befund, kein Fehler. Doc-Lint **28** Findings (Baseline 29): UC-WP-70
+  verlässt die UNBELEGT-Liste, weil die Tests `// UC-WP-70` tragen — Arithmetik, **kein** neues Finding;
+  R-WP-38/UC-WP-70 bleiben ❌ (G2 „Files" fehlt, das kommt erst in 5b), kein Doc-Flip.
+- **`aria-current` am Menu-Eintrag ist laufzeitbewiesen** (vorher nur an der Quelle gelesen): Sonden M4
+  (`aria-current` an allen Einträgen) und M5 (gar nicht gesetzt) machen `app.sider.test.tsx` rot. Beweis ist
+  das Attribut **und** `.ant-menu-item-selected` ⇒ `ANTD-A9`.
+- **12 Sonden, alle rot** und danach Restore per `diff` identisch: `breakpoint` weg, `collapsedWidth` weg,
+  `selectedKeys={[]}`, `aria-current` überall / nirgends, Wurzeleintrag hinten, `onProjects` öffnet das erste
+  Projekt, immer den Wurzeleintrag markieren, `onOpen` mit dem falschen Projekt, `AppSider` **in** den
+  `Content` ziehen, `LastChatRoute` ohne `readLastProject`, `lightSiderBg: siderBg`. Treiber
+  `/tmp/s5a_mutate.py` (python `assert count == 1` vor jeder Mutation, Backup `/tmp/s5a.<datei>`,
+  Restore aus der **finalen** Kopie, `diff -q` danach).
+- **AntD-Sider unter jsdom** (antd 6.7.0, `es/layout/Sider.js`): Defaults `width: 200` /
+  `collapsedWidth: 80`; `dimensionMaxMap.lg = '991.98px'`; der Responsive-Effekt ruft den Handler **beim
+  Mount** auf, ein `matches: true` in der `matchMedia`-Antwort genügt, kein `change`-Event. `collapsed`
+  über `useControlledState` — **controlled ⇒ der Effekt setzt nichts mehr**. Trigger erscheint bei
+  `collapsible || (below && zeroWidthTrigger)` und ist ein `span` ohne Rolle. `hasSider` meldet sich über
+  Context (`siderHook.addSider`), ein eigener Wrapper um `Layout.Sider` verliert `.ant-layout-has-sider`
+  **nicht** — der Content/Sider-Nestungstest verlässt sich darauf.
+- **jsdom misst 0×0**: G1/G3-Beweis über DOM-Nestung (`main.contains(feld)`, `!sider.contains(feld)`,
+  `:scope > .app-sider` unter `.ant-layout-has-sider`) + Klassen + Inline-`style.width`
+  (`'0px'`/`'200px'`), nie über Layout-Maße.
+- **oxlint `react(set-state-in-effect)`** beißt auch durch `useCallback(async …)`: `await listProjects()`
+  dann `setState` im `try` ⇒ Warnung. `useProjectList` nutzt deshalb die Promise-Kette
+  `.then(…).catch(…)` (Idiom der alten `project.page.tsx`) → 0/0.
+- **`act()`-Warnung** („An update to ForwardRef … not wrapped in act") ist Vorbestand der Basis
+  (antd 6 + React 19 + jsdom, auch an HEAD in `chat.composer.test.tsx`); `app.sider.test.tsx` erbt sie pro
+  `render` (8 Instanzen). Kein neuer Defekt, nicht „reparieren".
+- **Test-Doppelgänger `Host`** in `test/project/project.page.test.tsx` (besitzt die Liste, `onReload` setzt
+  State) — damit bleibt `:264` ehrlich: `expect(reads).toBe(0)` statt `toBe(1)`, die Behauptung „kein
+  Listen-Read durch ein Status-Ereignis" wäre mit eigenem GET des Blatts strukturell wahr.
+- **Ein zusätzlicher GET `/api/projects`** pro `renderApp` (Rahmen-Mount). Alle Stubs tragen ihn;
+  `stubAppServer(liste)` liest das Array bei jedem Aufruf ⇒ `aNewProjectAppearsInTheSider` schiebt in
+  **dieselbe** Referenz.
+- Bewusst offen: **G2 „Files"-Einheit** (5b), Id-Fallback der Route (5a-3), Namens-Segment (5a-2).
+
 
 

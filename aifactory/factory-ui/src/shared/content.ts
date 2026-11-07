@@ -12,8 +12,8 @@ export const content = {
   nav: {
     /** The name of the frame's menu, for the screen reader. */
     views: 'Views',
+    /** The sider's first entry: the list itself, where projects are added and removed (R-WP-38). */
     projects: 'Projects',
-    chat: 'Chat',
     settings: 'Settings',
   },
 

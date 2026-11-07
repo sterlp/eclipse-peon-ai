@@ -133,6 +133,11 @@ test('theSurfacesTheBasisPaintsOnItsOwnFollowTheFrame', () => {
   expect(layout.bodyBg, 'the frame behind the content is the sheet background').toBe(tokenValues('--bg')[0])
   expect(layout.headerBg, 'the header is the same surface, not a library band').toBe(tokenValues('--bg')[0])
   expect(layout.headerColor, 'and it speaks in the heading colour').toBe(tokenValues('--text-h')[0])
+  // R-WP-38's sider is the light variant, and the light variant paints `lightSiderBg` — `siderBg` is a
+  // token of the dark one and would leave the tree in a library grey beside our own page
+  expect(layout.lightSiderBg, 'the project tree stands on the sheet, not on a second grey').toBe(
+    tokenValues('--bg')[0],
+  )
 })
 
 // UC-WP-71

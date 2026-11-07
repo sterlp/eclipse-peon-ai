@@ -35,13 +35,6 @@
 - **Pfad-Ausbruch-Guard: beide Seiten `toRealPath()`** — erst lexikalisch nach Normalisierung (Traversal ⇒
   400, nicht 404), dann real gegen real; eine Seite reicht auf macOS nicht (`/var → /private/var`).
   Symlink binnen der Wurzel 200, nach außerhalb 400.
-- **Lange absolute Pfade erreichen den SSE-Draht nicht**: `SmartToolExecutor.reportProblem` kürzt auf 180
-  Zeichen, `allowed roots […]` fällt weg (das Modell sieht sie weiter) → Draht-Verweigerung am Präfix
-  `<tool>: Write denied:` prüfen, Wurzeln nur im nächsten Provider-Payload (`getCapturedMessages()`).
-- **AssertJ `assertThat(Optional).contains(x)` ist Gleichheit, nicht Substring** (`" /unbekannt"` fällt gegen
-  `contains("/unbekannt")`). — **Prio-Block am Kopf behaupten**: `TaggedResult.PREFIX + TAG_QUEUED_USER_MESSAGE`;
-  das nackte Tag-Wort steht auch im System-Prompt (`TaggedResult.INFO`) ⇒ als Substring von
-  `getLastRequestBody()` ist es immer drin, die Behauptung liefe offen.
 - **Boot 4**: `ResponseStatusException` läuft **vor** dem `@ControllerAdvice` → eigener Exception-Typ +
   `@ExceptionHandler`, sonst wird 404 zu 500/400. `TestRestTemplate` ist offline unbenutzbar
   (`NoClassDefFoundError` beim Context-Load) → echte HTTP-Tests mit `@SpringBootTest(RANDOM_PORT)` +
@@ -58,8 +51,6 @@
 - Die Ausnahmliste des `SingleContextGuardTest` prüft **beide** Richtungen (neuer Boot rot, überflüssiger
   Eintrag auch); `SpringApplicationBuilder`-Boots erscheinen nie im Cache. Der Guard scannt den **Pfad**
   (`test-classes` im Source-URI), nicht Namen, Meta-Annotationen über den Namens-Fixpunkt.
-- `@Timeout` gilt je Testmethode, **nie** für Lifecycle-Methoden → dafür steht
-  `junit.jupiter.execution.timeout.lifecycle.method.default=120s` in `junit-platform.properties`.
 - Env-Startwerte über `System.setProperty` (`Environment` liest die Live-Map), im `@AfterEach` zwingend
   `System.clearProperty`. Handgeschriebener Test-Zustand endet im Test (`finally`) — ein vergiftetes
   `projects.json` zerlegt den Reset aller folgenden Klassen auf dem geteilten Home.
@@ -76,17 +67,13 @@
   Selektorwortlaut in CSS-Prosa — die Helfer (`declarations`, `blockOf`, `tokenTable`) suchen per
   `indexOf(selector)`; `tokenTable` akzeptiert einen Selektor erst bei Whitespace + `{`.
 - `sheets.ts::declarations()` trifft nur den **ersten** Block — ein Verbot, das über **allen** `.chat-line.*`-Blättern (inkl. `@media`) gelten muss, liest `allDeclarations`.
-- **Ein offener Zustand wird an das laufende Objekt gebunden, nie an „Flag + letztes Element"** — ein
-  Indikator sonst beim nächsten Turn auf dem alten Eintrag weiterblinkt (live-Items überleben den Turn). Und:
-  eine Draht-Eigenschaft, die erst **nach** dem Zustandsende sichtbar wird (Zeit am geschlossenen Schritt),
-  braucht **beide Zustände im selben Test** — sonst bleibt ihr Löscher grün. Und: **Identität schützt das
-  _Ob_, nicht das _Wo_** — ein neuer Timeline-Eintrag braucht neben der Turn-Id den **Anker-Beweis** gegen
-  die Antwortzeilen (Idiom `chat.page.test.tsx::toolLinesSurviveTheDoneRefresh`).
 - **AntD unter jsdom**: `matchMedia` **und** `ResizeObserver` sind load-bearing (jsdom 26.1.0: Property da,
   Wert `undefined`); `Select` über `<id>_list` (`id` je Choice Pflicht, `useId()` ist im Testbaum nicht
   eindeutig), Helfer `test/shared/choices.ts`. Dunkel ist **eine** Tabelle über `data-theme` am Document;
   `darkAlgorithm` leitet den Akzent ab („Token == Literal" ist im Dunkel nicht prüfbar — eigener Vergleich +
   `hell !== dunkel`), Tokens ohne Dunkel-Zeile (Fonts) fallen auf hell zurück.
+- **Responsive der Basis (Sider)**: unter jsdom nur über die matchMedia-Antwort + Klassen
+  (`-below`/`-collapsed`/`-zero-width`) + Inline-`width`; `collapsed` **nie** controlled, Trigger = `span` ohne Rolle.
 - **Markdown/Shiki**: `remarkPlugins`/`components` als Modul-Konstante (stabile Props), `remark-breaks` ist
   Pflicht (v10 hat keine `breaks`-Option), rohes HTML bleibt Wortlaut, `white-space: normal` auf
   `.chat-log .chat-markdown` ist tragend; Markdown zerteilt Text in Spans ⇒ **Zeile** über `textContent`.
@@ -116,6 +103,8 @@ Ein Code im Testkommentar verweist auf diese Stelle; die Begründung steht am Te
 - `ANTD-A1` Nav-Rolle: `Menu` rendert `li[role=menuitem]`, Auswahl nur als `.ant-menu-item-selected`; das
   eingefrorene `A1` in `test/chat/chat.page.test.tsx` (Sperre `test/chat/**`) ist derselbe Fall, umbenennen
   verboten. — `ANTD-A4` Icons über `.anticon-*`, nicht `bi bi-*`.
+- `ANTD-A9` Markierung am `Menu`-Eintrag: die Basis setzt kein `aria-current`, reicht unbekannte Item-Props
+  aber ans `li[role=menuitem]` durch — Beweis ist das Attribut **und** `.ant-menu-item-selected` (`NavItem`).
 - `ANTD-A2` Popconfirm statt eigenem Lösch-Popup. — `ANTD-A3` Choice: Label an `.ant-select-content[title]`,
   Drahtwert nur im Body (`content.config.yes` ≠ `'true'`).
 - `ANTD-A5` offenes Syntax-Zeichen (`**`) steht im Stream als Wortlaut; rohes HTML wird nie Markup.

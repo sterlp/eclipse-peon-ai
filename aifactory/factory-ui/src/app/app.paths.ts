@@ -1,5 +1,4 @@
-/** The views the frame offers (R-WP-1) — the three entries of the menu, and nothing else. */
-export type ViewName = 'projects' | 'chat' | 'settings'
+import type { Project } from '../shared/dto'
 
 /** The address of the project list. */
 export const projectsPath = '/projects'
@@ -7,22 +6,43 @@ export const projectsPath = '/projects'
 /** The address of the settings. */
 export const settingsPath = '/settings'
 
+/** The chat on its own: it answers with the project this browser last opened (UC-WP-51, R-WP-1). */
+export const chatRoot = '/chat'
+
+/** The key of the sider's first entry — the list itself, not a fourth page (R-WP-38). */
+export const siderRootKey = 'root'
+
 /** The address of one project's Jon-Chat (UC-WP-52). */
-export function chatPath(projectId: string): string {
-  return `/chat/${projectId}`
+export function chatPath(segment: string): string {
+  return `${chatRoot}/${segment}`
 }
 
 /**
- * Which entry shows for a path (UC-WP-52): the URL is the only state of the frame, so this is a pure
- * function of it and not a second memory. Paths the app does not answer itself (the redirect target of an
- * unknown address) read as the project list, which is what the router sends them to.
+ * The one producer of the part of the address that names a project (R-WP-38). The sider's keys, the
+ * navigation and what this browser remembers as its last project all read it here — the alternative is
+ * three places that have to agree about one string.
  */
-export function viewOfPathname(pathname: string): ViewName {
-  if (pathname.startsWith(settingsPath)) {
-    return 'settings'
+export function projectSegment(project: Project): string {
+  return project.id
+}
+
+/** The sider key of one project — prefixed, because a project is free to be called `root` or `projects`. */
+export function projectKeyOf(segment: string): string {
+  return `project:${segment}`
+}
+
+/**
+ * Which entry of the sider an address names (UC-WP-52, R-WP-1): a reading of the path and nothing else, so
+ * the mark survives a reload. An address that names no entry — `/settings`, the bare `/chat` — marks
+ * nothing, which is the honest answer rather than a guess at the first entry.
+ */
+export function navKeyOfPathname(pathname: string): string | null {
+  if (pathname === projectsPath) {
+    return siderRootKey
   }
-  if (pathname.startsWith('/chat')) {
-    return 'chat'
+  if (!pathname.startsWith(`${chatRoot}/`)) {
+    return null
   }
-  return 'projects'
+  const [segment = ''] = pathname.slice(chatRoot.length + 1).split('/')
+  return segment === '' ? null : projectKeyOf(segment)
 }

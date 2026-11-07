@@ -19,14 +19,14 @@ function nav() {
 
 /**
  * The entry the frame marks as showing. ANTD-A1: the design basis states a menu's selection as the item state
- * of its entry (`ant-menu-item-selected`) and carries no `aria-current`, so the mark is read there — the
- * claim itself is unchanged: exactly one entry shows, and it is the one the address names.
+ * of its entry (`ant-menu-item-selected`), so the mark is read there — the claim itself is unchanged: exactly
+ * one entry shows, and it is the one the address names (R-WP-38).
  */
 function markedEntry(): HTMLElement {
   const marked = within(nav())
     .getAllByRole('menuitem')
     .filter(entry => entry.className.includes('ant-menu-item-selected'))
-  expect(marked, 'exactly one entry of the menu shows').toHaveLength(1)
+  expect(marked, 'exactly one entry of the tree shows').toHaveLength(1)
   return marked[0]
 }
 
@@ -46,11 +46,15 @@ test('theMvpPagesAreReachable', async () => {
   stubAppServer()
   renderApp('/projects')
 
-  // exactly the three entries of R-WP-1 — the counter-probe to a fourth page
-  expect(within(nav()).getAllByRole('menuitem')).toHaveLength(3)
+  // the tree of R-WP-38: the list first, then one entry per project — the counter-probe to a fourth page
   expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
+  await within(nav()).findByText(project().name)
+  expect(within(nav()).getAllByRole('menuitem').map(entry => entry.textContent)).toEqual([
+    content.nav.projects,
+    project().name,
+  ])
 
-  fireEvent.click(within(nav()).getByRole('menuitem', { name: content.nav.settings }))
+  fireEvent.click(screen.getByRole('button', { name: content.nav.settings }))
   expect(await screen.findByText(content.config.provider)).toBeInTheDocument()
 
   fireEvent.click(within(nav()).getByRole('menuitem', { name: content.nav.projects }))
@@ -70,7 +74,7 @@ test('openingAProjectChangesTheUrl', async () => {
 
   expect(await screen.findByRole('region', { name: content.chat.title })).toBeInTheDocument()
   expect(app.path()).toBe(CHAT_PATH)
-  // the same click is what the menu's "Chat" needs next time (UC-WP-51)
+  // the same click is what the `/chat` address needs next time (UC-WP-51)
   expect(localStorage.getItem('aifactory.lastProject')).toBe(project().id)
 })
 
@@ -84,7 +88,7 @@ test('aDeepLinkShowsTheSameState', async () => {
   expect(within(chat).getByRole('heading', { name: project().name })).toBeInTheDocument()
   expect(app.path()).toBe(CHAT_PATH)
   // the entry that shows is the one the address names, not one a click left behind
-  expect(markedEntry().textContent).toBe(content.nav.chat)
+  expect(markedEntry().textContent).toBe(project().name)
 })
 
 // UC-WP-43
@@ -112,7 +116,9 @@ test('aReloadStaysOnSettings', async () => {
 
   renderApp('/settings')
   expect(await screen.findByText(content.config.provider)).toBeInTheDocument()
-  expect(markedEntry().textContent).toBe(content.nav.settings)
+  // the mark of this page sits on the header's entry, not in the tree: Settings is a page and the tree
+  // answers which project (R-WP-38)
+  expect(screen.getByRole('button', { name: content.nav.settings })).toHaveAttribute('aria-current', 'page')
 })
 
 // UC-WP-43
@@ -127,25 +133,22 @@ test('anUnknownAddressShowsTheApp', async () => {
 })
 
 // UC-WP-51
+// INC-5A-D2: the trigger is the address now — R-WP-38 removed the "Chat" entry, so a bookmark and a
+// redirect are what this use case is about. Both claims below are the ones that were already here.
 test('chatOpensTheLastActiveProject', async () => {
   stubAppServer()
   localStorage.setItem('aifactory.lastProject', project().id)
-  const app = renderApp('/projects')
-  await screen.findByLabelText(content.projects.gitUrl)
-
-  fireEvent.click(within(nav()).getByRole('menuitem', { name: content.nav.chat }))
+  const app = renderApp('/chat')
 
   expect(await screen.findByRole('region', { name: content.chat.title })).toBeInTheDocument()
   expect(app.path()).toBe(CHAT_PATH)
 })
 
 // UC-WP-51
+// INC-5A-D2
 test('chatWithoutAProjectGoesToProjects', async () => {
   stubAppServer()
-  const app = renderApp('/settings')
-  await screen.findByText(content.config.provider)
-
-  fireEvent.click(within(nav()).getByRole('menuitem', { name: content.nav.chat }))
+  const app = renderApp('/chat')
 
   expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
   expect(app.path()).toBe('/projects')
@@ -159,4 +162,32 @@ test('aProjectThatIsGoneLeadsToTheList', async () => {
   expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
   expect(app.path()).toBe('/projects')
   expect(screen.queryByRole('region', { name: content.chat.title })).toBeNull()
+})
+
+// UC-WP-70
+test('aNewProjectAppearsInTheSider', async () => {
+  // one owner of the list (D1): the frame reads it once and both the tree and the page show that read
+  const registry = [project()]
+  stubAppServer(registry)
+  renderApp('/projects')
+  const added = project({
+    id: 'other-9f8e7d6',
+    name: 'other',
+    gitUrl: 'https://git.example.com/acme/other.git',
+  })
+  await screen.findByLabelText(content.projects.gitUrl)
+
+  fireEvent.change(screen.getByLabelText(content.projects.gitUrl), {
+    target: { value: added.gitUrl },
+  })
+  // the registry answers for both readers from here on: the page's row and the tree's entry
+  registry.push(added)
+  fireEvent.click(screen.getByRole('button', { name: content.projects.add }))
+
+  expect(await within(nav()).findByText(added.name)).toBeInTheDocument()
+  expect(within(nav()).getAllByRole('menuitem').map(entry => entry.textContent)).toEqual([
+    content.nav.projects,
+    project().name,
+    added.name,
+  ])
 })

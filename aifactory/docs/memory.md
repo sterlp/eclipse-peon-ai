@@ -43,7 +43,12 @@ gefunden". Lösung war Mechanik, kein Core-Eingriff: Core `clean test` (1482/0) 
 `javap`-Gegenprobe. **Vor dem Fabrik-Bau immer erst das Core-Artefakt frisieren.**
 
 **Nächste Schritte:** **Inc 5a** Sider + URL + Projektbaum ([R-WP-38/UC-WP-70](ui.md), C-3,
-`aria-current` zurück) → **5b** Files-Unit/Responsive. Danach
+`aria-current` zurück) → **5b** Files-Unit/Responsive. Meine 5a-Entscheidungen (2026-11-07, ⏳ zur
+Bestätigung): **Wurzeleintrag „Projects"** im Sider (sonst wäre „Projekt anlegen" nicht mehr erreichbar),
+**UC-WP-51 bleibt** (Mechanik wandert auf die Adresse `/ui/chat`, kein Eintrag), **Breakpoint `lg` =
+991,98 px**, **URL = Projektname** (`ProjectService.java:132-136` belegt die Eindeutigkeit; Restrisiko
+Hand-Duplikat in `projects.json` bewusst getragen), Docs dafür sind geschrieben (`docs/ui.md`: R-WP-1,
+UC-WP-51, R-WP-38, UC-WP-70 — **uncommittet**, gehören in den 5a-1-Commit). Danach
 Rest-Backlog: C-7 (Agent-Blick read-only live), C-2a, C-1 TurnClaim-Timeout, F8/F10, Mini 3c
 (`data:`-Bild ⇒ Alt statt leerem `src`). Stagehand ⏳ parked (Node ≥22.18 vs. Bau 22.12).
 

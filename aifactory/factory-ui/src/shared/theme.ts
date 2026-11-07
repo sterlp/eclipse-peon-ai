@@ -82,6 +82,9 @@ export function factoryTheme(dark: boolean): ThemeConfig {
         headerBg: read('--bg'),
         headerColor: read('--text-h'),
         headerPadding: FRAME_GUTTER,
+        // the light sider paints this one, not `siderBg` — that token belongs to the dark variant and
+        // would leave the tree in a second grey beside our own (R-WP-39)
+        lightSiderBg: read('--bg'),
       },
     },
   }

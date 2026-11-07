@@ -36,8 +36,9 @@ Grundsatz „keine linke Sidebar" ist durch Pauls AntD-Entscheidung vom 2026-11-
 
 **URL-stabil:** jede Navigation (Projekt öffnen, Einheit wählen, View wechseln) ändert die URL
 (**Aktion → URL → UI-Change**) — kein rein funktionierender `useState`-Zustand; ein Reload bleibt auf
-der Seite (UC-WP-43). „Chat" ohne gewähltes Projekt führt auf **Projekte**; geöffnet wird das
-**zuletzt aktive Projekt** (UC-WP-51).
+der Seite (UC-WP-43). Die Adresse `/ui/chat` **ohne** Projekt führt auf **Projekte**; war zuletzt ein
+Projekt aktiv, öffnet sich dessen Chat (UC-WP-51) — einen „Chat"-**Eintrag** in der Navigation gibt es
+nicht mehr ([R-WP-38](ui.md)).
 
 #### UC-WP-1 — pagesOfTheMvpApp ✅ (früher „showsExactlyTheseFourPages", umgebaut Paul 2026-11-02)
 - GIVEN die App WHEN der Nutzer navigiert THEN erreicht er global *Projekte* und *Settings* (Config,
@@ -52,8 +53,9 @@ der Seite (UC-WP-43). „Chat" ohne gewähltes Projekt führt auf **Projekte**; 
   unberührt.
 
 #### UC-WP-51 — chatOpensLastActiveProject ✅
-- GIVEN mehrere Projekte WHEN der Nutzer „Chat" klickt THEN öffnet sich der Chat des zuletzt aktiven
-  Projekts; ohne aktives Projekt führt „Chat" auf die Projektliste.
+- GIVEN mehrere Projekte WHEN `/ui/chat` **ohne** Projekt geöffnet wird (Adresse, Lesezeichen,
+  Weiterleitung — einen „Chat"-Eintrag gibt es seit [R-WP-38](ui.md) nicht mehr) THEN öffnet der Chat des
+  zuletzt aktiven Projekts; ohne zuletzt aktives Projekt führt die Adresse auf die Projektliste.
 
 #### UC-WP-52 — everyNavigationChangesTheUrl ✅
 - GIVEN jede Navigation (Projekt öffnen, View wechseln) WHEN der Nutzer sie auslöst THEN ändert sich
@@ -88,7 +90,10 @@ adressieren können (Befund Paul 2026-11-02; [AGENTS.md](../AGENTS.md): „UI: E
 
 ### R-WP-38 — Navigation: Projektbaum im Sider, Einheiten je Projekt ❌ (Paul 2026-11-06, AntD-Umbau)
 
-Die Navigation ist ein **Sider** (`Layout.Sider`) links mit einem Eintrag **je Projekt**. **Ein Klick
+Die Navigation ist ein **Sider** (`Layout.Sider`) links mit einem Eintrag **je Projekt**. **Sein erster
+Eintrag ist „Projects"** — die Projektliste, in der Projekte **hinzugefügt und entfernt** werden
+([R-WP-2](project.md)); er ist keine weitere Seite, sondern die bestehende Projekte-Seite im Sider.
+**Ein Klick
 auf das Projekt öffnet seinen Chat** — es gibt **keinen eigenen „Jon"-Eintrag** und kein „Jon"-Label
 in der Navigation (Paul 2026-11-06: „Jon … muss weg"; der Agent heißt in den Docs weiter Jon, und
 seine Kachel behält den Namen, [R-WP-7](chat.md)). Unter dem Projekt stehen seine **Einheiten**:
@@ -103,12 +108,14 @@ innerhalb ihrer Spalte, [R-WP-35](chat.md)) — sie läuft nicht unter dem Sider
 in voller Höhe daneben.
 
 #### UC-WP-70 — projectTreeAndUnitEntries ❌
-- GIVEN die App WHEN sie öffnet THEN zeigt der Sider ein Eintrag je Projekt, ohne „Jon"-Eintrag und
-  ohne „Jon"-Label; ein Klick auf das Projekt öffnet dessen Chat.
+- GIVEN die App WHEN sie öffnet THEN zeigt der Sider **zuerst „Projects"** und darunter **ein Eintrag je
+  Projekt**, ohne „Jon"-Eintrag und ohne „Jon"-Label; ein Klick auf das Projekt öffnet dessen Chat, ein
+  Klick auf „Projects" die Projektliste (Hinzufügen, Entfernen) — Markierung und URL einig.
 - GIVEN ein geöffnetes Projekt WHEN der Nutzer die Einheit **Files** wählt THEN wechseln
   Sider-Markierung und URL einig auf dieselbe Einheit, und ein Reload landet wieder dort.
 - GIVEN ein Fenster unter dem Sider-Breakpoint WHEN die App zeichnet THEN ist der Sider eingeklappt
-  und die Chat-Fläche nutzt die volle Breite.
+  und die Chat-Fläche nutzt die volle Breite; über den ausgeklappten Sider bleibt die Auswahl
+  erreichbar (auch „Projects").
 
 ### R-WP-39 — Eine Design-Basis: AntD, Chat-Zeilen eigenes CSS ✅ (Paul 2026-11-06)
 

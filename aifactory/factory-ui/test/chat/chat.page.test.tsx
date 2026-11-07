@@ -614,7 +614,8 @@ test('oneChatPerProject', async () => {
   )
   expect(screen.queryByTestId('chat-log')).toBeNull()
 
-  // the list re-reads itself on mount, so the project has to be found again before it can be opened
+  // INC-5A-D1 (R-WP-38): the frame owns that read now — the tree beside the list is drawn from it — so the
+  // project still has to be found again before it can be opened. The click and its claim are unchanged.
   fireEvent.click(await screen.findByRole('button', { name: 'demo' }))
   const again = await screen.findByRole('region', { name: content.chat.title })
   await waitFor(() => expect(agentLinesSaying(ANSWER.text)).toHaveLength(1))
