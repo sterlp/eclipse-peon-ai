@@ -9,7 +9,7 @@ import dev.langchain4j.agent.tool.Tool;
 public class CompactSessionTool extends AbstractTool {
     public static final String NAME = "compactSession";
     public static final String EMPTY_PRESERVE = "empty preserve";
-    public static final String PRESERVE = "preseve in tool call";
+    public static final String PRESERVE = "Compacted. Preserve text is in call arguments.";
 
     @Tool(name = CompactSessionTool.NAME,
             value = """

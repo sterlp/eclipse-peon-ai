@@ -96,7 +96,7 @@ class CompactSessionToolTest {
         assertThat(result).doesNotContain("WHAT: Compressed summary");
         // AND — without preserve the result carries the non-colliding marker (SOLL 2026-09-11),
         // preceded by the stats line (R-CIB-6)
-        assertThat(result).contains("");
+        assertThat(result).contains(CompactSessionTool.EMPTY_PRESERVE);
     }
 
     @Test
