@@ -22,9 +22,20 @@ kopieren), alte chat.html-Optik **kein Ziel mehr**, Farben bleiben unsere Tokens
 Modell-Auswahl + Kontextanzeige (❓ MVP?), Chat-Optionen-Platzierung (⏳), Sprechblasen/Zeit unten
 (⏳ später), Top-Menü-Einträge + Ordnung (⏳) — siehe open-points „Runde 4b".
 
-**Nächster Schritt:** Inkrement 1 = Rahmen (Top-Menü + Sider-Einheiten), je Look-Inkrement **am
-Browser abnehmen**. Paul parallel: Plugin-Bugfixes **auf main** — Fabrik-Änderungen brauchen wieder
-einen eigenen Branch (Vorschlag: `web-factory-look`).
+**Inkrement 1 gebaut + reviewed (N1) + geflippt ✅:** Branch **`web-factory`** (ab main `542d9f4`,
+`web-factory-look` gelöscht): `42b08c02` (1a Top-Menü) → `d759ce7d` (1b Einheiten) → `99ffb67d`
+(N1: Nachweise) → `d666836e` (Findings-File, jetzt **getrackt**). Stand: **224 Tests / 22 Dateien**
+grün, tsc 0, oxlint 0/0. Review-Verdict war REJECTED (2 Nachweis-Lücken: `ant-menu-dark/-horizontal`
+unkalibriert, Turn-Test startete adressgleich) — N1 geschlossen, 2 Proben rot. `R-WP-43/UC-WP-76/77 ✅`
+(Verdrahtung; **Look-Abnahme am Browser steht aus** — Band, Menühöhe, Hell/Dunkel `#1f2328`/`#101316`,
+Auswahl-Kontrast, `border-bottom`, LOW-2/LOW-4, 2 Suspicions; Details in
+`peon-plan/review-findings.md`). Settings-Button rechts **entfernt** (Q1), kein Paco-Eintrag (Q2),
+Marke an der Chat-Einheit (Q3), dunkles Band (Q4).
+
+**Nächster Schritt:** Pauls Browser-Abnahme (Smoke: `spring-boot:run --server.port=8099` →
+`http://localhost:8099/ui/`), dann Inkrement 2 = **Buttons statt Text-Links** (Clear/Compact an den
+Kacheln, [chat.md](chat.md) R-WP-7 anfassen) + Chat-Optionen-Platzierung klären. Paul parallel:
+Plugin-Bugfixes **auf main** — Fabrik-Änderungen bleiben auf `web-factory`.
 
 Übernehmbare Muster aus `ai-schulung` (Survey 2026-11-07): dunkles horizontales Menü
 (`app/frontend/src/App.tsx`), Sidebar-Collapse je Agent + Hover-Aktionen (`ThreadNav.tsx`),

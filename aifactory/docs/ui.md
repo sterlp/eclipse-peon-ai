@@ -170,7 +170,7 @@ App: wo die App mountet, gilt ihr Theme; ein Ausschnitt, der ohne sie montiert, 
 - GIVEN der Chat WHEN er den Verlauf zeichnet THEN tragen Nutzer-, Jon- und Werkzeug-Zeilen unsere
   Klassen und unsere Akzentlinie; AntD-Elemente stehen nur außerhalb des Verlaufs.
 
-### R-WP-43 — Rahmen: Top-Menü, Einheiten im Sider, Aktionen als Elemente ❌ (Restart Paul 2026-11-07 — Mockup `factory-ui-mockup.tsx` + Referenz `ai-schulung`; nichts davon gebaut)
+### R-WP-43 — Rahmen: Top-Menü, Einheiten im Sider, Aktionen als Elemente ✅ (Paul 2026-11-07 — Mockup `factory-ui-mockup.tsx` + Referenz `ai-schulung`; gebaut als Inkrement 1a/1b+N1 auf `web-factory`, 2026-11-07 — die Verdrahtung ist bewiesen, der Pinselstrich wird am Browser abgenommen)
 
 Der **Header** trägt Marke, das horizontale **Top-Menü** (AntD `Menu`, `mode="horizontal"`, dunkel —
 wie die erste Version der App und wie im Mockup), den gewählten Nutzernamen und **Settings**. Die
@@ -188,7 +188,7 @@ untere Zeile der Chat-Spalte ([R-WP-35](chat.md)) — sie ist die Footer-Zeile d
 Text-Link, `Select`/`Dropdown` statt Textliste — auch an den Kacheln ([R-WP-7](chat.md)); die
 Chat-Optionen (Clear/Compact je Chat) sind ein eigener Punkt (⏳ [open-points](open-points.md)).
 
-#### UC-WP-76 — topMenuNavigates ❌
+#### UC-WP-76 — topMenuNavigates ✅ (Verdrahtung bewiesen, Look am Browser abzunehmen)
 - GIVEN die App WHEN sie zeichnet THEN trägt der Header ein dunkles horizontales Menü mit genau
   **Projekte · Chat · Settings**.
 - GIVEN der Nutzer wählt „Chat" WHEN kein Projekt aktiv ist THEN öffnet sich die Projektliste; mit
@@ -196,7 +196,7 @@ Chat-Optionen (Clear/Compact je Chat) sind ein eigener Punkt (⏳ [open-points](
 - GIVEN die Adresse wechselt WHEN der Rahmen zeichnet THEN folgt die Menü-Markierung der Adresse —
   Menü- und Sider-Markierung sind einig.
 
-#### UC-WP-77 — unitsInTheProjectTree ❌
+#### UC-WP-77 — unitsInTheProjectTree ✅ (Verdrahtung bewiesen, Look am Browser abzunehmen)
 - GIVEN ein geöffnetes Projekt WHEN der Sider zeichnet THEN stehen unter dem Projekt in dieser
   Ordnung **Chat**, **Paco** (sobald gebaut) und **Files** als letztes; der Chat-Eintrag und der
   Projekt-Klick öffnen dieselbe Adresse, genau ein Eintrag ist markiert, und ein Reload landet wieder

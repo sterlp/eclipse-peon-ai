@@ -346,9 +346,12 @@ Defekte/Fragen, je eine Story je Punkt erst nach Klärung (❓ = präzisieren, b
   Konflikt von 2026-11-01) — AGENTS.md („UI: English") gilt, [R-WP-27](ui.md) formalisiert: Strings
   im Catalog (`content.ts`/Locale), keine deutschen Draht-Werte. Umsetzung als eigene Story dieses
   Zyklus.
-* **❓ Chats-Übersicht links (Vision, Paul 2026-11-02):** jedes Projekt ein „Tree"/Accordion in der
+* **🔒 Chats-Übersicht links (Vision, Paul 2026-11-02; Entscheidung 2026-11-07):** jedes Projekt ein „Tree"/Accordion in der
   linken Navigation, mehrere Paco-Chats je Projekt (**+**), Überblick über alle Chats; Main-Chat
   immer Jon. Gehört zu [Paco](paco.md) — erst mit der Paco-Story, kein MVP-Mechanismus.
+  **Paul 2026-11-07: „Später — erst nach dem MVP; aktuell gibt es nur ein Paco, er kann später mehr
+  als einen Chat haben."** Das SOLL-Bild („Chat 59" + „+ Neuer Chat") ist damit die spätere Form,
+  nicht der MVP — **PR-5 bleibt unverändert** (ein Jon, ein Gespräch je Projekt).
 
 ### Docs-Review gegen Pauls Produktvision (2026-10-27) — eine Frage nach der anderen
 
