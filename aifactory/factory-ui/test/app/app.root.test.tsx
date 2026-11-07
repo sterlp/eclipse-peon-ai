@@ -8,6 +8,8 @@ import { factoryTheme } from '../../src/shared/theme'
 afterEach(() => {
   cleanup()
   delete document.documentElement.dataset.theme
+  // a chosen mode left here would decide every following start of this file, whatever the query answers
+  window.localStorage.clear()
   vi.restoreAllMocks()
 })
 
@@ -57,9 +59,11 @@ function answerTheDarkQuery(dark: boolean): void {
 }
 
 /**
- * UC-WP-71 GIVEN 3 (one colour mode, one table): the app asks the operating system once and names the answer
- * on the document — that attribute is the only thing the dark table of `index.css` hangs on, so without it a
- * dark basis would be handed light tokens.
+ * UC-WP-71 GIVEN 3 (one colour mode, one table): the frame names the mode on the document — that attribute is
+ * the only thing the dark table of `index.css` hangs on, so without it a dark basis would be handed light
+ * tokens. The start value is the answer of the operating system, and what this browser once chose beats it:
+ * the frame reads what the browser left behind (UC-WP-71's second point) and writes nothing before a hand has
+ * touched the switch.
  *
  * Compared against our own dark theme rather than against a colour of the sheet: under `darkAlgorithm` the
  * basis derives the accent it hands a surface from the token, so the value written in the table is not the
@@ -75,6 +79,10 @@ test('appRootSetsTheDocumentTheme', () => {
   )
   expect(document.documentElement.dataset.theme, 'a light system names light on the document').toBe('light')
   expect(accentOf(light), 'and the basis is handed the light answer').toBe(accentUnder(false))
+  expect(
+    window.localStorage.getItem('aifactory.theme'),
+    'a start value is no choice, so nothing of it is kept — the next start asks the system again',
+  ).toBeNull()
   light.unmount()
 
   answerTheDarkQuery(true)
@@ -89,4 +97,17 @@ test('appRootSetsTheDocumentTheme', () => {
     accentUnder(true),
     'the two answers differ, so the comparison above is not a tautology',
   ).not.toBe(accentUnder(false))
+  dark.unmount()
+
+  // the reload of a browser that switched once: the choice is read before anything is asked again, and it
+  // wins over the operating system, which is still answering light here
+  window.localStorage.setItem('aifactory.theme', 'dark')
+  answerTheDarkQuery(false)
+  const chosen = render(
+    <AppRoot>
+      <TokenProbe />
+    </AppRoot>,
+  )
+  expect(document.documentElement.dataset.theme, 'a chosen dark outvotes the operating system').toBe('dark')
+  expect(accentOf(chosen), 'and the basis is handed the chosen answer').toBe(accentUnder(true))
 })

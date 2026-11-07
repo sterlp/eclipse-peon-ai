@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Layout } from 'antd'
 
 import { AppSider } from './app.sider'
+import { AppThemeToggle } from './app.theme.toggle'
 import { AppTop } from './app.top'
 import { AppUser } from './app.user'
 import {
@@ -22,10 +23,10 @@ import type { Project } from '../shared/dto'
 import '../styles.css'
 
 /**
- * The frame of the app (R-WP-1, R-WP-38, R-WP-43): the header with the brand, the three pages and this
- * browser's name; the tree of projects in the sider beside the view. Both menus are a reading of the URL and
- * hold nothing of their own — an address survives a reload that a component's state would not (UC-WP-43,
- * UC-WP-52), and the two readers of that address live in {@link ./app.paths} together.
+ * The frame of the app (R-WP-1, R-WP-38, R-WP-43): the header with the brand, the three pages, the colour
+ * switch and this browser's name; the tree of projects in the sider beside the view. Both menus are a
+ * reading of the URL and hold nothing of their own — an address survives a reload that a component's state
+ * would not (UC-WP-43, UC-WP-52), and the two readers of that address live in {@link ./app.paths} together.
  *
  * The brand is a word and not a link, and the header names no project: the header answers **which page**,
  * the tree answers **which project** — one question each, so nothing has to be kept in step between them.
@@ -73,6 +74,7 @@ export default function AppShell() {
       <Layout.Header className="app-header">
         <span className="app-title">{content.brand}</span>
         <AppTop active={pageKeyOfPathname(pathname)} onNavigate={navigate} />
+        <AppThemeToggle />
         <AppUser user={user} onChange={setUser} />
       </Layout.Header>
       <Layout className="app-body">

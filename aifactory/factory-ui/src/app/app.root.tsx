@@ -1,18 +1,25 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { ConfigProvider } from 'antd'
 
 import { AppBrowser } from './app.routes'
 import { factoryTheme } from '../shared/theme'
-import { usePrefersDark } from '../shared/prefers.dark'
+import {
+  applyMode,
+  startMode,
+  ThemeModeContext,
+  writeStoredMode,
+  type ThemeMode,
+  type ThemeModeState,
+} from '../shared/theme.mode'
 
 /**
  * The one design basis of the app (R-WP-39): the theme of the basis is derived from our tokens and wrapped
  * once around everything, so no page carries a colour of its own and no second sheet competes with it.
  *
- * The same answer also names the colour mode on the document, which is what makes the dark table of
- * `index.css` the one table: the sheet's `data-theme` rule paints the page, the theme reads that same rule
- * (N-D1). Without this line the browser would follow its media query while the basis followed the attribute
- * nobody sets — one screen, two dark modes.
+ * The frame is also the one holder of the colour mode (UC-WP-71): it starts from the browser's choice or the
+ * operating system's answer, names it on the document — which is what the two tables of `index.css` and
+ * `react-shiki` read — and hands the same mode to the basis. Nothing below repeats the question, so one
+ * screen never shows two dark modes.
  *
  * Its own file because the theme is a component, and `main.tsx` is an entry that mounts and exports
  * nothing — a component living there would be outside every fast-refresh boundary.
@@ -21,11 +28,26 @@ import { usePrefersDark } from '../shared/prefers.dark'
  * nobody renders cannot be shown to work. The app itself keeps the default.
  */
 export function AppRoot({ children = <AppBrowser /> }: { children?: ReactNode }) {
-  const dark = usePrefersDark()
+  const [mode, setMode] = useState<ThemeMode>(startMode)
 
+  // the document is named from the mode and nowhere else; `main.tsx` already did it once before the first
+  // paint, so this only ever repeats that answer or carries a new one
   useEffect(() => {
-    document.documentElement.dataset.theme = dark ? 'dark' : 'light'
-  }, [dark])
+    applyMode(mode)
+  }, [mode])
 
-  return <ConfigProvider theme={factoryTheme(dark)}>{children}</ConfigProvider>
+  const theme: ThemeModeState = {
+    mode,
+    choose: (next: ThemeMode): void => {
+      // only what the user chose reaches the browser: a start value stays a start value (UC-WP-71)
+      writeStoredMode(next)
+      setMode(next)
+    },
+  }
+
+  return (
+    <ThemeModeContext.Provider value={theme}>
+      <ConfigProvider theme={factoryTheme(mode === 'dark')}>{children}</ConfigProvider>
+    </ThemeModeContext.Provider>
+  )
 }

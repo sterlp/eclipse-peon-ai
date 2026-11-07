@@ -1,3 +1,5 @@
+import type { ThemeMode } from './theme.mode'
+
 /**
  * Every text the screen shows (R-WP-27, UC-WP-53): one catalog, no locale framework. A component holds no
  * literal of its own, so a test and a later i18n address the same keys instead of copy-pasted copy.
@@ -26,6 +28,15 @@ export const content = {
   user: {
     /** The field of this browser's name (R-WP-17) — label and placeholder are the one phrase. */
     name: 'Your name',
+  },
+
+  theme: {
+    /**
+     * The switch between the two colour modes (UC-WP-71): it says what pressing it will do, since the
+     * control itself is a moon and a sun and carries no word of its own.
+     */
+    toggle: (mode: ThemeMode): string =>
+      mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode',
   },
 
   common: {

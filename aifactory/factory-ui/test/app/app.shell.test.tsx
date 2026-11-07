@@ -69,6 +69,8 @@ test('theUiSpeaksEnglish', async () => {
     project().name,
   ])
   expect(screen.getByLabelText(content.user.name)).toBeInTheDocument()
+  // the colour switch of the frame (UC-WP-71) is a control of the basis and speaks the catalog's word
+  expect(screen.getByRole('switch', { name: content.theme.toggle('light') })).toBeInTheDocument()
 
   // the projects view: its form and its empty affordance are the catalog's words
   expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()

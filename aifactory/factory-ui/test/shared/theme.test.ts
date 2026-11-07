@@ -1,7 +1,6 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { renderHook } from '@testing-library/react'
 
-import { usePrefersDark } from '../../src/shared/prefers.dark'
+import { prefersDark } from '../../src/shared/prefers.dark'
 import { declarations, declares } from './sheets'
 import {
   isDesignLibrary,
@@ -48,13 +47,15 @@ test('theHeaderRowHoldsTheMenuAndNoSecondSettingsEntry', () => {
   expect(declares('.app-settings'), 'the settings button of the header is gone').toBe(false)
 })
 
+/**
+ * UC-WP-71 GIVEN 2 (the start value is the operating system's preference): one question, asked of the
+ * browser and of nothing else. The answer is overwritten for this test alone, because dark is decided by
+ * `matches` and a test may not depend on how the machine running it is configured.
+ */
 // UC-WP-71
-test('theThemeQuestionIsTheOperatingSystem', () => {
-  const light = renderHook(() => usePrefersDark())
-  expect(light.result.current, 'the environment answers "not dark" here').toBe(false)
+test('theOperatingSystemAnswerIsTheStartValue', () => {
+  expect(prefersDark(), 'the environment answers "not dark" here').toBe(false)
 
-  // the answer of the environment is what the app asks; here it is overwritten for this test alone, because
-  // dark is decided by `matches` and a test may not depend on how the machine running it is configured
   vi.spyOn(window, 'matchMedia').mockImplementation(
     (query: string) =>
       ({
@@ -68,8 +69,7 @@ test('theThemeQuestionIsTheOperatingSystem', () => {
         dispatchEvent: () => false,
       }) as MediaQueryList,
   )
-  const dark = renderHook(() => usePrefersDark())
-  expect(dark.result.current, 'a dark preference reaches the theme').toBe(true)
+  expect(prefersDark(), 'a dark preference reaches the theme').toBe(true)
 })
 
 /**

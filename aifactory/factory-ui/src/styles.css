@@ -24,9 +24,14 @@
   white-space: nowrap;
 }
 
-/* The browser's own name, at the end of the header — small, because it is a label and not a workspace. */
+/* The colour switch sits at the end of the row and pushes the name to the edge with it; the band is dark in
+   both modes, so the switch of the basis carries its own colours and needs no token (R-WP-39, UC-WP-71). */
+.app-theme {
+  margin-inline-start: auto;
+}
+
+/* The browser's own name, last in the row — small, because it is a label and not a workspace. */
 .app-user {
-  margin-left: auto;
   width: 9rem;
 }
 
@@ -583,20 +588,6 @@ button {
 [data-theme='dark'] .code-view .shiki code {
   color: var(--shiki-dark) !important;
   background-color: transparent !important;
-}
-
-/* … and the same switch the colour tokens make on the OS preference (index.css states both). */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .code-view .shiki {
-    color: var(--shiki-dark) !important;
-    background-color: var(--shiki-dark-bg) !important;
-  }
-
-  :root:not([data-theme='light']) .code-view .shiki span,
-  :root:not([data-theme='light']) .code-view .shiki code {
-    color: var(--shiki-dark) !important;
-    background-color: transparent !important;
-  }
 }
 
 /* The name above a line, in the colour of its voice (chat.html: uppercase, letterspaced, smaller). */
