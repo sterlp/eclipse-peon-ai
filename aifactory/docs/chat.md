@@ -364,9 +364,9 @@ Bild bleibt in der Antwortbreite, nichts rechtsbündig. Die untenstehende BDD wi
 Die **eigene Eingabe steht rechts in ihrer Blase** (Referenz-Optik, oben); **keine Antwort** ist
 rechtsbündig oder mittig zentriert — Antworten stehen links im Fluss. Jons Antworten haben **keinen
 grauen Hintergrund-Block** und keine eingestreuten Markierungen oder Cards im Fließtext. Wo die Rolle wechselt,
-**trennt keine Linie**: die seitlichen Akzentlinien der Zeilen sind die Trennung — **kein `<hr>`** und
-keine andere horizontale Linie **zwischen zwei Zeilen** (Paul 2026-11-06: „hr raus, Linien treffen sich
-seitlich wie in Eclipse"). Ein `---` **innerhalb einer Antwort** ist deren Inhalt und wird nicht
+**trennt keine Linie**: Blase und Karte trennen die Stimmen optisch — **kein `<hr>`** und
+keine andere horizontale Linie **zwischen zwei Zeilen** (die Begründung „Linien treffen sich
+seitlich" der Akzent-Fassung ist mit den Bubbles entfallen). Ein `---` **innerhalb einer Antwort** ist deren Inhalt und wird nicht
 unterdrückt — es zeichnet als **unsere** kurze, ruhige Linie **im Antwortblock**, nie linienbreit über
 den Verlauf; ein Beweis für „keine Trennlinie" prüft deshalb den **ganzen Verlauf** und nicht nur eine
 eigene Klasse. **Breite Kost** verbreitert nie die Seite: eine **Tabelle** scrollt innerhalb des

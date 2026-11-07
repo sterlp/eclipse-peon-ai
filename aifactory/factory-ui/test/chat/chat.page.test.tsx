@@ -978,8 +978,8 @@ test('roleChangeDrawsNoRule', async () => {
   render(<ChatPage project={project()} />)
   await flush()
 
-  // user, agent, agent, user: two changes of voice and no line for either — what separates them is the
-  // accent each row carries on its own side (R-WP-29, UC-WP-55 GIVEN 2)
+  // user, agent, agent, user: two changes of voice and no line for either — bubble and card tell them
+  // apart, no row carries an accent edge (R-WP-29, UC-WP-55 GIVEN 2)
   expect(separatorsOf(screen.getByTestId('chat-log')), 'the whole log draws no separator').toEqual([])
   expect(
     screen.getAllByTestId(/chat-line-(user|jon)/).map(line => (line.classList.contains('user') ? 'user' : 'agent')),

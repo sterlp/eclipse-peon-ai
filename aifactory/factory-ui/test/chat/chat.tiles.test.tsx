@@ -139,6 +139,18 @@ test('clickingATileOpensTheInsight', () => {
     />,
   )
 
+  // what a tile is made of, in the order the eye reads it: the name as its title, number and status under
+  // that, the actions last (R-WP-32, UC-WP-59 GIVEN 1) — a list of these is the row above the chat
+  const dev = screen.getByTestId('tile-Dev')
+  expect(Array.from(dev.querySelectorAll('.chat-tile-face > *')).map(part => part.className)).toEqual([
+    'chat-tile-name',
+    'chat-tile-meta',
+    'chat-tile-actions',
+  ])
+  expect(dev.querySelector('.chat-tile-meta [data-testid="tile-context-Dev"]')).not.toBeNull()
+  expect(dev.querySelector('.chat-tile-meta [data-testid="tile-state-Dev"]')).not.toBeNull()
+  expect(dev.querySelector('.chat-tile-actions [data-testid="tile-clear-Dev"]')).not.toBeNull()
+
   // the tile is the door — no separate link has to be hit first (R-WP-32)
   const face = screen.getByTestId('tile-open-Dev')
   expect(face).toHaveAttribute('role', 'button')
