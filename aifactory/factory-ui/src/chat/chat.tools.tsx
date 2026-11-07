@@ -4,9 +4,10 @@ import { arrivalTime, MAX_TOOL_LINES, type DelegationItem, type ToolItem } from 
 interface Props {
   /** The steps of one tool run, in the order they arrived. */
   items: ToolItem[]
-  /** The step the open turn reported last, or none (R-WP-40). Identity and not index: the cap may have
+  /** The one entry the open turn works on, or none (R-WP-40): a step of this box, or a delegation drawn
+   *  beside it — which is exactly how this box stops working. Identity and not index: the cap may have
    *  trimmed this run, and the step that works belongs to one turn — not to whichever turn works. */
-  open: ToolItem | null
+  open: ToolItem | DelegationItem | null
 }
 
 /**

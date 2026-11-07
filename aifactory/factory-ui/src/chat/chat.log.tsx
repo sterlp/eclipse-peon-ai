@@ -5,7 +5,13 @@ import type { ChatMessage } from './chat.client'
 import { ChatDiff } from './chat.diff'
 import { ChatMarkdown } from './chat.markdown'
 import { ChatDelegation, ChatTools } from './chat.tools'
-import { liveRuns, openStep, type DelegationItem, type LiveItem, type ToolItem } from './chat.live'
+import {
+  liveRuns,
+  openTimelineItem,
+  type DelegationItem,
+  type LiveItem,
+  type ToolItem,
+} from './chat.live'
 import type { PendingLine } from './chat.pending'
 import { content } from '../shared/content'
 
@@ -58,12 +64,14 @@ type SpokenItem = Exclude<LiveItem, { kind: 'tool' } | { kind: 'diff' } | { kind
 type Entry =
   | { type: 'row'; row: Row }
   | { type: 'live'; item: SpokenItem }
-  /** The steps of one tool run; `open` is the step the open turn reported last and stands in at most one of
-   *  the boxes the log draws — identity, so neither the cap nor the place in the list decides it. */
-  | { type: 'tools'; items: ToolItem[]; open: ToolItem | null }
+  /** The steps of one tool run; `open` is the one entry the open turn works on and stands in at most one of
+   *  the boxes the log draws — identity, so neither the cap nor the place in the list decides it. A
+   *  delegation beside the box takes the indicator away from it (`openTimelineItem`). */
+  | { type: 'tools'; items: ToolItem[]; open: ToolItem | DelegationItem | null }
   | { type: 'diff'; file: string; text: string }
-  /** One delegation; `open` is the entry's own end event and the identity of the open turn together, never
-   *  a flag the wire carried (R-WP-40, UC-WP-72 GIVEN 3). */
+  /** One delegation; `open` says this entry IS the one the log's single decider names — the entry's own end
+   *  event and the identity of the open turn decide that, never a flag the wire carried (R-WP-40,
+   *  UC-WP-72 GIVEN 3). */
   | { type: 'delegation'; item: DelegationItem; open: boolean }
 
 /**
@@ -178,10 +186,10 @@ export function ChatLog({ messages, outgoing, live, pending, openTurn = null, lo
 function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entry[] {
   const entries: Entry[] = []
   let shown = 0
-  // one step of the whole live list can be working: the last step of the turn that is open — a turn of its
-  // own has to bring a step of its own first, and the next step or the end of that turn ends the indicator
-  // (R-WP-40, UC-WP-72 GIVEN 2)
-  const open = openStep(live, openTurn)
+  // one entry of the whole live list works: the last step of the turn that is open, be it a step or a
+  // delegation — one decider for both, so the log cannot paint two indicators for one turn
+  // (R-WP-40, UC-WP-72 GIVEN 2 and 3)
+  const open = openTimelineItem(live, openTurn)
 
   const pushRows = (until: number) => {
     while (shown < Math.min(until, rows.length)) {
@@ -206,15 +214,10 @@ function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entr
         continue
       }
       if (item.kind === 'delegation') {
-        // the entry ends the tool box before it: the delegation is the last step of its turn, so the step
-        // above it is worked on no longer — and its own indicator answers to the turn's identity and to the
-        // end event of the wire, never to a place in the list (R-WP-40, UC-WP-72 GIVEN 3)
+        // the entry ends the tool box before it and takes the indicator itself: identity decides, never a
+        // second formula and never a place in the list (R-WP-40, UC-WP-72 GIVEN 3)
         pushTools()
-        entries.push({
-          type: 'delegation',
-          item,
-          open: item.turn !== null && item.turn === openTurn && !item.ended,
-        })
+        entries.push({ type: 'delegation', item, open: open === item })
         continue
       }
       pushTools()

@@ -79,7 +79,9 @@
 - **Ein offener Zustand wird an das laufende Objekt gebunden, nie an „Flag + letztes Element"** — ein
   Indikator sonst beim nächsten Turn auf dem alten Eintrag weiterblinkt (live-Items überleben den Turn). Und:
   eine Draht-Eigenschaft, die erst **nach** dem Zustandsende sichtbar wird (Zeit am geschlossenen Schritt),
-  braucht **beide Zustände im selben Test** — sonst bleibt ihr Löscher grün.
+  braucht **beide Zustände im selben Test** — sonst bleibt ihr Löscher grün. Und: **Identität schützt das
+  _Ob_, nicht das _Wo_** — ein neuer Timeline-Eintrag braucht neben der Turn-Id den **Anker-Beweis** gegen
+  die Antwortzeilen (Idiom `chat.page.test.tsx::toolLinesSurviveTheDoneRefresh`).
 - **AntD unter jsdom**: `matchMedia` **und** `ResizeObserver` sind load-bearing (jsdom 26.1.0: Property da,
   Wert `undefined`); `Select` über `<id>_list` (`id` je Choice Pflicht, `useId()` ist im Testbaum nicht
   eindeutig), Helfer `test/shared/choices.ts`. Dunkel ist **eine** Tabelle über `data-theme` am Document;

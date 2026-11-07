@@ -276,7 +276,7 @@ Verlauf; kompakt (klein, grau, Tool-Zeilen gemerged wie in `chat.html`) und nach
 - GIVEN eine Nutzer-Eingabe mit Markdown-Zeichen WHEN sie im Verlauf steht THEN erscheint sie als
   Wortlaut, nicht als Markup.
 
-### R-WP-40 — Werkzeug- und Delegationsschritte stehen als Timeline im Verlauf ❌ (Paul 2026-11-06)
+### R-WP-40 — Werkzeug- und Delegationsschritte stehen als Timeline im Verlauf ✅ (Paul 2026-11-06)
 
 Die Schritte eines Turns — Werkzeug, Think-Abschnitt, Delegation — werden als **Timeline**
 dargestellt, **an der Stelle im Verlauf, wo sie passieren** (R-WP-28: kein Block hinter dem
@@ -303,7 +303,7 @@ Core kein eigenes Ende. **Die Delegation ist die Ausnahme:** Anfang und Ende ihr
 kann keine Timeline-Zeile haben; seine Sichtbarkeit wäre eine eigene Regel (⏳ in
 [Open Points](open-points.md)).
 
-#### UC-WP-72 — toolStepsAsTimelineEntries ❌
+#### UC-WP-72 — toolStepsAsTimelineEntries ✅
 - GIVEN ein Turn ruft Werkzeuge WHEN die Zeilen erscheinen THEN stehen sie als Timeline-Einträge an
   ihrer Stelle im Verlauf, jeder mit dem Namen des arbeitenden Agenten; nennt der Draht zu einem
   Schritt keinen Agenten, nennt auch der Eintrag keinen.

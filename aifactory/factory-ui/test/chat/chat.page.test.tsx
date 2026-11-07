@@ -1440,13 +1440,13 @@ test('aDelegationWithoutItsPairSaysNothing', async () => {
 
 
 /**
- * The indicator of a step ends with the next step or with the end of the answer — never with the first word
- * of that answer (R-WP-40, UC-WP-72 GIVEN 2): a streaming text is not a step, so the step that worked last
- * keeps working on the screen until the wire reports another step or the turn ends, and the step then keeps
- * the clock of its arrival.
+ * The same rule, driven over the wire and not over the log's props: the indicator of a step ends with the
+ * next step or with the end of the answer — never with the first word of that answer (R-WP-40,
+ * UC-WP-72 GIVEN 2). A streaming text is not a step, so the step that worked last keeps working on the
+ * screen until the wire reports another step or the turn ends, and the step then keeps its arrival clock.
  */
 // UC-WP-72
-test('theIndicatorOfAStepEndsWithTheNextStepAndNotWithTheAnswer', async () => {
+test('theIndicatorOfAStepEndsWithTheNextStepOnTheWire', async () => {
   const steps = () =>
     screen.getAllByTestId('chat-tool-line').flatMap(box => [...box.querySelectorAll('.chat-tool-line')])
   const working = () => steps().filter(step => step.querySelector('.chat-step-running') !== null)

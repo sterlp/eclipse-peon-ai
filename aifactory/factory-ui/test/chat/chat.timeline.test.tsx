@@ -194,10 +194,22 @@ test('theCapKeepsTheArrivalTimesOfWhatStays', () => {
  */
 // UC-WP-72
 test('aReloadedLogInventsNoTimes', () => {
-  const view = render(<ChatLog messages={[QUESTION, ANSWER]} outgoing={[]} live={[]} pending={false} />)
+  // the reloaded log is not empty: it draws the finished lines with the author the history named, so the
+  // empty queries below say something about a log that has content in it (UC-WP-72 GIVEN 4)
+  const view = render(
+    <ChatLog
+      messages={[QUESTION, ANSWER, { role: 'jon', text: 'Eine Banane.', origin: 'Dev' }]}
+      outgoing={[]}
+      live={[]}
+      pending={false}
+    />,
+  )
 
   const log = screen.getByTestId('chat-log')
   expect(log.textContent).toContain(ANSWER.text)
+  expect(
+    [...log.querySelectorAll('[data-testid="chat-line-author"]')].map(line => line.textContent),
+  ).toEqual(['Paul', 'Dev'])
   expect(log.querySelector('[title]'), 'nothing of a finished turn is titled by a time').toBeNull()
   expect([...log.querySelectorAll('.chat-step-running')], 'no step works after a reload').toEqual([])
   expect([...log.querySelectorAll('.chat-step-name')], 'and none names an agent the wire did not name').toEqual(
@@ -417,6 +429,64 @@ test('theDelegationEntryNamesTheMemberAndStopsAtItsEnd', () => {
   expect(appSheet(), 'and reduced motion stops it in its own block').toMatch(
     /@media \(prefers-reduced-motion: reduce\) \{\s*\.chat-log \.chat-line\.delegation \.chat-delegation-working \{\s*animation: none/,
   )
+})
+
+/**
+ * „Working" is the LAST step of a running turn, and that is one entry of the timeline whatever it is (R-WP-40,
+ * UC-WP-72 GIVEN 2 and 3): one decider answers for the whole log, so no order of the wire leaves two entries
+ * blinking — the step above an open entry stops with it, a step arriving behind an open entry takes the
+ * indicator over, and an entry the wire closed ends without handing it back.
+ */
+// UC-WP-72
+test('onlyOneEntryOfTheTurnWorksAtATime', () => {
+  const indicators = () => [
+    ...screen.getByTestId('chat-log').querySelectorAll('.chat-step-running, .chat-delegation-working'),
+  ]
+  const delegating = appendLiveDelegation(
+    stepsOf({ text: 'Dev start: nenne eine Frucht', origin: 'Jon', at: FIRST }),
+    'Dev',
+    1,
+    SECOND,
+    TURN,
+  )
+  const { rerender } = render(
+    <ChatLog messages={[QUESTION]} outgoing={[]} live={delegating} pending={false} openTurn={TURN} />,
+  )
+
+  expect(indicators(), 'the entry the wire opened last works, and only it').toHaveLength(1)
+  expect(indicators()[0].className).toContain('chat-delegation-working')
+  expect(
+    drawnSteps()[0].querySelector('.chat-step-running'),
+    'the step above the entry stops with it',
+  ).toBeNull()
+
+  // a step that arrives behind the open entry is the last step of the turn from then on — the core reports
+  // the two one after the other, so the rule has to hold in either order
+  const stepBehind = appendLiveTool(delegating, 'wc -l README.md', 1, 'Jon', SECOND, TURN)
+  rerender(
+    <ChatLog messages={[QUESTION]} outgoing={[]} live={stepBehind} pending={false} openTurn={TURN} />,
+  )
+  expect(indicators(), 'still one entry works, now the step').toHaveLength(1)
+  expect(indicators()[0].className).toContain('chat-step-running')
+  expect(
+    screen.getByTestId('chat-delegation').textContent,
+    'the entry the step left behind works no longer',
+  ).not.toContain(content.chat.working)
+
+  // the entry's own end ends it: neither the entry nor the step above it works
+  rerender(
+    <ChatLog
+      messages={[QUESTION]}
+      outgoing={[]}
+      live={endLiveDelegation(delegating, 'Dev', TURN)}
+      pending={false}
+      openTurn={TURN}
+    />,
+  )
+  expect(
+    indicators(),
+    'an entry the wire closed works no longer, and neither does the step above it',
+  ).toEqual([])
 })
 
 /**

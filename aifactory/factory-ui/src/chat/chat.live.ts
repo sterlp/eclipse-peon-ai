@@ -76,13 +76,18 @@ export function appendLiveTool(
 }
 
 /**
- * The step that is working: the last step of the turn this view holds open, and of that turn alone. A step
- * of a turn that has ended never works for the next one, and an open turn that has reported no step of its
- * own has no indicator — the core reports no end of a single tool, so only the next step or the end of the
- * turn takes the indicator away (R-WP-40, UC-WP-72 GIVEN 2). The answer a turn is writing, and the file
- * changes it reports, are steps of neither: a step keeps its indicator while the answer streams to it.
+ * The ONE entry of the timeline that works: the last step of the turn this view holds open — a tool step or
+ * a delegation entry, never both, because this is the only place the log asks who works (R-WP-40,
+ * UC-WP-72 GIVEN 2 and 3). A step of a turn that has ended never works for the next one, and an open turn
+ * that has reported no step of its own has no indicator — the core reports no end of a single tool, so only
+ * the next step, the entry's own end or the end of the turn takes the indicator away. The answer a turn is
+ * writing, and the file changes it reports, are steps of neither: a step keeps its indicator while the
+ * answer streams to it.
  */
-export function openStep(items: LiveItem[], turn: number | null): ToolItem | null {
+export function openTimelineItem(
+  items: LiveItem[],
+  turn: number | null,
+): ToolItem | DelegationItem | null {
   if (turn === null) {
     return null
   }
@@ -92,9 +97,9 @@ export function openStep(items: LiveItem[], turn: number | null): ToolItem | nul
       return item.turn === turn ? item : null
     }
     if (item.kind === 'delegation') {
-      // the delegation is the last step of its turn, so the step above it is worked on no longer — one turn
-      // paints exactly one indicator, and a delegation of a finished turn paints none (R-WP-40, UC-WP-72)
-      return null
+      // the wire opened it, so the entry IS the last step of its turn: the step above it works no longer,
+      // and its own end ends it without giving the indicator back to that step (UC-WP-72 GIVEN 3)
+      return item.turn === turn && !item.ended ? item : null
     }
     if (item.kind === 'text' || item.kind === 'diff') {
       continue
