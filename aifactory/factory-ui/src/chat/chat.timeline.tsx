@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 import { Timeline, type TimelineItemProps } from 'antd'
 
 import { content } from '../shared/content'
@@ -70,16 +72,10 @@ function entryOf(item: TraceItem, working: boolean) {
 /** One step of the run: the agent the core stamped above his report, and nothing the wire left unsaid. */
 function StepEntry({ item, working }: { item: ToolItem; working: boolean }) {
   return (
-    <span
-      className="chat-trace-item"
-      data-testid="chat-trace"
-      data-trace="tool"
-      data-working={working ? 'true' : undefined}
-      title={working || item.at === null ? undefined : arrivalTime(item.at)}
-    >
+    <TraceEntry kind="tool" working={working} at={item.at}>
       {item.origin !== null && <span className="chat-step-name">{item.origin}</span>}
       {item.text}
-    </span>
+    </TraceEntry>
   )
 }
 
@@ -91,16 +87,10 @@ function StepEntry({ item, working }: { item: ToolItem; working: boolean }) {
  */
 function ThinkEntry({ item, working }: { item: ThinkItem; working: boolean }) {
   return (
-    <span
-      className="chat-trace-item"
-      data-testid="chat-trace"
-      data-trace="think"
-      data-working={working ? 'true' : undefined}
-      title={working || item.at === null ? undefined : arrivalTime(item.at)}
-    >
+    <TraceEntry kind="think" working={working} at={item.at}>
       <span className="chat-step-name">{content.chat.thinking}</span>
       {item.text}
-    </span>
+    </TraceEntry>
   )
 }
 
@@ -111,15 +101,41 @@ function ThinkEntry({ item, working }: { item: ThinkItem; working: boolean }) {
  */
 function DelegationEntry({ item, working }: { item: DelegationItem; working: boolean }) {
   return (
-    <span
-      className="chat-trace-item"
-      data-testid="chat-delegation"
-      data-trace="delegation"
-      data-working={working ? 'true' : undefined}
-      title={working || item.at === null ? undefined : arrivalTime(item.at)}
-    >
+    <TraceEntry kind="delegation" working={working} at={item.at}>
       <span className="chat-delegation-name">{item.member}</span>
       {working && <span className="chat-delegation-working">{content.chat.working}</span>}
+    </TraceEntry>
+  )
+}
+
+/**
+ * The shell every link of the trace stands in, and the one place its handles are decided (UC-WP-72): our own
+ * `data-*` and never a class of the basis; the working flag on the one entry the open turn works on; and the
+ * clock of arrival only once the entry is finished **and** the wire really brought a moment — a working entry
+ * has no clock yet, an untimestamped one never gets one. The delegation answers to `chat-delegation` and the
+ * two other kinds to `chat-trace`, because one element carries one handle; `data-trace` tells the kinds
+ * apart wherever a test needs to.
+ */
+function TraceEntry({
+  kind,
+  working,
+  at,
+  children,
+}: {
+  kind: TraceItem['kind']
+  working: boolean
+  at: number | null
+  children: ReactNode
+}) {
+  return (
+    <span
+      className="chat-trace-item"
+      data-testid={kind === 'delegation' ? 'chat-delegation' : 'chat-trace'}
+      data-trace={kind}
+      data-working={working ? 'true' : undefined}
+      title={working || at === null ? undefined : arrivalTime(at)}
+    >
+      {children}
     </span>
   )
 }

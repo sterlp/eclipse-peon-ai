@@ -358,18 +358,33 @@ button {
 }
 
 
-/* The trace of a turn is not a voice of the conversation: the steps and the delegations of one place share
-   ONE timeline of the design basis (R-WP-40), in the grey italic of chat.html, small and on no surface of
-   its own (R-WP-28). The dots and the gaps of that timeline are tokens of shared/theme.ts — never a rule on
-   the library's classes, which would step around the basis' own algorithm (R-WP-39). */
+/* The trace of a turn is not a voice of the conversation: the steps, the Think sections and the delegations
+   of one place share ONE timeline of the design basis (R-WP-40), in the grey italic of chat.html, small and
+   on no surface of its own (R-WP-28). The line keeps no air of its own: the gap between two links is the
+   item rule below, and both sit on the 4px grid. */
 .chat-log .chat-line.trace {
-  padding-top: 0.1rem;
-  padding-bottom: 0.2rem;
+  padding: 0;
   color: var(--tool);
   font-family: var(--mono);
   font-size: var(--fs-code);
   line-height: var(--lh-code);
   font-style: italic;
+}
+
+/* The gap between two links of the trace (R-WP-40: big dots, gaps between the items very small). The basis
+   builds the timeline on its Steps, and Steps keeps every vertical item one and a half controls tall with
+   half a control of bottom padding — 48px and 12px, measured in the shipped sheet — while its own
+   `itemPaddingBottom` token reaches the alternate layout only, which the trace does not use. So this
+   geometry is the sheet's to set, inside the chat's own scope and nowhere else: the extension of the design
+   system for the measure the token cannot carry, not a repaint of a token it can (R-WP-39). */
+.chat-log .chat-line.trace .ant-timeline-item {
+  min-height: 0;
+  padding-bottom: var(--space-1);
+}
+
+/* the last link ends the widget: no air behind it, whichever sheet was applied last */
+.chat-log .chat-line.trace .ant-timeline-item:last-child {
+  padding-bottom: 0;
 }
 
 /* One entry of the trace keeps the breaks the wire sent it with and nothing else (R-WP-40). */

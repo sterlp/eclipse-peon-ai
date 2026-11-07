@@ -101,13 +101,14 @@ export function factoryTheme(dark: boolean): ThemeConfig {
       /**
        * The trace of a turn is read beside the answer and not as a list of its own: its dots carry the line
        * and its gaps stay small, which is the measure R-WP-40 of `docs/chat.md` asks for and not this
-       * file's taste. Tokens and no rule on the library's classes — a sheet that reaches into the basis
-       * fights its own algorithm (R-WP-39).
+       * file's taste. The dots are tokens and stay tokens. The GAPS are not: the basis builds the timeline
+       * on its Steps and reads `itemPaddingBottom` only in its alternate layout, which the trace does not
+       * use — the small gap is therefore a rule of the sheet inside `.chat-line.trace` (`styles.css`), and
+       * setting the inert token here would only look like a decision.
        */
       Timeline: {
         dotSize: 12,
         dotBorderWidth: 2,
-        itemPaddingBottom: 4,
       },
     },
   }
