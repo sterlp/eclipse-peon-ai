@@ -32,10 +32,31 @@ Auswahl-Kontrast, `border-bottom`, LOW-2/LOW-4, 2 Suspicions; Details in
 `peon-plan/review-findings.md`). Settings-Button rechts **entfernt** (Q1), kein Paco-Eintrag (Q2),
 Marke an der Chat-Einheit (Q3), dunkles Band (Q4).
 
-**Nächster Schritt:** Pauls Browser-Abnahme (Smoke: `spring-boot:run --server.port=8099` →
-`http://localhost:8099/ui/`), dann Inkrement 2 = **Buttons statt Text-Links** (Clear/Compact an den
-Kacheln, [chat.md](chat.md) R-WP-7 anfassen) + Chat-Optionen-Platzierung klären. Paul parallel:
-Plugin-Bugfixes **auf main** — Fabrik-Änderungen bleiben auf `web-factory`.
+**Pauls Abnahme 2026-11-07 (nur dunkel, Sider defekt, kein Umschalter) ⇒ Zweite SOLL-Wende:**
+**Design-Übernahme** — Palette/Layout/Element-Optik werden aus `ai-schulung/app/frontend`
+(`App.css`/`index.css`) + Mockup **kopiert, nicht nachgebaut** (Look-Absatz + [R-WP-39](ui.md) ❌ neu);
+Sider mit **fester Breite 200** (`Menu inline`, Mockup); Referenz-Defekte **nicht** mitkopieren
+(Select überlappt Top-Menü = CSS-Fehler dort); Zweifelsfall = `chat.html` des Plugins; **manueller
+Hell/Dunkel-Umschalter** (OS = Startwert, überlebt Reload). **R-WP-29 geöffnet:** Verlauf folgt der
+Referenz-Optik (Bubbles) — flache Zeilen zurückgenommen (⏳). **Design-Tests-Regel:** für Look
+**keine neuen Tests**, im Weg = stabilisieren/löschen (Token-Paritäts-/Band-Assertions fliegen),
+Abnahme am Browser. Vorherige Fassungen („Farb-Tokens bleiben unsere", „kein zentrierter Container")
+sind zurückgenommen.
+
+**Nächster Schritt:** ~~Inkrement 2 = Design-Übernahme~~ **Inkrement 2 GEBAUT + reviewed + geflippt
+(2026-11-07):** Branch `web-factory` — **2a** `193a22e8` (Palette+Rahmen) → **2b** `bd69c101`
+(Verlauf/Bubbles) → **2c** `1b213920` (Hell/Dunkel-Umschalter) → N1 `71bcaef6` (Review-Fixes:
+UC-WP-59-Nadel zurück in `clickingATileOpensTheInsight`, 4 veraltete Akzent-Kommentare) →
+LOW `2b99bcc4` (Umschalter-Klick-Nadel + Regex-scharf). Review 1 war REJECTED (2 Struktur-BUGs), N1
+geschlossen, **Verdict im zweiten Lauf akzeptiert**. Stand: **215 Tests / 22 Dateien** grün, tsc 0,
+oxlint 0/0; Farb-Literale nur noch die 2 Wach-Strings. **R-WP-39 ✅, UC-WP-71 ✅ (Klick-Nadel im
+bestehenden Fall), Bubbles 🔒**, R-WP-29 bleibt ❌ bis zur **Look-Abnahme am Browser** (Paul).
+`AGENTS-DEV.md` F8 nachgezogen (Farb-Modus = Auswahl, keine Doppeltabelle, Sider-200px-Pinn nutzlos).
+Docs von mir: ui.md (R-WP-39 ✅, UC-WP-71, chat.html nur Herkunfts-Hinweis), chat.md (R-WP-29 geschärft:
+Blase rechts, keine Antwort rechtsbündig/mittig; Akzentlinien-Satz raus), open-points (Bubbles 🔒).
+**Danach:** Sider-Inkrement (kein „Projects"-Eintrag, kein Files-Slide-out — open-points Runde 4b ⏳),
+Chat-Aktionen-Story (R-WP-43 Buttons), Config-Story (reasoning_effort, Save-Button, Key-Delete —
+`aifactory/ui-bugs.md`, Pauls Liste). Plan archiviert.
 
 Übernehmbare Muster aus `ai-schulung` (Survey 2026-11-07): dunkles horizontales Menü
 (`app/frontend/src/App.tsx`), Sidebar-Collapse je Agent + Hover-Aktionen (`ThreadNav.tsx`),

@@ -31,10 +31,9 @@ werden echte Buttons/Selects. Neu im SOLL, Rückprüfung offen:
 * **🔒 Design-Tests-Regel (2026-11-07, Paul: „keine Tests anlegen, Tests die im Weg sind stabilisieren
   oder löschen")** — Design-Änderungen ändern **keine** UI-Tests; für Look gibt es keine neuen Tests;
   Abnahme am Browser. Steht in [R-WP-39](ui.md).
-* **⏳ Bubbles = Teil der Übernahme** (2026-11-07, Jon, abgeleitet aus „übernimm das Design aus der
-  ai-schulung") — der Verlauf folgt der Referenz-Optik (Nutzer-Bubble rechts blau, Antworten links im
-  Fluss); [R-WP-29](chat.md) ist auf diese Optik geschärft. *Andersfall:* flache Zeilen wie
-  `chat.html` — Rückkehr wäre eine Satzänderung, kein Umbau der Grenzregeln.
+* **🔒 Bubbles = Teil der Übernahme** (2026-11-07, Jon, abgeleitet aus „übernimm das Design aus der
+  ai-schulung") — der Verlauf folgt der Referenz-Optik (Nutzer-Bubble rechts blau, Antworten links als
+  Karte), gebaut Inkrement 2 (`web-factory`, 2b), [R-WP-29](chat.md) ist geschärft.
 * **⏳ Sider-Struktur: kein „Projects"-Eintrag, kein Files-Slide-out** (2026-11-07, Paul in
   `ui-bugs.md`) — der Projektbaum beginnt mit den Projekten (die Projektliste mit Anlegen/Entfernen
   ist **nur** im Top-Menü, [R-WP-43](ui.md)), und das rechte Slide-out des Datei-Bereichs entfällt

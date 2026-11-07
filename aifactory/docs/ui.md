@@ -11,26 +11,22 @@ idPrefix: WP
 Eine schlanke Browser-App mit **Top-Menü und Projektbaum im Sider** ([R-WP-43](ui.md),
 [R-WP-38](ui.md)), die unter `/ui/` ausgeliefert wird und einen Reload übersteht.
 
-**Look — AntD 6 als Basis, Rahmen nach Mockup (Restart Paul 2026-11-07; zuvor AntD-Basis, Paul 2026-11-06, davor Bootstrap):**
-Basis ist **Ant Design 6** mit Theme-Tokens auf unsere Farben — Details und Abgrenzung in
-[R-WP-39](ui.md). Der **Rahmen** folgt dem Mockup (`factory-ui-mockup.tsx`) und der Referenz
-`ai-schulung`: **dunkles horizontales Top-Menü** und **Projektbaum im Sider** ([R-WP-43](ui.md)),
-die Chat-Eingabe als untere Zeile ([R-WP-35](chat.md)). **Aktionen sind echte Buttons, Auswahlen
-echte Selects/Dropdowns** — kein nachgebauter Text-Link (auch Clear/Compact an den Kacheln,
-[R-WP-7](chat.md)). Von der Referenz `ai-schulung` werden **Muster und Widgets** übernommen (Steps,
-Badge+Popover, Card, FloatButton), **nie ihr Zustandsmodell** (Queue/Anker/Bestätigung bleiben die
-unseren, [R-WP-37](chat.md), [AF-ADR-003](adr/003-reference-ui-is-a-donor-not-a-source.md)) — und in
-den **neueren AntD-6-Pendants**, nicht als Kopie ihres antd-5-Codes. Die Farb-Tokens bleiben unsere:
-Nutzer-Zeile blau (`#0969da`, dunkel `#58a6ff`), Agent-Zeile grün (`#1a7f37`, dunkel `#7ee787`),
-**Akzent beider Stimmen links** ([R-WP-29](chat.md)) — die kompakte Optik der alten `chat.html` ist
-**kein Ziel mehr**; Sprechblasen und die Zeit unter der Zeile sind ein späterer Wunsch
-(⏳ [open-points](open-points.md)). Der Chat nutzt die **volle Fensterbreite abzüglich eines kleinen
-Randes** — kein zentrierter Container, keine statischen Seitenränder, keine Karte um die
-Hauptfläche. Die **Config-Seite** bleibt Card-Struktur (AntD `Card`, Rand `--border`, Radius,
-Padding, kein Hintergrund); Eingaben tragen die **Maße der Chat-Eingabe**, Statuszeilen (Key-Status)
-**Mono**. Jedes Look-Inkrement wird **am Browser abgenommen** (Pixel, Dunkel, Elemente) — jsdom
-beweist Verdrahtung, nie Optik.
-
+**Look — Design-Übernahme (Paul 2026-11-07: „übernimm das Design aus der ai-schulung bzw. dem Mockup" — ersetzt die Fassung „Muster übernehmen, Farben eigene"):**
+Basis bleibt **AntD 6** — Palette, Layout und Element-Optik werden aus der Referenz
+`ai-schulung/app/frontend` (`App.css`/`index.css` + Komponenten-Struktur) und dem Mockup
+(`factory-ui-mockup.tsx`) **übernommen, nicht nachgebaut**: dunkles Top-Band mit Menü, **Sider mit
+fester Breite** (200 px, `Menu mode="inline"` — der Seitenmenü-Defekt der bisherigen Fassung ist damit
+gestellt), Chat-Fläche zentriert über `--content-max`, Element-Optik wie dort. **Defekte der Referenz
+werden nicht mitkopiert** — bekannt: das `Select`, das das Top-Menü überlappt (CSS-Fehler). Was die
+Referenz nicht löst, wird eigen gebaut (wie das Tool-Zeit-Ding dort, nicht final) — bei Zweifeln
+entscheidet die **Referenz-Optik** (hell); das `chat.html` des Plugins bleibt nur Herkunfts-Hinweis
+für Labels und Wortlaut. **Hell/Dunkel:** ein manueller
+**Umschalter** im Header (Paul: „dark/light mode … würde ich aber nehmen") — die helle Ansicht ist das
+Referenz-Design, die dunkle wird daraus abgeleitet; Startwert ist die Betriebssystem-Vorliebe, die
+Auswahl überlebt den Reload. **Tests:** Design-Änderungen ändern **keine** UI-Tests — für Look
+gibt es **keine neuen Tests**; Tests, die einer Übernahme im Weg stehen, werden **stabilisiert oder
+gelöscht** ([R-WP-39](ui.md)). Abgenommen wird **am Browser** — jsdom beweist nur Verhalten
+(Adressen, Queue, Mount), nie Optik.
 ## Regeln
 
 ### R-WP-1 — Seiten, stabile Adressen, Reload ✅ (geschärft Paul 2026-11-02; Rahmen 2026-11-07 nach [R-WP-43](ui.md))
@@ -137,38 +133,30 @@ Projektliste mit dem Grund, nie eine Ladezeile, die auf eine Antwort wartet, die
   Auswahl erreichbar — **auch „Projects"**. Der Beleg nennt die Breite des Siders (0) **und** den
   ausgeklappten Griff; das Nachmessen der Pixel gehört zur Look-Abnahme am Browser (Look-Absatz oben).
 
-### R-WP-39 — Eine Design-Basis: AntD, Chat-Zeilen eigenes CSS ✅ (Paul 2026-11-06)
+### R-WP-39 — Design-Übernahme: die Referenz ist das Design ✅ (gebaut + reviewed 2026-11-07, Inkrement 2 auf `web-factory`; Look-Abnahme am Browser steht aus — Paul 2026-11-07: „übernimm das Design"; ersetzt die Fassung „Muster übernehmen, Farben eigene" von 2026-11-06)
 
-Basis der Oberfläche ist **Ant Design** — Layout, Sider, Menu, Input, Button, Card, Form, Select,
-Timeline, Modal/Popconfirm, Alert — mit Theme-Tokens auf unsere Farben (Look oben). **Bootstrap
-verlässt die App vollständig**: kein Bootstrap-CSS, keine `react-bootstrap`-Komponente, keine
-`bootstrap-icons` im Bündel — zwei CSS-Basen nebeneinander sind verboten; ein Import von
-Bootstrap-**CSS** ist dieselbe Verletzung wie ein Import ihrer Komponenten. Die **Chat-Zeilen**
-(Verlauf, Werkzeug-Zeilen, Diffs, Think) behalten **eigenes CSS** in unserer Optik
-([R-WP-29](chat.md)): Akzent links, flache kompakte Zeilen, keine AntD-Karte um den Verlauf, nicht
-zentriert. Portiert werden **Muster und Widgets** der Referenz `ai-schulung`, **nie ihr Zustandsmodell**: Queue,
-Live-Anker und Bestätigung bleiben die unseren ([R-WP-37](chat.md)). Je Muster gelten eigene Regel und
-eigener Status — Markdown [R-WP-28](chat.md), Timeline [R-WP-40](chat.md), Eingabe [R-WP-41](chat.md);
-**diese** Regel ist für sich erfüllt, wenn die Basis allein die Oberfläche malt und der Verlauf sein
-eigenes CSS behält.
+Basis bleibt **Ant Design** — und **Bootstrap verlässt die App vollständig** (die Wache bleibt: kein
+Bootstrap-CSS, keine `react-bootstrap`-Komponente, keine `bootstrap-icons`; zwei CSS-Basen nebeneinander
+sind verboten). Das **Design selbst wird übernommen** (Look-Absatz oben): Farben und Layout kommen aus
+der Referenz `ai-schulung/app/frontend` bzw. dem Mockup — die frühere Fassung „Farb-Tokens bleiben
+unsere" ist damit zurückgenommen, die Dunkel-Tabelle des Grundblatts wird abgelöst (hell = Referenz,
+dunkel = Ableitung). Die Token-Paritäts-Tests der alten Fassung sind **im Weg** und werden
+**gelöscht** (Paul 2026-11-07: „keine Tests anlegen, Tests die im Weg sind stabilisieren oder
+löschen" — Design-Änderungen ändern keine UI-Tests, die Abnahme ist am Browser). Was weitergilt: das
+Zustandsmodell bleibt unser (Queue, Live-Anker, Bestätigung — [R-WP-37](chat.md),
+[AF-ADR-003](adr/003-reference-ui-is-a-donor-not-a-source.md)), sichtbare Texte kommen aus dem
+String-Catalog ([R-WP-27](ui.md)), ein Weg je Verantwortung.
 
-**Dunkel ist eine Tabelle.** Die App setzt `data-theme` am Dokument auf den Wert der
-Betriebssystem-Vorliebe, und die Farb-Tokens der Basis stammen aus **derselben** Dunkel-Tabelle wie
-das Grundblatt — zwei abweichende Dunkellooks sind ein Defekt. Und die Basis **ist** die Haut der
-App: wo die App mountet, gilt ihr Theme; ein Ausschnitt, der ohne sie montiert, ist nicht die App.
-
-#### UC-WP-71 — oneDesignBasisOwnChatCss ✅ (der Pinselstrich selbst wird im Smoke-Test abgenommen — belegt ist die Verdrahtung, der Test malt keine Farbe)
+#### UC-WP-71 — oneDesignBasisOwnChatCss ✅ (geschärft Paul 2026-11-07: die Bootstrap-Wache bleibt, die Look-Fragen gehen an den Browser)
 - GIVEN die gebaute App WHEN das Bündel entsteht THEN enthält es kein Bootstrap-CSS und keine
   `react-bootstrap`-Komponente; GIVEN denselben Fehler ein zweites Mal WHEN die Wache prüft THEN ist
   die Suite rot — die Wache sieht den CSS-Import (`import 'bootstrap/…'`) ebenso wie die Komponente
   und prüft das Manifest **vollständig** (`dependencies` und `devDependencies`).
-- GIVEN die App mountet WHEN ein Element der Basis zeichnet THEN trägt es unsere Token-Farbe; ohne
-  die Haut der App gilt keine unserer Farben.
-- GIVEN das Betriebssystem dunkel wünscht WHEN die App mountet THEN trägt das Dokument
-  `data-theme="dark"`, und **jedes** Farb-Feld der Basis stimmt mit der Dunkel-Tabelle des
-  Grundblatts überein — nicht nur zwei Beispiele.
-- GIVEN der Chat WHEN er den Verlauf zeichnet THEN tragen Nutzer-, Jon- und Werkzeug-Zeilen unsere
-  Klassen und unsere Akzentlinie; AntD-Elemente stehen nur außerhalb des Verlaufs.
+- GIVEN der Nutzer stellt den **Hell/Dunkel-Umschalter** um WHEN die App zeichnet THEN wechselt das
+  Dokument zwischen `data-theme="light"` und `data-theme="dark"`, die Auswahl überlebt den Reload, und
+  der Startwert ist die Betriebssystem-Vorliebe — der jsdom-Anteil (Auswahl schlägt die OS-Antwort,
+  Startwert wird nie zurückgeschrieben, Klick schreibt die Auswahl) sitzt im bestehenden
+  `appRootSetsTheDocumentTheme`, Klick und Reload am Browser abnehmen (Design-Tests-Regel oben).
 
 ### R-WP-43 — Rahmen: Top-Menü, Einheiten im Sider, Aktionen als Elemente ✅ (Paul 2026-11-07 — Mockup `factory-ui-mockup.tsx` + Referenz `ai-schulung`; gebaut als Inkrement 1a/1b+N1 auf `web-factory`, 2026-11-07 — die Verdrahtung ist bewiesen, der Pinselstrich wird am Browser abgenommen)
 

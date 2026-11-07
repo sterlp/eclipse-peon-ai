@@ -1,7 +1,8 @@
 /*
- * Design tokens — one table of colours per colour mode, which our own sheet reads and the design basis
- * translates (`shared/theme.ts` is the one reader, R-WP-27, R-WP-39); the dark table hangs on the
- * `data-theme` attribute the app puts on the document (`app/app.root.tsx`).
+ * Design tokens — the one owner of every colour (R-WP-39): one table per colour mode, which our own sheet
+ * reads and the design basis translates (`shared/theme.ts` is the one reader, so no rule and no component
+ * paints a value of its own). Which table paints is the `data-theme` attribute on the document, written by
+ * `main.tsx` before the first render and kept by `app/app.root.tsx`.
  */
 
 :root,
