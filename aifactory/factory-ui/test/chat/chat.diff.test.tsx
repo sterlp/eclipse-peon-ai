@@ -71,19 +71,13 @@ test('aChangeIsABlockWithItsFileAndItsColouredLines', () => {
   // the break belongs to the box model and not to the text: both together double every line of the block
   expect(lines.every(line => !line.textContent?.includes('\n')), 'a line breaks by its box').toBe(true)
 
-  expect(
-    declarations('.chat-log .chat-diff .diff-added'),
-    'an addition reads as what the agent did',
-  ).toContain('var(--agent)')
-  expect(declarations('.chat-log .chat-diff .diff-removed'), 'a removal takes the problem token').toContain(
-    'var(--problem)',
-  )
-  expect(declarations('.chat-log .chat-diff .diff-context'), 'what stayed is the trace grey').toContain(
-    'var(--tool)',
-  )
-  expect(declarations('.chat-log .chat-diff .diff-meta'), 'a header is dimmed and not hidden').toContain(
-    'var(--text)',
-  )
+  // the doc asks for `+` and `-` coloured, not for a palette: which token answers is the look's, so what is
+  // pinned is that the two kinds read in two of our colours and never in one (R-WP-36)
+  const added = declarations('.chat-log .chat-diff .diff-added')
+  const removed = declarations('.chat-log .chat-diff .diff-removed')
+  expect(added, 'an addition is coloured with a token of ours').toMatch(/color:\s*var\(--/)
+  expect(removed, 'a removal is coloured with a token of ours').toMatch(/color:\s*var\(--/)
+  expect(removed, 'a removal never reads like an addition').not.toBe(added)
   expect(declarations('.chat-log .chat-diff .chat-diff-line'), 'every line is a box of its own').toContain(
     'display: block',
   )
@@ -100,14 +94,13 @@ test('aDiffStandsBesideTheTraceAndNotInsideIt', () => {
   )
   render(<ChatLog messages={[QUESTION]} outgoing={[]} live={trace} pending={false} />)
 
-  // the diff interrupts the trace run: one box before it, one after, because a box is one place of the trace
-  expect(screen.getAllByTestId(/^chat-(tool-line|diff)$/).map(entry => entry.getAttribute('data-testid'))).toEqual([
-    'chat-tool-line',
-    'chat-diff',
-    'chat-tool-line',
-  ])
-  for (const box of screen.getAllByTestId('chat-tool-line')) {
-    expect(within(box).queryByTestId('chat-diff'), 'a block with its own file joins no box').toBeNull()
+  // the diff interrupts the trace run: one timeline before it, one after, because a timeline is one place
+  // of the trace and the block beside it is not a link of it
+  expect(screen.getAllByTestId(/^chat-(timeline|diff)$/).map(entry => entry.getAttribute('data-testid'))).toEqual(
+    ['chat-timeline', 'chat-diff', 'chat-timeline'],
+  )
+  for (const widget of screen.getAllByTestId('chat-timeline')) {
+    expect(within(widget).queryByTestId('chat-diff'), 'a block with its own file joins no timeline').toBeNull()
   }
   // and it is nobody's speech, so it neither begins a voice nor separates two (R-WP-29, UC-WP-55 GIVEN 2) —
   // read over the whole log, where `separatorsOf` alone decides which line counts as one

@@ -4,13 +4,12 @@ import type { Ref } from 'react'
 import type { ChatMessage } from './chat.client'
 import { ChatDiff } from './chat.diff'
 import { ChatMarkdown } from './chat.markdown'
-import { ChatDelegation, ChatTools } from './chat.tools'
+import { ChatTraceTimeline } from './chat.timeline'
 import {
   liveRuns,
   openTimelineItem,
-  type DelegationItem,
   type LiveItem,
-  type ToolItem,
+  type TraceItem,
 } from './chat.live'
 import type { PendingLine } from './chat.pending'
 import { content } from '../shared/content'
@@ -46,48 +45,50 @@ interface Row {
   handle: string
   author: string | null
   text: string
-  /** True while the turn that started the line is open — its accent is not a fact yet (R-WP-31, UC-WP-65). */
+  /** True while the turn that started the line is open — the row is drawn as not a fact yet (R-WP-31, UC-WP-65). */
   pending: boolean
 }
 
 /**
- * A live item that speaks: an answer or a failure. A tool step, a diff block and a delegation are drawn as
- * themselves and never as a line of speech, so they are out of this type by construction (R-WP-28, R-WP-36,
- * R-WP-40).
+ * A live item that speaks: an answer or a failure. A tool step, a Think section, a diff block and a
+ * delegation are drawn as themselves and never as a line of speech, so they are out of this type by
+ * construction (R-WP-28, R-WP-36, R-WP-40). A Think section is what a model thought on its way to the
+ * answer and not the answer: only what the turn says is speech (R-WP-28).
  */
-type SpokenItem = Exclude<LiveItem, { kind: 'tool' } | { kind: 'diff' } | { kind: 'delegation' }>
+type SpokenItem = Exclude<
+  LiveItem,
+  { kind: 'tool' } | { kind: 'think' } | { kind: 'diff' } | { kind: 'delegation' }
+>
 
 /**
- * One thing the log draws: a line of the conversation, a live answer, one merged box of tool steps, one diff
- * block, or one delegation. The last three are links of the timeline and never a voice of the conversation.
+ * One thing the log draws: a line of the conversation, a live answer, one timeline of the trace, or one diff
+ * block. The last two are links of the account of what a turn did and never a voice of the conversation.
  */
 type Entry =
   | { type: 'row'; row: Row }
   | { type: 'live'; item: SpokenItem }
-  /** The steps of one tool run; `open` is the one entry the open turn works on and stands in at most one of
-   *  the boxes the log draws — identity, so neither the cap nor the place in the list decides it. A
-   *  delegation beside the box takes the indicator away from it (`openTimelineItem`). */
-  | { type: 'tools'; items: ToolItem[]; open: ToolItem | DelegationItem | null }
+  /** The trace of one place of the log: its steps, its Think sections and its delegations in the order they
+   *  arrived, in the one timeline they share (R-WP-40). `open` is the one entry the open turn works on and
+   *  stands in at most one of the widgets the log draws — identity, so neither the cap nor the place in the
+   *  list decides it. */
+  | { type: 'trace'; items: TraceItem[]; open: TraceItem | null }
   | { type: 'diff'; file: string; text: string }
-  /** One delegation; `open` says this entry IS the one the log's single decider names — the entry's own end
-   *  event and the identity of the open turn decide that, never a flag the wire carried (R-WP-40,
-   *  UC-WP-72 GIVEN 3). */
-  | { type: 'delegation'; item: DelegationItem; open: boolean }
 
 /**
  * One project's conversation as the screen shows it: the history, the own inputs the history does not
  * carry yet, and the live lines of the running turn — each live line at the place it happened, so tool
  * activity stands between the parts of an answer it belongs to (R-WP-28, D-7).
  *
- * A row is speech and not a card — the accent line on its left names its voice, in the flow of the text
- * and never right-aligned. Voices separate by those accents alone: the log draws no line of its own
- * between two of them (R-WP-29). An answer reads as Markdown, so the model's headings, lists and code
- * blocks are what the user sees; the person's line stays the text he typed.
+ * The person's own input stands in a bubble on the right, an answer as a card on the left — no row carries
+ * an accent edge, and no answer is centred or right-aligned. Bubble and card are what tell the voices
+ * apart: the log draws no line of its own between two rows (R-WP-29). An answer reads as Markdown, so the
+ * model's headings, lists and code blocks are what the user sees; the person's line stays the text he typed.
  *
  * A user's line always names its author — the person the server named, or the role label of the doc —
  * because the chat is shared and every viewer has to read the same thing (R-WP-25, UC-WP-48). An agent's
  * line stays nameless when the server named none: no "System", no "Peon", no invented agent (R-WP-4).
- * A thinking delta never reaches here (§3.3.3, Q7).
+ * A thinking delta is no speech either — it is an entry of the trace, a link of the account of what the
+ * turn did, and it names no author because the wire stamps none on a thought (R-WP-40).
  *
  * Tool activity is not a voice: it keeps the grey of `chat.html`, and a step names only the agent the wire
  * stamped on it — never one the log invented (R-WP-37, R-WP-40). A diff block is of the same family — a fact
@@ -127,14 +128,15 @@ export function ChatLog({ messages, outgoing, live, pending, openTurn = null, lo
       onScroll={onScroll}
     >
       {entries.map((entry, index) => {
-        if (entry.type === 'tools') {
-          return <ChatTools key={`tools-${index}`} items={entry.items} open={entry.open} />
+        if (entry.type === 'trace') {
+          return (
+            <li className="chat-line trace" data-testid="chat-timeline" key={`trace-${index}`}>
+              <ChatTraceTimeline items={entry.items} open={entry.open} />
+            </li>
+          )
         }
         if (entry.type === 'diff') {
           return <ChatDiff key={`diff-${index}`} file={entry.file} diff={entry.text} />
-        }
-        if (entry.type === 'delegation') {
-          return <ChatDelegation key={`delegation-${index}`} item={entry.item} open={entry.open} />
         }
         if (entry.type === 'live') {
           // a live failure is already over, so it carries no waiting frame; its text is the server's
@@ -180,8 +182,8 @@ export function ChatLog({ messages, outgoing, live, pending, openTurn = null, lo
  * number of rows its turn was anchored at, and inside the run the arrival order holds. The anchor counts
  * what stood at that moment — the history plus the inputs that were still pending then — so it names the
  * same place before and after the read that confirms those inputs, and a run pointing past the rows that
- * stand today falls to the end (D-A, UC-WP-54). Consecutive tool lines become one box, a diff block stands
- * beside it as a block of its own (R-WP-36).
+ * stand today falls to the end (D-A, UC-WP-54). The steps, Think sections and delegations of one run become
+ * ONE timeline, a diff block stands beside it as a block of its own (R-WP-36, R-WP-40).
  */
 function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entry[] {
   const entries: Entry[] = []
@@ -200,36 +202,35 @@ function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entr
 
   for (const run of liveRuns(live)) {
     pushRows(run[0].afterLines)
-    let tools: ToolItem[] = []
-    const pushTools = () => {
-      if (tools.length === 0) {
+    // the trace of this place: the steps, the Think sections and the delegations of one run are ONE account
+    // and end only where the account is interrupted — by a voice, by a failure, by a block of its own, or by
+    // the next turn (R-WP-40: a message of the model ends the group; a diff is a block of its own, R-WP-36)
+    let trace: TraceItem[] = []
+    const flushTrace = () => {
+      if (trace.length === 0) {
         return
       }
-      entries.push({ type: 'tools', items: tools, open })
-      tools = []
+      entries.push({ type: 'trace', items: trace, open })
+      trace = []
     }
     for (const item of run) {
-      if (item.kind === 'tool') {
-        tools.push(item)
+      if (item.kind === 'tool' || item.kind === 'think' || item.kind === 'delegation') {
+        // a Think section and a delegation join the run instead of breaking it: the indicator still moves to
+        // them, because ONE decider names the entry that works (`openTimelineItem`) and not the order of the
+        // widgets
+        trace.push(item)
         continue
       }
-      if (item.kind === 'delegation') {
-        // the entry ends the tool box before it and takes the indicator itself: identity decides, never a
-        // second formula and never a place in the list (R-WP-40, UC-WP-72 GIVEN 3)
-        pushTools()
-        entries.push({ type: 'delegation', item, open: open === item })
-        continue
-      }
-      pushTools()
+      flushTrace()
       if (item.kind === 'diff') {
-        // a diff is neither voice nor trace: it ends the tool run before it and stands as a block of its
+        // a diff is neither voice nor trace: it ends the trace before it and stands as a block of its
         // own (R-WP-36)
         entries.push({ type: 'diff', file: item.file, text: item.text })
         continue
       }
       entries.push({ type: 'live', item })
     }
-    pushTools()
+    flushTrace()
   }
   pushRows(rows.length)
   return entries

@@ -57,7 +57,12 @@ export function projectKeyOf(segment: string): string {
   return `project:${segment}`
 }
 
-/** The sider key of one project's unit — its own prefix, because a project may be called `files`. */
+/** The sider key of one project's chat unit — the unit the chat address names (UC-WP-77). */
+export function chatKeyOf(segment: string): string {
+  return `chat:${segment}`
+}
+
+/** The sider key of one project's file area — its own prefix, because a project may be called `files`. */
 export function filesKeyOf(segment: string): string {
   return `files:${segment}`
 }
@@ -99,7 +104,30 @@ export function navKeyOfPathname(pathname: string): string | null {
   }
   const segment = readSegment(raw)
   if (rest.length === 0) {
-    return projectKeyOf(segment)
+    // the chat address names the **chat unit** of its project and not the project entry: the tree lists the
+    // units chat · files under it, and the finer handle is the one that has to show (UC-WP-77)
+    return chatKeyOf(segment)
   }
   return `/${rest.join('/')}` === filesSuffix ? filesKeyOf(segment) : null
+}
+
+/**
+ * Which page of the header an address names (R-WP-43, UC-WP-76) — the second reading of the path, in the
+ * same file and for the same reason: the menu shows what the address says, so a reload marks the page a click
+ * marked. The two readers answer different questions and never overwrite each other: `navKeyOfPathname` names
+ * an entry of the tree, this one names a page.
+ *
+ * Every chat address is the **chat page**, including a unit of it: the header names the page, the tree names
+ * the unit. The keys returned are addresses themselves, which is what lets a menu entry navigate to its key.
+ */
+export function pageKeyOfPathname(pathname: string): string | null {
+  // a trailing slash names the same page as the bare address, like everywhere else in this file
+  const path = pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
+  if (path === projectsPath) {
+    return projectsPath
+  }
+  if (path === chatRoot || path.startsWith(`${chatRoot}/`)) {
+    return chatRoot
+  }
+  return path === settingsPath ? settingsPath : null
 }

@@ -87,7 +87,6 @@ test('anAnswersOwnRuleStaysInsideTheAnswer', () => {
 
   const painted = declarations('.chat-log .chat-markdown hr')
   expect(painted, 'the quiet border grey, not the accent').toContain('var(--border)')
-  expect(painted, 'short — a line over the log would read as a separation').toContain('width: 3rem')
 })
 
 /**

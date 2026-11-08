@@ -19,10 +19,8 @@ const FRAME_GUTTER = '0 1rem'
 const LIGHT = blockOf(baseSheet, ':root,')
 
 /**
- * The dark values, as the table the document carries states them: `app/app.root.tsx` puts `data-theme` on the
- * root element from the operating system's answer, so this is the dark mode a running app is in. The media
- * rule of `index.css` repeats the table for a browser without script — equal by contract, proven field by
- * field in `theme.test.ts`.
+ * The dark values, as the table the document states them: `app/app.root.tsx` names the colour mode the app
+ * is in on the root element (`data-theme`), so this is the dark mode a running app paints.
  */
 const DARK = blockOf(baseSheet, "[data-theme='dark'] {")
 
@@ -58,7 +56,10 @@ export function factoryTheme(dark: boolean): ThemeConfig {
     algorithm: dark ? theme.darkAlgorithm : theme.defaultAlgorithm,
     token: {
       colorPrimary: read('--accent'),
-      colorBgBase: read('--bg'),
+      // the surface, not the page: `colorBgBase` seeds the basis' whole derivation (a card's fill, a field's
+      // fill), so the grey page would paint every input grey (R-WP-39)
+      colorBgBase: read('--surface'),
+      colorBgLayout: read('--bg'),
       colorTextHeading: read('--text-h'),
       colorText: read('--text'),
       colorBorder: read('--border'),
@@ -71,20 +72,43 @@ export function factoryTheme(dark: boolean): ThemeConfig {
       fontFamilyCode: read('--mono'),
     },
     /**
-     * The three surfaces the library paints on its own. Left alone they are the library's greys and its
-     * dark-header white — which on our page reads as a second theme. The card stays without a background
-     * because the look says the border names the block, not a fill (`docs/ui.md`).
+     * The surfaces the library paints on its own. Left alone they are the library's greys and its
+     * dark-header white — which on our page reads as a second theme (R-WP-39).
      */
     components: {
-      Card: { colorBgContainer: 'transparent' },
       Layout: {
         bodyBg: read('--bg'),
-        headerBg: read('--bg'),
-        headerColor: read('--text-h'),
+        // the header is a band of its own (R-WP-43): its colours are the band's, not the page's
+        headerBg: read('--top-bg'),
+        headerColor: read('--top-text'),
         headerPadding: FRAME_GUTTER,
         // the light sider paints this one, not `siderBg` — that token belongs to the dark variant and
-        // would leave the tree in a second grey beside our own (R-WP-39)
-        lightSiderBg: read('--bg'),
+        // would leave the tree in a second grey beside our own (R-WP-39). The tree is a surface beside the
+        // page, not part of it: it stands on `--surface`
+        lightSiderBg: read('--surface'),
+      },
+      /**
+       * The dark menu of the header sits **on** that band, so it paints the band's own colour and not the
+       * library's stock `#001529` — two dark tones in one surface would be two looks in one place (R-WP-39).
+       * The selection is left to the basis: it derives it from `colorPrimary`, which is our `--accent`.
+       */
+      Menu: {
+        darkItemBg: read('--top-bg'),
+        darkItemColor: read('--top-text'),
+        darkItemHoverColor: read('--top-text'),
+        darkSubMenuItemBg: read('--top-bg'),
+      },
+      /**
+       * The trace of a turn is read beside the answer and not as a list of its own: its dots carry the line
+       * and its gaps stay small, which is the measure R-WP-40 of `docs/chat.md` asks for and not this
+       * file's taste. The dots are tokens and stay tokens. The GAPS are not: the basis builds the timeline
+       * on its Steps and reads `itemPaddingBottom` only in its alternate layout, which the trace does not
+       * use — the small gap is therefore a rule of the sheet inside `.chat-line.trace` (`styles.css`), and
+       * setting the inert token here would only look like a decision.
+       */
+      Timeline: {
+        dotSize: 12,
+        dotBorderWidth: 2,
       },
     },
   }

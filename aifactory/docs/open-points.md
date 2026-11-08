@@ -2,6 +2,70 @@
 
 Status: ❓ offen · ⏳ selbst entschieden (Rückversicherung steht aus) · 🔒 geklärt.
 Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entfällt.
+## Runde 5 — Browser-Abnahme läuft (2026-11-08)
+
+* **🔒 Status-Indikator bei Fehler = rot** (2026-11-08, Paul: „genau rot wie im Plugin") — als
+  AntD-Fehler-/Alert-Indikator, sofern es dort ein Widget gibt; Widget-vor-eigenbau gilt allgemein
+  ([R-WP-46/UC-WP-81](ui.md)), ebenso „UI-Funktionen immer als wiederverwendbare Widgets bauen und
+  nutzen". Steht in [R-WP-45/UC-WP-79](chat.md).
+* **⏳ A7 · Tool-Results nach dem Restore wiederherstellen** (2026-11-08, Paul: „warum machen wir das
+  nicht?") — die Results stehen in Jons History, der Verlauf zeigt sie nach Reload nicht. Vor dem Bau
+  prüfen, ob der Core-History-Bestand sie überhaupt trägt; falls nicht, ist es eine **Core-Änderung**
+  (nur mit Pauls Proposal-Approval).
+
+* **🔒 A6 · Scroll entschieden (2026-11-08, Paul)** — Auto-Scroll nur am Ende (R-WP-35 ✅), nach eigener
+  Eingabe immer, Zurückscrollen ans Ende bewaffnet neu, schwebender „Scroll bottom"-Knopf
+  (AntD `FloatButton`, umgekehrtes `BackTop`) — [UC-WP-80](chat.md) ❌. Lade-Punkt der Timeline =
+  AntD `Spin`/`LoadingOutlined` ([R-WP-40](chat.md)), Spin auch am Status-Indikator ([R-WP-45](chat.md)).
+
+## Runde 4b — Look-Restart (Paul 2026-11-07, „docs schreiben, ich will ein Restart machen")
+
+Auslöser: Pauls IST-Screenshots gegen SOLL-Bild (`SOLL.png`) + Mockup (`factory-ui-mockup.tsx`).
+Entschieden: **Rahmen nach Mockup** — dunkles Top-Menü **und** Sider ([R-WP-43](ui.md) ❌ neu;
+die Fassung „Sider statt Top-Menü" vom 2026-11-06 ist zurückgenommen, [R-WP-1](ui.md)). Aktionen
+werden echte Buttons/Selects. Neu im SOLL, Rückprüfung offen:
+
+* **⏳ Top-Menü-Einträge = Projekte · Chat · Settings** (2026-11-07, Jon, abgeleitet aus der ersten
+  Version + Mockup) — [R-WP-43/UC-WP-76](ui.md). *Andersfall:* ohne „Chat" im Menü (nur Sider) oder
+  ein vierter Eintrag.
+* **⏳ Einheiten-Ordnung Chat · Paco · Files als letztes** (2026-11-07, aus dem Mockup-Kommentar
+  „… die chats Jon / Paco / Files als letztes?") — [R-WP-43/UC-WP-77](ui.md). *Andersfall:* wie
+  gebaut (Projekt-Klick öffnet den Chat, kein Chat-Eintrag im Sider).
+* **🔒 Mehrere Chats je Agent = NICHT im MVP** (2026-11-08, Paul: „wir können keinen neuen Chat
+  anlegen"; auch mit Paco zunächst ein Chat je Agent) — „Chat 59" + „+ Neuer Chat" im SOLL-Bild waren
+  Layout, kein Feature; **PR-5 bleibt** ([R-WP-15](chat.md)). Die Sider-Gruppen ([R-WP-44](ui.md))
+  sind so gebaut, dass mehrere Chats später einrutschen.
+* **⏳ Sprechblasen + Zeit unter der Zeile** (2026-11-07, Paul: „nicht zwingend … mit der Zeit unten,
+  aber wäre gut") — die Sprechblasen-Optik selbst ist Teil der Design-Übernahme ([R-WP-29](chat.md));
+  offen ist nur die **Zeit unter der Zeile**. *Andersfall:* eigene Regel in [chat.md](chat.md), kein
+  Nebenprodukt.
+* **🔒 Modell-Auswahl + Kontextanzeige im Chat = später** (SOLL-Bild: Modell-Dropdown „gpt-6.1-sol",
+  „Kontext ~914"; Paul 2026-11-08: „später") — im Chat kommt kein Modell-Umschalter (kollidierte ohnehin
+  mit [R-WP-23](config.md): Modell gehört je Agent in die Config); **in der Config** ist das Modell-Feld
+  MVP — Auswahl oder Eingabe, siehe F8 unten.
+* **⏳ Chat-Optionen (Clear/Compact am Chat, nicht nur an den Kacheln)** (2026-11-07, Pauls Punkte 4/5) —
+  die Kachel-Aktionen werden Buttons ([R-WP-43](ui.md)); **wo** die Chat-Optionen liegen (Dropdown im
+  Chat-Kopf wie in der Referenz?), vor dem Inkrement klären. [R-WP-7](chat.md) wird angefasst.
+* **🔒 Design-Tests-Regel (2026-11-07, Paul: „keine Tests anlegen, Tests die im Weg sind stabilisieren
+  oder löschen")** — Design-Änderungen ändern **keine** UI-Tests; für Look gibt es keine neuen Tests;
+  Abnahme am Browser. Steht in [R-WP-39](ui.md).
+* **🔒 Bubbles = Teil der Übernahme** (2026-11-07, Jon, abgeleitet aus „übernimm das Design aus der
+  ai-schulung") — der Verlauf folgt der Referenz-Optik (Nutzer-Bubble rechts blau, Antworten links als
+  Karte), gebaut Inkrement 2 (`web-factory`, 2b), [R-WP-29](chat.md) ist geschärft.
+* **🔒 Timeline-Optik = AntD `Timeline`** (2026-11-07, Paul, nach Look-Abnahme): Werkzeug-/Think-/Delegations-Schritte
+  gruppieren sich zu **einem Widget je zusammenhängender Schritt-Folge** (LLM-Blase, Fehler und Diff-Block
+  beenden die Gruppe), Dots groß, Abstände sehr klein (Steps-Geometrie im Chat-Scope überschrieben — die
+  Basis drückt das Maß nicht per Token), Uhrzeit als HTML-`title`, arbeitender Schritt = loading-Dot,
+  **Think zeigt wie ein Tool** ([R-WP-40](chat.md) umgeschrieben). *Nicht im Doc und nicht gebaut:* Kappung
+  bei 20 Schritten mit Verdrängung — bewusst MVP-nachgelassen (Paul).
+* **🔒 Sider-Baum entschieden (2026-11-08, Paul per Sider-Beispiel + `side soll.png`): Klapp-Gruppen
+  je Projekt, Chats und Einheiten als Kinder, kein „Projects"-Eintrag, leerer Sider ohne Projekte,
+  Einklap-Griff (`trigger`)** — steht jetzt in [R-WP-44/UC-WP-78](ui.md) ❌; gebaut wird es im
+  Sider-Inkrement (neue Tests erlaubt — Navigation ist Funktionalität, nicht Look). Offen bleibt daraus
+  nur der Anteil **kein Files-Slide-out** ([R-WP-33](files.md) „zwei Griffe" auf die Adresse) — ⏳,
+  im selben Inkrement umgebaut. „Top-Menü ist richtig" (Paul 2026-11-08): Projekte · Chat · Settings
+  bleibt, [R-WP-43](ui.md) unverändert.
+
 ## Runde 3 — AntD-Umbau der Oberfläche (Paul 2026-11-06)
 
 Entschieden: **AntD als neue Design-Basis**, Bootstrap verlässt die App
@@ -28,27 +92,21 @@ Reihenfolge, je ein grünes Inkrement:
    in [resolved-points.md](resolved-points.md)). Offen **5b**: die Einheit **Files** als Sider-Einheit und
    Adresse ([UC-WP-70 GIVEN 2](ui.md)) — erst danach der Flip von [R-WP-38/UC-WP-70](ui.md).
 
-* **⏳ Dunkel = eine Tabelle, App setzt `data-theme`** (2026-11-06, Review-Fund zu Inc 1,
-  Rückversicherung ausstehend) — das Grundblatt schrieb Dunkel bisher zweimal (Media-Block für die
-  Betriebssystem-Vorliebe, `[data-theme='dark']` für eine explizite Wahl, die niemand setzt); die
-  Basis-Tokens lasen die ungenutzte Kopie → zwei Dunkellooks möglich, bei grüner Suite.
-  [R-WP-39/UC-WP-71](ui.md) jetzt: die App setzt `data-theme` am Dokument auf die
-  Betriebssystem-Vorliebe, die Tokens kommen aus **derselben** Tabelle, jedes Feld wird gegengeprüft.
-  *Andersfall:* willst du einen **manuellen** Hell/Dunkel-Umschalter im Header, ist das eine neue Regel
-  (Umschalter + Merkmal über Reload hinweg) — die Umsetzung bliebe kompatibel, nur die Queue der
-  Entscheidung wäre eine andere.
+* **🔒 Dunkel (2026-11-06, abgelöst 2026-11-07 durch die Design-Übernahme, [R-WP-39](ui.md)):** die
+  Fassung „Dunkel = eine Tabelle, OS setzt `data-theme`, Token-Parität gegen das Grundblatt" ist
+  ersetzt — manueller **Hell/Dunkel-Umschalter** im Header (OS-Vorliebe = Startwert, Auswahl überlebt
+  den Reload), Token-Paritäts-Tests gelöscht (Design-Tests-Regel, [R-WP-39](ui.md)).
 
 * **⏳ Refocus nach dem Turn meidet das andere Feld** (2026-11-06, Ableitung zu
   [UC-WP-74 GIVEN 4](chat.md), Rückversicherung ausstehend) — der Fokus kehrt in die Eingabe zurück,
   **außer** der Nutzer tippt inzwischen in einem anderen Feld (Suche, Config). *Andersfall:* Fokus immer
   in die Eingabe = verlorene Eingabe an der anderen Stelle.
 
-* **⏳ „Jon muss weg" als Navigation LABEL verstanden** (2026-11-06, Paul per Zuruf, Rückversicherung
-  ausstehend) — [R-WP-38](ui.md): es gibt **keinen „Jon"-Eintrag** und kein „Jon"-Label im Sider, ein
-  Klick aufs Projekt öffnet dessen Chat. Die **Kachel** des Agenten behält ihren Namen
-  ([R-WP-7](chat.md)) und die Docs nennen den Agenten weiter Jon. *Andersfall:* war gemeint, dass der
-  Name auch auf der Kachel/ im Header verschwindet („Chat" statt „Jon"), ist das eine Umbenennung der
-  Anzeige plus UC-Änderung in [chat.md](chat.md) — kein Umbau der Kachel-Regel selbst.
+* **🔒 „Jon muss weg" war auf das LABEL beschränkt (2026-11-06, Paul per Zuruf; zurückgenommen
+  2026-11-08)** — die neue Sider-Struktur zeigt die **Chats des Projekts als Einträge** (Jon, später
+  Paco), [R-WP-44/UC-WP-78](ui.md); Wortlaut „Chat" oder „Jon" ist Paul egal („mir geht es nicht ums
+  Wording, sondern das Design"). Die **Kachel** behält ihren Namen ([R-WP-7](chat.md)), die Docs
+  nennen den Agenten weiter Jon.
 * **⏳ Einheiten nur unter dem geöffneten Projekt** (2026-11-07, Schärfung zu
   [R-WP-38](ui.md) vor Inkrement 5b, Rückversicherung ausstehend) — der Sider zeigt „Files" **nur** unter
   dem Projekt, das die Adresse nennt. Abgeleitet: die Regel will sagen, **wo man ist**, und ein Projekt,
@@ -123,14 +181,18 @@ Positiv bestätigt: **(1)** Chat-Restore geht. **(2)** Gemeinsam ein RAG-Chat ge
 
 Defekte/Fragen, je eine Story je Punkt erst nach Klärung (❓ = präzisieren, bevor geplant wird):
 
-* **❓ F3 · Agent-Arbeit unsichtbar in den Status-Kacheln** — läuft ein Team-Mitglied, zeigt die Kachel
-  oben keinen Fortschritt/Zustand. Welche Anzeige gewünscht ist (läuft-Status wie der Jon-Kachel?),
-  klären, dann Regel + UC in [chat.md](chat.md).
+* **🔒 F3 · Agent-Arbeit unsichtbar in den Status-Kacheln** (2026-11-03) — entschieden 2026-11-08
+  (Paul, Abnahme): der **Status-Indikator je Kachel** zeigt arbeitet/kompaktiert/bereit in
+  Blau/Gelb/Grün ([R-WP-45/UC-WP-79](chat.md) ❌), die Reihe steht ohne Abstand über dem Chat; ob der
+  Blick in ein Mitglied **live** läuft, bleibt C-7 (unten).
 * **❓ F5 · Optik im Detail** (u. a. Config-Seite) — Totalschaden-Einschätzung von Paul; Detail-Liste
   fehlt noch. Erst sammeln, dann eigenes Look-Inkrement.
-* **❓ F8 · Config-Umfang fehlt** — `reasoning_effort` nicht einstellbar, Header-Einstellungen und
-  weitere Plugin-Einstellungen fehlen. Gehört zu [config.md](config.md)/[R-WP-23](config.md) — Umfang
-  mit dem Core-Bestand abgleichen, dann UCs ziehen. (Verwandt: ⏳ Dev-Slot oben.)
+* **⏳ F8 · Config-Umfang: alles was das Plugin hat** (2026-11-02; geschärft Paul 2026-11-08) —
+  `reasoning_effort` nicht einstellbar, Header-Einstellungen und weitere Plugin-Einstellungen fehlen;
+  Umfang mit dem Core-Bestand abgleichen, dann UCs ziehen ([config.md](config.md), [R-WP-23](config.md)).
+  Neu (Paul 2026-11-08): das **Modell-Feld ist Auswahl ODER Eingabe** (AntD `AutoComplete`-Stil — wie
+  im Eclipse-Plugin, **keine Dropdown-Only-Liste**, nicht jeder Provider hat eine Modell-Liste) —
+  MVP-Bestandteil der Config-Story.
 * **❓ F9 · „Clear" hinterlässt Tool-Zeilen mit zerstörtem Layout** — nach Clear bleiben Tool-Messages
   im Chat, Layout kaputt. Verhalten von Clear klären (was sollClear entfernen?) → Regel in
   [chat.md](chat.md).
@@ -320,9 +382,12 @@ Defekte/Fragen, je eine Story je Punkt erst nach Klärung (❓ = präzisieren, b
   Konflikt von 2026-11-01) — AGENTS.md („UI: English") gilt, [R-WP-27](ui.md) formalisiert: Strings
   im Catalog (`content.ts`/Locale), keine deutschen Draht-Werte. Umsetzung als eigene Story dieses
   Zyklus.
-* **❓ Chats-Übersicht links (Vision, Paul 2026-11-02):** jedes Projekt ein „Tree"/Accordion in der
+* **🔒 Chats-Übersicht links (Vision, Paul 2026-11-02; Entscheidung 2026-11-07):** jedes Projekt ein „Tree"/Accordion in der
   linken Navigation, mehrere Paco-Chats je Projekt (**+**), Überblick über alle Chats; Main-Chat
   immer Jon. Gehört zu [Paco](paco.md) — erst mit der Paco-Story, kein MVP-Mechanismus.
+  **Paul 2026-11-07: „Später — erst nach dem MVP; aktuell gibt es nur ein Paco, er kann später mehr
+  als einen Chat haben."** Das SOLL-Bild („Chat 59" + „+ Neuer Chat") ist damit die spätere Form,
+  nicht der MVP — **PR-5 bleibt unverändert** (ein Jon, ein Gespräch je Projekt).
 
 ### Docs-Review gegen Pauls Produktvision (2026-10-27) — eine Frage nach der anderen
 

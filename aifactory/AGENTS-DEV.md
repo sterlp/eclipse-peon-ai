@@ -1,11 +1,7 @@
-- Only facts you cannot derive from code, docs, or build files, and that stay true
-  regardless of the current plan. No plan/increment references, no status.
-- Add an entry when a fresh session would otherwise waste time or fail
-  (wrong assumption, hidden requirement, tool quirk).
-- Skip anything derivable from code, docs, or build files.
-- Max ~120 lines. Merge into an existing entry before adding a new one;
-  remove entries that are outdated or covered by code/docs.
-- Working notes, progress, and episodic findings go to the plan file(s)
+- Never test CSS you can use https://docs.stagehand.dev/v4/first-steps/introduction to screenshot it if needed
+- UI elements are small, composable units with a single clear responsibility — like well-designed
+  Java classes. Split when a unit has more than one reason to change, not by line count alone.
+  Avoid both monoliths and premature fragmentation. (read component-architecture for more details)
 
 ## Build
 
@@ -59,17 +55,22 @@
 
 - **Doc-Lint-Baseline ist nicht 0** (❌-UCs kommender Inkremente): findings-frei = **keine neuen** Findings
   und die eigenen UCs von der Liste genommen.
-- **jsdom misst weder Farbe noch Layout** (`getComputedStyle` = `canvastext`, `var()`/Nesting lösen nicht
-  auf, `scrollHeight` = 0): Farb-/Maßverträge aus dem **Stylesheet-Text** lesen
-  (`import.meta.glob('../../src/*.css', { query: '?raw' })`, `test.css` an, mit RegExp) und über Tokens
-  schließen; eine Grenze wie `MAX_ROWS` wird als **Konstante** gepinnt, nie als Pixel. Kein Selektorwortlaut
-  in CSS-Prosa — die Helfer (`declarations`, `blockOf`, `tokenTable`) suchen per `indexOf`. **Zustands-CSS
-  über `+`/`~` braucht die DOM-Nestung dazu** (`previousElementSibling`) — jsdom sieht die Kante nicht.
+- **jsdom misst weder Farbe noch Layout** (`getComputedStyle` = `canvastext`, `var()`/Nesting lösen nicht,
+  `scrollHeight` = 0): **Look wird nicht als Sheet-Text gepinnt** — keine Farb-Literale in `test/`, eine
+  Design-Änderung darf keinen Test anfassen. `test/shared/sheets.ts` bleibt für **Mechanik-Grenzen**
+  (`overflow`, `min-height: 0`, „Selektor existiert nicht mehr", `min-height`/`resize` des Composer-Feldes,
+  `MAX_ROWS` als Konstante): Blatt via `import.meta.glob('../../src/*.css', { query: '?raw' })`, Helfer
+  `declarations`/`block`/`declares` suchen per `indexOf` — kein Selektorwortlaut in Prosa, kein Kommentar
+  **im** Block, gruppierte Selektoren (`.a,\n.b {`) treffen sie nicht; **Zustands-CSS über `+`/`~` braucht die
+  DOM-Nestung dazu** (`previousElementSibling`) — jsdom sieht die Kante nicht.
+- **Farb-Modus ist eine Auswahl** (`src/shared/theme.mode.ts`, `localStorage['aifactory.theme']`, Startwert =
+  Betriebssystem, keine Live-Folge); `main.tsx` schreibt `data-theme` **vor** dem Render ⇒ keine
+  `prefers-color-scheme`-Doppeltabelle. `test/shared/app.harness.tsx` mountet darum `AppRoot` (hält Modus,
+  Basis und `ThemeModeContext`, den `useThemeMode()` verlangt).
 - **AntD unter jsdom**: `matchMedia` **und** `ResizeObserver` sind load-bearing (jsdom 26.1.0: Property da,
   Wert `undefined`); `Select` über `<id>_list` (`id` je Choice Pflicht, `useId()` ist im Testbaum nicht
-  eindeutig), Helfer `test/shared/choices.ts`. Dunkel ist **eine** Tabelle über `data-theme` am Document;
-  `darkAlgorithm` leitet den Akzent ab („Token == Literal" ist im Dunkel nicht prüfbar — eigener Vergleich +
-  `hell !== dunkel`), Tokens ohne Dunkel-Zeile (Fonts) fallen auf hell zurück.
+  eindeutig), Helfer `test/shared/choices.ts`; `Layout.Sider` malt ohne `width` schon **200 px**, ein
+  `'200px'`-Pin beweist nichts. Tokens ohne Dunkel-Zeile (Fonts) fallen auf hell zurück.
 - **Markdown/Shiki**: `remarkPlugins`/`components` als Modul-Konstante (stabile Props), `remark-breaks`
   Pflicht (v10 hat keine `breaks`-Option), rohes HTML bleibt Wortlaut; `white-space: normal` auf
   `.chat-log .chat-markdown` ist tragend und Markdown zerteilt Text in Spans ⇒ **Zeile** über
@@ -81,7 +82,9 @@
 - **Routing macht Navigation async** → `findBy*`. Quellen-Scan nur über `import.meta.glob` mit `?raw`
   (`node:fs`/`process` sind in `src`+`test` nicht typisiert). **Kein Mount-Beweis über
   Schwesterrouten:** gleiche Komponente an derselben Stelle behält React Router die Instanz — „bleibt
-  gemountet" beweist nur ein erzwungener Remount (`key={pathname}`).
+  gemountet" beweist nur ein erzwungener Remount (`key={pathname}`). **Ein Klick-Test braucht eine Behauptung,
+  die der Nicht-Klick nicht erfüllt** (andere Adresse, entferntes Element): auf derselben Adresse ist ein
+  toter Eintrag ein grüner No-op.
 - **Zwei Drähte enden auf `/events`** — `/api/projects/events` (Arbeitsstand, Rahmen) und
   `/api/projects/<id>/events` (Chat): Ströme und Reads **projektbezählt** zählen (`/${project().id}/events`).
 - **Chat-Draht-Griffe nicht umbenennen**: `chat-line-jon` / `chat-live` / `chat-line-author` (Stimme

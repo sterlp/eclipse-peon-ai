@@ -8,8 +8,9 @@ import '@testing-library/jest-dom/vitest'
  * `shared/prefers.dark.ts` and a `vi.spyOn(window, 'matchMedia')` in a test are without an answer here.
  * The stand-in answers "not dark", which is also what the pinned environment of a build machine should say:
  * a colour claim must not depend on how the machine running the suite is configured. A test that wants the
- * dark answer overwrites the query for itself (`theThemeQuestionIsTheOperatingSystem`,
- * `appRootSetsTheDocumentTheme`) — it needs `addEventListener`, because the hook keeps the answer current.
+ * dark answer overwrites the query for itself (`theOperatingSystemAnswerIsTheStartValue`,
+ * `appRootSetsTheDocumentTheme`) — the shape keeps `addEventListener`, because the responsive parts of the
+ * basis register a listener on every query they read.
  *
  * `ResizeObserver` — the basis measures its surfaces on mount (the responsive Menu, a `Select` popup), and
  * without it 15 of the 16 tests under `test/app` fail with `ReferenceError`, whatever the page does. It

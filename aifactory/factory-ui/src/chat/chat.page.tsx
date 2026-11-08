@@ -18,6 +18,7 @@ import {
   appendLiveDiff,
   appendLiveError,
   appendLiveText,
+  appendLiveThink,
   appendLiveTool,
   endLiveDelegation,
   liveLinesAfterHistory,
@@ -267,13 +268,19 @@ export function ChatPage({ project, files, user }: Props) {
     (event: ChatStreamEvent) => {
       switch (event.kind) {
         case 'partial':
-          // thinking deltas stay invisible: the chat shows the answer, and R-WP-5 promises that text
-          if (!event.thinking) {
-            // the turn is opened outside the writer: its anchor is frozen on first use, and the list
-            // to continue is the one that stands, not the one a past render showed (D-A, D-B)
-            const at = beginTurn().anchor
-            writeLive(appendLiveText(liveItems.current, event.text, at))
+          if (event.thinking) {
+            // a Think delta is no answer and no speech of its own: it is an entry of the trace, opened and
+            // anchored like a step of this turn, and it carries the moment this browser received it — the
+            // clock of a step and never a duration (R-WP-40, UC-WP-72 GIVEN 1)
+            const step = beginTurn()
+            writeLive(
+              appendLiveThink(liveItems.current, event.text, step.anchor, Date.now(), step.id),
+            )
+            break
           }
+          // the turn is opened outside the writer: its anchor is frozen on first use, and the list
+          // to continue is the one that stands, not the one a past render showed (D-A, D-B)
+          writeLive(appendLiveText(liveItems.current, event.text, beginTurn().anchor))
           break
         case 'tool': {
           const step = beginTurn()

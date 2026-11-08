@@ -18,6 +18,18 @@ function nav(): HTMLElement {
   return screen.getByRole('navigation', { name: content.nav.views })
 }
 
+/** The header's navigation — named of its own, so the tree's helpers stay unambiguous (R-WP-43). */
+function topNav(): HTMLElement {
+  return screen.getByRole('navigation', { name: content.nav.pages })
+}
+
+/** The entries the header marks as showing: the reading of the address, never the last click. */
+function markedTopEntries(): HTMLElement[] {
+  return within(topNav())
+    .getAllByRole('menuitem')
+    .filter(entry => entry.className.includes('ant-menu-item-selected'))
+}
+
 beforeEach(() => {
   cleanup()
   localStorage.clear()
@@ -57,6 +69,8 @@ test('theUiSpeaksEnglish', async () => {
     project().name,
   ])
   expect(screen.getByLabelText(content.user.name)).toBeInTheDocument()
+  // the colour switch of the frame (UC-WP-71) is a control of the basis and speaks the catalog's word
+  expect(screen.getByRole('switch', { name: content.theme.toggle('light') })).toBeInTheDocument()
 
   // the projects view: its form and its empty affordance are the catalog's words
   expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
@@ -70,8 +84,8 @@ test('theUiSpeaksEnglish', async () => {
   expect(await within(chat).findByTestId('tile-state-Dev')).toHaveTextContent(content.tiles.state.IDLE)
   expect(screen.getByTestId('files-open')).toHaveTextContent(content.files.open)
 
-  // settings: the field names of the form, reached from the header
-  fireEvent.click(screen.getByRole('button', { name: content.nav.settings }))
+  // settings: the field names of the form, reached from the header's pages (R-WP-43)
+  fireEvent.click(within(topNav()).getByRole('menuitem', { name: content.nav.settings }))
   expect(await screen.findByText(content.config.provider)).toBeInTheDocument()
   expect(screen.getByText(content.config.model)).toBeInTheDocument()
 
@@ -80,21 +94,38 @@ test('theUiSpeaksEnglish', async () => {
   expect(container.textContent).not.toMatch(/[ÄÖÜäöüß]/)
 })
 
-// R-WP-38
-test('theHeaderCarriesBrandUserAndSettingsOnly', async () => {
+// R-WP-43
+// UC-WP-76
+test('theHeaderCarriesTheBrandThePagesAndTheName', async () => {
   stubAppServer()
   const { container } = renderApp('/projects')
   await screen.findByLabelText(content.projects.gitUrl)
 
   const header = container.querySelector('.app-header') as HTMLElement
   expect(header.textContent).toContain(content.brand)
-  expect(within(header).getByRole('button', { name: content.nav.settings })).toBeInTheDocument()
   expect(within(header).getByLabelText(content.user.name)).toBeInTheDocument()
 
-  // no view entry of its own: the tree beside it says where the viewer is (R-WP-38), so a second set of
-  // entries would be a second answer to keep in step with the URL
-  expect(within(header).queryAllByRole('menuitem')).toEqual([])
-  expect(within(header).queryByText(content.nav.projects)).toBeNull()
+  // the three pages of R-WP-43 and nothing else, in a navigation of their own: a project entry here would be a
+  // second answer to the question the tree beside it answers (R-WP-38)
+  expect(within(topNav()).getAllByRole('menuitem').map(entry => entry.textContent)).toEqual([
+    content.nav.projects,
+    content.nav.chat,
+    content.nav.settings,
+  ])
+  // one mark only, and the list page carries it — `aria-current` is what a screen reader reads (ANTD-A9)
+  expect(markedTopEntries().map(entry => entry.textContent)).toEqual([content.nav.projects])
+  expect(header.querySelectorAll('[aria-current]'), 'exactly one entry of the header shows').toHaveLength(1)
+
+  // INC-L1-BUG-1: R-WP-43 asks for **dark** and **horizontal**, and jsdom paints no colour — so the claim is
+  // pinned on the two classes the basis puts on its own list (ANTD-A1). Without them the header holds a light
+  // inline tree and the `Menu.dark*` tokens of theme.ts paint a menu that is never drawn.
+  const pages = topNav().querySelector('.ant-menu') as HTMLElement
+  expect(pages, 'the basis renders its own list inside our navigation').not.toBeNull()
+  expect(pages.className, 'the pages menu is the dark one of R-WP-43').toContain('ant-menu-dark')
+  expect(pages.className, 'the pages menu lies horizontal in the band').toContain('ant-menu-horizontal')
+
+  // INC-L1-D3: the page is reached through its entry alone — no button of the header carries a mark beside it
+  expect(within(header).queryAllByRole('button', { name: content.nav.settings })).toEqual([])
   // the brand is a word and not a way to navigate
   expect(within(header).queryAllByRole('link')).toEqual([])
 })
@@ -106,8 +137,9 @@ function markedEntries(): HTMLElement[] {
     .filter(entry => entry.className.includes('ant-menu-item-selected'))
 }
 
+/** The settings page of the header (R-WP-43): a page is an entry now, not a button beside the entries. */
 function settingsEntry(): HTMLElement {
-  return screen.getByRole('button', { name: content.nav.settings })
+  return within(topNav()).getByRole('menuitem', { name: content.nav.settings })
 }
 
 // R-WP-38
@@ -135,13 +167,100 @@ test('theSettingsEntryIsCurrentOnSettings', async () => {
   // frame stayed mounted, so only a reading of the address can know which entry shows now
   fireEvent.click(await screen.findByRole('button', { name: project().name }))
   await screen.findByRole('region', { name: content.chat.title })
-  expect(markedEntries().map(entry => entry.textContent)).toEqual([project().name])
+  expect(
+    markedEntries().map(entry => entry.textContent),
+    'the tree shows the chat unit of the project the address names (UC-WP-77)',
+  ).toEqual([content.nav.chat])
   expect(settingsEntry()).not.toHaveAttribute('aria-current')
 
   fireEvent.click(settingsEntry())
   await screen.findByText(content.config.provider)
   expect(settingsEntry()).toHaveAttribute('aria-current', 'page')
   expect(markedEntries()).toEqual([])
+})
+
+// R-WP-43
+// UC-WP-76
+test('theTopMarkFollowsAnAddressNobodyClicked', async () => {
+  // one mount, three addresses, and not one click in the header: a menu that keeps its own selection — the
+  // mount's first reading or the last click — survives a reload test and fails here
+  stubAppServer()
+  const app = renderApp('/settings')
+  await screen.findByText(content.config.provider)
+
+  expect(markedTopEntries().map(entry => entry.textContent)).toEqual([content.nav.settings])
+  expect(settingsEntry()).toHaveAttribute('aria-current', 'page')
+
+  // the tree is the handle of every step below, so the header is only ever read
+  fireEvent.click(within(nav()).getByRole('menuitem', { name: content.nav.projects }))
+  await screen.findByLabelText(content.projects.gitUrl)
+  expect(app.path()).toBe('/projects')
+  expect(markedTopEntries().map(entry => entry.textContent)).toEqual([content.nav.projects])
+
+  // the list row opens a chat: a third address, still no click in the header
+  fireEvent.click(await screen.findByRole('button', { name: project().name }))
+  await screen.findByRole('region', { name: content.chat.title })
+  expect(app.path()).toBe(CHAT_PATH)
+  expect(markedTopEntries().map(entry => entry.textContent)).toEqual([content.nav.chat])
+})
+
+// R-WP-38
+// R-WP-43
+// UC-WP-76
+// UC-WP-77
+test('theTopMarkAndTheTreeMarkAgreeInOneRender', async () => {
+  // INC-L1-LOW-3: the two menus read one address, so „die Markierung folgt der Adresse und ist einig" only
+  // holds **within one render** — two mounts could each be right about another URL. One chat address, both
+  // navigations read in the same render: each carries exactly one mark and both name the chat unit.
+  stubAppServer()
+  renderApp(CHAT_PATH)
+  await screen.findByRole('region', { name: content.chat.title })
+
+  const top = within(topNav()).getByRole('menuitem', { name: content.nav.chat })
+  const tree = within(nav()).getByRole('menuitem', { name: content.nav.chat })
+
+  expect(top, 'the header names the page the address names').toHaveAttribute('aria-current', 'page')
+  expect(tree, 'the tree names the unit the address names').toHaveAttribute('aria-current', 'page')
+
+  // one mark per navigation, so nothing can disagree with the other: the header says nothing about the
+  // projects and the settings page, the tree nothing about the project entry or the file area (R-WP-38)
+  expect(markedTopEntries(), 'exactly the chat page marks in the header').toEqual([top])
+  expect(markedEntries(), 'exactly the chat unit marks in the tree').toEqual([tree])
+  expect(topNav().querySelectorAll('[aria-current]')).toHaveLength(1)
+  expect(nav().querySelectorAll('[aria-current]')).toHaveLength(1)
+})
+
+// R-WP-43
+// UC-WP-76
+test('theTopChatEntryLeadsToTheLastChat', async () => {
+  // UC-WP-51: the entry names the chat on its own, and that address answers with the project this browser
+  // last opened — the menu holds no project of its own
+  stubAppServer()
+  localStorage.setItem('aifactory.lastProject', project().name)
+  const app = renderApp('/settings')
+  await screen.findByText(content.config.provider)
+
+  fireEvent.click(within(topNav()).getByRole('menuitem', { name: content.nav.chat }))
+
+  expect(await screen.findByRole('region', { name: content.chat.title })).toBeInTheDocument()
+  expect(app.path()).toBe(CHAT_PATH)
+  expect(markedTopEntries().map(entry => entry.textContent)).toEqual([content.nav.chat])
+})
+
+// R-WP-43
+// UC-WP-76
+test('theTopChatEntryWithoutAProjectLeadsToTheList', async () => {
+  // nothing stored is a real answer and not a gap: the chat question stays unanswered, and the list is the
+  // page where a project is picked — a fourth page or a guessed project would both be a second answer
+  stubAppServer()
+  const app = renderApp('/settings')
+  await screen.findByText(content.config.provider)
+
+  fireEvent.click(within(topNav()).getByRole('menuitem', { name: content.nav.chat }))
+
+  expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
+  expect(app.path()).toBe('/projects')
+  expect(markedTopEntries().map(entry => entry.textContent)).toEqual([content.nav.projects])
 })
 
 // UC-WP-70

@@ -1,16 +1,18 @@
 import { useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Button, Layout } from 'antd'
+import { Layout } from 'antd'
 
 import { AppSider } from './app.sider'
+import { AppThemeToggle } from './app.theme.toggle'
+import { AppTop } from './app.top'
 import { AppUser } from './app.user'
 import {
   chatFilesPath,
   chatPath,
   navKeyOfPathname,
+  pageKeyOfPathname,
   projectSegment,
   projectsPath,
-  settingsPath,
 } from './app.paths'
 import type { AppContext } from './app.context'
 import { content } from '../shared/content'
@@ -21,12 +23,13 @@ import type { Project } from '../shared/dto'
 import '../styles.css'
 
 /**
- * The frame of the app (R-WP-1, R-WP-38): the header with the brand, this browser's name and Settings; the
- * tree of projects in the sider beside the view. Which entry of that tree shows is read from the URL and
- * held nowhere else — an address survives a reload that a component's state would not (UC-WP-43, UC-WP-52).
+ * The frame of the app (R-WP-1, R-WP-38, R-WP-43): the header with the brand, the three pages, the colour
+ * switch and this browser's name; the tree of projects in the sider beside the view. Both menus are a
+ * reading of the URL and hold nothing of their own — an address survives a reload that a component's state
+ * would not (UC-WP-43, UC-WP-52), and the two readers of that address live in {@link ./app.paths} together.
  *
- * The brand is a word and not a link, and the header carries no project entry: the tree says where the
- * viewer is, and a second way to the same page would be a second answer to keep in step.
+ * The brand is a word and not a link, and the header names no project: the header answers **which page**,
+ * the tree answers **which project** — one question each, so nothing has to be kept in step between them.
  *
  * Layout, Header and Content are the basis' own (R-WP-39), and so is the sider's responsive behaviour —
  * this file only says which breakpoint and which collapsed width, never how wide that is in pixels.
@@ -70,16 +73,9 @@ export default function AppShell() {
     <Layout className="app">
       <Layout.Header className="app-header">
         <span className="app-title">{content.brand}</span>
+        <AppTop active={pageKeyOfPathname(pathname)} onNavigate={navigate} />
+        <AppThemeToggle />
         <AppUser user={user} onChange={setUser} />
-        {/* outside the tree on purpose: Settings is a page, the tree answers which project (R-WP-38) */}
-        <Button
-          className="app-settings"
-          type="text"
-          aria-current={pathname.startsWith(settingsPath) ? 'page' : undefined}
-          onClick={() => navigate(settingsPath)}
-        >
-          {content.nav.settings}
-        </Button>
       </Layout.Header>
       <Layout className="app-body">
         <AppSider

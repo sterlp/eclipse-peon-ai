@@ -6,6 +6,123 @@ Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwiss
 `peon-plan/review-findings.md` sind das Memory); Docs duplizieren nie Core-Regeln; Plan-Archive werden
 **gelöscht**, nie committet.
 
+## Runde 5 — Browser-Abnahme läuft (2026-11-08)
+
+**Pauls Grundsatz (2026-11-08, dauerhaft):** wie Paul Dinge „im Prinzip" entschieden hat, steht im
+**Eclipse-Plugin** — vor jeder Paritäts-/SOLL-Frage zuerst dort nachschauen (chat.html, Plugin-Dialoge),
+nicht neu fragen.
+
+**Paul antwortet auf JEDE Nachricht nur EINE Frage** (ausdrücklich angemahnt). Look-Abnahme am Browser
+lief als Feedback-Liste: **A1–A8 = Reparaturen** (1 Warte-Rahmen gestrichelt → „ganz weg", 2 Sider-Rand,
+3/4/5 Chat-Fläche füllt Bildschirm nicht, Margen asymmetrisch, 6 Scroll-to-bottom unzuverlässig — nach
+Renderen ans Ende, 7 Tool-Results nach Restore weg — wiederherstellen, prüfen ob Core-History sie
+speichert, sonst Core-Proposal, 8 Agenten-Blick = anderes Widget → C-7), **B1–B6 = neues SOLL**
+(1 Blasen volle Breite, Höhe = Text → R-WP-29 wird umgeschrieben, 2 Input unten weiß/volle Breite,
+Senden rechts, 3 AntD-Widgets überall, 4 wiederverwendbare Widget-Klassen, 5 Settings-Seite weit weg
+vom Plugin-Look → in die Config-Story, 6 AGENTS-DEV → später Projektskill „backend/frontend bauen",
+⏳ offen lassen). **Test-Politik Paul: neue Tests nur für neue Funktionalität — sonst Tests abbauen
+bzw. zusammenfassen.**
+
+**Entschieden 2026-11-08 (Abnahme, laufend):** Top-Menü bleibt (Projekte · Chat · Settings, R-WP-43). **Sider-Baum neu:
+[R-WP-44/UC-WP-78](ui.md) ❌** — Klapp-Gruppe je Projekt (Titel = Projektname), Kinder = Chats/Einheiten
+(Jon; Paco später; Files als letztes), **kein „Projects"-Eintrag** (doppelt), leerer Sider = leer,
+Einklap-Griff (`MenuUnfoldOutlined`/`MenuFoldOutlined`, Slide). Klick auf Chat-Eintrag öffnet Adresse,
+Gruppen-Titel klappt nur. „Einheiten nur unter dem geöffneten Projekt" und „kein Jon-Eintrag"
+zurückgenommen; „Chat" vs. „Jon" als Label egal („nicht ums Wording, sondern das Design"). R-WP-38/70/77,
+open-points (🔒 Sider-Baum, 🔒 „Jon muss weg"), index.md nachgezogen.
+**Warte-Rahmen gelöscht** (Paul 2026-11-08: „zwei Indikatoren"): R-WP-31/UC-WP-65 ❌ neu gefasst —
+Arbeit zeigt der **Status-Indikator der Kachel-Reihe**, **R-WP-45/UC-WP-79 ❌** (blau arbeitet · gelb
+kompaktiert · grün, größerer Kreis, bereit), Reihe **ohne Abstand über dem Chat**; falls doch eine
+Blasen-Kennzeichung: AntD **`BorderBeam`** (Paul-Link), nie ein eigener gestrichelter Rahmen.
+**Blasen: volle Breite, Höhe = Text** → R-WP-29 ❌ nachgetragen. Timeline-Lade-Punkt etwas größer
+(R-WP-40). F3 → 🔒 (R-WP-45). Neue offene Punkte Runde 5: Status-Farbe bei **Fehler = rot** (🔒
+2026-11-08, AntD-Fehler-/Alert-Widget falls vorhanden), A7
+Tool-Results-Restore (⏳, erst prüfen ob Core-History sie trägt — sonst Core-Proposal).
+**R-WP-46/UC-WP-81 ❌ (ui.md):** AntD zuerst — Widget-vor-eigenbau; UI-Funktionen immer als
+**wiederverwendbare Widgets** bauen und nutzen (unabhängig testbar, kein zweiter Anzeige-Pfad).
+
+**Scroll entschieden (A6, Paul 2026-11-08):** Auto-Scroll nur am Ende ✅, nach eigener Eingabe immer,
+Zurück ans Ende bewaffnet neu, schwebender „Scroll bottom"-Knopf (`FloatButton`, umgekehrtes
+`BackTop`) — **R-WP-35/UC-WP-80 ❌**; Chat-Fläche volle Bildschirmbreite bei behaltenem Rand,
+Eingabe weiß/volle Breite, Senden rechts (in R-WP-35 ❌-Anteil). Lade-Punkt Timeline = AntD
+`Spin`/`LoadingOutlined` small (R-WP-40), Spin auch am Kachel-Status (R-WP-45).
+
+**Offen (je EINE Frage an Paul, Reihenfolge):** — ALLE ❓ der Abnahme geklärt (Stand 2026-11-08):
+Modell/Kontext im Chat = später 🔒; in der **Config** MVP: Modell-Feld = Auswahl ODER Eingabe
+(AntD `AutoComplete`, keine Dropdown-Only-Liste — nicht jeder Provider hat eine Liste; F8 ⏳).
+Nächster Schritt: **Inkrement 4 planen** — Sider-Baum R-WP-44, Look-Reparaturen (Sider-Rand A2,
+Fläche/Margen A3–A5), Warte-Rahmen raus + Status-Indikator R-WP-31/45, Scroll R-WP-35/UC-WP-80,
+Blasen R-WP-29. Danach A7 Restore (Core prüfen!), C-7, Config-Story.
+**Offene Kleinklammer aus Inc 3:** AGENTS-DEV.md fehlt noch der Factory-UI-Bullet zur AntD-v6-Timeline
+(Steps-Falle, `itemPaddingBottom` nur im Alternativ-Layout, Beweise nur über `chat-timeline`/`data-trace`,
+nie `.ant-*`; `MAX_TOOL_LINES` kürzt nur Tool-Items) — aus dem Lessons-Learned von Inc 3, vor Inkrement 4
+nachziehen. **AntD-Skill `.agents/skills/antd` existiert (Paul portiert): nie AntD aus dem Gedächtnis,
+`antd info/lint` vor Abschluss; Node-Update 22.12 → 22.23.4 (LTS, entparkt Stagehand) als eigener
+Mini-Schritt, antd 6.7.0 = latest, kein Update nötig.**
+**Mehrere Chats: NICHT im MVP** (Paul 2026-11-08) — PR-5 hält, „es ging mir ums Layout"; auch mit
+Paco bleibt es zunächst bei einem Chat je Agent. **Sider-Voreinstellung:** < 4 Projekte ⇒ alle
+Gruppen offen, sonst nur die erste (in R-WP-44/UC-WP-78 nachgetragen).
+
+## Runde 4b — Look-Restart (2026-11-07)
+
+Paul hat `web-factory-mvp-2` in **main gemergt** (`542d9f4`, Branch remote gelöscht) — alles Gebaute
+ist auf main; andere Branches (`web-factory-mvp`, `web-factory-goon`) sind Vorgänger und drin. Worktree = main.
+
+Pauls Befund: IST ≈ altes Design — **Top-Menü weg, Text-Links statt Buttons, Mockup/Referenz nie
+übernommen**. Konflikt gelöst: die R-WP-38-Fassung „Sider statt Top-Menü" (2026-11-06) ist
+zurückgenommen. **[R-WP-43](ui.md) ❌** (Restart, Mockup + `ai-schulung`): dunkles Top-Menü
+(Projekte · Chat · Settings), Sider-Einheiten **Chat · Paco · Files als letztes**, Chat-Eingabe =
+Footer-Zeile, **Aktionen = echte Buttons/Selects** (auch Clear/Compact an den Kacheln). Look-Absatz in
+[ui.md](ui.md) neu: AntD-6-Elemente modern, Referenz-Muster in **AntD-6-Pendants** (nie antd-5-Code
+kopieren), alte chat.html-Optik **kein Ziel mehr**, Farben bleiben unsere Tokens. **UC-WP-76/77 ❌**.
+[index.md](index.md): UI → ◐. Offen für Paul: mehrere Chats je Agent (❓, widerspricht PR-5),
+Modell-Auswahl + Kontextanzeige (❓ MVP?), Chat-Optionen-Platzierung (⏳), Sprechblasen/Zeit unten
+(⏳ später), Top-Menü-Einträge + Ordnung (⏳) — siehe open-points „Runde 4b".
+
+**Inkrement 1 gebaut + reviewed (N1) + geflippt ✅:** Branch **`web-factory`** (ab main `542d9f4`,
+`web-factory-look` gelöscht): `42b08c02` (1a Top-Menü) → `d759ce7d` (1b Einheiten) → `99ffb67d`
+(N1: Nachweise) → `d666836e` (Findings-File, jetzt **getrackt**). Stand: **224 Tests / 22 Dateien**
+grün, tsc 0, oxlint 0/0. Review-Verdict war REJECTED (2 Nachweis-Lücken: `ant-menu-dark/-horizontal`
+unkalibriert, Turn-Test startete adressgleich) — N1 geschlossen, 2 Proben rot. `R-WP-43/UC-WP-76/77 ✅`
+(Verdrahtung; **Look-Abnahme am Browser steht aus** — Band, Menühöhe, Hell/Dunkel `#1f2328`/`#101316`,
+Auswahl-Kontrast, `border-bottom`, LOW-2/LOW-4, 2 Suspicions; Details in
+`peon-plan/review-findings.md`). Settings-Button rechts **entfernt** (Q1), kein Paco-Eintrag (Q2),
+Marke an der Chat-Einheit (Q3), dunkles Band (Q4).
+
+**Pauls Abnahme 2026-11-07 (nur dunkel, Sider defekt, kein Umschalter) ⇒ Zweite SOLL-Wende:**
+**Design-Übernahme** — Palette/Layout/Element-Optik werden aus `ai-schulung/app/frontend`
+(`App.css`/`index.css`) + Mockup **kopiert, nicht nachgebaut** (Look-Absatz + [R-WP-39](ui.md) ❌ neu);
+Sider mit **fester Breite 200** (`Menu inline`, Mockup); Referenz-Defekte **nicht** mitkopieren
+(Select überlappt Top-Menü = CSS-Fehler dort); Zweifelsfall = `chat.html` des Plugins; **manueller
+Hell/Dunkel-Umschalter** (OS = Startwert, überlebt Reload). **R-WP-29 geöffnet:** Verlauf folgt der
+Referenz-Optik (Bubbles) — flache Zeilen zurückgenommen (⏳). **Design-Tests-Regel:** für Look
+**keine neuen Tests**, im Weg = stabilisieren/löschen (Token-Paritäts-/Band-Assertions fliegen),
+Abnahme am Browser. Vorherige Fassungen („Farb-Tokens bleiben unsere", „kein zentrierter Container")
+sind zurückgenommen.
+
+**Nächster Schritt:** ~~Inkrement 2~~ **Inkrement 2 GEBAUT + reviewed + geflippt (2026-11-07):** Branch
+`web-factory` — 2a `193a22e8` (Palette+Rahmen) → 2b `bd69c101` (Verlauf/Bubbles) → 2c `1b213920`
+(Umschalter) → N1 `71bcaef6` → LOW `2b99bcc4` → Close-out `f8aa65b2`. **R-WP-39 ✅, Bubbles 🔒**, R-WP-29
+❌ bis Look-Abnahme. **Inkrement 3 (Nachtzyklus) GEBAUT + reviewed:** 3a `9ef506ec` (Maße ant-design.md +
+grauer Warte-Rahmen) → 3b `95e55fdb` (AntD-Timeline-Widget Werkzeug+Delegation, 22 Fälle umgehängt,
+Mutationen bewiesen) → 3c `c96e6965` (**Think = Item wie Tool**, 218/218) → N1 `71a8866e` (Review-Fix:
+Steps-Geometrie im Chat-Scope überschrieben — AntD liest `itemPaddingBottom` nur im Alternativ-Layout;
+TraceEntry-Helper; 4px-Grid). Review-Verdict nach N1 akzeptiert. **R-WP-40 ✅** (mit Geometrie-Klausel),
+**UC-WP-72 ✅ mit Think-GIVEN**. Browser-Abnahme steht aus: Blasen-Maße, grauer Rahmen, appweit 14 px
+(❓2 — Blatt-Konsequenz, Rücknahme auf `.chat-log` wäre eine Zeile), Timeline-Dots, Think-Slot an (❓1/F5).
+
+**Danach:** Sider-Inkrement (kein „Projects"-Eintrag, kein Files-Slide-out — open-points Runde 4b ⏳),
+Chat-Aktionen-Story (R-WP-43 Buttons), Config-Story (reasoning_effort, Save-Button, Key-Delete —
+`aifactory/ui-bugs.md`). Plan archiviert.
+
+Übernehmbare Muster aus `ai-schulung` (Survey 2026-11-07): dunkles horizontales Menü
+(`app/frontend/src/App.tsx`), Sidebar-Collapse je Agent + Hover-Aktionen (`ThreadNav.tsx`),
+Modell-`Select` mit Label (`ModelDropdown.tsx`), Steps + Collapse-ghost für Tools
+(`ToolCallSteps.tsx`/`ToolResultCard.tsx`), Badge+Popover (`AgentToolsBadge.tsx`), FloatButton +
+Drop-Zone, fixe Bottom-Bar mit TextArea+primärem Button. Farben der Referenz **nicht** übernehmen
+(unere Tokens gelten).
+
+
 ## Zyklus 2026-11-06/07 — Runde 4: AntD-Umbau („durchbauen"; Paul inzwischen wieder da, parallel im Core)
 
 Branch `web-factory-mvp-2`, Spitze `2ec9d4f5` = origin. Kette Inc 4: `832a9772` (4a) → `b51571b2` (N1)

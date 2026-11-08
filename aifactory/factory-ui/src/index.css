@@ -1,38 +1,59 @@
 /*
- * Design tokens — the colours of the plugin's chat.html (org.sterl.llmpeon/resources/chat/chat.html) as
- * custom properties: this layer supplies the look, and the design basis reads its colours from here
- * (R-WP-27, R-WP-39 — `shared/theme.ts` is the one reader).
- *
- * The dark values are stated twice because CSS cannot share one rule between an attribute selector and a
- * media query: `[data-theme='dark']` is the table the app puts on the document (`app/app.root.tsx` asks the
- * operating system once and names the answer here), and the media rule is the same table for a browser that
- * runs no script. One colour mode therefore has one table on every path — and `theme.test.ts`
- * (`theDarkSheetIsOneTable`) compares the two copies field by field, so a copy cannot drift into a page
- * painted half dark.
+ * Design tokens — the one owner of every colour and every measure (R-WP-39): one table per colour mode,
+ * which our own sheet reads and the design basis translates (`shared/theme.ts` is the one reader, so no rule
+ * and no component paints a value of its own). Which table paints is the `data-theme` attribute on the
+ * document, written by `main.tsx` before the first render and kept by `app/app.root.tsx`. The measures come
+ * from the design sheet `aifactory/ant-design.md` (body-md 14/22, code 13/20, 4px grid, surface radius 8).
  */
 
 :root,
 [data-theme='light'] {
-  --bg: #ffffff;
-  --text-h: #1a1a1a;
-  --text: #57606a;
-  --border: #d0d7de;
-  --code-bg: #f6f8fa;
-  --accent: #0969da;
-  --accent-bg: rgba(9, 105, 218, 0.1);
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --text-h: #111827;
+  --text: #6b7280;
+  --border: #e5e7eb;
+  --code-bg: #f3f4f6;
+  --accent: #1677ff;
+  --accent-bg: rgba(22, 119, 255, 0.1);
+  /* the header band of the pages' menu (R-WP-43): one tone for the band and the dark menu on it (R-WP-39) */
+  --top-bg: #1f2937;
+  --top-text: #ffffff;
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
-  /* roles, exactly as chat.html paints them */
-  --user: #0969da;
-  --agent: #1a7f37;
-  --tool: #888888;
-  --tool-line: #cccccc;
-  --problem: #d32f2f;
-  --question: #d29922;
+  /* roles */
+  --user: #2563eb;
+  --on-user: #ffffff;
+  --agent: #16a34a;
+  --tool: #6b7280;
+  --problem: #dc2626;
+  --question: #d97706;
+  /* the contour of a line the history has not confirmed yet (R-WP-29): a frame says "waiting", only a voice
+     says "said" — so this is the neutral grey, never an accent */
+  --frame-pending: #9ca3af;
 
   --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, 'Cascadia Code', 'Fira Code', Menlo, Consolas, monospace;
+
+  /* the measure content is centred to: a scroll area keeps the full width and centres what it holds inside
+     itself, so its scrollbar stays at the edge of the surface (`padding-inline` of `.view`) */
+  --content-max: 1100px;
+  --content-gutter: max(1rem, calc((100% - var(--content-max)) / 2));
+
+  /* the measures of the design sheet: two voices of type (body-md, code) with a mini label, a 4px grid and
+     one radius for surfaces — a rule that needs a length reads one of these, never a number of its own */
+  --fs-body: 14px;
+  --lh-body: 22px;
+  --fs-code: 13px;
+  --lh-code: 20px;
+  --fs-mini: 12px;
+  --lh-mini: 20px;
+  --radius-surface: 8px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
 
   color-scheme: light;
   font-family: var(--sans);
@@ -45,53 +66,40 @@
 }
 
 [data-theme='dark'] {
-  --bg: #1e1e1e;
-  --text-h: #d4d4d4;
+  --bg: #111827;
+  --surface: #1f2937;
+  --text-h: #e5e7eb;
   --text: #9ca3af;
-  --border: #3e3e42;
-  --code-bg: #26282b;
-  --accent: #58a6ff;
-  --accent-bg: rgba(88, 166, 255, 0.16);
+  --border: #374151;
+  --code-bg: #111827;
+  --accent: #60a5fa;
+  --accent-bg: rgba(96, 165, 250, 0.16);
+  --top-bg: #0b1220;
+  --top-text: #e5e7eb;
 
-  --user: #58a6ff;
-  --agent: #7ee787;
+  /* the bubble keeps the light mode's own blue — white on the dark accent would not hold its contrast */
+  --user: #2563eb;
+  --agent: #4ade80;
   --tool: #9ca3af;
-  --tool-line: #4a4a4a;
-  --problem: #f85149;
-  --question: #d29922;
+  --problem: #f87171;
+  --question: #fbbf24;
+  --frame-pending: #6b7280;
 
   color-scheme: dark;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --bg: #1e1e1e;
-    --text-h: #d4d4d4;
-    --text: #9ca3af;
-    --border: #3e3e42;
-    --code-bg: #26282b;
-    --accent: #58a6ff;
-    --accent-bg: rgba(88, 166, 255, 0.16);
-
-    --user: #58a6ff;
-    --agent: #7ee787;
-    --tool: #9ca3af;
-    --tool-line: #4a4a4a;
-    --problem: #f85149;
-    --question: #d29922;
-
-    color-scheme: dark;
-  }
-}
-
 body {
   margin: 0;
+  /* the app speaks body-md (sheet): our own text used to sit on the browser's 16px next to the basis' 14 */
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   background: var(--bg);
   color: var(--text-h);
 }
 
-/* The app fills the window: no centred column, no side borders (R-WP-1). The shell is the fixed frame
-   and every view carries its own scroll area, so nothing here scrolls as a whole (R-WP-35). */
+/* The app fills the window: no column of its own, no side borders (R-WP-1) — every scroll area reaches the
+   edge and centres its content inside itself with `--content-gutter`. The shell is the fixed frame and each
+   view carries its own scroll area, so nothing here scrolls as a whole (R-WP-35). */
 #root {
   height: 100dvh;
   min-height: 0;
@@ -124,7 +132,8 @@ p {
 
 code {
   font-family: var(--mono);
-  font-size: 0.85em;
+  font-size: var(--fs-code);
+  line-height: var(--lh-code);
   border-radius: 4px;
   padding: 0.1em 0.35em;
   color: var(--text-h);

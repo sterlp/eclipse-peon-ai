@@ -4,27 +4,34 @@
 
 .app {
   padding: 0 1rem 2rem;
+  background: var(--bg);
 }
 
-/* The basis' header carries its own height and gutter (theme tokens); what is ours is the rule below it
-   and the order of its parts. */
+/* The basis' header carries its own height and gutter (theme tokens); what is ours is the order of its
+   parts and the way it reaches the edges of the window. The band is a surface of its own (`--top-bg`), so
+   nothing separates it from the page with a second line (R-WP-39). */
 .app-header {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   margin: 0 -1rem 1rem;
-  border-bottom: 1px solid var(--border);
 }
 
+/* the brand stands on the dark band, so it speaks in the band's colour and does not inherit the page's */
 .app-title {
   font-weight: 650;
-  color: var(--text-h);
+  color: var(--top-text);
   white-space: nowrap;
 }
 
-/* The browser's own name, at the end of the header — small, because it is a label and not a workspace. */
+/* The colour switch sits at the end of the row and pushes the name to the edge with it; the band is dark in
+   both modes, so the switch of the basis carries its own colours and needs no token (R-WP-39, UC-WP-71). */
+.app-theme {
+  margin-inline-start: auto;
+}
+
+/* The browser's own name, last in the row — small, because it is a label and not a workspace. */
 .app-user {
-  margin-left: auto;
   width: 9rem;
 }
 
@@ -34,8 +41,9 @@
   min-height: 0;
 }
 
-/* The project tree (R-WP-38): only its edge is ours — its surface is the theme's `lightSiderBg`, which is
-   mapped in `shared/theme.ts`, and the mark on its entry is the basis' own accent (R-WP-39). */
+/* The project tree (R-WP-38): only its edge is ours — its surface is the theme's `lightSiderBg`, mapped to
+   `--surface` in `shared/theme.ts`, so the tree is a surface of its own beside the page; the mark on its
+   entry is the basis' own accent (R-WP-39). */
 .app-sider {
   border-right: 1px solid var(--border);
 }
@@ -51,9 +59,19 @@
   padding-inline-start: 2.25rem;
 }
 
-/* Settings at the end of the header speaks in the heading colour like the brand beside it. */
-.app-settings {
-  color: var(--text-h);
+/* The pages' menu fills the header between the brand and the name (R-WP-43). `min-width: 0` is what lets it
+   shrink: the menu's own overflow is the basis' problem to solve, not one that stretches the header. Its
+   colours are the band's own, mapped in `shared/theme.ts` (R-WP-39). */
+.app-top {
+  flex: 1;
+  min-width: 0;
+}
+
+/* a horizontal menu carries a bottom edge and a container of its own; beside the band those read as a second
+   strip inside one surface, which is what R-WP-39 rules out */
+.app-top .ant-menu {
+  background: transparent;
+  border-bottom: 0;
 }
 
 .app-main {
@@ -62,13 +80,17 @@
   min-width: 0;
 }
 
-/* A view scrolls in its own area, never the page (R-WP-35). The chat view replaces this with a column of
-   its own further down, because its scroll belongs to the log and not to the view. */
+/* A view scrolls in its own area, never the page (R-WP-35), and it reaches the edge of the window: the
+   content is centred **inside** the scroll area by the gutter, so the scrollbar stays at the side of the
+   surface instead of running down the middle of the page. The chat view replaces this with a column of its
+   own further down — and hands the gutter to its own scroll area and its own input, because its scroll
+   belongs to the log and not to the view. */
 .view {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   min-width: 0;
+  padding-inline: var(--content-gutter);
 }
 
 .add-project {
@@ -87,7 +109,7 @@
 button {
   border: 1px solid var(--border);
   border-radius: 0.4rem;
-  background: var(--code-bg);
+  background: var(--surface);
   color: var(--text-h);
   padding: 0.4rem 0.8rem;
   cursor: pointer;
@@ -158,6 +180,7 @@ button {
   align-items: baseline;
   gap: 0.5rem;
   margin: 0 0 0.6rem;
+  padding-inline: var(--content-gutter);
 }
 
 .chat-title {
@@ -174,6 +197,7 @@ button {
   list-style: none;
   margin: 0 0 1rem;
   padding: 0;
+  padding-inline: var(--content-gutter);
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
@@ -189,6 +213,7 @@ button {
     gap: 0.25rem;
     border: 1px solid var(--border);
     border-radius: 0.4rem;
+    background: var(--surface);
     padding: 0.3rem 0.5rem;
     font-size: 0.82rem;
   }
@@ -274,146 +299,138 @@ button {
 }
 
 /* The log is the scroll area of the chat: the tiles above and the input below keep their place while the
-   conversation runs past them (R-WP-35, UC-WP-66). */
+   conversation runs past them (R-WP-35, UC-WP-66). It keeps the full width and centres what it holds inside
+   itself, so its scrollbar stays at the edge of the surface (D8) — the same measure the input below uses. */
 .chat-log {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   list-style: none;
   margin: 0 0 1rem;
-  padding: 0;
   display: grid;
-  gap: 0.4rem;
+  gap: var(--space-2);
+  padding-inline: var(--content-gutter);
 }
 
-/* A row is speech, not a card: the accent line names the voice, the surface stays the app's one (R-WP-29). */
+/* What every row shares is the wording, not a shape: a line keeps what was typed, and the voice below
+   decides its side and its own box (R-WP-29). No accent edge here — the voice names itself by its form. */
 .chat-log .chat-line {
-  border-left: 3px solid transparent;
-  padding: 0.15rem 0 0.35rem 0.6rem;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-/* Jon's and the team's answer carry the green of chat.html, and nothing else. */
+/* An answer is the card on the left, the surface of the page's cards with the app's own border (R-WP-29);
+   `justify-self` because the log is a grid, and never a `margin` or a `text-align` — those would take the
+   answers out of the flow of the conversation, which UC-WP-55 rules out. The border carries the hierarchy,
+   not a shadow: an answer in the flow does not float. The name above it stays the agent's own green
+   (`.chat-role`). */
 .chat-log .chat-line.agent {
-  border-left-color: var(--agent);
+  justify-self: start;
+  max-width: min(85%, var(--content-max));
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-surface);
+  background: var(--surface);
 }
 
-/* The person's line is blue the way the agent's is green: the same accent, the same side, in the flow of
-   the text — no right edge and no second line of its own (R-WP-29). The 3px it paints come from the line
-   rule above, so the base rule stays the one owner of the accent's width. */
+/* The person's own input stands alone on its side: the reference's blue bubble with its own text colour,
+   right, in its own shape (R-WP-29, UC-WP-55). No answer reads from this rule — the side belongs to the
+   voice that spoke it, and only to it. */
 .chat-log .chat-line.user {
-  border-left-color: var(--user);
+  justify-self: end;
+  max-width: min(85%, var(--content-max));
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-surface);
+  background: var(--user);
+  color: var(--on-user);
 }
 
-/* A failed turn is a line of the conversation and nobody's speech: the problem colour, no name above it,
-   no surface of its own — the lesson of UC-WP-55 is that a grey block reads as a card, not as a line. */
+/* A failed turn is a line of the conversation and nobody's speech: the problem's colour says what it is, on
+   the page's surface and on no edge of its own — the lesson of UC-WP-55 is that a grey block reads as an
+   answer, so what separates it from one is the colour of its text and the border it does not paint. */
 .chat-log .chat-line.error {
-  border-left-color: var(--problem);
+  justify-self: start;
+  max-width: min(85%, var(--content-max));
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-surface);
+  background: var(--surface);
   color: var(--problem);
 }
 
 
-/* Tool activity is not a voice of the conversation: the grey italic of chat.html, small, no name of its
-   own; the lines of one run share this one box (R-WP-28). */
-.chat-log .chat-line.tool {
-  border-left-color: var(--tool-line);
-  padding-top: 0.1rem;
-  padding-bottom: 0.2rem;
+/* The trace of a turn is not a voice of the conversation: the steps, the Think sections and the delegations
+   of one place share ONE timeline of the design basis (R-WP-40), in the grey italic of chat.html, small and
+   on no surface of its own (R-WP-28). The line keeps no air of its own: the gap between two links is the
+   item rule below, and both sit on the 4px grid. */
+.chat-log .chat-line.trace {
+  padding: 0;
   color: var(--tool);
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: var(--fs-code);
+  line-height: var(--lh-code);
   font-style: italic;
 }
 
-/* The word above the trace, as chat.html sets it — upright, so the italic stays with the reports. */
-.chat-log .chat-line.tool .chat-tools-label {
+/* The gap between two links of the trace (R-WP-40: big dots, gaps between the items very small). The basis
+   builds the timeline on its Steps, and Steps keeps every vertical item one and a half controls tall with
+   half a control of bottom padding — 48px and 12px, measured in the shipped sheet — while its own
+   `itemPaddingBottom` token reaches the alternate layout only, which the trace does not use. So this
+   geometry is the sheet's to set, inside the chat's own scope and nowhere else: the extension of the design
+   system for the measure the token cannot carry, not a repaint of a token it can (R-WP-39). */
+.chat-log .chat-line.trace .ant-timeline-item {
+  min-height: 0;
+  padding-bottom: var(--space-1);
+}
+
+/* the last link ends the widget: no air behind it, whichever sheet was applied last */
+.chat-log .chat-line.trace .ant-timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+/* One entry of the trace keeps the breaks the wire sent it with and nothing else (R-WP-40). */
+.chat-log .chat-line.trace .chat-trace-item {
   display: block;
-  font-size: 0.66rem;
-  font-weight: 600;
+  white-space: pre-wrap;
+}
+
+/* The agent the core stamped on a step, above his report (R-WP-40): the mini measure in small capitals,
+   upright, on no surface of its own. A step the wire left unstamped draws no such line at all
+   (UC-WP-72 GIVEN 1). Own block, no grouped selector: the sheet is read rule by rule. */
+.chat-log .chat-line.trace .chat-step-name {
+  display: block;
+  font-size: var(--fs-mini);
+  line-height: var(--lh-mini);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   font-style: normal;
+  color: var(--tool);
 }
 
-.chat-log .chat-line.tool .chat-tool-line {
+/* The member above his entry, in the idiom of a step's stamp (R-WP-40): upright and on no surface, and
+   nothing else stands on the line — the wire carries no order text to paint (UC-WP-72 GIVEN 3). */
+.chat-log .chat-line.trace .chat-delegation-name {
   display: block;
-}
-
-/* The agent the core stamped on a step, above its report (R-WP-40): information and not typography — small
-   capitals in the trace grey, upright, on no surface of its own. A step the wire left unstamped draws no
-   such line at all (UC-WP-72 GIVEN 1). Own block, no grouped selector: the sheet is read rule by rule. */
-.chat-log .chat-line.tool .chat-step-name {
-  display: block;
-  font-size: 0.66rem;
+  font-size: var(--fs-mini);
+  line-height: var(--lh-mini);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   font-style: normal;
   color: var(--tool);
 }
 
-/* The step a running turn works on (R-WP-40): the blink of the waiting bar, small and behind the report. It
-   ends with the next step or with the turn — the core reports no end of one tool, so nothing here measures a
-   duration (UC-WP-72 GIVEN 2). */
-.chat-log .chat-line.tool .chat-step-running {
-  display: inline-block;
-  inline-size: 0.4rem;
-  block-size: 0.7rem;
-  margin-inline-start: 0.3rem;
-  background: currentColor;
-  animation: chat-waiting-blink 1s steps(2, start) infinite;
+/* The word that says a member works, upright like a stamp. The indicator that he works is the basis' loading
+   dot on his entry, so the word blinks no longer — one indicator per entry, and reduced motion has nothing
+   left to stop here (R-WP-40, UC-WP-72 GIVEN 3). */
+.chat-log .chat-line.trace .chat-delegation-working {
+  font-style: normal;
 }
 
-/* Own block and no comma with the waiting caret: a grouped rule is only readable at its last selector, and
-   both answers stand on their own (R-WP-31 for the caret, R-WP-40 for the step). */
-@media (prefers-reduced-motion: reduce) {
-  .chat-log .chat-line.tool .chat-step-running {
-    animation: none;
-  }
-}
-
-/* One delegation of the turn is a link of the timeline and not a voice (R-WP-40): the member the order went
-   to, in the trace's own quiet — mono, small, no surface and no frame of its own. */
-.chat-log .chat-line.delegation {
-  border-left-color: var(--tool-line);
-  padding-top: 0.1rem;
-  padding-bottom: 0.2rem;
-  color: var(--tool);
-  font-family: var(--mono);
-  font-size: 0.78rem;
-}
-
-/* The member above his entry, in the idiom of a step's stamp: small capitals in the trace grey, upright, on
-   no surface. Nothing else stands on the line — the wire carries no order text to paint (UC-WP-72 GIVEN 3). */
-.chat-log .chat-line.delegation .chat-delegation-name {
-  display: block;
-  font-size: 0.66rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--tool);
-}
-
-/* The word that says he works: the blink of the waiting bar. It ends with the entry's own end event or with
-   the turn — a duration stays the statement of the turn alone (R-WP-40, UC-WP-72 GIVEN 3). */
-.chat-log .chat-line.delegation .chat-delegation-working {
-  animation: chat-waiting-blink 1s steps(2, start) infinite;
-}
-
-/* Own block instead of a comma with the rules above: a grouped rule is only readable at its last selector,
-   and the sheet is read block by block — by the browser and by the test that proves this one. */
-@media (prefers-reduced-motion: reduce) {
-  .chat-log .chat-line.delegation .chat-delegation-working {
-    animation: none;
-  }
-}
-
-/* A file the turn changed (R-WP-36) is a block of the log and neither a voice nor a trace line: the accent
-   stays the trace grey, the colours are the ones the app already has — an addition is what the agent did
+/* A file the turn changed (R-WP-36) is a block of the log and neither a voice nor a trace line: the trace's
+   grey stays its colour, the colours are the ones the app already has — an addition is what the agent did
    (the agent token), a removal the problem token, the headers and context dimmed. Flat rules, one selector
    each: the colour contract is read off this sheet in a test, and a grouped rule is only readable at its
    last selector. */
 .chat-log .chat-line.diff {
-  border-left-color: var(--tool-line);
   padding-top: 0.1rem;
   padding-bottom: 0.25rem;
 }
@@ -431,8 +448,8 @@ button {
   margin: 0;
   padding: 0.4rem 0.6rem;
   font-family: var(--mono);
-  font-size: 0.78rem;
-  line-height: 1.4;
+  font-size: var(--fs-code);
+  line-height: var(--lh-code);
   white-space: pre;
   overflow-x: auto;
 }
@@ -470,8 +487,15 @@ button {
 .chat-log .chat-markdown p,
 .chat-log .chat-markdown ul,
 .chat-log .chat-markdown ol,
-.chat-log .chat-markdown blockquote {
-  margin: 0 0 0.35rem;
+.chat-log .chat-markdown blockquote,
+.chat-log .chat-markdown table {
+  margin: 0 0 var(--space-1);
+}
+
+/* The last block of an answer keeps no margin of its own: that margin is the empty height under the text,
+   and the log's own gap is the space between two rows (R-WP-29). */
+.chat-log .chat-markdown > :last-child {
+  margin-bottom: 0;
 }
 
 .chat-log .chat-markdown ul,
@@ -485,12 +509,12 @@ button {
 .chat-log .chat-markdown h3,
 .chat-log .chat-markdown h4 {
   font-size: 0.95rem;
-  margin: 0.15rem 0 0.3rem;
+  margin: var(--space-1) 0;
 }
 
 /* A line the model drew inside an answer is content of that answer (R-WP-29): ours, short and quiet, in
-   the border grey and at the answer's own left edge — never as wide as the log. The voices themselves
-   separate by the accent on their side. */
+   the border grey and at the answer's own left edge — never as wide as the log, which would read as a
+   separation of the conversation. */
 .chat-log .chat-markdown hr {
   border: 0;
   border-top: 1px solid var(--border);
@@ -503,7 +527,7 @@ button {
 .chat-log .chat-markdown-table {
   max-width: 100%;
   overflow-x: auto;
-  margin: 0 0 0.35rem;
+  margin: 0 0 var(--space-1);
 }
 
 /* An image of an answer is content of it and never wider than the answer (R-WP-29). */
@@ -517,7 +541,7 @@ button {
    style attribute, so only !important can outvote them. `.code-view` is the hook of every highlighted
    block — a fenced answer and the file viewer are the same component (R-WP-28, R-WP-33). */
 .chat-code {
-  margin: 0.35rem 0;
+  margin: var(--space-1) 0;
   border: 1px solid var(--border);
   border-radius: 0.4rem;
   background: var(--code-bg);
@@ -528,8 +552,8 @@ button {
   margin: 0;
   padding: 0.5rem 0.6rem;
   font-family: var(--mono);
-  font-size: 0.8rem;
-  line-height: 1.45;
+  font-size: var(--fs-code);
+  line-height: var(--lh-code);
   background: none;
 }
 
@@ -549,20 +573,6 @@ button {
   background-color: transparent !important;
 }
 
-/* … and the same switch the colour tokens make on the OS preference (index.css states both). */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .code-view .shiki {
-    color: var(--shiki-dark) !important;
-    background-color: var(--shiki-dark-bg) !important;
-  }
-
-  :root:not([data-theme='light']) .code-view .shiki span,
-  :root:not([data-theme='light']) .code-view .shiki code {
-    color: var(--shiki-dark) !important;
-    background-color: transparent !important;
-  }
-}
-
 /* The name above a line, in the colour of its voice (chat.html: uppercase, letterspaced, smaller). */
 .chat-log .chat-role {
   display: block;
@@ -573,16 +583,17 @@ button {
   color: var(--agent);
 }
 
+/* the name of a person reads in the colour of the bubble it stands in, not in its blue */
 .chat-log .chat-line.user .chat-role {
-  color: var(--user);
+  color: var(--on-user);
 }
 
-/* An own line the history has not confirmed yet: the accent is not a fact yet — last, so it outvotes
-   the voice's own line on the border it shares with it. The dashed form belongs to the left accent alone:
-   a style on every side would draw a line above and below the row (R-WP-29). */
+/* An own line the history has not confirmed yet: a dashed contour in the waiting grey — an accent would read
+   as "said" (R-WP-29, R-WP-31). An outline, because a border would sit under the bubble's radius and, on the
+   person's side, under its own background. Last, so it outvotes the voice's own form on the shared row. */
 .chat-log .chat-line.pending {
-  border-left-style: dashed;
-  color: var(--text);
+  outline: 1px dashed var(--frame-pending);
+  outline-offset: 2px;
 }
 
 /* Das Feld ist die Auto-Grow-Textarea der Basis: eine Zeile bis fünf, danach scrollt sie (R-WP-41); Enter
@@ -594,6 +605,7 @@ button {
   gap: 0.5rem;
   flex: none;
   padding-top: 0.4rem;
+  padding-inline: var(--content-gutter);
   border-top: 1px solid var(--border);
   background: var(--bg);
 
@@ -602,7 +614,7 @@ button {
     padding: 0.4rem 0.6rem;
     border: 1px solid var(--border);
     border-radius: 0.4rem;
-    background: var(--bg);
+    background: var(--surface);
     color: var(--text-h);
     font: inherit;
   }
@@ -616,13 +628,15 @@ button {
 /* Die Warte-Leiste eines Turns (R-WP-31) — die Zeile des Plugins: in beiden Themen dunkel, Mono, mit dem
    Cursor, der während des Turns blinkt. Das Grün ist das Agenten-Grün von chat.html. Sie steht als Block
    über dem Feld: der Chat scrollt in seiner eigenen Fläche, also hängt nichts mehr am Seiten-Scroll
-   (R-WP-35). */
+   (R-WP-35). Sie steht als Bar in demselben Maß wie Verlauf und Feld — darum der Einzug am Rand ihrer
+   eigenen Fläche und nicht in ihrem Innenmaß, das die Zeile des Plugins bleibt. */
 .chat-waiting {
   display: flex;
   flex: none;
   align-items: center;
   gap: 0.4rem;
-  margin: 0 0 0.6rem;
+  margin-block-end: 0.6rem;
+  margin-inline: var(--content-gutter);
   padding: 0.35rem 0.6rem;
   border-radius: 0.4rem;
   background: #1c2128;
@@ -661,6 +675,7 @@ button {
 .chat-error {
   color: var(--problem);
   margin: 0 0 0.75rem;
+  padding-inline: var(--content-gutter);
 }
 
 /* The row a chat view sits in: the conversation and the file panel side by side, so an open file keeps
@@ -680,11 +695,13 @@ button {
 }
 
 /* The chat is a column whose middle scrolls: tiles and head keep their place on top, the input and the
-   wait below, and only the log runs past them (R-WP-35, UC-WP-66). */
+   wait below, and only the log runs past them (R-WP-35, UC-WP-66). No gutter of its own: the log, the wait
+   and the field carry the measure, so the log's scrollbar reaches the edge of the column. */
 .chat-workspace > .view {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  padding-inline: 0;
 }
 
 /* The tab at the right edge, written sideways: the visible promise that this side opens (R-WP-33). Out
@@ -704,7 +721,7 @@ button {
   border: 1px solid var(--border);
   border-right: none;
   border-radius: 0.5rem 0 0 0.5rem;
-  background: var(--bg);
+  background: var(--surface);
   color: var(--text);
   writing-mode: vertical-rl;
   font-size: 0.8rem;
@@ -772,7 +789,7 @@ button {
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--border);
   border-radius: 0.5rem;
-  background: none;
+  background: var(--surface);
   text-align: left;
   cursor: pointer;
 
@@ -907,7 +924,7 @@ button {
   width: min(24rem, 92vw);
   padding: 1rem 1.25rem 2rem;
   overflow-y: auto;
-  background: var(--bg);
+  background: var(--surface);
   border-left: 1px solid var(--border);
   box-shadow: var(--shadow);
 

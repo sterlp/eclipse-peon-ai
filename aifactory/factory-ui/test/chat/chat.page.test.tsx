@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
 import { renderApp } from '../shared/app.harness'
-import { baseDeclarations, declarations, declares, tokenValues } from '../shared/sheets'
+import { baseDeclarations, declarations, declares } from '../shared/sheets'
 import { separatorsOf } from '../shared/log.parts'
 import { ChatPage } from '../../src/chat/chat.page'
 import { project } from '../shared/fixtures'
@@ -381,6 +381,52 @@ test('aRunningTurnSurvivesTheUnitClick', async () => {
   expect(screen.getByTestId('chat-live')).toHaveTextContent('Im Root liegen: pom.xml')
 })
 
+// R-WP-38
+// UC-WP-70
+// UC-WP-77
+test('aRunningTurnSurvivesTheChatUnitClick', async () => {
+  // the way **back** from the file area, with a turn running: the tree's chat unit names the chat one address
+  // up. An entry that answered with `/chat` instead of the project's own address would walk through the
+  // last-project redirect, mount the chat again and cost the answer half way to the screen (UC-WP-77, G2).
+  // INC-L1-BUG-2: started on the file area on purpose — started on the chat the click asks for the address the
+  // view already has, so an entry wired to nothing would survive this test as neatly as the turn does.
+  const chat = stubChat({ messages: [QUESTION], projects: [project()] })
+  const app = renderApp(`/chat/${project().name}/files`)
+  await screen.findByTestId('files-panel')
+  await screen.findByTestId('chat-log')
+  await flush()
+
+  await chat.push(event('partial', { kind: 'answer', text: 'Im Root liegen' }))
+  expect(screen.getByTestId('chat-live')).toHaveTextContent('Im Root liegen')
+  const readsBefore = chat.countOf(`/${project().id}/messages`, 'GET')
+  const streamsBefore = chat.countOf(`/${project().id}/events`, 'GET')
+  expect(streamsBefore, 'the open chat streams on exactly one wire').toBe(1)
+
+  fireEvent.click(
+    within(screen.getByRole('navigation', { name: content.nav.views })).getByRole('menuitem', {
+      name: content.nav.chat,
+    }),
+  )
+
+  // the click moved one address up: the area is gone, which is what makes „no new mount" a claim about a
+  // changed address and not about a click that did nothing
+  await waitFor(() => expect(app.path()).toBe(`/chat/${project().name}`))
+  expect(screen.queryByTestId('files-panel'), 'the chat unit leaves the file area').toBeNull()
+
+  // no third address and no new mount: the same chat instance keeps the live line and both wires (G2)
+  expect(screen.getByTestId('chat-live'), 'the live line stands through the click').toHaveTextContent(
+    'Im Root liegen',
+  )
+  expect(chat.countOf(`/${project().id}/messages`, 'GET'), 'the running chat is not read again').toBe(
+    readsBefore,
+  )
+  expect(chat.countOf(`/${project().id}/events`, 'GET'), 'one live stream stays open').toBe(streamsBefore)
+
+  // and the turn goes on: naming the unit is not the end of an answer
+  await chat.push(event('partial', { kind: 'answer', text: ': pom.xml' }))
+  expect(screen.getByTestId('chat-live')).toHaveTextContent('Im Root liegen: pom.xml')
+})
+
 // UC-WP-7
 test('streamingUpdatesChatWithoutReload', async () => {
   const chat = stubChat({ messages: [QUESTION] })
@@ -404,12 +450,21 @@ test('streamingUpdatesChatWithoutReload', async () => {
   expect(chat.countOf('/messages', 'GET')).toBe(readsBefore)
 
   await chat.push(event('tool', { text: 'Running: `ls` in /home/me/.aifactory/projects/demo' }))
-  expect(screen.getByTestId('chat-tool-line')).toHaveTextContent('Running: `ls`')
+  expect(screen.getByTestId('chat-timeline')).toHaveTextContent('Running: `ls`')
 
-  // thinking is streamed too, but it is not an answer: the chat shows the answer only
+  // thinking is streamed too, and since R-WP-40 it is an entry of the trace — an entry of the timeline and
+  // never a line of the answer, which is what the live line still holds alone (UC-WP-72 GIVEN 1)
   await chat.push(event('partial', { kind: 'think', text: 'Ich überlege gerade…' }))
   expect(screen.getByTestId('chat-live')).toHaveTextContent('Im Root liegen: pom.xml und README.md')
-  expect(screen.getByTestId('chat-log').textContent).not.toContain('Ich überlege gerade')
+  const thoughtEntries = () => [
+    ...screen.getByTestId('chat-log').querySelectorAll('.chat-trace-item[data-trace="think"]'),
+  ]
+  expect(thoughtEntries(), 'the think delta is one entry beside the step').toHaveLength(1)
+  expect(thoughtEntries()[0]).toHaveTextContent('Ich überlege gerade')
+  expect(
+    screen.getByTestId('chat-timeline').querySelectorAll('.chat-trace-item').length,
+    'the thought joins the widget of the step instead of drawing a box of its own',
+  ).toBe(2)
 
   // the finished text is no event: done means read the history once, and it replaces the live line
   chat.setMessages([QUESTION, { role: 'user', text: 'zähl die Dateien' }, ANSWER])
@@ -420,7 +475,11 @@ test('streamingUpdatesChatWithoutReload', async () => {
   expect(screen.queryByTestId('chat-live')).toBeNull()
   // the trace of the turn is not lost by the read: it stays where it happened, while the streaming text
   // gives way to the history that carries it now (R-WP-28, UC-WP-54)
-  expect(screen.getByTestId('chat-tool-line')).toHaveTextContent('Running: `ls`')
+  expect(screen.getByTestId('chat-timeline')).toHaveTextContent('Running: `ls`')
+  expect(
+    thoughtEntries(),
+    'a think entry is of the same family — it exists on the wire only, so the read may not drop it',
+  ).toHaveLength(1)
   // the own input lives in the history only now — the pending copy is gone, no line twice
   expect(screen.getAllByTestId('chat-line-user')).toHaveLength(2)
 })
@@ -759,15 +818,28 @@ test('onlyFinalAnswersFromTheTeam', async () => {
   render(<ChatPage project={project()} />)
   await flush()
 
-  // GIVEN 2 — a member's thinking line is not an answer and never reaches the screen
-  await chat.push(event('partial', { kind: 'think', text: 'DENKTEXT-AUS-MITGLIED' }))
-  expect(screen.getByTestId('chat-log').textContent).not.toContain('DENKTEXT-AUS-MITGLIED')
+  // GIVEN 2 — what the model thinks on its way to the answer is no speech: it is an entry of the trace, it
+  // names nobody and it opens no line of the conversation (R-WP-40, R-WP-4). A MEMBER's thinking never
+  // reaches this wire at all — the core forwards only the thinking of the turn that answers, proven on the
+  // core side by DelegatedAnswerTest and TeamInternalsTest — so the screen has nothing to filter and this
+  // case proves the one channel it owns (R-WP-40, rewritten 2026-11-07)
+  const thoughtEntries = () => [
+    ...screen.getByTestId('chat-log').querySelectorAll('.chat-trace-item[data-trace="think"]'),
+  ]
+  await chat.push(event('partial', { kind: 'think', text: 'DENKTEXT-VON-JON' }))
+  expect(screen.queryByTestId('chat-line-jon'), 'a think delta opens no line of the conversation').toBeNull()
+  expect(thoughtEntries(), 'it is an entry of the trace and nothing else').toHaveLength(1)
+  expect(
+    thoughtEntries()[0].querySelector('.chat-step-name')?.textContent,
+    'the entry says what it is and lends no author to the thought',
+  ).toBe(content.chat.thinking)
+  expect(thoughtEntries()[0]).toHaveTextContent('DENKTEXT-VON-JON')
 
   // GIVEN 1 — and a member's final answer is no live event either: while the turn runs, Jon's own trace
   // is the only named thing on the wire, and no line of the conversation carries a member's text
   await chat.push(event('tool', { text: 'a tool line of the running turn' }))
   expect(screen.queryByTestId('chat-line-jon')).toBeNull()
-  expect(screen.getByTestId('chat-tool-line')).toHaveTextContent('a tool line of the running turn')
+  expect(screen.getByTestId('chat-timeline')).toHaveTextContent('a tool line of the running turn')
 
   // with `done` the history is read once, and it carries the member's line under its own name — once
   chat.setMessages([QUESTION, TEAM_ANSWER, JONS_ANSWER])
@@ -776,7 +848,14 @@ test('onlyFinalAnswersFromTheTeam', async () => {
   expect(agentAuthorsOnScreen()).toEqual(['Dev', 'Jon'])
   expect(screen.getAllByTestId('chat-line-jon')).toHaveLength(2)
   expect(screen.getAllByText('Eine Banane.')).toHaveLength(1)
-  expect(screen.getByTestId('chat-log').textContent).not.toContain('DENKTEXT-AUS-MITGLIED')
+  expect(
+    agentLinesSaying('DENKTEXT-VON-JON'),
+    'a think text never becomes a line of the conversation, not even after the read',
+  ).toEqual([])
+  expect(
+    thoughtEntries(),
+    'the thought stays an entry of the trace through the read, like the steps beside it (UC-WP-54)',
+  ).toHaveLength(1)
 })
 
 test('reconnectReadsTeamAnswerFromTheHistory', async () => {
@@ -909,31 +988,7 @@ test('aCompactingTileOffersNoStop', async () => {
 })
 
 // UC-WP-55
-test('userLineCarriesTheBlueAccentOnTheLeft', async () => {
-  stubChat({ messages: [QUESTION, ANSWER] })
-  render(<ChatPage project={project()} />)
-  await flush()
-
-  const line = screen.getByTestId('chat-line-user')
-  expect(line.className).toContain('user')
-  expect(line.className).not.toContain('agent')
-
-  // what colour a line has is no fact of the DOM: the sheet paints it. The class the row carries has to be
-  // the class the sheet paints, and the token it paints has to be the blue of chat.html (R-WP-29). The doc
-  // line that asked for the right edge was the source of F2 — the two assertions that pinned it now pin
-  // its opposite, so the old contract is inverted here and not dropped.
-  const painted = declarations('.chat-log .chat-line.user')
-  expect(painted, 'the accent of the person is the user token').toContain('var(--user)')
-  expect(painted, 'the accent sits on the left, like the agent accent').toContain('border-left')
-  expect(painted, 'no second accent on the right edge').not.toContain('border-right')
-  expect(painted, 'the line reads in the flow, not against it').not.toContain('text-align: right')
-  expect(declarations('.chat-log .chat-line'), 'and the width of the accent stays with the line rule')
-    .toContain('border-left: 3px solid transparent')
-  expect(tokenValues('--user')[0], 'the blue of chat.html, not a lookalike').toBe('#0969da')
-})
-
-// UC-WP-55
-test('agentLineIsGreenAndNamedByItsAgent', async () => {
+test('agentLineIsNamedByItsAgent', async () => {
   stubChat({ messages: [QUESTION, TEAM_ANSWER, JONS_ANSWER] })
   render(<ChatPage project={project()} />)
   await flush()
@@ -943,18 +998,10 @@ test('agentLineIsGreenAndNamedByItsAgent', async () => {
   for (const line of lines) {
     expect(line.className).toContain('agent')
     expect(line.className).not.toContain('user')
-    // the label of an agent line is the agent that spoke, and it is the label the sheet colours (R-WP-4)
+    // the label of an agent line is the agent that spoke (R-WP-4)
     expect(line.querySelector('.chat-role')).not.toBeNull()
   }
   expect(lines.map(line => within(line).getByTestId('chat-line-author').textContent)).toEqual(['Dev', 'Jon'])
-
-  expect(declarations('.chat-log .chat-line.agent'), 'the accent of an answer is the agent token')
-    .toContain('var(--agent)')
-  expect(declarations('.chat-log .chat-role'), 'the name above the line is set in caps like chat.html')
-    .toContain('text-transform: uppercase')
-  expect(declarations('.chat-log .chat-line.user .chat-role'), 'and the name of a person in their blue')
-    .toContain('var(--user)')
-  expect(tokenValues('--agent')[0], 'the green of chat.html, not a lookalike').toBe('#1a7f37')
 })
 
 // UC-WP-55
@@ -964,41 +1011,38 @@ test('roleChangeDrawsNoRule', async () => {
   render(<ChatPage project={project()} />)
   await flush()
 
-  // user, agent, agent, user: two changes of voice and no line for either — what separates them is the
-  // accent each row carries on its own side (R-WP-29, UC-WP-55 GIVEN 2)
+  // user, agent, agent, user: two changes of voice and no line for either — bubble and card tell them
+  // apart, no row carries an accent edge (R-WP-29, UC-WP-55 GIVEN 2)
   expect(separatorsOf(screen.getByTestId('chat-log')), 'the whole log draws no separator').toEqual([])
   expect(
     screen.getAllByTestId(/chat-line-(user|jon)/).map(line => (line.classList.contains('user') ? 'user' : 'agent')),
   ).toEqual(['user', 'agent', 'agent', 'user'])
 })
 
+/**
+ * Only the person's own input has a side (R-WP-29, UC-WP-55 as the doc states it now): no answer stands
+ * centred or right-aligned, and the one row that may step to an edge is the voice `user`. Read for the base
+ * row and for the answer's own rule — a side on the base would take every voice with it. Where a row stands
+ * is what a browser lays out from the sheet; jsdom measures nothing (see `test/shared/sheets.ts`).
+ */
 // UC-WP-55
-test('agentLineHasNoGrayBlock', async () => {
+test('noAnswerLineIsCentredOrRightAligned', async () => {
   stubChat({ messages: [QUESTION, ANSWER] })
   render(<ChatPage project={project()} />)
   await flush()
 
   expect(screen.getByTestId('chat-line-jon').className).toContain('agent')
+  expect(declares('.chat-line.jon'), 'a row is painted by its voice, never by the name of its author').toBe(
+    false,
+  )
 
-  // an answer is a line in the flow: no surface of its own, no card, no code-background block (R-WP-29)
-  for (const selector of [
-    '.chat-log .chat-line',
-    '.chat-log .chat-line.user',
-    '.chat-log .chat-line.agent',
-    '.chat-log .chat-line.tool',
-    '.chat-log .chat-line.pending',
-  ]) {
-    expect(declarations(selector), `${selector} paints no surface`).not.toMatch(/background|--code-bg/)
+  // centred, pushed to a side or floated by a free margin — every way a row could leave the flow of the
+  // conversation, whether the sheet spells it as an edge or as `auto`
+  const outOfTheFlow =
+    /text-align:\s*(center|right)|margin[^;]*auto|align-self:\s*(flex-end|center)|justify-self:\s*(end|center)/
+  for (const selector of ['.chat-log .chat-line', '.chat-log .chat-line.agent']) {
+    expect(declarations(selector), `${selector} stands centred or right-aligned`).not.toMatch(outOfTheFlow)
   }
-  expect(declares('.chat-line.jon'), 'the gray block of the jon line is gone').toBe(false)
-  // and the same rule keeps the chat in the flow: the log is no centred column, a line is no centred card
-  // (R-WP-29, UC-WP-55 — Paul: nothing centred, nothing framed)
-  expect(declarations('.chat-log'), 'the log centres nothing').not.toMatch(
-    /justify-content: center|place-items: center/,
-  )
-  expect(declarations('.chat-log .chat-line'), 'a line centres nothing of itself').not.toMatch(
-    /text-align: center|margin: 0 auto/,
-  )
 })
 
 // UC-WP-54
@@ -1014,10 +1058,10 @@ test('toolLinesStayInlineInOrder', async () => {
   await chat.push(event('partial', { kind: 'answer', text: 'Der Schluss.' }))
   await chat.push(event('tool', { text: 'step 2' }))
 
-  const shape = screen.getAllByTestId(/chat-(live|tool-line)/).map(entry =>
+  const shape = screen.getAllByTestId(/chat-(live|timeline)/).map(entry =>
     entry.getAttribute('data-testid') === 'chat-live'
       ? `text ${entry.textContent?.trim() ?? ''}`
-      : `tool ${[...entry.querySelectorAll('.chat-tool-line')].map(line => line.textContent).join('|')}`,
+      : `tool ${[...entry.querySelectorAll('.chat-trace-item')].map(line => line.textContent).join('|')}`,
   )
   expect(shape).toEqual(['text Der Anfang.', 'tool step 1', 'text Der Schluss.', 'tool step 2'])
 })
@@ -1031,7 +1075,7 @@ test('toolLinesSurviveTheDoneRefresh', async () => {
   fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
   fireEvent.click(screen.getByTestId('chat-send'))
   await chat.push(event('tool', { text: 'ls in the checkout' }))
-  expect(screen.getByTestId('chat-tool-line')).toHaveTextContent('ls in the checkout')
+  expect(screen.getByTestId('chat-timeline')).toHaveTextContent('ls in the checkout')
 
   // the turn ends and the history is read: the trace exists on the wire only, so this read is the moment
   // it would be lost — it is not (UC-WP-54)
@@ -1039,7 +1083,7 @@ test('toolLinesSurviveTheDoneRefresh', async () => {
   await chat.push(event('done', { millis: 7 }))
 
   const entries = [...screen.getByTestId('chat-log').children]
-  const tool = screen.getByTestId('chat-tool-line')
+  const tool = screen.getByTestId('chat-timeline')
   expect(tool).toHaveTextContent('ls in the checkout')
   // and it stands where it happened: after the input it belongs to, before the answer that followed it
   const answerAt = entries.findIndex(entry => entry.getAttribute('data-testid') === 'chat-line-jon')
@@ -1206,11 +1250,13 @@ test('consecutiveToolLinesAreMerged', async () => {
     await chat.push(event('tool', { text: `step ${step}` }))
   }
 
-  // one box for a run of tool activity, and only its tail — what a turn reports is a trace beside the
+  // one timeline for a run of tool activity, and only its tail — what a turn reports is a trace beside the
   // answer and never a list that pushes the answer away (chat.html keeps ten lines)
-  const boxes = screen.getAllByTestId('chat-tool-line')
-  expect(boxes).toHaveLength(1)
-  const lines = [...boxes[0].querySelectorAll('.chat-tool-line')].map(line => line.textContent)
+  const widgets = screen.getAllByTestId('chat-timeline')
+  expect(widgets).toHaveLength(1)
+  const lines = [...widgets[0].querySelectorAll('.chat-trace-item[data-trace="tool"]')].map(
+    line => line.textContent,
+  )
   expect(lines).toHaveLength(10)
   expect(lines[0]).toBe('step 3')
   expect(lines[9]).toBe('step 12')
@@ -1227,7 +1273,8 @@ test('aToolStepShowsTheNameTheCoreStamped', async () => {
   await chat.push(event('tool', { text: 'ls in the checkout', origin: 'Jon' }))
   await chat.push(event('tool', { text: 'file updated, diff skipped — binary content' }))
 
-  const steps = [...screen.getByTestId('chat-tool-line').querySelectorAll('.chat-tool-line')]
+  const widget = screen.getByTestId('chat-timeline')
+  const steps = [...widget.querySelectorAll('.chat-trace-item[data-trace="tool"]')]
   expect(steps).toHaveLength(2)
   expect(steps[0].querySelector('.chat-step-name')?.textContent).toBe('Jon')
   expect(steps[1].querySelector('.chat-step-name'), 'an unstamped step names nobody').toBeNull()
@@ -1244,22 +1291,20 @@ test('theRunningStepEndsWithTheTurn', async () => {
   await chat.push(event('tool', { text: 'ls in the checkout' }))
   await chat.push(event('tool', { text: 'wc -l pom.xml' }))
 
-  const steps = [...screen.getByTestId('chat-tool-line').querySelectorAll('.chat-tool-line')]
-  const working = [...screen.getByTestId('chat-tool-line').querySelectorAll('.chat-step-running')]
+  const widget = screen.getByTestId('chat-timeline')
+  const steps = [...widget.querySelectorAll('.chat-trace-item[data-trace="tool"]')]
+  const working = [...widget.querySelectorAll('[data-working="true"]')]
   expect(steps).toHaveLength(2)
   expect(working, 'one open turn has one working step').toHaveLength(1)
-  expect(steps[1].contains(working[0]), 'and it is the step that came last').toBe(true)
+  expect(working[0], 'and it is the step that came last').toBe(steps[1])
 
   // the turn ends and the history is read: no step works any more, and the one that did keeps its place on
   // the screen with the clock of its arrival (R-WP-40, UC-WP-54, UC-WP-72 GIVEN 2)
   chat.setMessages([QUESTION, { role: 'user', text: 'zähl die Dateien' }, ANSWER])
   await chat.push(event('done', { millis: 12 }))
 
-  expect(
-    [...screen.getByTestId('chat-tool-line').querySelectorAll('.chat-step-running')],
-    'with the turn the indicator ends',
-  ).toEqual([])
-  const finished = [...screen.getByTestId('chat-tool-line').querySelectorAll('.chat-tool-line')]
+  expect([...widget.querySelectorAll('[data-working="true"]')], 'with the turn the indicator ends').toEqual([])
+  const finished = [...widget.querySelectorAll('.chat-trace-item[data-trace="tool"]')]
   expect(finished[1].getAttribute('title'), 'a finished step carries its arrival clock').toMatch(/^\d{2}:\d{2}$/)
 })
 
@@ -1272,8 +1317,10 @@ test('theRunningStepEndsWithTheTurn', async () => {
 // UC-WP-72
 test('aSecondTurnDrawsNoIndicatorOnTheStepsOfTheFinishedOne', async () => {
   const steps = () =>
-    screen.getAllByTestId('chat-tool-line').flatMap(box => [...box.querySelectorAll('.chat-tool-line')])
-  const working = () => steps().filter(step => step.querySelector('.chat-step-running') !== null)
+    screen
+      .getAllByTestId('chat-timeline')
+      .flatMap(widget => [...widget.querySelectorAll('.chat-trace-item[data-trace="tool"]')])
+  const working = () => steps().filter(step => step.hasAttribute('data-working'))
 
   const chat = stubChat({ messages: [QUESTION] })
   render(<ChatPage project={project()} />)
@@ -1289,7 +1336,7 @@ test('aSecondTurnDrawsNoIndicatorOnTheStepsOfTheFinishedOne', async () => {
   await flush()
 
   // the turn is over and its trace stands: nothing of it works any more
-  expect(screen.getByTestId('chat-tool-line')).toHaveTextContent('ls in the checkout')
+  expect(screen.getByTestId('chat-timeline')).toHaveTextContent('ls in the checkout')
   expect(working()).toEqual([])
 
   // the next input opens a turn that has reported nothing yet: the wait is on the screen, while the step of
@@ -1315,8 +1362,10 @@ test('aSecondTurnDrawsNoIndicatorOnTheStepsOfTheFinishedOne', async () => {
 // UC-WP-72
 test('twoTurnsCountingTheSameRowsAreNotTheSameTurn', async () => {
   const steps = () =>
-    screen.getAllByTestId('chat-tool-line').flatMap(box => [...box.querySelectorAll('.chat-tool-line')])
-  const working = () => steps().filter(step => step.querySelector('.chat-step-running') !== null)
+    screen
+      .getAllByTestId('chat-timeline')
+      .flatMap(widget => [...widget.querySelectorAll('.chat-trace-item[data-trace="tool"]')])
+  const working = () => steps().filter(step => step.hasAttribute('data-working'))
 
   const chat = stubChat({ messages: [], agents: [tile('Jon', 'IDLE')] })
   render(<ChatPage project={project()} />)
@@ -1338,7 +1387,7 @@ test('twoTurnsCountingTheSameRowsAreNotTheSameTurn', async () => {
   chat.setMessages([])
   fireEvent.click(screen.getByTestId('tile-clear-Jon'))
   await waitFor(() => expect(userLineTexts()).toEqual([]))
-  expect(screen.getByTestId('chat-tool-line')).toHaveTextContent('ls in the checkout')
+  expect(screen.getByTestId('chat-timeline')).toHaveTextContent('ls in the checkout')
   expect(working(), 'a cleared conversation works nothing').toEqual([])
 
   // the next input opens its turn at the same row number and answers with text before its first step
@@ -1403,12 +1452,16 @@ test('aDelegationStaysInTheLogAfterTheTurnEnds', async () => {
  * The second half of UC-WP-72 GIVEN 3: the entry stands <em>where the delegation happened</em>, so the
  * result reads under it and not at the end of the conversation (R-WP-40). Its place is the turn's frozen
  * anchor — neither an input queued while the member works may push it down, nor the history read that
- * `done` triggers may drop it behind the answer it delegated.
+ * `done` triggers may drop it behind the answer it delegated. Since R-WP-40 draws the trace of one place as
+ * ONE timeline, what stands at that place is the widget, and the member is a link of it.
  */
 // UC-WP-72
 test('aDelegationStandsWhereItHappenedAndNotAtTheEndOfTheLog', async () => {
   const shape = () =>
     [...screen.getByTestId('chat-log').children].map(line => line.getAttribute('data-testid'))
+  /** The kinds of the entries one timeline draws, in the order the screen shows them. */
+  const tracesOf = (widget: Element) =>
+    [...widget.querySelectorAll('.chat-trace-item')].map(item => item.getAttribute('data-trace'))
   const chat = stubChat({ messages: [QUESTION] })
   render(<ChatPage project={project()} />)
   await flush()
@@ -1425,10 +1478,13 @@ test('aDelegationStandsWhereItHappenedAndNotAtTheEndOfTheLog', async () => {
   expect(shape(), 'below its own input, above the one queued after it, above every answer').toEqual([
     'chat-line-user',
     'chat-line-user',
-    'chat-tool-line',
-    'chat-delegation',
+    'chat-timeline',
     'chat-line-user',
   ])
+  expect(
+    tracesOf(screen.getByTestId('chat-timeline')),
+    'the member is a link of the same timeline as the step above him, at his own place',
+  ).toEqual(['tool', 'delegation'])
 
   // the turn ends and its history is read — the moment a live entry of the wrong anchor would fall behind
   // the last answer, since the read brings the two inputs and both answers
@@ -1443,15 +1499,18 @@ test('aDelegationStandsWhereItHappenedAndNotAtTheEndOfTheLog', async () => {
   await flush()
 
   const entries = [...screen.getByTestId('chat-log').children]
-  const at = entries.indexOf(screen.getByTestId('chat-delegation'))
+  const at = entries.indexOf(screen.getByTestId('chat-timeline'))
   const ownInputAt = entries.findIndex(line =>
     (line.textContent ?? '').includes('frag Dev nach einer Frucht'),
   )
   const queuedAt = entries.findIndex(line => (line.textContent ?? '').includes('und was macht Plan?'))
   const answerAt = entries.findIndex(line => line.getAttribute('data-testid') === 'chat-line-jon')
-  expect(at, 'the entry stays between both inputs').toBeGreaterThan(ownInputAt)
+  expect(at, 'the timeline of the entry stays between both inputs').toBeGreaterThan(ownInputAt)
   expect(at, 'a read does not push it below the input queued after it').toBeLessThan(queuedAt)
   expect(at, 'and never behind the answer it delegated').toBeLessThan(answerAt)
+  expect(tracesOf(screen.getByTestId('chat-timeline')), 'and the member is still the link of it it was').toEqual(
+    ['tool', 'delegation'],
+  )
 })
 
 /**
@@ -1488,8 +1547,10 @@ test('aDelegationWithoutItsPairSaysNothing', async () => {
 // UC-WP-72
 test('theIndicatorOfAStepEndsWithTheNextStepOnTheWire', async () => {
   const steps = () =>
-    screen.getAllByTestId('chat-tool-line').flatMap(box => [...box.querySelectorAll('.chat-tool-line')])
-  const working = () => steps().filter(step => step.querySelector('.chat-step-running') !== null)
+    screen
+      .getAllByTestId('chat-timeline')
+      .flatMap(widget => [...widget.querySelectorAll('.chat-trace-item[data-trace="tool"]')])
+  const working = () => steps().filter(step => step.hasAttribute('data-working'))
 
   const chat = stubChat({ messages: [QUESTION] })
   render(<ChatPage project={project()} />)
@@ -1533,21 +1594,21 @@ test('aFileChangeIsLiveAndDoesNotOutliveTheReload', async () => {
   expect(screen.getByTestId('chat-diff-file')).toHaveTextContent('src/App.java')
   expect(screen.getByTestId('chat-diff')).toHaveTextContent('+b')
   // beside the trace and not inside it — a box is one place of the trace, a diff is a block
-  expect(within(screen.getByTestId('chat-tool-line')).queryByTestId('chat-diff')).toBeNull()
+  expect(within(screen.getByTestId('chat-timeline')).queryByTestId('chat-diff')).toBeNull()
 
   // the turn ends and the history is read: the block has no line in that history and keeps its place on
   // the screen, exactly like the trace of the same turn (R-WP-11, R-WP-36)
   chat.setMessages([QUESTION, ANSWER])
   await chat.push(event('done', { millis: 9 }))
   expect(screen.getByTestId('chat-diff')).toHaveTextContent('+b')
-  expect(screen.getByTestId('chat-tool-line')).toHaveTextContent('write src/App.java')
+  expect(screen.getByTestId('chat-timeline')).toHaveTextContent('write src/App.java')
 
   // a dropped connection is the reload's stand-in: what the wire will not send back leaves the screen,
   // and the history that comes back with the new connection carries no diff (R-WP-11)
   await chat.closeStream()
   await waitFor(() => expect(chat.countOf('/events', 'GET')).toBe(2), { timeout: 1500 })
   expect(screen.queryByTestId('chat-diff')).toBeNull()
-  expect(screen.queryByTestId('chat-tool-line')).toBeNull()
+  expect(screen.queryByTestId('chat-timeline')).toBeNull()
   expect(agentLinesSaying(ANSWER.text)).toHaveLength(1)
 })
 
@@ -1852,8 +1913,8 @@ test('readingUpIsNotRippedDown', async () => {
 
 
 /**
- * The lines wearing the waiting frame — the dashed accent of R-WP-31, whatever voice they speak with. The
- * frame is a class the page hands down, so the screen is the place to ask for it (UC-WP-65).
+ * The lines wearing the waiting frame — the dashed grey contour of R-WP-31, whatever voice they speak with.
+ * The frame is a class the page hands down, so the screen is the place to ask for it (UC-WP-65).
  */
 function framedLines(): Element[] {
   return Array.from(document.querySelectorAll('.chat-line.pending'))

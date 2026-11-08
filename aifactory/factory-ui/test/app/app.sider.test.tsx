@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 
 import { AppSider, SIDER_BREAKPOINT } from '../../src/app/app.sider'
-import { filesKeyOf, projectKeyOf, siderRootKey } from '../../src/app/app.paths'
+import { chatKeyOf, filesKeyOf, siderRootKey } from '../../src/app/app.paths'
 import { content } from '../../src/shared/content'
 import { declarations } from '../shared/sheets'
 import { project } from '../shared/fixtures'
@@ -125,14 +125,14 @@ test('theRootEntryOpensTheProjectList', () => {
 // R-WP-1
 // UC-WP-52
 test('theSiderMarksTheEntryTheAddressNames', () => {
-  // the frame reads this key out of the address, and the address names a project (C-3, R-WP-38)
-  show({ activeKey: projectKeyOf(OTHER.name) })
+  // the frame reads this key out of the address, and the address names a project's chat (C-3, UC-WP-77)
+  show({ activeKey: chatKeyOf(OTHER.name) })
 
   // the basis marks its entry with its own item state (ANTD-A1), and the same entry carries the answer a
   // screen reader reads (ANTD-A9) — one mark, not two that can disagree
   const marked = entries().filter(entry => entry.className.includes('ant-menu-item-selected'))
   expect(marked, 'exactly one entry of the tree shows').toHaveLength(1)
-  expect(marked[0].textContent).toBe(OTHER.name)
+  expect(marked[0].textContent).toBe(content.nav.chat)
 
   const current = entries().filter(entry => entry.getAttribute('aria-current') === 'page')
   expect(current, 'exactly one entry says it is the current page').toHaveLength(1)
@@ -149,27 +149,31 @@ test('noAddressMeansNoMark', () => {
   expect(
     entries().filter(entry => entry.getAttribute('aria-current') !== null),
   ).toEqual([])
-  // and no unit of any project either: an area nobody named is not offered (R-WP-38)
+  // and no unit of any project either: neither the chat nor an area nobody named is offered (R-WP-38, UC-WP-77)
+  expect(within(nav()).queryByRole('menuitem', { name: content.nav.chat })).toBeNull()
   expect(within(nav()).queryByRole('menuitem', { name: content.nav.files })).toBeNull()
 })
 
 /**
  * The file area is an address of its own and gets its own entry — under the one project the address names
  * and nowhere else (R-WP-38): two handles of one address change, and the entry hangs one step behind its
- * project instead of opening a subtree, so there is no open-state to keep in step.
+ * project instead of opening a subtree, so there is no open-state to keep in step. The units keep the order
+ * the look states: the chat first, the file area last (UC-WP-77).
  */
 // R-WP-38
 // UC-WP-70
+// UC-WP-77
 test('theUnitsOfTheOpenProjectHangUnderIt', () => {
   const onFiles = vi.fn()
   const onOpen = vi.fn()
   const onProjects = vi.fn()
   show({ activeKey: filesKeyOf(DEMO.name), onFiles, onOpen, onProjects })
 
-  // directly behind its project, and the other project keeps no such entry
+  // directly behind its project, chat before files, and the other project keeps no such entry
   expect(entries().map(entry => entry.textContent)).toEqual([
     content.nav.projects,
     DEMO.name,
+    content.nav.chat,
     content.nav.files,
     OTHER.name,
   ])
@@ -177,8 +181,12 @@ test('theUnitsOfTheOpenProjectHangUnderIt', () => {
   // the indent is the entry's own class and the sheet gives it a measure — jsdom lays out nothing, so the
   // contract is read where it is written
   const unit = within(nav()).getByRole('menuitem', { name: content.nav.files })
+  const chatUnit = within(nav()).getByRole('menuitem', { name: content.nav.chat })
   expect(unit.className).toContain('app-sider-unit')
+  expect(chatUnit.className).toContain('app-sider-unit')
   expect(declarations('.app-sider .ant-menu-item.app-sider-unit')).toContain('padding-inline-start')
+  // the order is the DOM's, not the array's: files sits right behind chat (no layout in jsdom to hide it)
+  expect(unit.previousElementSibling).toBe(chatUnit)
 
   // the second handle names the area and nothing else
   fireEvent.click(unit)
@@ -207,24 +215,51 @@ test('theUnitIsTheOnlyMarkOfTheAddress', () => {
   const named = within(nav()).getByRole('menuitem', { name: DEMO.name })
   expect(named.className).not.toContain('ant-menu-item-selected')
   expect(named.getAttribute('aria-current')).toBeNull()
+  // the other unit of the same project stays unmarked too: two units, one mark (UC-WP-77)
+  const chatUnit = within(nav()).getByRole('menuitem', { name: content.nav.chat })
+  expect(chatUnit.className).not.toContain('ant-menu-item-selected')
+  expect(chatUnit.getAttribute('aria-current')).toBeNull()
 })
 
 /**
- * The chat of a project names the project, so its area hangs under it — and under that one only: a unit
- * beside every project would be a mark the address never gave, and a tree of areas to keep in step with
- * a page that has one (R-WP-38).
+ * A unit is hung under the project its address names, and under that one only: units beside every project
+ * would be marks the address never gave, and a tree of areas to keep in step with a page that has one
+ * (R-WP-38, UC-WP-77).
  */
 // R-WP-38
+// UC-WP-77
 test('theUnitHangsUnderTheNamedProjectAlone', () => {
-  show({ activeKey: projectKeyOf(OTHER.name) })
+  show({ activeKey: chatKeyOf(OTHER.name) })
 
-  // `other` is named, so it carries the one unit; `demo` carries none
+  // `other` is named, so it carries its two units; `demo` carries none
   expect(entries().map(entry => entry.textContent)).toEqual([
     content.nav.projects,
     DEMO.name,
     OTHER.name,
+    content.nav.chat,
     content.nav.files,
   ])
+})
+
+/**
+ * The chat unit and the file unit are two handles of the same project's addresses: from the file area the
+ * chat entry is the way back, and it goes the **same** way the project entry goes — one callback, one path
+ * written, the open chat never mounted again (UC-WP-77, UC-WP-70 G2).
+ */
+// R-WP-38
+// UC-WP-77
+test('theChatUnitLeadsBackFromTheFileArea', () => {
+  const onOpen = vi.fn()
+  const onFiles = vi.fn()
+  const onProjects = vi.fn()
+  show({ activeKey: filesKeyOf(DEMO.name), onOpen, onFiles, onProjects })
+
+  fireEvent.click(within(nav()).getByRole('menuitem', { name: content.nav.chat }))
+
+  expect(onOpen, 'the chat entry opens the project the same way its entry does').toHaveBeenCalledTimes(1)
+  expect(onOpen).toHaveBeenCalledWith(DEMO)
+  expect(onFiles, 'no second address invented on the way back').not.toHaveBeenCalled()
+  expect(onProjects).not.toHaveBeenCalled()
 })
 
 // UC-WP-70

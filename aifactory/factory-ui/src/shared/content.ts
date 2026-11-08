@@ -1,3 +1,5 @@
+import type { ThemeMode } from './theme.mode'
+
 /**
  * Every text the screen shows (R-WP-27, UC-WP-53): one catalog, no locale framework. A component holds no
  * literal of its own, so a test and a later i18n address the same keys instead of copy-pasted copy.
@@ -12,8 +14,12 @@ export const content = {
   nav: {
     /** The name of the frame's menu, for the screen reader. */
     views: 'Views',
+    /** The name of the header's menu, for the screen reader (R-WP-43): its three pages. */
+    pages: 'Pages',
     /** The sider's first entry: the list itself, where projects are added and removed (R-WP-38). */
     projects: 'Projects',
+    /** The chat as one of the header's pages (R-WP-43, UC-WP-76) — the same word as `chat.title` (M15). */
+    chat: 'Chat',
     /** The one unit a project has (R-WP-38): the file area, hung under its project in the tree. */
     files: 'Files',
     settings: 'Settings',
@@ -22,6 +28,15 @@ export const content = {
   user: {
     /** The field of this browser's name (R-WP-17) — label and placeholder are the one phrase. */
     name: 'Your name',
+  },
+
+  theme: {
+    /**
+     * The switch between the two colour modes (UC-WP-71): it says what pressing it will do, since the
+     * control itself is a moon and a sun and carries no word of its own.
+     */
+    toggle: (mode: ThemeMode): string =>
+      mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode',
   },
 
   common: {
@@ -62,11 +77,12 @@ export const content = {
     noMessages: 'No messages yet',
     /** The label of a user line the server left unnamed (R-WP-25) — a role, never an invented author. */
     you: 'YOU',
-    /** The label of a merged tool box — the word `chat.html` paints above the trace (R-WP-28). */
-    toolActivity: 'Tool',
     /** The one word of a running delegation (R-WP-40): the entry names the member, never a task — the wire
      *  carries none, so there is nothing else this screen could say about it (UC-WP-72 GIVEN 3). */
     working: 'working',
+    /** The word a Think entry names itself with (R-WP-40): the kind of the entry, never an author — the wire
+     *  stamps none on a thought, so the screen has no name to show and says what it is instead. */
+    thinking: 'Thinking',
     message: 'Message',
     messageToJon: 'Message to Jon',
     send: 'Send',

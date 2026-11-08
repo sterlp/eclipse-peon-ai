@@ -1140,5 +1140,58 @@ Drei Punkte, **kein Verhalten** — zwei Nachweislücken und ein Kommentar mit w
 - **Umzug aus `AGENTS-DEV.md` hierher (Cap):** „Could not parse CSS stylesheet" bei **kaltem vite-Cache**
   ist Rauschen — erst `rm -rf node_modules/.vite`, dann auf HEAD vergleichen, bevor es als Befund zählt.
 
+## Inkrement 1a (Top-Menü, 2026-11-07)
+
+- **`Menu mode="horizontal" theme="dark"` läuft unter jsdom ohne Eingriff:** der bestehende `ResizeObserver`-Stub
+  (`test/shared/setup.ts`) ruft nie zurück ⇒ kein Overflow, alle Einträge als `menuitem` erreichbar.
+  **`disabledOverflow` war nicht nötig** (Plan R1) — also auch keine neue Zeile in `AGENTS-DEV.md`.
+- **„Menü-Key = Adresse" ist am Chat-Eintrag nicht beweisbar:** `onNavigate(chatRoot)` statt `key` lässt
+  `theTopChatEntryLeadsToTheLastChat` **grün** — `/chat` leitet auf das letzte Projekt um, die Zieladresse ist
+  dieselbe. Gefangen haben die Mutation `theMvpPagesAreReachable`, `theUiSpeaksEnglish`,
+  `theSettingsEntryIsCurrentOnSettings`. **Regel:** so eine Gleichung über die Einträge pinnen, deren Ziel
+  sichtbar auseinanderfällt (`/projects`, `/settings`), nicht über den, in dem ein Redirect beide deckungsgleich macht.
+- **Ein Band, zwei Leser:** `Layout.headerBg` **und** `Menu.darkItemBg` müssen denselben Token lesen
+  (INC-L1-D1), sonst liegt AntDs Vorratston `#001529` auf unserem Band. Neuer Token ⇒ **drei** Stellen in
+  `index.css` (hell, `[data-theme='dark']`, Media-Kopie), sonst spaltet `theDarkSheetIsOneTable`.
+- **Zweites `<nav>` braucht eigenen Namen** (`content.nav.pages`), sonst werden alle
+  `getByRole('navigation', { name: content.nav.views })`-Helfer mehrdeutig.
+- **Doc-Lint-Baseline 28 → 29:** Jons Docs-Änderung bringt `UNBELEGT UC-WP-77` (Slice 1b) — kein eigener Befund.
+
+## Inkrement 1b (Einheiten im Baum, 2026-11-07)
+
+- **Zwei Marken-Beweise, zwei verschiedene Mutationen — beide nötig:** `chatKeyOf` im Deuter auf
+  `projectKeyOf` zurückbauen ⇒ **9 Tests** rot (2× `app.paths`, 6× `app.routes`, 1× `app.shell`). Den
+  Chat-Eintrag statt auf `onOpen` auf den Files-Griff legen ⇒ **genau 2** rot
+  (`aRunningTurnSurvivesTheChatUnitClick` über die Adress-Assertion, `theChatUnitLeadsBackFromTheFileArea`).
+  **Und die Lücke:** Chat-Eintrag **gar nicht** verdrahten ⇒ der Turn-Test bleibt **grün** (nichts passiert ⇒
+  nichts stirbt), nur der Sider-Test fällt. Ein Turn-Test beweist also die **Adresse des Klicks**, nie den
+  Griff selbst — deshalb beide Stellen testen.
+- **Plan-Mutation „Chat-Eintrag navigiert auf `/chat`" ist in der Sider-Komponente nicht baubar** (sie kennt
+  nur Callbacks, kein `navigate`); ohne zusätzlichen Props-Callback ist die Files-Variante die nächstechte.
+  `/chat` wäre außerdem durch den Last-Project-Redirect deckungsgleich mit `/chat/<letztes>` (siehe 1a).
+- **Einheiten sind DOM-Nachbarn, nicht nur Array-Einträge:** Reihenfolge Chat → Files über
+  `unit.previousElementSibling` gepinnt (jsdom legt nichts aus, [[memory #15]]) — dieselbe Technik wie die
+  `+`-Regel des Tabs in 5b-1-N1.
+- **Doc-Lint wieder 28** (nur die fremden `UC-CR-*`/`UC-PC-*`): `UC-WP-76` und `UC-WP-77` sind jetzt belegt.
+
+## Inkrement 1 N1 (Nachweise nachgezogen, 2026-11-07)
+
+- **Ein Klick auf denselben Ort beweist nichts:** der Turn-Test startete auf `/chat/demo` und klickte die
+  Chat-Einheit — derselbe Schlüssel, ein toter Eintrag ist ein No-op und bleibt grün. Start jetzt eine
+  Adresse **tiefer** (`/chat/demo/files`) und die Fläche muss danach **weg** sein ⇒ Chat-Zweig in
+  `app.sider.tsx` gestrichen = `aRunningTurnSurvivesTheChatUnitClick` rot (`/chat/demo/files` ≠
+  `/chat/demo`) und `theChatUnitLeadsBackFromTheFileArea` rot. **Regel:** ein Klick-Test braucht eine
+  Behauptung, die der Nicht-Klick nicht erfüllt (Adresswechsel oder entferntes Element).
+- **AntD-Optik ist in jsdom nur über die Klassen der Basis beweisbar:** `theme="dark"` und
+  `mode="horizontal"` waren nirgends gepinnt — `Menu.dark*`-Tokens zeigen nur, was die Basis malt, **wenn**
+  sie dunkel zeichnet. Pin jetzt `ant-menu-dark` + `ant-menu-horizontal` an
+  `theHeaderCarriesTheBrandThePagesAndTheName`; je eine Mutation ⇒ **genau dieser** Test rot.
+- **Zwei Navigationen, eine Adresse ⇒ ein Render:** die Einigkeit von Kopf- und Sider-Marke ist nur im
+  **selben** Render beweisbar (`theTopMarkAndTheTreeMarkAgreeInOneRender`) — zwei Mounts können je eine andere
+  Adresse richtig haben. Gegenprobe: Seiten-Deuter auf das nackte `/chat` verengt ⇒ 4 rot (der neue darunter).
+- **Toter Zweig ist ein Befund, kein Schmuck:** `activeKey === key` an der Projekt-Marke war seit D6
+  unerreichbar (der Deuter antwortet nie `project:<seg>`; `AppSider` hat nur `app.shell.tsx` als Producer; kein
+  Test setzt den Key) ⇒ **nur-löschend** entfernt. `projectKeyOf` bleibt Item-Key und Klick-Griff.
+
 
 

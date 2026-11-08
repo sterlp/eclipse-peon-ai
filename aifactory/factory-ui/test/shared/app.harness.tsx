@@ -2,6 +2,7 @@ import { act, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { vi } from 'vitest'
 
+import { AppRoot } from '../../src/app/app.root'
 import { AppRoutes } from '../../src/app/app.routes'
 import { CurrentPath } from './current.path'
 import { project } from './fixtures'
@@ -99,13 +100,18 @@ export async function closeAppStream(): Promise<void> {
 /**
  * The app under a memory router (UC-WP-52): the address is the input, and the rendered path is readable —
  * which is exactly the claim under test, that nothing shows which the address does not name.
+ *
+ * Inside {@link AppRoot}, which is how the entry mounts it: the frame owns the colour mode (UC-WP-71) and the
+ * design basis, so a view rendered beside it would sit outside the tree every real screen sits in.
  */
 export function renderApp(path = '/projects') {
   const view = render(
-    <MemoryRouter initialEntries={[path]}>
-      <AppRoutes />
-      <CurrentPath />
-    </MemoryRouter>,
+    <AppRoot>
+      <MemoryRouter initialEntries={[path]}>
+        <AppRoutes />
+        <CurrentPath />
+      </MemoryRouter>
+    </AppRoot>,
   )
   return {
     ...view,

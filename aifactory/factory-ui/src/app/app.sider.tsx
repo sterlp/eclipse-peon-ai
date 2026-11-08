@@ -1,8 +1,8 @@
 import { Layout, Menu } from 'antd'
-import type { MenuItemType } from 'antd/es/menu/interface'
 
 import { content } from '../shared/content'
-import { filesKeyOf, projectKeyOf, projectSegment, siderRootKey } from './app.paths'
+import { entry, type NavItem } from './app.menu'
+import { chatKeyOf, filesKeyOf, projectKeyOf, projectSegment, siderRootKey } from './app.paths'
 import type { Project } from '../shared/dto'
 
 /**
@@ -11,13 +11,6 @@ import type { Project } from '../shared/dto'
  * into the conversation. Stated as the basis' own name, never as a pixel measure.
  */
 export const SIDER_BREAKPOINT = 'lg'
-
-/**
- * The basis carries a menu's selection as the item state of its entry and states no `aria-current` of its
- * own (ANTD-A1); it does pass an unknown item prop through to the `li` it renders, so R-WP-38's "markierung
- * und URL einig" is provable to a screen reader as well. Named deviation ANTD-A9.
- */
-export type NavItem = MenuItemType & { 'aria-current'?: 'page' }
 
 interface Props {
   projects: Project[]
@@ -29,18 +22,16 @@ interface Props {
   onFiles: (project: Project) => void
 }
 
-function entry(key: string, label: string, active: boolean): NavItem {
-  return active ? { key, label, 'aria-current': 'page' } : { key, label }
-}
-
 const keyOf = (project: Project): string => projectKeyOf(projectSegment(project))
+const chatUnitKeyOf = (project: Project): string => chatKeyOf(projectSegment(project))
 const unitKeyOf = (project: Project): string => filesKeyOf(projectSegment(project))
 
 /**
- * The frame's navigation (R-WP-38): the list first, then one entry per project and, under the one the
- * address names, its file area.
+ * The frame's tree (R-WP-38): the list first, then one entry per project and, under the one the address
+ * names, its units — the chat first and the file area last (UC-WP-77). Paco takes the place between them the
+ * day his story is built; nothing here has to move for that.
  *
- * A unit is a **flat** item carrying its own class for the indent, so its openness stays a reading of
+ * A unit is a **flat** item carrying its own class for the indent, so its showing stays a reading of
  * `activeKey` — no `SubMenu`, no `openKeys`, nothing to keep in step. The `<nav>` is ours because the
  * basis renders `ul[role=menu]` with no landmark, and the tests and a screen reader both ask for the
  * navigation by name.
@@ -53,11 +44,19 @@ export function AppSider({ projects, activeKey, onOpen, onProjects, onFiles }: P
   const items: NavItem[] = [entry(siderRootKey, content.nav.projects, activeKey === siderRootKey)]
   for (const project of projects) {
     const key = keyOf(project)
+    const chat = chatUnitKeyOf(project)
     const unit = unitKeyOf(project)
-    items.push(entry(key, project.name, activeKey === key))
-    // the unit hangs under the project the address names and under no other: an entry beside a project the
-    // viewer is not in would be a second mark beside the URL (R-WP-38)
-    if (activeKey === key || activeKey === unit) {
+    // INC-L1-LOW-1: no address names a project entry — since UC-WP-77 every chat address names one of its
+    // units — so the entry is a handle (`project:<seg>` reaches `onOpen` below) and never a mark
+    items.push(entry(key, project.name, false))
+    // the units hang under the project the address names and under no other: entries beside a project the
+    // viewer is not in would be marks beside the URL (R-WP-38). The unit is the finer handle, so it is the
+    // one that marks (UC-WP-77)
+    if (activeKey === chat || activeKey === unit) {
+      items.push({
+        ...entry(chat, content.nav.chat, activeKey === chat),
+        className: 'app-sider-unit',
+      })
       items.push({
         ...entry(unit, content.nav.files, activeKey === unit),
         className: 'app-sider-unit',
@@ -69,6 +68,9 @@ export function AppSider({ projects, activeKey, onOpen, onProjects, onFiles }: P
     <Layout.Sider
       className="app-sider"
       theme="light"
+      // the width the look names (R-WP-43) — the basis' own default is the same number, stated here so the
+      // frame of the tree is a decision and not a coincidence
+      width={200}
       breakpoint={SIDER_BREAKPOINT}
       collapsedWidth={0}
     >
@@ -87,8 +89,12 @@ export function AppSider({ projects, activeKey, onOpen, onProjects, onFiles }: P
               onFiles(unit)
               return
             }
-            const opened = projects.find(project => keyOf(project) === key)
+            const opened = projects.find(
+              project => keyOf(project) === key || chatUnitKeyOf(project) === key,
+            )
             if (opened !== undefined) {
+              // the chat unit and the project entry are two handles of one address change (UC-WP-77): the
+              // same call, so the same path is written and the open chat is never mounted again
               onOpen(opened)
             }
           }}

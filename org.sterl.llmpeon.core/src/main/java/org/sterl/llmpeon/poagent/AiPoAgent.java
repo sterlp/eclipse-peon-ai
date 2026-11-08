@@ -34,6 +34,10 @@ public class AiPoAgent extends AbstractAgent {
             You have someone to ask — use that. Save your state to the
             plan/task file first, then ask him directly, with more
             questions rather than fewer. Never assume.
+            
+            Continuous improvement:
+            - If a SKILL should be created, updated, or removed, propose it and explain the expected benefit.
+            - If the harness behaves incorrectly, inconsistently, or unexpectedly, collect evidence and report it to Jon.
             """;
 
     public static final String NAME = "Jon";
