@@ -112,7 +112,8 @@ public class StreamingBridge implements StreamingChatResponseHandler {
             StreamingHandle h = handleRef.get();
             if (h != null) h.cancel();
             errorRef.compareAndSet(null,
-                    new AiCancellationException("Thread interrupted", partialThink.toString(), partialResponse.toString()));
+                    new AiCancellationException("AI thread interrupted (user or harness)", 
+                            partialThink.toString(), partialResponse.toString()));
         } catch (Exception e) {
             error = ExceptionUtil.unwrap(e);
         } finally {
