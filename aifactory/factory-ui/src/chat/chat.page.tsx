@@ -11,6 +11,7 @@ import {
 } from './chat.client'
 import { agentAction, listAgents, type AgentAction, type AgentTile } from './chat.agents.client'
 import { ChatComposer } from './chat.composer'
+import { useEdgeInsight } from './chat.edge'
 import { ChatInsight } from './chat.insight'
 import { ChatLog } from './chat.log'
 import {
@@ -38,11 +39,18 @@ import type { Project } from '../shared/dto'
 interface Props {
   project: Project | null
   /**
-   * Anything the shell wants beside the chat — today the file area of `project`. It is drawn outside
-   * the chat region and this component knows nothing about it, so `chat` keeps not importing
-   * `project` (§4.3.4 of the increment).
+   * Anything the shell wants beside the chat — today the file area of `project`. It is drawn outside the
+   * chat region and this component knows nothing about it: `chat` keeps not importing `project`, so no word
+   * of the file area appears here (§4.3.4 of the increment).
    */
   files?: ReactNode
+  /**
+   * The frame's reading of the right edge — whether the address holds it for {@link files}, and the way back
+   * from it (R-WP-38). No second "open" lives here and this view never navigates: it has no path of the file
+   * area to name. Both are read by {@link useEdgeInsight} alone (R-WP-33, UC-WP-60 G3).
+   */
+  filesOpen?: boolean
+  onCloseFiles?(): void
   /**
    * The name of this browser (R-WP-25), given by the shell that holds it — identity is not per project,
    * so this component neither stores nor interprets it: it labels the sends and stamps the own pending
@@ -77,9 +85,11 @@ const RECONNECT_MS = 500
  * <em>taken</em>. This component holds the state of both, and it knows no agent name: a tile says what it
  * offers (D-14).
  *
- * A tile offering TRANSCRIPT opens {@link ChatInsight}, the read-only look into that agent's own
- * conversation (UC-WP-49). It is drawn after the {@link files} slot and so lies above the file area, and
- * it stays a region of this view — no fourth tab and no route of its own, whatever the address shows (R-WP-1).
+ * A tile offering TRANSCRIPT opens {@link ChatInsight} (UC-WP-49), held by {@link useEdgeInsight}. It shares
+ * the right edge with the {@link files} slot and never stands with it: the edge carries exactly one overlay,
+ * so opening one releases the other (R-WP-33, UC-WP-60 G3) — the drawer by its address, the insight without
+ * a trace of its own. Either way it stays a region of this view: no fourth tab and no route, whatever the
+ * address shows (R-WP-1).
  *
  * The composer's second control ends the running turn (UC-WP-50). After an accepted stop this view does
  * <em>not</em> re-read the history: the live lines the user was already shown are all that exists of the
@@ -97,15 +107,22 @@ const RECONNECT_MS = 500
  * The head of the view names the project and nothing else: a second "Chat" heading would repeat the tab
  * the chat already sits in (R-WP-1).
  */
-export function ChatPage({ project, files, user }: Props) {
+export function ChatPage({
+  project,
+  files,
+  user,
+  filesOpen = false,
+  onCloseFiles = () => undefined,
+}: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [tiles, setTiles] = useState<AgentTile[]>([])
   const [outgoing, setOutgoing] = useState<PendingLine[]>([])
   const [live, setLive] = useState<LiveItem[]>([])
   const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
-  /** The tile whose insight is open — a name, not a conversation: there is still exactly one of those. */
-  const [insight, setInsight] = useState<string | null>(null)
+  // the one overlay this view may put on the right edge, held to one with the file area (R-WP-33,
+  // UC-WP-60 G3); the rule and its measured reason live beside the state they write
+  const { shown: insight, openInsight, closeInsight } = useEdgeInsight(filesOpen, onCloseFiles)
   /**
    * The project whose turn we started and have not seen end — held by id, so switching the project ends it
    * here without an effect writing state (UC-WP-50).
@@ -533,7 +550,7 @@ export function ChatPage({ project, files, user }: Props) {
         <header className="chat-head">
           <h1 className="chat-title">{project.name}</h1>
         </header>
-        <ChatTiles tiles={tiles} onAction={act} onInspect={setInsight} />
+        <ChatTiles tiles={tiles} onAction={act} onInspect={openInsight} />
         <ChatLog
           messages={messages}
           outgoing={outgoing}
@@ -564,9 +581,8 @@ export function ChatPage({ project, files, user }: Props) {
         <ChatComposer draft={draft} busy={busy} onDraftChange={setDraft} onSubmit={submit} onStop={stop} />
       </section>
       {files}
-      {insight !== null && (
-        <ChatInsight projectId={project.id} name={insight} onClose={() => setInsight(null)} />
-      )}
+      {/* the look stands on the right edge only while the address leaves it free (R-WP-33, UC-WP-60 G3) */}
+      {insight !== null && <ChatInsight projectId={project.id} name={insight} onClose={closeInsight} />}
     </>
   )
 }

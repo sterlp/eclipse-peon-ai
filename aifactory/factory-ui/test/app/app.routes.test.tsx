@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 
-import { closeAppStream, renderApp, stubAppServer } from '../shared/app.harness'
+import { closeAppStream, DEV, renderApp, stubAppServer } from '../shared/app.harness'
 import { content } from '../../src/shared/content'
 import { project } from '../shared/fixtures'
 
@@ -144,6 +144,15 @@ function historyReads(): number {
     .mock.calls.filter(([input]) => String(input).endsWith('/messages')).length
 }
 
+/**
+ * The router's own marker for the current entry (`current.path.tsx`): two entries of the same path differ
+ * in it, which is the only way to tell a navigation from a navigation that changed nothing — the path alone
+ * cannot see a push onto itself (R-WP-38).
+ */
+function historyEntry(): string {
+  return screen.getByTestId('current-path').dataset.entry ?? ''
+}
+
 // R-WP-38
 // UC-WP-70
 test('theUnitAddressIsARouteOfTheChat', async () => {
@@ -203,6 +212,57 @@ test('theSiderEntryAndTheTabNameTheSameAddress', async () => {
   await waitFor(() => expect(app.path()).toBe(CHAT_PATH))
   await waitFor(() => expect(screen.queryByTestId('files-panel')).toBeNull())
   await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.chat))
+})
+
+// UC-WP-60
+test('openingTheFilesAreaClosesTheInsight', async () => {
+  // the right edge carries exactly one overlay (R-WP-33): the look into an agent and the file area are the
+  // one or the other, and the insight leaves **without a trace** — nothing of it comes back
+  stubAppServer([project()], [{ ...DEV, capabilities: [...DEV.capabilities, 'TRANSCRIPT'] }])
+  const app = renderApp(CHAT_PATH)
+  await screen.findByRole('region', { name: content.chat.title })
+  fireEvent.click(await screen.findByTestId('tile-open-Dev'))
+  await screen.findByTestId('insight-panel')
+
+  fireEvent.click(screen.getByTestId('files-open'))
+
+  expect(await screen.findByTestId('files-panel')).toBeInTheDocument()
+  expect(app.path()).toBe(`${CHAT_PATH}/files`)
+  expect(screen.queryByTestId('insight-panel'), 'the edge is taken, so the insight is gone').toBeNull()
+
+  // and closing the area does not bring the look back: it was released, not parked
+  fireEvent.click(screen.getByTestId('files-open'))
+  await waitFor(() => expect(app.path()).toBe(CHAT_PATH))
+  await waitFor(() => expect(screen.queryByTestId('files-panel')).toBeNull())
+  expect(screen.queryByTestId('insight-panel'), 'the insight leaves without a trace').toBeNull()
+})
+
+// UC-WP-60
+test('openingTheInsightClosesTheFilesAddress', async () => {
+  // the other direction: a tile opens its look and the frame steps the address back (R-WP-38) — never with
+  // `toggleFiles`, which would open the area again, and never with a replace, which would eat the back step
+  stubAppServer([project()], [{ ...DEV, capabilities: [...DEV.capabilities, 'TRANSCRIPT'] }])
+  const app = renderApp(`${CHAT_PATH}/files`)
+  expect(await screen.findByTestId('files-panel')).toBeInTheDocument()
+
+  fireEvent.click(await screen.findByTestId('tile-open-Dev'))
+
+  expect(await screen.findByTestId('insight-panel')).toBeInTheDocument()
+  expect(app.path(), 'the insight is no address of its own').toBe(CHAT_PATH)
+  await waitFor(() => expect(screen.queryByTestId('files-panel')).toBeNull())
+  expect(screen.getByTestId('files-open')).toHaveAttribute('aria-expanded', 'false')
+
+  // the same tile on a free edge navigates nothing at all: with the edge already free, opening the look is
+  // no reason for a history entry (R-WP-38 wants the back gesture, not litter)
+  fireEvent.click(screen.getByTestId('insight-close'))
+  expect(screen.queryByTestId('insight-panel')).toBeNull()
+  const entry = historyEntry()
+
+  fireEvent.click(screen.getByTestId('tile-open-Dev'))
+
+  await screen.findByTestId('insight-panel')
+  expect(app.path(), 'a tile on the free edge leaves the address alone').toBe(CHAT_PATH)
+  expect(historyEntry(), 'and no entry of the history').toBe(entry)
 })
 
 // R-WP-1

@@ -47,7 +47,8 @@ export function AppBrowser() {
  *
  * The file area is a child of its chat address (`chat/:project/files`) and not a fourth view: the child
  * route renders nothing and the page reads `open` from the path (R-WP-38, UC-WP-70 G2). The team tiles are
- * no address at all, and the insight opens and closes without ever changing it (R-WP-1).
+ * no address at all: an insight opens and closes without one, and asks for nothing of the frame but the way
+ * back when the file area holds the right edge (R-WP-1, R-WP-33, UC-WP-60 G3).
  *
  * `/chat` on its own is the one address that is a question and not a view: it answers with the project this
  * browser last opened, or with the list (R-WP-1, UC-WP-51). It is a redirect and not a fourth page.
@@ -126,6 +127,19 @@ function ChatRoute() {
     navigate(filesOpen ? chatPath(segment) : chatFilesPath(segment))
   }
 
+  /**
+   * The way back from the edge for a view that needs it for itself (R-WP-33, UC-WP-60 G3): the insight of a
+   * tile and the file area may not stand on the right edge together, and the address is what decides which
+   * one does. Navigated **only** while the edge is taken — a push onto the address the browser already shows
+   * would be a history entry that changes nothing (R-WP-38 wants the back gesture, not litter), and never a
+   * replace, which would drop the area he had open out of the history.
+   */
+  function closeFiles(): void {
+    if (segment !== undefined && filesOpen) {
+      navigate(chatPath(segment))
+    }
+  }
+
   // a deep link opens a chat nobody clicked, and the bare `/chat` address needs to know it was here (UC-WP-51)
   useEffect(() => {
     if (project !== null) {
@@ -143,8 +157,9 @@ function ChatRoute() {
   }
 
   return (
-    // one row: the file panel takes a column of its own beside the chat instead of covering it, so
-    // reading a file never hides the conversation it belongs to (R-WP-33)
+    // one row, two handles of one address: the chat, and the file area lying over its right edge as the
+    // basis' drawer — the conversation stays on the screen beside it and stays typable, and the address
+    // remains the only owner of "open" (R-WP-33)
     <div className="chat-workspace">
       <ChatPage
         // keyed like the file area: another project is another conversation, so nothing of the previous one
@@ -152,6 +167,10 @@ function ChatRoute() {
         key={project.id}
         project={project}
         user={user}
+        // the row reads the edge for both of its overlays: the chat needs to know when the address takes it,
+        // and needs the way back — it navigates nothing itself (R-WP-33, UC-WP-60 G3)
+        filesOpen={filesOpen}
+        onCloseFiles={closeFiles}
         // keyed: another project is another checkout, so no tree of the previous one is on the screen
         files={
           <ProjectFiles

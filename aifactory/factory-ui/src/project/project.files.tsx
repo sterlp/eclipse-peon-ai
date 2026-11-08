@@ -243,8 +243,8 @@ export function ProjectFiles({ project, open, onToggle }: Props) {
         // the wide measure, clamped by the sheet while no file is open: `wide` is the area's own state and a
         // copy of it up here would outlive the close
         size="var(--files-wide)"
-        // under the tab, which rides the travelling edge on 3 (`styles.css`); the content of the row carries
-        // no layer of its own and stays below this one
+        // its layer is the line "file drawer" in the list over `.chat-workspace` (`styles.css`): under the
+        // tab, above the content of the row, which carries no number of its own
         zIndex={2}
       >
         <FilesArea project={project} />

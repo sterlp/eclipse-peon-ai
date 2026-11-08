@@ -8,8 +8,11 @@ import { CurrentPath } from './current.path'
 import { project } from './fixtures'
 import type { AgentTile } from '../../src/chat/chat.agents.client'
 
-/** The roster a routed project shows — one member, nothing invented (R-WP-7). */
-const DEV: AgentTile = {
+/**
+ * The roster a routed project shows — one member, nothing invented (R-WP-7). Exported, because a test that
+ * needs the door to a tile's own conversation adds `TRANSCRIPT` to this one instead of writing a second tile.
+ */
+export const DEV: AgentTile = {
   name: 'Dev',
   context: '3k',
   tokens: 3_400,
@@ -55,8 +58,12 @@ function json(status: number, body: unknown): Response {
  * The edges every view reads: the list (one project by default), an empty history, the roster, the
  * settings, and a stream that stays open. A test that needs more — a pushed event, a refusal, another
  * list between the steps — stubs `fetch` itself; this one only keeps the routed app from hanging.
+ *
+ * `roster` is the team of the routed project. The default has no `TRANSCRIPT`, so no tile grows the door
+ * into a conversation and every existing test sees exactly one member; a test that wants that door adds the
+ * capability. Such a test then reads an **empty** transcript: the panel itself is the claim, never its lines.
  */
-export function stubAppServer(projects: unknown[] = [project()]): void {
+export function stubAppServer(projects: unknown[] = [project()], roster: AgentTile[] = [DEV]): void {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL) => {
@@ -80,8 +87,14 @@ export function stubAppServer(projects: unknown[] = [project()]): void {
       if (path === '/api/settings/agents') {
         return json(200, AGENTS)
       }
+      // one member's own conversation — asked by path, so it answers for whichever tile was clicked. Before
+      // the roster branch: that one matches on the ending, and both of these paths end in `/agents`.
+      const transcript = /^.*\/agents\/([^/]+)$/.exec(path)
+      if (transcript !== null) {
+        return json(200, { name: transcript[1], truncated: false, lines: [] })
+      }
       if (path.endsWith('/agents')) {
-        return json(200, [DEV])
+        return json(200, roster)
       }
       return json(200, path === '/api/projects' ? projects : [])
     }),

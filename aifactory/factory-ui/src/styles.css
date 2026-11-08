@@ -713,7 +713,16 @@ button {
 /* The row a chat view sits in (R-WP-33): the positioned box that both handles of the file area hang on —
    the tab, and the drawer of the basis, which renders **in this row** instead of in a portal, so header and
    tree keep their place and the chat keeps its width. It is the height the chat's own scroll measures
-   against (R-WP-35), and the scope both handles read their measures from. */
+   against (R-WP-35), and the scope both handles read their measures from.
+
+   Layers of this row — the one place their numbers are written. A new overlay of the right or top edge adds
+   its line here and is measured in the browser, never in a test:
+     chat (`.view`)   no number
+     agent insight    1, on `.chat-insight` below
+     file drawer      2, asked on the component in `project/project.files.tsx`
+     file tab         3, on `.files-tab` below
+   Drawer and insight never meet: the right edge carries exactly one overlay (R-WP-33, UC-WP-60 G3), so the
+   insight's number counts against the tab and nothing else. */
 .chat-workspace {
   --files-width: clamp(17rem, 28vw, 24rem);
   --files-wide: clamp(32rem, 56vw, 52rem);
@@ -742,8 +751,8 @@ button {
 /* The tab at the right edge, written sideways: the visible promise that this side opens (R-WP-33). Out
    of the flow, because the panel lies over the edge instead of moving it, and hung on the row
    (`.chat-workspace` is the positioned box) instead of on the viewport — only so do tab and panel share
-   one top edge at every window height, and only so does the closed tab sit at the chat's edge. Above the
-   drawer of the row (that one is asked for 2): the handle is never to be covered by what it opens. */
+   one top edge at every window height, and only so does the closed tab sit at the chat's edge. Its layer
+   is the last line of the list over `.chat-workspace`: the handle is never covered by what it opens. */
 .files-tab {
   position: absolute;
   top: 0;
@@ -964,7 +973,9 @@ button {
   overflow-wrap: anywhere;
 }
 
-/* Blick in das Gespräch eines Agenten: dieselbe Geometrie wie der Datei-Bereich, eine Ebene darüber (R-WP-26). */
+/* Read-only look into one agent's conversation (R-WP-26): the same right edge as the file drawer and never
+   the same moment — the edge carries one overlay (R-WP-33, UC-WP-60 G3) — so its number, listed over
+   `.chat-workspace`, counts against the tab alone. */
 .chat-insight {
   position: fixed;
   inset: 0 0 0 auto;
