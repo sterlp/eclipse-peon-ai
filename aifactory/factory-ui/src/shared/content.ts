@@ -94,8 +94,6 @@ export const content = {
     messageToJon: 'Message to Jon',
     send: 'Send',
     stop: 'Stop',
-    /** The second send of R-WP-30: the same text again, without typing it again (UC-WP-57). */
-    resend: 'Resend',
     /** The wait of a turn that has delivered nothing yet — the words of the plugin (R-WP-31). */
     waitingForAi: 'Waiting for AI…',
     /** The one label of the way back to the end of the log (R-WP-35, UC-WP-80). */

@@ -85,10 +85,12 @@ const RECONNECT_MS = 500
  * <em>not</em> re-read the history: the live lines the user was already shown are all that exists of the
  * stopped turn, and there is no second store to read them back from (R-WP-11).
  *
- * Two things follow the turn itself: the text of an <em>accepted</em> send is kept for "Resend" (UC-WP-57),
- * and {@link ChatWaiting} sits above the composer while a turn works and shows what the stream last
- * reported (R-WP-31). Neither is a second memory: the first is one string of this browser's session, the
- * second reads the live list the log already holds.
+ * The send way of the composer is decided here and nowhere else (UC-WP-57): a text goes out as it stands, an
+ * empty field repeats the last user line of the <em>loaded</em> history while no turn works, and does nothing
+ * while one works or when the history holds no line. The keyboard keeps its pure text way — an empty Enter
+ * never reaches this page (UC-WP-56). {@link ChatWaiting} sits above the composer while a turn works and
+ * shows what the stream last reported (R-WP-31); it reads the live list the log already holds and is no
+ * second memory.
  *
  * The page holds the state; {@link ChatLog} and {@link ChatComposer} only draw it.
  *
@@ -101,11 +103,6 @@ export function ChatPage({ project, files, user }: Props) {
   const [outgoing, setOutgoing] = useState<PendingLine[]>([])
   const [live, setLive] = useState<LiveItem[]>([])
   const [draft, setDraft] = useState('')
-  /**
-   * The last text the server took (202) — the one "Resend" sends again (UC-WP-57). Held only after an
-   * accepted send: a text that never got through is not something the user should be offering twice.
-   */
-  const [lastSent, setLastSent] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   /** The tile whose insight is open — a name, not a conversation: there is still exactly one of those. */
   const [insight, setInsight] = useState<string | null>(null)
@@ -405,8 +402,19 @@ export function ChatPage({ project, files, user }: Props) {
   }, [applyEvent, projectId, refresh, refreshTiles, writeLive, writeTurn])
 
   /**
-   * One text into this project's conversation — whether it came from the field or from "Resend" makes no
-   * difference on the wire (UC-WP-57): the same edge, the same queue while a turn runs (R-WP-10).
+   * A turn is running when we started one that has not ended, or when the roster shows an agent working —
+   * another user's turn on the same project is a turn the user here may stop (UC-WP-22). COMPACTING is
+   * deliberately not one of them: a half Compact is not something a turn's stop may cut (D-17). Read above
+   * `send` as well: the empty send way asks it before anything goes out (UC-WP-57 GIVEN 2).
+   */
+  const busy =
+    (runningTurn !== null && runningTurn === projectId) || tiles.some(tile => tile.state === 'WORKING')
+
+  /**
+   * One text into this project's conversation — whether the field wrote it or an empty send repeated it from
+   * the history makes no difference on the wire (UC-WP-57): the same edge, the same queue while a turn runs
+   * (R-WP-10). Never reached with a blank text: the backend answers 400, so the empty way ends in `submit`
+   * before any request.
    */
   async function send(text: string) {
     if (projectId === null) {
@@ -431,8 +439,6 @@ export function ChatPage({ project, files, user }: Props) {
     try {
       // the name of this browser goes with it, and only when there is one (R-WP-25, UC-WP-48)
       await sendMessage(projectId, text, user)
-      // 202 is the moment this text becomes "the last one": a refusal never earns the Resend button
-      setLastSent(text)
     } catch (reason) {
       writePending(pendingLines.current.slice(0, -1))
       setRunningTurn(null)
@@ -440,25 +446,27 @@ export function ChatPage({ project, files, user }: Props) {
     }
   }
 
+  /**
+   * The one decider of the send way (UC-WP-57), because the composer answers nothing on its own (UC-WP-74):
+   * a text goes out as it stands; an empty field repeats the last user line of the loaded history while no
+   * turn works, and does nothing while one works or when the history holds no line. A repeat is not a second
+   * way on the wire — it is `send` with the text the history kept. The field keeps what he typed in the
+   * meantime: an empty send had nothing to clear.
+   */
   function submit(event: FormEvent) {
     event.preventDefault()
     const text = draft.trim()
-    // "only a text sends" stands twice on purpose: Enter asks the form, and requestSubmit does not ask the
-    // disabled button — without this guard the keystroke would open the turn the button refuses (R-WP-41)
-    if (text === '') {
+    if (text !== '') {
+      setDraft('')
+      void send(text)
       return
     }
-    setDraft('')
-    void send(text)
-  }
-
-  /**
-   * The last accepted text again, without the user typing it (UC-WP-57). What he has typed in the meantime
-   * stays in the field — a resend answers the failed turn, it does not empty what he is writing now.
-   */
-  function resend() {
-    if (lastSent !== null) {
-      void send(lastSent)
+    if (busy) {
+      return // no empty turn and no queue line behind a running one (UC-WP-57 GIVEN 2)
+    }
+    const repeated = lastUserText(messages)
+    if (repeated !== null) {
+      void send(repeated)
     }
   }
 
@@ -487,14 +495,6 @@ export function ChatPage({ project, files, user }: Props) {
     setRunningTurn(null)
     void refreshTiles()
   }
-
-  /**
-   * A turn is running when we started one that has not ended, or when the roster shows an agent working —
-   * another user's turn on the same project is a turn the user here may stop (UC-WP-22). COMPACTING is
-   * deliberately not one of them: a half Compact is not something a turn's stop may cut (D-17).
-   */
-  const busy =
-    (runningTurn !== null && runningTurn === projectId) || tiles.some(tile => tile.state === 'WORKING')
 
   /**
    * Clear or Compact one tile. 202 says <em>taken</em>, so both reads follow; a refusal (409 while a turn
@@ -560,15 +560,7 @@ export function ChatPage({ project, files, user }: Props) {
         {/* one rule with the stop button: while a turn works on this project, the wait is on the screen
             (R-WP-31) — another browser's turn included, because this stream carries its lines anyway */}
         {busy && <ChatWaiting preview={livePreview(live)} />}
-        <ChatComposer
-          draft={draft}
-          busy={busy}
-          lastSent={lastSent}
-          onDraftChange={setDraft}
-          onSubmit={submit}
-          onResend={resend}
-          onStop={stop}
-        />
+        <ChatComposer draft={draft} busy={busy} onDraftChange={setDraft} onSubmit={submit} onStop={stop} />
       </section>
       {files}
       {insight !== null && (
@@ -584,5 +576,18 @@ export function ChatPage({ project, files, user }: Props) {
  */
 function isAlreadyOver(error: unknown): boolean {
   return error instanceof ApiRequestError && (error.apiError?.status ?? 0) === 409
+}
+
+/**
+ * The last user line of the **loaded history** — the only source of a repeat (UC-WP-57): no second read, no
+ * peeking at the pending lines, which are this browser's view and not the conversation. The text goes out as
+ * it stands, sender prefix and queue marker included: `ProjectRuntime.history()` parses the sender out of the
+ * text again and `submit` of the same class puts the prefix back (factory-backend
+ * `src/main/java/com/factory/runtime/ProjectRuntime.java:519-541`), so a copy of it cannot double it.
+ */
+function lastUserText(messages: ChatMessage[]): string | null {
+  const line = messages.findLast(message => message.role === 'user')
+  // a blank line would answer with the text the backend refuses with 400 — nothing to repeat then
+  return line === undefined || line.text.trim() === '' ? null : line.text
 }
 

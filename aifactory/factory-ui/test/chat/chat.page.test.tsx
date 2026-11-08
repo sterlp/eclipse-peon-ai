@@ -507,7 +507,8 @@ test('failedTurnIsALineInTheHistory', async () => {
   expect(screen.queryByTestId('chat-error')).toBeNull()
   // no alarm dialog, no dead input: the next turn is one line away (Q1)
   expect(screen.getByTestId('chat-input')).toBeEnabled()
-  expect(screen.getByTestId('chat-send')).toBeDisabled()
+  // the send stays clickable whatever happened (UC-WP-74 GIVEN 1) — an empty field is no reason to refuse it
+  expect(screen.getByTestId('chat-send')).toBeEnabled()
   fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'und jetzt mit Schlüssel' } })
   expect(screen.getByTestId('chat-send')).toBeEnabled()
 })
@@ -674,14 +675,15 @@ test('oneChatPerProject', async () => {
   const opened = await screen.findByRole('region', { name: content.chat.title })
   await waitFor(() => expect(agentLinesSaying(ANSWER.text)).toHaveLength(1))
 
-  // the controls the chat has: one writes into THIS conversation, one sends the last accepted text again
-  // (R-WP-30), one ends its running turn (UC-WP-50) — none names an addressee and none starts a conversation.
+  // the controls the chat has: one writes into THIS conversation — empty included, which repeats the last
+  // line of the history (R-WP-30, UC-WP-57) — and one ends its running turn (UC-WP-50); none names an
+  // addressee and none starts a conversation.
   // The tile actions of Inc 5b sit beside them and are asserted separately below (R-WP-7)
   const controls = within(opened)
     .queryAllByRole('button')
     .filter(control => control.closest('.chat-tiles') === null)
     .map(control => control.textContent?.trim() ?? '')
-  expect(controls).toEqual([content.chat.send, content.chat.resend, content.chat.stop])
+  expect(controls).toEqual([content.chat.send, content.chat.stop])
   expect(
     controls.filter(label =>
       /neue|gespräch|dialog|verlauf|wechseln|öffnen|lösch|new|conversation|history|switch|open|delete|remove|clear/i.test(
@@ -1160,7 +1162,6 @@ test('theQueuedInputStandsOnceInTheLog', async () => {
   expect(screen.queryByTestId('chat-live')).toBeNull()
 })
 
-// UC-WP-57
 test('theSameTextTwiceIsConfirmedTwice', async () => {
   const chat = stubChat({ messages: [] })
   render(<ChatPage project={project()} />)
@@ -1614,65 +1615,61 @@ test('aFileChangeIsLiveAndDoesNotOutliveTheReload', async () => {
 })
 
 // UC-WP-57
-test('resendSendsTheLastMessageAgain', async () => {
-  const chat = stubChat({ messages: [] })
+test('emptySendResendsTheLastUserMessage', async () => {
+  const chat = stubChat({ messages: [QUESTION] })
   render(<ChatPage project={project()} />)
   await flush()
-  // nothing has been sent yet, so nothing can be sent again
-  expect(screen.getByTestId('chat-resend')).toBeDisabled()
+  const reads = chat.countOf('/messages', 'GET')
 
-  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  // nothing typed and no turn running: the click alone repeats (UC-WP-57 GIVEN 1)
   fireEvent.click(screen.getByTestId('chat-send'))
   await flush()
+
+  // the loaded history is the only source — the text goes out as it stands, on the same edge as a fresh one
   expect(chat.countOf('/messages', 'POST')).toBe(1)
-  expect(screen.getByTestId('chat-resend')).toBeEnabled()
-
-  fireEvent.click(screen.getByTestId('chat-resend'))
-  await flush()
-
-  // the same text, twice, on the same edge — and the field was not touched a second time (R-WP-30)
-  expect(sentTexts(chat)).toEqual(['zähl die Dateien', 'zähl die Dateien'])
+  expect(sentTexts(chat)).toEqual([QUESTION.text])
+  expect(chat.countOf('/messages', 'GET'), 'a repeat reads nothing again').toBe(reads)
+  expect(userLineTexts(), 'the history line and the repeated one').toEqual([QUESTION.text, QUESTION.text])
   expect(screen.getByTestId('chat-input')).toHaveValue('')
 })
 
 // UC-WP-57
-test('aSendThatNeverLandedIsNotOfferedAgain', async () => {
-  const chat = stubChat({ messages: [] })
-  chat.refuseSend(503, 'the factory is not reachable')
+// UC-WP-74
+test('emptySendDoesNothingWhileATurnRuns', async () => {
+  const chat = stubChat({ messages: [QUESTION] })
   render(<ChatPage project={project()} />)
   await flush()
 
   fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
   fireEvent.click(screen.getByTestId('chat-send'))
   await flush()
+  // the turn this browser started runs until its `done`: the field stands empty and the button still sends
+  expect(chat.countOf('/messages', 'POST')).toBe(1)
+  expect(screen.getByTestId('chat-send')).toBeEnabled()
 
-  expect(screen.getByTestId('chat-error')).toHaveTextContent('the factory is not reachable')
-  // 202 is what makes a text "the last one": a text the queue never got is not something to send twice
-  expect(screen.getByTestId('chat-resend')).toBeDisabled()
+  // an empty click behind a running turn opens no second turn and queues no blank (UC-WP-57 GIVEN 2)
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+
+  expect(chat.countOf('/messages', 'POST')).toBe(1)
   expect(sentTexts(chat)).toEqual(['zähl die Dateien'])
+  expect(userLineTexts()).toEqual([QUESTION.text, 'zähl die Dateien'])
 })
 
 // UC-WP-57
-test('resendWorksAfterAnError', async () => {
+test('emptySendWithoutMessagesDoesNothing', async () => {
   const chat = stubChat({ messages: [] })
   render(<ChatPage project={project()} />)
   await flush()
 
-  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  // nothing to repeat: the way ends before any request — a blank would reach the backend and be answered
+  // with 400, and neither a line nor a notice may stand there afterwards (UC-WP-57 GIVEN 3)
   fireEvent.click(screen.getByTestId('chat-send'))
   await flush()
-  // the server already wrote the failure into the conversation when it reports it (R-WP-34)
-  chat.setMessages([{ role: 'error', text: 'Es fehlt ein Modellschlüssel für OPEN_AI' }])
-  await chat.push(event('error', { message: 'Es fehlt ein Modellschlüssel für OPEN_AI' }))
-  expect(screen.getByTestId('chat-line-error')).toHaveTextContent('Es fehlt ein Modellschlüssel')
 
-  // the answer to a failed turn needs no new typing, and what he writes in the meantime stays (R-WP-30)
-  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'und jetzt mit Schlüssel' } })
-  fireEvent.click(screen.getByTestId('chat-resend'))
-  await flush()
-
-  expect(sentTexts(chat)).toEqual(['zähl die Dateien', 'zähl die Dateien'])
-  expect(screen.getByTestId('chat-input')).toHaveValue('und jetzt mit Schlüssel')
+  expect(chat.countOf('/messages', 'POST')).toBe(0)
+  expect(screen.queryAllByTestId('chat-line-user')).toEqual([])
+  expect(screen.queryByTestId('chat-error')).toBeNull()
 })
 
 // UC-WP-58
@@ -1973,7 +1970,7 @@ function agentAuthorsOnScreen(): (string | null)[] {
   return authorsOfLines('chat-line-jon')
 }
 
-/** The texts the queue got, in the order they were posted — what a resend really put on the wire. */
+/** The texts the queue got, in the order they were posted — what a send really put on the wire. */
 function sentTexts(chat: Chat): string[] {
   return chat.calls
     .filter(call => call.method === 'POST' && call.path.endsWith('/messages'))
