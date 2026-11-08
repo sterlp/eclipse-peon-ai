@@ -190,7 +190,7 @@ button {
   align-items: baseline;
   gap: 0.5rem;
   margin: 0 0 0.6rem;
-  padding-inline: var(--content-gutter);
+  padding-inline: var(--chat-gutter);
 }
 
 .chat-title {
@@ -208,7 +208,7 @@ button {
   /* the row belongs to the chat and stands directly above it (R-WP-45): no gap of its own */
   margin: 0;
   padding: 0;
-  padding-inline: var(--content-gutter);
+  padding-inline: var(--chat-gutter);
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
@@ -300,8 +300,8 @@ button {
 }
 
 /* The log is the scroll area of the chat: the tiles above and the input below keep their place while the
-   conversation runs past them (R-WP-35, UC-WP-66). It keeps the full width and centres what it holds inside
-   itself, so its scrollbar stays at the edge of the surface (D8) — the same measure the input below uses. */
+   conversation runs past them (R-WP-35, UC-WP-66). It takes the width the column has and keeps one edge of its
+   own, so its scrollbar stays at the edge of the surface (D8) — the same measure head, tiles and input use. */
 .chat-log {
   flex: 1;
   min-height: 0;
@@ -310,7 +310,7 @@ button {
   margin: 0 0 1rem;
   display: grid;
   gap: var(--space-2);
-  padding-inline: var(--content-gutter);
+  padding-inline: var(--chat-gutter);
 }
 
 /* What every row shares is the wording, not a shape: a line keeps what was typed, and the voice below
@@ -320,26 +320,25 @@ button {
   overflow-wrap: anywhere;
 }
 
-/* An answer is the card on the left, the surface of the page's cards with the app's own border (R-WP-29);
-   `justify-self` because the log is a grid, and never a `margin` or a `text-align` — those would take the
-   answers out of the flow of the conversation, which UC-WP-55 rules out. The border carries the hierarchy,
-   not a shadow: an answer in the flow does not float. The name above it stays the agent's own green
-   (`.chat-role`). */
+/* An answer is a card on the page's own surface, with the app's own border (R-WP-29). It takes the whole
+   measure of the log — `justify-self`, because the log is a grid, and never a `margin` or a `text-align`:
+   those would take the answers out of the flow of the conversation, which UC-WP-55 rules out. Its height is
+   its text and nothing beside it: no measure of its own beyond the padding that holds it on the text
+   (Paul 2026-11-08). The border carries the hierarchy, not a shadow: an answer in the flow does not float.
+   The name above it stays the agent's own green (`.chat-role`). */
 .chat-log .chat-line.agent {
-  justify-self: start;
-  max-width: min(85%, var(--content-max));
+  justify-self: stretch;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
   border-radius: var(--radius-surface);
   background: var(--surface);
 }
 
-/* The person's own input stands alone on its side: the reference's blue bubble with its own text colour,
-   right, in its own shape (R-WP-29, UC-WP-55). No answer reads from this rule — the side belongs to the
-   voice that spoke it, and only to it. */
+/* The person's own input is the reference's blue bubble with its own text colour, and it fills the measure
+   like every other bubble (R-WP-29, UC-WP-55) — the blue says whose voice it was, no side does. No answer
+   reads from this rule: the colour belongs to the voice that spoke it, and only to it. */
 .chat-log .chat-line.user {
-  justify-self: end;
-  max-width: min(85%, var(--content-max));
+  justify-self: stretch;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-surface);
   background: var(--user);
@@ -350,8 +349,7 @@ button {
    the page's surface and on no edge of its own — the lesson of UC-WP-55 is that a grey block reads as an
    answer, so what separates it from one is the colour of its text and the border it does not paint. */
 .chat-log .chat-line.error {
-  justify-self: start;
-  max-width: min(85%, var(--content-max));
+  justify-self: stretch;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-surface);
   background: var(--surface);
@@ -591,18 +589,22 @@ button {
 
 /* Das Feld ist die Auto-Grow-Textarea der Basis: eine Zeile bis fünf, danach scrollt sie (R-WP-41); Enter
    sendet, Shift und Ctrl/Cmd+Enter brechen um (R-WP-30). Die Höhe gehört der Basis — sie steht inline auf dem
-   Feld, darum hier kein min-height und kein resize. Die Fläche bleibt unsere eine Maß: dieselbe Padding
-   tragen die Konfigurationsfelder. Die Knöpfe stehen darunter, damit eine lange Frage ihre Breite behält. */
+   Feld, darum hier kein min-height und kein resize. Die Zeile ist die ruhige Fußzeile über die ganze Breite
+   und so weiß wie ihre Fläche; das Senden steht rechts daneben, unten am Feld, die beiden anderen Knöpfe in
+   der zweiten Zeile, damit eine lange Frage ihre Breite behält (R-WP-35, Paul 2026-11-08: SOLL-Bild). */
 .chat-composer {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
   gap: 0.5rem;
   flex: none;
   padding-top: 0.4rem;
-  padding-inline: var(--content-gutter);
+  padding-inline: var(--chat-gutter);
   border-top: 1px solid var(--border);
-  background: var(--bg);
+  background: var(--surface);
 
   textarea {
+    grid-column: 1;
     width: 100%;
     padding: 0.4rem 0.6rem;
     border: 1px solid var(--border);
@@ -613,7 +615,12 @@ button {
   }
 }
 
+.chat-send {
+  grid-column: 2;
+}
+
 .chat-composer-actions {
+  grid-column: 1 / -1;
   display: flex;
   gap: 0.5rem;
 }
@@ -629,7 +636,7 @@ button {
   align-items: center;
   gap: 0.4rem;
   margin-block-end: 0.6rem;
-  margin-inline: var(--content-gutter);
+  margin-inline: var(--chat-gutter);
   padding: 0.35rem 0.6rem;
   border-radius: 0.4rem;
   background: #1c2128;
@@ -668,7 +675,7 @@ button {
 .chat-error {
   color: var(--problem);
   margin: 0 0 0.75rem;
-  padding-inline: var(--content-gutter);
+  padding-inline: var(--chat-gutter);
 }
 
 /* The row a chat view sits in: the conversation and the file panel side by side, so an open file keeps

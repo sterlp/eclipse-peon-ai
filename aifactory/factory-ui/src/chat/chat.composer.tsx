@@ -110,10 +110,17 @@ export function ChatComposer({
         onChange={event => onDraftChange(event.target.value)}
         onKeyDown={keys}
       />
+      {/* the send stands beside the field, on its right and at its bottom (R-WP-35); the two secondary
+          controls keep the quiet second row, so a long question keeps its width */}
+      <button
+        className="chat-send"
+        type="submit"
+        data-testid="chat-send"
+        disabled={draft.trim() === ''}
+      >
+        {content.chat.send}
+      </button>
       <div className="chat-composer-actions">
-        <button type="submit" data-testid="chat-send" disabled={draft.trim() === ''}>
-          {content.chat.send}
-        </button>
         <button
           type="button"
           className="chat-resend"

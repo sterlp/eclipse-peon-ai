@@ -351,3 +351,52 @@ Chat, und die **Knopfmaße der Kachel**: unsere `button`-Regel im Blatt ist weg,
 jede Erklärung weggenommen (R-WP-39 — ein Aussehen, ein Owner).
 
 **Stand nach S3:** 214 Tests / 22 Dateien grün, `tsc -b` 0, oxlint 0/0 (79 Dateien), `antd lint ./src` 0
+
+
+## Inkrement 4 UI — S4 Blasen, Fläche, Composer (Dev-Bau 2026-11-08, Freigabe Jon)
+
+**Gebaut, nur Look, kein Test angefasst:** die drei Zeilen-Regeln des Verlaufs
+(`.chat-log .chat-line.agent/.user/.error`) verlieren `max-width: min(85%, var(--content-max))` und ihre
+Seite und stehen auf `justify-self: stretch`; die Selektoren selbst bleiben, sonst läse die bestehende
+Look-Wache „Blase fehlt". Neuer Token `--chat-gutter: 1rem` (`index.css`, eine Tabelle — das Maß ist
+modusunabhängig) an den Chat-Flächen; Composer weiß (`--surface`), zweispaltiges Grid
+(`minmax(0,1fr) auto`, `align-items: end`), Senden rechts unten am Feld, Resend/Stop in der zweiten Zeile.
+
+**Plan-Fund 1 — `.view` war schon erledigt:** §3-S4 verlangt `--chat-gutter` **auch** an `.view`, „sonst holt
+deren `padding-inline` den Rand zurück". `.chat-workspace > .view` (`styles.css:693-699`) setzt seit Inc 3
+`padding-inline: 0` für die Chat-Spalte — die Begründung gilt für die **anderen** Views (Projektliste,
+Config), denen ihr Einzug bleiben muss. `.view` darum **unverändert**; sonst wäre diese App an jeder Seite
+randlos.
+
+**Plan-Fund 2 — „Markup unverändert" war nicht machbar:** der Composer wohnt nicht in `chat.page.tsx`,
+sondern in `src/chat/chat.composer.tsx`, und das Senden hing in `.chat-composer-actions`. Ein Kind eines
+Grid-Elements kann kein Feld des **Eltern**-Grids beziehen — §3-S4 verlangt gerade Spalte 2 in der Feldzeile.
+Ein Knopf aus der Gruppe heraus direkt ans Form-Ende, `className="chat-send"` neu, Griffe und
+`disabled`-Semantik unverändert, **kein Test geändert**: kein Beweis las die Gruppe, und die Nachbarschaft
+`chat-waiting` → `chat-composer` (`chat.page.test.tsx:1711`) bleibt grün.
+
+**Sechs Flächen statt vier:** §3-S4 nennt Head, Kacheln, Log, Composer. Warte-Leiste (`margin-inline`) und
+die Fehler-Zeile der Seite (`padding-inline`) trugen dasselbe `--content-gutter`; blieben sie dort, stünden
+sie weit eingerückt über einem randlosen Verlauf — genau die Asymmetrie, die A3 wegnimmt. Beide mitgezogen.
+
+**Offen an Jon (bewusst nicht gebaut):** §3-S3 kündigt an „Der Composer folgt in S4" — R-WP-43
+(`docs/ui.md:169`) zählt **Senden** zu den Aktionen, die echte AntD-Elemente sind. Jons S4-Freigabe sagt
+„nur Look" und „Markup unverändert". Nicht gebaut; ein eigener Schritt (drei Knöpfe → `Button`, fürs Senden
+`htmlType="submit"` — nicht `type`), wenn Jon ihn freigibt.
+
+**Höhe = Text, im Blatt keine Ursache:** keine Regel gab einer Blase je ein Höhenmaß; der Log ist ein
+**ein**-spaltiges Grid, jede Zeile gehört einem Eintrag, `align-items` steht dort nie. `padding` unverändert
+(8/12 px), kein neues Polster, kein Pixel-Token — Pauls Eindruck „deutlich höher als der Inhalt" ist im Blatt
+nicht belegt und wird am Browser abgenommen.
+
+**Kein Test, keine Mutation** (Plan §7 für S4 so gesetzt). Nachgemessen an HEAD, dass nichts kippt:
+`noAnswerLineIsCentredOrRightAligned` prüft nur `.chat-log .chat-line` und `.chat-line.agent` gegen
+`justify-self:(end|center)` — `stretch` ist kein Verstoß, die `.user`-Zeile prüft sie nicht (F7);
+`block('.chat-composer')` („kein `min-height`, kein `resize`") hält weiter; niemand pinnt das 85-%-Maß.
+
+**Look, nicht getestet (Paul am Browser):** Blasen über die ganze Breite (Nutzer blau, Antwort Karte, Fehler
+Zeile auf der Fläche), Verlauf randnah statt zentriert, weißer Composer über die Breite, Senden rechts unten am
+Feld, Resend/Stop ruhig darunter, Warte-Leiste und Fehler-Zeile im selben Rand wie Verlauf und Feld.
+
+**Stand nach S4:** 214 Tests / 22 Dateien grün (kein Test geändert), `tsc -b` 0, oxlint 0/0 (80 Dateien),
+`antd lint ./src` 0 (48 Dateien), `vite build` grün.
