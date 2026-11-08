@@ -22,7 +22,7 @@ Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwiss
   weicht) + **Breite 250 px** statt 200 („Projektname passt nicht sauber rein") — steht im Look-Absatz
   ([ui.md](ui.md)) und in [R-WP-44](ui.md).
 * **Plan Inc 4 gebaut + reviewed + geflippt ✅** (S1 `97449349` → S1b `8ef6a9b0` → Toggle top-left
-  `09f74e7c` → S2 `8ee655ba` → S3 `f090b5b8` → S4 `93e49b8b` → S5 `3627ccc5` → Delta N1 `36c69808`+
+  `09f74e7c` → S2 `8ee655ba` → S3 `f090b5b8` → S4 `93e4db8b` → S5 `3627ccc5` → Delta N1 `36c69808`+
   `3f0b43eb`). **Look-Reparaturen + neue Funktionalität drin:** Sider-Baum/Breite 250/bündig
   (A2), Griff **oben links im Header** (Paul queued: „schöner im Header links als unten im Menü"),
   Warte-Rahmen gelöscht, Status-Indikator + Timeline-Spin, Blasen volle Breite/randlose Fläche
