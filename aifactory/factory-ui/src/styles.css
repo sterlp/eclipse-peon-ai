@@ -62,6 +62,13 @@
   border-right: 1px solid var(--border);
 }
 
+/* Folded away the tree keeps no width, yet the edge above stays painted: a one pixel sliver of surface where
+   the page should reach the frame's edge (measured in the browser, UC-WP-78). The basis marks the folded state
+   with its own class, so nothing of ours has to slide. */
+.app-sider.ant-layout-sider-zero-width {
+  border-right: 0;
+}
+
 /* the inline menu draws its own edge on the same side, which beside the one above reads as a double line */
 .app-sider .ant-menu {
   border-inline-end: 0;

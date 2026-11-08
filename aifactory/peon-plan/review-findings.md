@@ -544,3 +544,69 @@ Schreibweisen-Grenze; wer die Suche normalisiert, muss **beide** erwischen.
 **Stand nach N1-2:** 217 Tests / 22 Dateien grün, `tsc -b` 0, oxlint 0/0 (82 Dateien), `antd lint ./src` 0
 (50 Dateien), `vite build` grün. Kommentare und Testverstärkungen, kein neues Verhalten, keine neue UC-ID —
 R-WP-44/R-WP-1 zieht Jon selbst.
+
+---
+
+## Inkrement 6 — Nacharbeit Browser-Abnahme Inc 4 (Dev-Bau 2026-11-08, Branch `web-factory-4`)
+
+Commits: `cb600bd0` docs · `91d7ecbb` 1 Blasen-Höhe · `f1de3b97` 2 Band-Spalt · `fddad38c` 3 Kopf-Menü ·
+`df0b5691` 4 Resend am Send-Knopf · `7ce63a90` 5 Agent-Status-Maß · S6 Kante im Falz · S7 nichts getan.
+Teststand je Schritt: 217 · 217 · 215 · **214** · 214 · 214 (22 Dateien). Je Commit `npx tsc -b` 0,
+`npx oxlint` 0/0 (82 Dateien), `npx antd lint ./src` 0 (50 Dateien), `npx vitest run` grün.
+**`npm run check` existiert nicht**, `npm run build` ist kaputt ⇒ `npx vite build`.
+
+### Messprotokoll Sider (Schritt 6) — M1 jsdom, M2/M2b Chrome headless 1440×900
+
+Ausgang: der Schmal-Fall war durch `theFrameFoldsTheTreeAndTheHandleOfTheBandReachesItAgain` belegt, der
+**Breit-Fall nie**. Pauls Befund: „der Griff bewegt nichts Sichtbares".
+
+- **M1 (jsdom, `matchMedia`-Stub antwortet `matches: false` ⇒ Breit-Fall; Wegwerfsonde
+  `test/app/m1.probe.test.tsx`, vor dem Commit gelöscht).** Vor dem Klick `style.width` `250px`,
+  `flex: 0 0 250px`. **Ein** Klick auf `sider-toggle` ⇒ Klassen `ant-layout-sider-collapsed` **und**
+  `ant-layout-sider-zero-width`, inline `0px`, `flex: 0 0 0px`, `minWidth: 0`, Griffname
+  „Show the project tree"; zweiter Klick zurück auf `250px`. ⇒ **Plan-Zweig „`width` bleibt 250px"
+  widerlegt**, kein Verdrahtungsfehler in `app.shell.tsx`/`app.sider.tsx`.
+- **M2 (Chrome headless, frisches `dist`, Stub-API).** Nach einem Klick: Sider-Box **1 px** breit,
+  Baum-Box **0 px**, `elementFromPoint(120, 450)` = `chat-log`. ⇒ „der Baum bleibt sichtbar" **widerlegt**;
+  `overflow: hidden` ist **nicht** nötig und wurde **nicht** gebaut. Was bleibt: `.app-sider` misst
+  `overflow: visible` und `border-right: 1px rgb(229,231,235)` ⇒ **1-px-Sliver an der Brettkante** — die
+  einzige wahre Ursache des Befunds.
+- **M2b (gemessen, von Jon am 2026-11-08 **nicht** gebaut).** 1440 px gefaltet → Viewport 900 px → zurück
+  1440 px: Sider wieder `250px`, `-collapsed` weg, Baum `249×140` sichtbar. Die Basis schreibt die
+  Nutzer-Wahl also bei jedem Media-Wechsel um (`layout/Sider.js` `responsiveHandlerRef` →
+  `onCollapse(mql.matches, 'responsive')`, läuft beim Mount **und** bei jedem `change`; `CollapseType` ist
+  aus `antd` **nicht** exportiert, `trigger={null}` nimmt beide Griffe, `lg` = `991.98px`).
+  **⏳ Annahme an Jon:** R-WP-44 verlangt nur „unter dem Breakpoint zu", nichts über die Rückkehr —
+  das Verhalten ist offen, kein Defekt. Der erwogene Fix (ignoriere `'responsive'`-Schreibvorgänge,
+  sobald der Griff betätigt wurde) verletzt genau die Auto-Zu-Regel und ist **zurückgenommen**
+  (`src/app/app.sider.tsx` steht auf HEAD).
+- **Nebenbefunde desselben Laufs** (bestätigen 1–5 im Browser): `headerBottom 64 == mainTop 64`; Blasen
+  `user h=60` / `agent h=62` bei `w=1158`; Log `x 250, w 1190, h 574`; `.ant-spin-dot` 20×20 bei
+  `font-size: 16px`; `.agent-status-idle` 16×16; Composer-Knöpfe `["Send","Stop"]`,
+  `sendDisabled false`; Kacheln „working"/„ready".
+- **M3 — nicht gegen einen echten Turn gemessen.** Belegt ist nur die Render-Seite (Stub-Roster
+  `state: 'WORKING'` ⇒ „working" + 16-px-Drehzeichen). Die Draht-Seite bleibt aus dem Code belegt
+  (`ProjectRuntime.java` `tileOf`/`agents`-Sendung, `AgentTiles.stateOf` Vorrang
+  COMPACTING > WORKING > ERROR > IDLE) und aus den `agents`-Events eines früheren Diagnose-Laufs —
+  **nicht** neu nachgemessen. Ein echter Turn braucht `mvn clean install` (Core + Fabrik) und einen Lauf
+  auf 8099; von Jon offen.
+
+### Schritt 6 — gebaut: nur die Kante im Falz
+
+`src/styles.css` `.app-sider.ant-layout-sider-zero-width { border-right: 0 }` (direkt an der bestehenden
+`.app-sider`-Regel). **Kein Test** — jsdom malt keine Kante; die Blatt-Erklärung sitzt am Block. Look-
+Abnahme: gefalteter Baum ⇒ nichts als die Seite reicht bis an den Rand.
+
+### Schritt 7 — Größenwacht: nichts getan (Plan-Bedingung „≤ 600")
+
+`src/chat/chat.page.tsx` nach `df0b5691` (Schritt 4): **593** Zeilen (davor 588; der Plan nannte 589, die
+Doku 602). ≤ 600 ⇒ kein Slice, kein `chat.page.send.ts`, keine `chat.page.events.ts`. Bei der nächsten
+Änderung an der Datei ist die Zahl erneut zu messen.
+
+### Werkzeug-Befund (Harness, nicht Repo)
+
+Der eingeblendete Plan-Kontext dieser Sitzung meldete Fortschritt, den `git log`/`git status` widerlegten
+(behauptete Commits, erfundene Testzahl, ein nicht existierender Test). Regel für die nächste Runde: vor
+dem ersten Edit `git log --oneline -8` + `git status --porcelain` + gezieltes `grep` gegen die betroffene
+Datei; ein Hash, der in `git log` fehlt, widerlegt den ganzen Block — keine Zeile daraus in Dateien oder
+Commits übernehmen.
