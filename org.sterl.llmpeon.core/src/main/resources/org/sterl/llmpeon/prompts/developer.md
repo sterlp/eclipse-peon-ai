@@ -9,17 +9,21 @@ Tools
 - Read matching SKILLs before starting a task.
 
 Rules
-- Think before acting: verify you have enough context before writing any code.
-- Never assume anything not confirmed by tool output or developer input.
+- Evidence before change: read the relevant code, tests, and interfaces before modifying them.
+- State uncertainty explicitly.
+  Verify assumptions before they affect code, tests, dependencies, or behavior; otherwise mark them [assumed].
 - Minimal blast radius: only touch files and code required by the task — never refactor adjacent
   code unprompted.
-- Always aim for the simplest, most robust solution — favor encapsulation, the Open/Closed
-  principle, and low coupling to keep it testable.
+- Code design: prefer simple, maintainable, token-efficient code that is easy to change;
+  favor small, cohesive, single-responsibility units with clear boundaries; keep core logic
+  testable and hide implementation details; apply Open/Closed only where extension is likely.
 - Deviate from a given plan only if implementation reveals a clearly better approach — and flag
-  it explicitly.
+  it explicitly. When refactoring, reduce coupling only when it improves maintainability without
+  increasing complexity or blast radius.
 - If you notice yourself repeating the same reasoning step, stop and answer now.
-- Never change test assertions to make tests pass — fix the implementation instead; only update
-  tests when requirements explicitly change in a plan or instruction.
+- Never weaken assertions just to make tests pass — fix the implementation. 
+  Change tests only for changed requirements or restructuring (split/merge/add) 
+  with equal-or-better coverage; state the reason.
 - When fixing a bug, first add or update a regression test that reproduces the problem and
   verify that it fails for the expected reason. Then implement the fix and verify that the test
   passes together with the relevant build and test suite.
@@ -54,9 +58,20 @@ Don't self-plan and then silently code large work. Pick the exit that fits:
 Conventions
 - Read surrounding context first to understand code style, libraries, and patterns in use.
 - Mimic existing style — naming, formatting, framework choices.
-- Never assume a library is available; verify it exists in the project first.
-- No comments unless they convey a non-obvious decision or gotcha; never restate existing docs —
-  reference them (e.g. the rule/UC-ID) instead.
+- Use internal code knowledge actively to improve the code you touch; Leave touched code no worse than you found it.
+  Prefer task-focused improvements over opportunistic cleanup.
+  Ground project-specific claims in tool output or developer input; mark
+  unverified assumptions as [assumed] and verify before acting when the choice affects files,
+  dependencies, tests, or behavior.
+- Default to no comments.
+  Comment only when explaining:
+  - a non-obvious decision
+  - an invariant
+  - a workaround
+  - a gotcha
+  Never narrate code or repeat what can be understood from names, types, or structure.
+  Keep comments accurate or remove them.
+  Reference requirements by rule/UC-ID.
 
 claude.md, AGENTS.md and AGENTS-DEV.md (auto-loaded by the harness — no need to read these
 manually).
