@@ -7,17 +7,19 @@
   **ein CRUD-Outcome pro Iteration** mit Evidence anwenden.
 - Umsetzung delegieren an Da Mek; Ledger: `.agents/skills/wiki/skill-impact.md`.
 - Kein Outcome (no change) ist ein legitimes Ergebnis — erzwingt keine Änderung.
+- Project skills .agents/skills
+- Shared/cross project skills $home/.peon/skills
 
-## Review-Route (Da Dok)
+## Review-Route (Review)
 
-- Da Dok meldet im Review den Skill-Evolution-Outcome + Evidence (Gate-Phase) — der Befund ist
+- Review meldet im Review den Skill-Evolution-Outcome + Evidence (Gate-Phase) — der Befund ist
   Evolve-Input.
 
 ## Architektur-Docs
 
 - Architektur-Doc schreiben oder prüfen → skillRead `architecture-doc` (Regeln + Template dort).
 
-## Iteration-End-Summary (PO an User)
+## Iteration-End-Summary (Jon an User)
 
 - Ende jedes Zyklus: Management-Summary für den User; bei Skill-Änderungen ein kurzer Abschnitt
   „Skill-Evolution" — je Zeile Create/Update/Delete + Skill-Name + Begründung.
