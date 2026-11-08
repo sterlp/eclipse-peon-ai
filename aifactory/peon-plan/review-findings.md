@@ -740,3 +740,71 @@ Tab bündig oben · Fläche liegt über dem Rand, Chat sichtbar und tipbar · Ta
 schließen per X/Esc/Tab/Sider ohne Scroll-Sprung · Fokus zurück zum Tab · Inhalt fährt mit raus) — dieser
 Build hat kein Browser-Werkzeug. Die Doku-Klammer „Portal `(document.body)`" hat Jon auf inline gezogen,
 `aria-modal={false}` ist Jons Freigabe.
+
+## Inkrement 4 UI — N1 Delta: die rechte Kante trägt genau ein Overlay (Dev-Bau 2026-11-09, Branch `web-factory-4` · Stand `43d18eea`)
+
+**Protokoll-Lage, offengelegt:** Der Review-Block „Runde 6 (`df2297fd..43d18eea`)" stand **nicht mehr** in
+`overview.md` — die Datei war um 23:43 mit dem N1-Plan überschrieben worden (`grep` fand den Titel nur noch in
+der Übertragungs-Anweisung selbst, `overview.md:125`). Die Befunde unten sind darum **rekonstruiert aus §1/§2
+des N1-Plans** (Jons Entscheidungstabelle), **nicht wörtlich**; eigene Verdikte sind keine erfunden.
+
+### Jons Entscheidungen (Punkt für Punkt, aus dem Plan)
+
+| Punkt | Entscheidung | Umsetzung |
+|---|---|---|
+| BUG-1 — Drawer (`zIndex={2}`) deckt `.chat-insight` (`z-index: 1`) zu und schluckt seine Klicks | **gegenseitiger Ausschluss** in beide Richtungen; kein zweiter „offen"-Besitzer, Insight bleibt ohne Adresspfad; Zahlen bleiben und bekommen **einen benannten Ort**; zwei neue Verhaltens-Tests | `src/chat/chat.edge.ts` (neu) + `closeFiles` in `app.routes.tsx`; Schicht-Liste über `.chat-workspace` |
+| BUG-2 — Kommentar `app.routes.tsx:145-147` sagt „column … instead of covering it" | Satz auf die Overlay-Wirklichkeit umschreiben | erledigt (drei Zeilen, Adresse bleibt Besitzer) |
+| `aria-modal={false}` | **bestätigt**, bleibt; kurz vermerken | bleibt; dieser Abschnitt ist der Vermerk |
+| LOW-1 — globaler Style-Entferner `test/shared/setup.ts` | nachgemessen, **andere Lage als vermutet**, kein Fix | siehe §L1 unten |
+| LOW-2/3/4 | mitgenommen | Test-Kommentar, Schicht-Liste, `.anticon`-Assertion weg |
+| AGENTS-DEV | 2–3 Zeilen im Factory-UI-Block, Datei zum Commit freigegeben | drei Kurzregeln (siehe Commit 2) |
+| Mutations-Check | nicht angefordert | — |
+
+**L1 (LOW-1), Messwert statt Fix:** Der Entferner bewegt ausschließlich Blätter **mit** `data-css-hash`
+(`setup.ts:60-61`) — das Marker-Attribut der Cssinjs-Cache der Basis. Unser Blatt trägt es nicht, und
+Blatt-Mechanik wird per `?raw`-Text gelesen, nie über `getComputedStyle` ⇒ ein „Kaskade wäre still grün" ist
+nicht möglich. Einzige echte Grenze: **kein Test prüft Basis-Regeln über berechnete Stilarten** — jetzt Regel
+in `AGENTS-DEV.md`, `test/shared/setup.ts` bleibt unverändert.
+
+### Der teure Befund: die Pass-Reihenfolge, nicht die Schicht
+
+Der vom Plan vorgegebene guarded-Reset `if (filesOpen && insight !== null) setInsight(null)` frisst den Insight,
+den der Leser **gerade** verlangt hat. Gemessen (temporäre Probe, vor Commit entfernt): React wendet den
+eigenen State der View an, **bevor** die neue Adresse sie erreicht — im Pass, der den frisch gesetzten Namen
+trägt, liest `filesOpen` noch `true`. Bestätigt: derselbe Heading-Knoten (`isSameNode`), `historyReads() === 1`
+⇒ **kein** Remount, der Chat blieb gemountet (UC-WP-70 G2 unberührt); Fehlerbild war
+`Unable to find an element by: [data-testid="insight-panel"]`.
+
+**Verworfen, jeweils gemessen:** `flushSync(() => navigate(…))` — dreht den Pass nicht, und `flushSync` ist in
+diesem Stand **nicht** aus `react` exportiert (react 19.3.1; nur `react-dom` hat es). Ref-Marker über die
+Pässe — `oxlint`-Regel `react(refs)` verbietet Ref-Zugriff im Render (4 warnings). Plan-Fallback (Insight-State
+in den Rahmen heben) — behält dieselbe Reihenfolge-Konkurrenz und hätte vier grüne Router-freie
+`chat.insight.test.tsx`-Fälle umgebaut. **Getragen hat:** Ask und Faktenlage in **einem** State-Objekt
+(`{ name, edgeAsked }`), consumiert in dem Pass, in dem die Kante ankommt; `shown` ist `null`, solange die
+Adresse die Kante hält — beide Overlays in einem Frame sind damit **strukturell** unmöglich, nicht über eine
+Zahl verhindert (`oxlint` meldet `set-state-in-render` nicht, `set-state-in-effect` bleibt verboten).
+
+### Abweichung — `chat.page.tsx` war 634 Zeilen, nicht ~593
+
+Die Plan-Prognose (593) traf nicht; AGENTS.md (`:10-12`) macht 600 zur harten Grenze, und §Schritt 6 erklärt
+die Teilung für diesen Fall zum Teil des Deltas. Also: Regel und State nach `src/chat/chat.edge.ts` (61 Zeilen,
+eine Zuständigkeit) — **597 Zeilen** danach, keine Verhaltensänderung, keine neue Prop.
+
+### Abweichung — zwei Plan-Lokalitäten
+
+LOW-4: die redundante `.anticon-close`-Assertion lebte in `theFilesTabOpensTheSlideOut`
+(`test/project/project.files.test.tsx:355`), **nicht** in `theViewerCanAlwaysBeClosed` — dort entfernt,
+`getByTestId('files-close')` bleibt als Existenz-Beweis. Und §6.3 („kein Push ins Leere") ist **verstärkt**:
+die Adresse allein kann einen Push auf sich selbst nicht sehen, also trägt `test/shared/current.path.tsx`
+zusätzlich `data-entry={key}` (Router-Key des Eintrags) — der Test behauptet jetzt Adresse **und**
+History-Eintrag. Der Fall bleibt in der zweiten Hälfte von `openingTheInsightClosesTheFilesAddress` (kein
+dritter Test ⇒ Stand bleibt 218).
+
+**Stand nach dem Delta:** **218 Tests / 22 Dateien** grün, `npx tsc -b` 0, `npx oxlint` 0/0 (83 Dateien),
+`npx antd lint ./src` 0 (51 Dateien), `npx vite build` ok, `grep -c ':has(' dist/assets/*.css` = 1,
+`wc -l` = `chat.page.tsx` 597 · `chat.edge.ts` 61 · `project.files.tsx` 402 · `app.routes.tsx` 186.
+Kommentar-Korrekturen dieses Deltas: `app.routes.tsx` (Zeile + JavaDoc-Ende), `chat.page.tsx` (Insight-Absatz),
+`styles.css` (Insight-Kommentar, Tab-Kommentar), `project.files.tsx` (nannte ein `z-index: 1` beim Chat, das es
+nicht gibt ⇒ Verweis auf die Liste). **Browser-Abnahme §7 (6 Punkte) steht weiterhin bei Jon** — dieser Build
+hat kein Browser-Werkzeug; neu daran: Insight→Tab, Tab zu (kein Insight-Rückkehrer), `/files`→Kachel,
+**Zurück/Weiter** über `/files`-Adressen (nie zwei Overlays), Tab über dem Insight erreichbar (3 > 1).

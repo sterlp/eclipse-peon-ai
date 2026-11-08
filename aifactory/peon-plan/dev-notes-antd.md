@@ -1273,5 +1273,32 @@ Drei Punkte, **kein Verhalten** — zwei Nachweislücken und ein Kommentar mit w
   (`.css-var-_r_0_`, `cssVar`-Modus), ein Blatt außerhalb dieser Klasse liest sie nicht — Bewegungen im
   Blatt bleiben darum Literal (hier `0.3s`).
 
+## Inkrement 4 UI — N1 Delta: zwei rechte Overlays, ein Render-Pass (2026-11-09)
+
+- **React wendet den eigenen State der View an, bevor die neue Adresse sie erreicht** (gemessen, Drawer +
+  Insight in derselben Zeile): Klick auf eine Kachel, die den Insight öffnet, während die Adresse den Drawer
+  hält, liefert einen Pass mit `insight` gesetzt **und** `filesOpen === true` — die Adresse kommt erst im
+  nächsten Pass an. Die Freigabe-Regel „Kante besetzt ⇒ kein Insight" löscht in diesem Pass genau den
+  Wunsch, der gerade entstanden ist. Lösung: Ask und Faktenlage in **einem** State-Objekt
+  (`{ name, edgeAsked }`), Konsum im Pass der Ankunft; Sichtbarkeit zusätzlich über `shown` (solange die
+  Adresse die Kante hält, `null`) ⇒ zwei Overlays in einem Frame sind nicht „verhindert", sondern unmöglich.
+- **`flushSync(() => navigate(…))` dreht diese Reihenfolge nicht** — und `flushSync` ist in diesem Stand
+  **nicht** aus `react` exportiert (react 19.3.1, gemessen über `node -e require('react')`; nur `react-dom`
+  hat es), der Trick würde also einen DOM-Import in eine Seite ziehen. Beides verworfen.
+- **Remount war hier die Fährte, nicht der Befund:** gleicher Heading-Knoten per `isSameNode` **und**
+  `historyReads() === 1` scheiden „die Route hat die Seite neu gebaut" sauber aus, bevor an State-Designs
+  gedreht wird.
+- **`oxlint`-Grenzen, die die Form erzwungen haben:** `react(refs)` meldet Ref-Zugriff **im Render**
+  (4 warnings) ⇒ kein Ref-Marker über die Pässe; `set-state-in-render` existiert als Regel **nicht**, ein
+  guarded `setState` im Render bleibt also der erlaubte Weg (`set-state-in-effect` bleibt verboten).
+- **`useLocation().key` ist der einzige History-Beweis für „geändert" oder „nur neu gemalt":** ein Push auf
+  die gezeigte Adresse lässt `pathname` unverändert, der Key wechselt. Der Test-Harness trägt ihn als
+  `data-entry` am `current-path`-Knoten.
+- **Zwei Drähte enden auf `/agents`:** `/api/projects/<id>/agents` (Roster) und
+  `/api/projects/<id>/agents/<name>` (Transcript eines Mitglieds) — ein `endsWith('/agents')`-Zweig frisst den
+  zweiten, also Transcript-Zweig **per Regex vorher** (`/api/settings/agents` wird noch früher abgefangen).
+  Roster ist jetzt Parameter von `stubAppServer(projects, roster = [DEV])`; der Default hat kein `TRANSCRIPT`,
+  damit keine Kachel eine Tür bekommt, die kein Fall bestellt.
+
 
 

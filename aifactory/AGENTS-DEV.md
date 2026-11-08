@@ -66,7 +66,12 @@
   `MAX_ROWS` als Konstante): Blatt via `import.meta.glob('../../src/*.css', { query: '?raw' })`, Helfer
   `declarations`/`block`/`declares` suchen per `indexOf` — kein Selektorwortlaut in Prosa, kein Kommentar
   **im** Block, gruppierte Selektoren (`.a,\n.b {`) treffen sie nicht; **Zustands-CSS über `+`/`~` braucht die
-  DOM-Nestung dazu** (`previousElementSibling`) — jsdom sieht die Kante nicht.
+  DOM-Nestung dazu** — die **Kanten-Lage** liegt seit dem Drawer aber in **Positionierung + `:has()`**
+  (`.chat-workspace:has(...)`), `previousElementSibling` beweist sie nicht mehr.
+- **AntD-Styles wandern im Test aus `document.head`** (`test/shared/setup.ts` ist die Messquelle): **kein Test
+  prüft Basis-Regeln über berechnete Stilarten**, eigene Blatt-Mechanik bleibt `?raw`-Text. Schicht-Zahlen der
+  Chat-Zeile stehen an **einer** Stelle (Liste über `.chat-workspace` in `styles.css`); eine neue rechte/obere
+  Schicht trägt ihre Zahl dort ein, die Überlagerung selbst nimmt der Browser ab.
 - **Farb-Modus ist eine Auswahl** (`src/shared/theme.mode.ts`, `localStorage['aifactory.theme']`, Startwert =
   Betriebssystem, keine Live-Folge); `main.tsx` schreibt `data-theme` **vor** dem Render ⇒ keine
   `prefers-color-scheme`-Doppeltabelle. `test/shared/app.harness.tsx` mountet darum `AppRoot` (hält Modus,
