@@ -40,6 +40,8 @@ test('theHeaderRowHoldsTheMenuAndNoSecondSettingsEntry', () => {
   const header = declarations('.app-header')
   expect(header).toMatch(/display:\s*flex/)
   expect(header).toMatch(/align-items:\s*center/)
+  // the band keeps no gap of its own to the page — the air below a page is the view's own padding (A2)
+  expect(header, 'the band sits flush on the content').toMatch(/margin:\s*0;/)
   const top = declarations('.app-top')
   expect(top).toMatch(/flex:\s*1/)
   expect(top, 'the menu shrinks instead of stretching the header').toMatch(/min-width:\s*0/)

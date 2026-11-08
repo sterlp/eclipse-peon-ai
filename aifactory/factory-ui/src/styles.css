@@ -17,8 +17,9 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  /* no negative margin: the frame carries no gutter of its own for the band to bleed out of (A2) */
-  margin: 0 0 1rem;
+  /* the band klebt bündig auf dem Inhalt (A2, R-WP-43): a margin here is the white gap between band and page
+     that Paul photographed 2026-11-08 — the air a page ends with is the view's own `padding-block-end` */
+  margin: 0;
 }
 
 /* the brand stands on the dark band, so it speaks in the band's colour and does not inherit the page's */
