@@ -1223,5 +1223,55 @@ Drei Punkte, **kein Verhalten** — zwei Nachweislücken und ein Kommentar mit w
   Band, nicht der Button-Oberfläche — darum eine Zeile im eigenen Blatt (`color: var(--top-text)`),
   `:hover` nicht vergessen, sonst blinkt das Zeichen beim Draufzeigen dunkel.
 
+## Inkrement 4 UI — Datei-Bereich als `Drawer` (2026-11-08)
+
+- **`getContainer={false}` ist Inline, nicht „irgendwohin":** rc setzt `inline: getContainer === false`
+  (`@rc-component/drawer/es/Drawer.js:102`), die Basis hängt `&-inline { position: absolute }` an den
+  sonst `fixed; inset:0; pointer-events:none` stehenden Root
+  (`antd/es/drawer/style/index.js:38-43, 63-65`). Der Root sucht sich den nächsten positionierten
+  Vorfahren — hier `.chat-workspace` —, damit bleiben Kopfzeile und Baum frei, und Tab und Fläche teilen
+  sich die Oberkante `top: 0`, ohne dass eine Kopfzeilenbreite kompensiert werden muss. Nebenbei: die
+  eigenen Tokens (`--files-width`, `--files-wide`) bleiben auflösbar, und der Focus-Trap ist in dieser
+  Kombination per Default **aus** (`antd/es/drawer/Drawer.js:122-125`).
+- **`aria-modal` ist ein getyptes Prop, kein JSX-Trick nötig:** der Drawer nimmt
+  `Pick<DialogHTMLAttributes, …>`; `pickAttrs(aria)` (`@rc-component/drawer/es/DrawerPopup.js:226`) legt
+  aria-Sachen aufs `div[role=dialog]`, und die eigenen `restProps` werden **danach** gespreizt
+  (`DrawerPanel.js`) — `aria-modal={false}` gewinnt also gegen das harte `"true"` der Basis.
+- **Breite: `size` wird inline auf den Content-Wrapper geschrieben, die Klemme ist `max-width`.**
+  `size` geht unverändert durch (`DrawerPopup.js:140-164, 229-236`), ein Blatt-`width` verliert gegen
+  inline; `max-width` ist ein anderes Property und klemmt — muss aber die Basis-Regel
+  `max-width: 100vw` auf demselben Element überstimmen, die unter `:where(.css-hash).ant-drawer …`
+  (0,2,0) **nach** dem eigenen Blatt injiziert ⇒ drei eigene Klassen nötig. Die Übergangsregel lebt von
+  `transition: all` genau dieses Wrappers (`style/index.js:78-86`), der Wechsel der Breite animiert mit.
+- **Der Body der Basis scrollt:** `ant-drawer-body` = `flex:1; min-width:0; min-height:0; overflow:auto`
+  (`style/index.js:192-197`). Wer den Inhalt selbst scrollen lassen will, muss ihm eine Höhe geben —
+  sonst wächst der Inhalt und der Body trägt den Balken. Polster der Basis (`padding: paddingLG`) mit
+  `classNames.body` + drei Klassen wegnehmen, nicht per `styles={{body:…}}` (dann wandert Aussehen aus
+  dem Blatt).
+- **Ohne Maske ist der Schirm bedienbar — und zwar wirklich:** Maske hätte `pointer-events:auto`
+  (`style/index.js:67-76`), ohne sie bleibt der Root bei `pointer-events:none` während die Sektion `auto`
+  bekommt (`:42, :124`); der Scroll-Lock ist an die Maske gehängt (`autoLock: mask && …`,
+  rc `Drawer.js:123`), fällt also mit ihr weg. `push` braucht keine Konfiguration: `pushed` kommt aus dem
+  Context einer Darüber-Ebene (`DrawerPopup.js:68-99`) und ist bei einer Ebene immer `false`.
+- **Esc ist eine window-Abfrage, kein Fokus-Test:** `useEscKeyDown`
+  (`@rc-component/portal/es/useEscKeyDown.js:17-31`) hängt am `window` und ist IME-geschützt —
+  `fireEvent.keyDown(window, { key: 'Escape' })` schließt von jeder Fokusstelle, auch aus dem Chat-Feld.
+- **`destroyOnHidden` baut in jsdom sofort ab** (rc `Drawer.js:77-79`, gemessen: Klick auf Zu ⇒ Knoten
+  weg in 27 ms). Die Leave-Animation der **Hülle** läuft über `motionDeadline: 500`, darum müssen Tests,
+  die „nichts bleibt zurück" behaupten, in `waitFor` — sonst gewinnen sie nur, weil die Animation noch
+  läuft.
+- **jsdom zahlt jede Rollen-Abfrage mit der Regelzahl des Dokuments — der teuerste Fund dieses
+  Inkrements:** der Drawer injiziert beim Mount **+92 Regeln** (+18 KB; 983/38 Sheets statt 891/36), die erste
+  `getAllByRole('button')` danach 494 ms statt 49 ms, und jede DOM-Änderung nimmt das Geld erneut —
+  eine Datei von 7,22 s auf 48,6 s, ein Einzelfall über das 5-s-Timeout. Der Preis hängt an den Regeln,
+  nicht am Mount (Mount/Unmount selbst: 15/27 ms) und nicht an `:has()` (ersetzt ⇒ keine Änderung).
+  `test/shared/setup.ts` verschiebt `style[data-css-hash]` per `MutationObserver` aus dem Dokument;
+  danach 216 Tests / 22 Dateien in 8,2 s. `StyleProvider container` aus `@ant-design/cssinjs` wäre der
+  vorgesehene Weg, ist aber **nicht lösbar** (pnpm: `node_modules/@ant-design/` enthält nur `icons`, antd
+  re-exportiert nichts davon) — er bräuchte einen eigenen devDependency.
+- **`--ant-*`-Variablen sind nicht `:root`:** die Basis legt sie auf eine generierte Klasse
+  (`.css-var-_r_0_`, `cssVar`-Modus), ein Blatt außerhalb dieser Klasse liest sie nicht — Bewegungen im
+  Blatt bleiben darum Literal (hier `0.3s`).
+
 
 

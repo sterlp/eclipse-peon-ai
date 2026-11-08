@@ -675,3 +675,68 @@ ein **Zitat** aus der deutschen Doku, keine Kommentar-Prosa. Akzeptanz- grep (`n
 **Stand nach dem Delta:** 215 Tests / 22 Dateien grün (214 + der neue Stop-Fall), `npx tsc -b` 0, `npx oxlint`
 0/0 (82 Dateien), `npx antd lint ./src` 0 (50 Dateien), Eclipse-Bau `factory-ui` ohne Meldung. Browser-
 Stichprobe (nach einem Abbruch leer „Send" ⇒ dieselbe Frage nochmal) steht bei Paul/Jon aus.
+
+## Inkrement 4 UI — der Datei-Bereich wird der Drawer der Basis (Dev-Bau 2026-11-08, Branch `web-factory-4` · Stand `44298477`)
+
+**Gebaut:** `ProjectFiles` (`src/project/project.files.tsx:225-266`) zeigt den Datei-Bereich als `Drawer`
+der Basis — `getContainer={false}` (inline in `.chat-workspace`), `mask={false}`, `placement="right"`,
+`size="var(--files-wide)"`, `zIndex={2}`, `destroyOnHidden`, `onClose={onToggle}`. Der eigene
+`{open && …}`-Guard und `button.files-collapse` sind weg: Schließen ist der Kopf der Basis (X und Esc,
+beide durch `onToggle` = Adresse). Blatt: drei Tab-Lagen und die Breiten-Klemme über `:has()`
+(`src/styles.css:785-805`). Tests 216 / 22 Dateien (Esc-Fall neu).
+
+### Abweichung 1 — Plan D6 vermisst eine Schicht, die es nicht gibt
+
+D6 stützt sich auf „`.view` `z-index: 1` (`styles.css:732-739`)". Gemessen: `.view` (`:103`) und
+`.chat-workspace > .view` (`:733`) führen **kein** `z-index`; der Wert 1 bei `:971` gehört zu
+`.chat-insight`. Darum ist nichts ergänzt worden — der Drawer-Root (inline 2) liegt über der statischen
+Zeile, der Tab (Blatt 3) über dem Drawer. Die gewünschte Reihenfolge ist da, ohne eine erfundene Schicht.
+
+### Abweichung 2 — Scroll-Herr ist der Drawer, nicht die Fläche
+
+§4 Schritt 2 schrieb der Fläche `overflow-y: auto` zu. Gemessen setzt die Basis auf ihren Body
+`flex:1; min-height:0; overflow:auto` (`antd/es/drawer/style/index.js:192-197`); eine Fläche, die ihre
+Höhe aus dem Inhalt holt, scrollt also **im Body** und die eigene Rolle wäre toter Code. Entscheid:
+`min-height: 100%` an der Fläche (Oberfläche und Kante die ganze Höhe gemalt), `overflow-y` **weg**.
+Sichtbar wie vorher: ein Scrollbalken über den ganzen Bereich.
+
+### Abweichung 3 — drei Klassen statt zwei, weil die Basis später injiziert
+
+D10 rechnete `.chat-workspace .files-drawer-body` (0,2,0) für das Polster. Gemessen verliert das: die
+Basis schreibt ihr Polster über `:where(.css-hash).ant-drawer .ant-drawer-body` — ebenfalls (0,2,0), aber
+**nach** unserem Blatt ⇒ Gleichstand ist Verlust. Getragen haben darum
+`.chat-workspace .files-drawer .files-drawer-wrapper|…-body` (0,3,0); dasselbe gilt für die Wrapper-Klemme
+gegen `max-width: 100vw` der Basis.
+
+### Abweichung 4 — Bewegungsdauer bleibt ein Literal
+
+Der Plan wollte die Tab-Dauer an die Kantenbewegung angleichen; `--ant-motion-duration-slow` ist im Blatt
+**nicht lesbar** — die Basis legt ihre `--ant-*`-Variablen auf eine generierte Klasse (`.css-var-_r_0_`),
+nicht auf `:root`. Darum `transition: right 0.3s ease-out` mit Kommentar; die Übergangsphase misst die
+Browser-Abnahme.
+
+### Benannte Abweichung 5 — der Nachbar-Nachweis ist raus (Plan D5, gegen Regel 15 `AGENTS-DEV.md`)
+
+`previousElementSibling` und die `+`-Regel sind weg; die Lage liest der Tab über
+`.chat-workspace:has(.files-panel[data-wide='true']) .files-tab`. Ein Geschwister-Beweis wäre nach dem
+Umbau **zufällig** grün — Tab und Fläche sind seit dem Drawer keine Nachbarn mehr. `npx vite build` und
+`grep -c ':has(' dist/assets/*.css` = 1 (beide Selektoren unverändert im Auslieferungsgut, kein
+Transformer konfiguriert) ⇒ der vorentschiedene Fallback (nur eine Breite) war nicht nötig.
+
+### BLOCKER behoben — jsdom kaskadiert die Basis in jede Rollen-Abfrage
+
+Nicht im Plan und nicht in `src/`: `test/shared/setup.ts` räumt die Stil-Marken der Basis
+(`style[data-css-hash]`) per `MutationObserver` aus dem Dokument. Maß: mit dem Drawer hält das Dokument
+983 Regeln statt 891 (+18 KB, schon im geschlossenen Zustand), die **erste** `getAllByRole` einer Datei
+läuft 494 ms statt 49 ms und wird nach jeder DOM-Änderung neu bezahlt ⇒ `project.files.test.tsx`
+7,22 s (HEAD) → **48,6 s**, ein Fall über die 5 s des Test-Timeouts. Kein Test liest einen berechneten
+Stil (jsdom antwortet `canvastext`), die Mechanik-Tests lesen unser Blatt als Text — die Stil-Marken
+dürfen außerhalb des Dokuments stehen. Danach **216 Tests / 22 Dateien in 8,2 s** (ganze Suite).
+Alternative „Timeout erhöhen" verworfen: sie behält die Verlangsamung, beseitigt sie nicht.
+
+**Stand nach dem Delta:** 216 Tests / 22 Dateien grün, `npx tsc -b` 0, `npx oxlint` 0/0 (82 Dateien),
+`npx antd lint ./src` 0 (50 Dateien), `npx vite build` 1,01 s. **Browser-Abnahme steht aus** (Plan §7:
+Tab bündig oben · Fläche liegt über dem Rand, Chat sichtbar und tipbar · Tab reitet die Kante auch breit ·
+schließen per X/Esc/Tab/Sider ohne Scroll-Sprung · Fokus zurück zum Tab · Inhalt fährt mit raus) — dieser
+Build hat kein Browser-Werkzeug. Die Doku-Klammer „Portal `(document.body)`" hat Jon auf inline gezogen,
+`aria-modal={false}` ist Jons Freigabe.
