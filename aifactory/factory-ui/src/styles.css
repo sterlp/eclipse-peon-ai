@@ -301,7 +301,10 @@ button {
 
 /* The log is the scroll area of the chat: the tiles above and the input below keep their place while the
    conversation runs past them (R-WP-35, UC-WP-66). It takes the width the column has and keeps one edge of its
-   own, so its scrollbar stays at the edge of the surface (D8) — the same measure head, tiles and input use. */
+   own, so its scrollbar stays at the edge of the surface (D8) — the same measure head, tiles and input use.
+   `align-content` is load-bearing: the log is a grid flexed to the column's height, and its implicit rows are
+   `auto`, so the default `normal` (= `stretch`) hands the leftover height to them — one line of text then
+   paints a bubble over half the screen instead of the height of its text (R-WP-29, Paul 2026-11-08). */
 .chat-log {
   flex: 1;
   min-height: 0;
@@ -309,6 +312,7 @@ button {
   list-style: none;
   margin: 0 0 1rem;
   display: grid;
+  align-content: start;
   gap: var(--space-2);
   padding-inline: var(--chat-gutter);
 }

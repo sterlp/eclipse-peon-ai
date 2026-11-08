@@ -1823,6 +1823,9 @@ test('theLogIsTheScrollArea', () => {
   // without the zeroed floor a flex item keeps its content height and never scrolls — the line that looks
   // like a leftover is the one that makes the scroll work
   expect(declarations('.chat-log'), 'and may shrink below its own content').toContain('min-height: 0')
+  // the rows of the grid may not share the leftover height of the flexed log — that is what makes a bubble
+  // as high as its text and not as high as the screen (R-WP-29); the height itself stays a browser measurement
+  expect(declarations('.chat-log'), 'and stacks its lines from the top').toContain('align-content: start')
   expect(declarations('.chat-workspace'), 'the row is the box the file tab hangs on').toContain(
     'position: relative',
   )
