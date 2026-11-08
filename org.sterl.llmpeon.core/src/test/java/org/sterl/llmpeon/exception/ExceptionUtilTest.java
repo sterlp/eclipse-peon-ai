@@ -9,6 +9,7 @@ import java.util.concurrent.ExecutionException;
 
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.TerminationProbe;
+import org.sterl.llmpeon.streaming.AiCancellationException;
 
 import dev.langchain4j.exception.RateLimitException;
 
@@ -17,6 +18,8 @@ class ExceptionUtilTest {
     @Test
     void isCanceled_returns_true_for_direct_cancellation() {
         assertThat(ExceptionUtil.isCanceled(new CancellationException())).isTrue();
+        assertThat(ExceptionUtil.isCanceled(new AiCancellationException(null, null))).isTrue();
+        assertThat(ExceptionUtil.isCanceled(new RuntimeException())).isFalse();
     }
 
     @Test

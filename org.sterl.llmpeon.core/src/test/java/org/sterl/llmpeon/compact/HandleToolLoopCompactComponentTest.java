@@ -11,20 +11,20 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.sterl.llmpeon.StreamMock;
+import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
-import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
+import org.sterl.llmpeon.streaming.AiCancellationException;
 import org.sterl.llmpeon.streaming.ApiRetry;
 import org.sterl.llmpeon.tool.LoopOwner;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
@@ -190,12 +190,12 @@ class HandleToolLoopCompactComponentTest {
         var memory = seed(new ThreadSafeMemory(), 5);
         setCounter(memory, 170001);
         var compactCalls = new AtomicInteger();
-        var agent = throwingAgent(compactCalls, () -> new CancellationException("user stop"));
+        var agent = throwingAgent(compactCalls, () -> new AiCancellationException("user stop", null, null));
         var req = request(memory, agent, new ArrayList<>(), BUDGET, preloadedRetry(), false);
 
         // WHEN / THEN — the cancel propagates unchanged: no retry, no wrapping into a turn error
         assertThatThrownBy(() -> new HandleToolLoopCompactComponent().handle(req, true))
-                .isExactlyInstanceOf(CancellationException.class)
+                .isExactlyInstanceOf(AiCancellationException.class)
                 .hasMessage("user stop");
         assertThat(compactCalls.get()).isEqualTo(1);
     }

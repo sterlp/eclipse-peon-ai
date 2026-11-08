@@ -7,6 +7,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.OnPartialAiResponse;
@@ -69,6 +70,9 @@ public class StreamingBridge implements StreamingChatResponseHandler {
     private volatile AtomicReference<Throwable> errorRef;
     private volatile AtomicReference<StreamingHandle> handleRef;
     private volatile AiMonitor monitor;
+    
+    private final StringBuilder partialResponse = new StringBuilder();
+    private final StringBuilder partialThink = new StringBuilder();
 
     /**
      * Executes one streaming LLM call and blocks until complete or error.
@@ -90,6 +94,9 @@ public class StreamingBridge implements StreamingChatResponseHandler {
         this.thinkTimer.start();
         this.tokenTimer.reset();
         this.tokenPhaseStart = 0;
+        this.partialResponse.setLength(0);
+        this.partialThink.setLength(0);
+
         this.monitor.onStreamingChunk(new OnPartialAiResponse(Type.START, null, startedAt, tokenPhaseStart));
 
 
@@ -97,16 +104,17 @@ public class StreamingBridge implements StreamingChatResponseHandler {
         try {
             model.chat(request, this);
 
-            while (!latch.await(1500, TimeUnit.MILLISECONDS)) {
+            while (!latch.await(1000, TimeUnit.MILLISECONDS)) {
                 cancelAndRelease(handleRef.get());
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             StreamingHandle h = handleRef.get();
             if (h != null) h.cancel();
-            errorRef.compareAndSet(null, new CancellationException("Thread interrupted"));
+            errorRef.compareAndSet(null,
+                    new AiCancellationException("Thread interrupted", partialThink.toString(), partialResponse.toString()));
         } catch (Exception e) {
-            error = e;
+            error = ExceptionUtil.unwrap(e);
         } finally {
             latch.countDown();
         }
@@ -114,7 +122,7 @@ public class StreamingBridge implements StreamingChatResponseHandler {
         error = errorRef.get() == null ? error : errorRef.get();
         if (error != null) {
             // if we are canceled - and have a response use it
-            if (error instanceof CancellationException && responseRef.get() != null) return responseRef.get();
+            if (ExceptionUtil.isCanceled(error) && responseRef.get() != null) return responseRef.get();
             if (error instanceof RuntimeException ex) throw ex;
             throw new RuntimeException(error);
         }
@@ -142,6 +150,7 @@ public class StreamingBridge implements StreamingChatResponseHandler {
         handleRef.compareAndSet(null, context.streamingHandle());
         if (cancelAndRelease(context.streamingHandle())) return;
         onFirstPartial();
+        this.partialResponse.append(partialResponse.text());
         monitor.onStreamingChunk(new OnPartialAiResponse(Type.ANSWER, partialResponse.text(), startedAt, tokenPhaseStart));
     }
 
@@ -151,6 +160,7 @@ public class StreamingBridge implements StreamingChatResponseHandler {
         if (cancelAndRelease(context.streamingHandle())) return;
         onFirstPartial();
         thinkTimer.stop();
+        this.partialThink.append(partialThinking.text());
         monitor.onStreamingChunk(new OnPartialAiResponse(Type.THINK, partialThinking.text(), startedAt, tokenPhaseStart));
     }
 
@@ -166,7 +176,8 @@ public class StreamingBridge implements StreamingChatResponseHandler {
     private boolean cancelAndRelease(StreamingHandle handle) {
         if (!monitor.isCanceled()) return false;
         if (handle != null) handle.cancel();
-        errorRef.compareAndSet(null, new CancellationException("AI call canceled ..."));
+        errorRef.compareAndSet(null, 
+                new AiCancellationException(partialThink.toString(), partialResponse.toString()));
         latch.countDown();
         return true;
     }
