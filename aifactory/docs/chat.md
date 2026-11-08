@@ -203,6 +203,8 @@ Jon und sein Team bekommen **alle** Core-Werkzeuge inklusive Shell (`disk*`, `we
 Kopf des Chat-Views: eine Kachel für jeden Agenten von Jons Team (Jon, Plan, Dev, Review,
 Search) — Name, Kontextgröße, Statusanzeige, **Clear**- und **Compact**-Knopf. Kontextgröße ist
 dieselbe Zahl wie im Plugin-Header: genutzte Tokens gegen das Auto-Compact-Budget des Agenten.
+Die **Statusanzeige ist der eine Arbeits-Zeiger der Seite** — ihre Farben und Zustände regelt
+[R-WP-45](chat.md); die Kachel-Reihe steht **ohne Abstand über dem Chat** (Paul 2026-11-08, Abnahme).
 Die **Search**-Kachel zeigt diese Zahl nicht — Search ist ein Sub-Loop von Jon
 ([ADR-0079](adr/0079-display-names-without-ork-names.md)), hat keinen eigenen Kontext („—") und
 kein Clear/Compact. Kacheln von Plan, Dev und Review öffnen den schreibgeschützten Blick in das
@@ -220,6 +222,31 @@ eigene Gespräch ([R-WP-26](chat.md)).
 #### UC-WP-13 — compactAffectsOnlyThatAgent ✅
 - GIVEN eine Kachel WHEN **Compact** geklickt wird THEN kompaktiert genau dieser Agent und die
   Kachel zeigt den Compact als eigenen Zustand.
+
+### R-WP-45 — Status-Indikator der Kacheln: blau arbeitet, gelb kompaktiert, grün bereit ❌ (Paul 2026-11-08, Abnahme — „wir nutzen den Status-Indikator, keinen weiteren Status im Chat"; ersetzt den grauen Warte-Rahmen, [R-WP-31](chat.md))
+
+Der Status-Indikator je Kachel (heute ein schwarzer/grauer Punkt) zeigt den Zustand des Agenten
+in **drei Farben**: **blau** = der Agent arbeitet, **gelb** = er kompaktiert, **bereit** = ein
+**grüner Kreis, größer als bisher**. **Der arbeitende Zustand ist eine drehende Spin** — AntD `Spin`
+mit `LoadingOutlined` (die Animation bringt AntD mit, keine eigene CSS-Rotation); in der Timeline
+läuft sie als `size="small"` (Paul 2026-11-08, Abnahme). Er steht in der Kachel-Reihe **ohne Abstand
+über dem Chat** und
+ist damit der **eine** Arbeits-Zeiger — im Chat gibt es keinen zweiten
+([R-WP-31](chat.md)); der Warte-Rahmen ist gelöscht. Die Farben gelten je Kachel — auch für
+Team-Mitglieder, deren Arbeit sonst nur in der Delegations-Zeile sichtbar wäre (F3,
+[open-points](open-points.md)). **Fehler = rot, wie im Plugin** (Paul 2026-11-08) — dargestellt als
+AntD-Fehler-/Alert-Indikator, **wenn** AntD dafür ein fertiges Widget hat (Widget-vor-eigenbau,
+[R-WP-46](ui.md)).
+
+#### UC-WP-79 — tileStatusIndicatorColors ❌
+- GIVEN ein Agent arbeitet WHEN seine Kachel zeichnet THEN zeigt ihr Status-Indikator **Blau**.
+- GIVEN ein Agent kompaktiert WHEN seine Kachel zeichnet THEN zeigt ihr Status-Indikator **Gelb**.
+- GIVEN ein Agent ist bereit WHEN seine Kachel zeichnet THEN zeigt ihr Status-Indikator einen
+  **grünen Kreis, größer als bisher** — und keine Kachel trägt eine Rahmen-Kontur
+  ([R-WP-31](chat.md)).
+- GIVEN ein Agent ist **gescheitert** WHEN seine Kachel zeichnet THEN zeigt ihr Status-Indikator
+  **rot** (wie im Plugin) — als AntD-Fehler-/Alert-Indikator, sofern es dafür ein fertiges Widget gibt
+  ([R-WP-46](ui.md)).
 
 ### R-WP-26 — Der Blick in den Agenten-Chat (Slide-out) ✅
 
@@ -284,7 +311,9 @@ einem **Fehler** oder einem **Diff-Block** — jeder beendet die Gruppe und das 
 **ein Widget an der Stelle des ersten
 Schritts**; **der Punkt eines arbeitenden Schritts ist der loading-Dot**, erledigte Schritte tragen die
 **Uhrzeit ihrer Ankunft als HTML-`title`** (Dots groß, Abstände zwischen den Items sehr klein — Paul
-2026-11-07; die **Geometrie der Items ist unseren Maßen unterworfen**: Minimum-Höhe und
+2026-11-07; **der Lade-Punkt des arbeitenden Schritts ist AntD `Spin` mit `LoadingOutlined`**
+(`size="small"` — die Rotation kommt von AntD, keine eigene CSS-Animation) **und fällt maßlich etwas
+größer aus als bisher** — Paul 2026-11-08, Abnahme; die **Geometrie der Items ist unseren Maßen unterworfen**: Minimum-Höhe und
 Default-Abstände der Basis werden im Chat-Scope auf das sehr kleine Maß überschrieben — die Basis
 kann das Maß nicht per Token drücken). **Der Think-Abschnitt ist ein Eintrag wie ein Werkzeug** (Paul 2026-11-07: „think zeigen
 wir wie tool an" — wie im Plugin `chat.html`; die frühere Fassung „Jons Denken zeigt der Chat nicht"
@@ -370,13 +399,16 @@ Bild bleibt in der Antwortbreite, nichts rechtsbündig. Die untenstehende BDD wi
 Übernahme auf die neue Optik umgeschrieben bzw. gelöscht (Design-Tests-Regel, [R-WP-39](ui.md)).
 
 Die **eigene Eingabe steht rechts in ihrer Blase** (Referenz-Optik, oben); **keine Antwort** ist
-rechtsbündig oder mittig zentriert — Antworten stehen links im Fluss. Blasen und Karten halten ihr
-Maß an der **AntD-Typografie** (body 14 px / Code 13 px — `ant-design.md`), nicht an einer eigenen
-Wohnerfahrung: Innenmaß eng am Text ([R-WP-29] Präzisierung Paul 2026-11-07, „viel größer als der
-Text"). Jons Antworten haben **keinen
-grauen Hintergrund-Block** und keine eingestreuten Markierungen oder Cards im Fließtext. Der
-**Warte-Rahmen** einer vorläufigen Zeile (UC-WP-65) ist eine **graue gestrichelte Kontur** — nicht blau
-(Paul 2026-11-07: „blauer Rand ist komisch"). Wo die Rolle wechselt,
+rechtsbündig oder mittig zentriert — Antworten stehen links im Fluss. **Blasen nehmen die volle
+verfügbare Breite ein, ihre Höhe ist nie größer als der Text** (Paul 2026-11-08, Abnahme: die Blasen
+standen deutlich höher als ihr Inhalt); das Innenmaß bleibt eng am Text, die Maße halten sich an die
+**AntD-Typografie** (body 14 px / Code 13 px — `ant-design.md`). Jons Antworten haben **keinen
+grauen Hintergrund-Block** und keine eingestreuten Markierungen oder Cards im Fließtext. **Einen
+Warte-Rahmen gibt es nicht** (Paul 2026-11-08: „einfach löschen" — zwei Indikatoren seien einer zu
+viel; dass Jon arbeitet, zeigt der Status-Indikator der Kachel-Reihe, [R-WP-31](chat.md)). Sollte um
+die vorläufige Blase **doch** eine Kennzeichung gewünscht sein, dann als AntD **`BorderBeam`**
+(https://ant.design/components/border-beam, Paul 2026-11-08) — nie wieder ein eigener gestrichelter
+Rahmen. Wo die Rolle wechselt,
 **trennt keine Linie**: Blase und Karte trennen die Stimmen optisch — **kein `<hr>`** und
 keine andere horizontale Linie **zwischen zwei Zeilen** (die Begründung „Linien treffen sich
 seitlich" der Akzent-Fassung ist mit den Bubbles entfallen). Ein `---` **innerhalb einer Antwort** ist deren Inhalt und wird nicht
@@ -444,28 +476,31 @@ gesendete Nachricht erneut senden**, ohne sie neu zu tippen — etwa nach einem 
 - GIVEN der Nutzer hat eine Nachricht gesendet WHEN er „Resend" wählt THEN geht dieselbe Nachricht
   erneut in die Queue (auch nach einem Fehler), ohne dass er sie neu tippt.
 
-### R-WP-31 — Warte-Indikator während des Turns ✅ (Paul 2026-11-02; Rahmens-Ende geschärft Runde 2, Inc 2)
+### R-WP-31 — Warte-Indikator während des Turns ✅ (Paul 2026-11-02; **Warte-Rahmen seit 2026-11-08 zurückgenommen** — Paul, Abnahme: „einfach löschen"; der Umbau ist nicht gebaut, UC-WP-65 ❌)
 
 Während ein Turn läuft, zeigt der Chat eine kompakte **Warte-Leiste** („Waiting for AI…" wie im
 Plugin: dunkel, Mono, blinkender Cursor) mit dem Live-Preview des Streams; sie steht **über der
 Eingabe** ([R-WP-35](chat.md)).
 Der **Warte-Zustand endet mit dem Turn** — `done`, `error` und ein **akzeptierter Stop** schließen ihn
-ab; danach trägt **keine** Zeile mehr den Warte-Rahmen, und die bis dahin gezeigten Zeilen bleiben
-stehen ([UC-WP-50](chat.md)). Der **Rahmen** gilt dabei dem Turn, den **dieser Browser** gestartet hat;
-die Warte-Leiste gilt jedem Turn dieses Projekts, auch dem eines anderen Nutzers ([UC-WP-22](chat.md)).
+ab; die bis dahin gezeigten Zeilen bleiben stehen ([UC-WP-50](chat.md)). **Der Warte-Rahmen ist
+gelöscht** (Paul 2026-11-08, Abnahme: „der Rahmen ist komisch — zwei Indikatoren"): eine Zeile trägt
+**nie** eine Rahmen-Kontur; dass Jon arbeitet, zeigt der **Status-Indikator** der Kachel-Reihe
+([R-WP-7](chat.md), [R-WP-45](chat.md)) — **ohne Abstand über dem Chat**; im Chat selbst gibt es
+**keinen** weiteren Arbeits-Status. Die **Warte-Leiste** gilt jedem Turn dieses Projekts, auch dem
+eines anderen Nutzers ([UC-WP-22](chat.md)).
 
 #### UC-WP-58 — waitingIndicatorShowsLiveState ✅
 - GIVEN ein laufender Turn WHEN er noch nichts geliefert hat THEN zeigt die Warte-Leiste „Waiting for
   AI…"; WHEN der Stream liefert THEN wechselt sie auf das Live-Preview und endet mit dem Turn.
 
-#### UC-WP-65 — waitingMarkEndsWithTheTurn ✅
-- GIVEN eine eigene, noch nicht bestätigte Eingabe WHEN der Turn läuft THEN trägt ihre Zeile den
-  Warte-Rahmen.
-- GIVEN ein von diesem Browser gestarteter Turn WHEN `done` eintrifft THEN trägt **keine** Zeile den
-  Warte-Rahmen und die Zeilen des Turns bleiben sichtbar.
-- GIVEN ein laufender Turn WHEN ein `error` eintrifft THEN trägt **keine** Zeile den Warte-Rahmen.
-- GIVEN ein laufender Turn WHEN der Stop akzeptiert wird THEN trägt **keine** Zeile den Warte-Rahmen,
-  und was der Nutzer bis dahin gesehen hat, bleibt stehen (kein Geschichts-Read, D-16).
+#### UC-WP-65 — waitingMarkEndsWithTheTurn ❌ (neu gefasst Paul 2026-11-08: der Warte-Rahmen ist gelöscht, die Arbeit zeigt der Status-Indikator — [R-WP-7](chat.md)/[R-WP-45](chat.md))
+- GIVEN ein laufender Turn WHEN die vorläufige Eingabezeile steht THEN trägt **keine** Zeile des
+  Verlaufs eine Rahmen-Kontur — der arbeitende Zustand steht im Status-Indikator der Kachel-Reihe.
+- GIVEN ein von diesem Browser gestarteter Turn WHEN `done` eintrifft THEN endet der Arbeits-Status,
+  und die Zeilen des Turns bleiben sichtbar.
+- GIVEN ein laufender Turn WHEN ein `error` eintrifft THEN endet der Arbeits-Status.
+- GIVEN ein laufender Turn WHEN der Stop akzeptiert wird THEN endet der Arbeits-Status, und was der
+  Nutzer bis dahin gesehen hat, bleibt stehen (kein Geschichts-Read, D-16).
 
 ### R-WP-32 — Kacheln als Reihe oben, Klick öffnet den Blick ✅ (Paul 2026-11-02)
 
@@ -505,13 +540,20 @@ dass sein Turn gescheitert ist). Zwei Fehlschläge sind **zwei** Fehlerzeilen �
   weiterhin im Verlauf (derselbe Bestand wie vor dem Reload).
 
 
-### R-WP-35 — Der Chat scrollt, die Eingabe steht unten ✅ (Runde 2, Inc 3)
+### R-WP-35 — Der Chat scrollt, die Eingabe steht unten ✅ (Runde 2, Inc 3; Scroll-Verhalten geschärft Paul 2026-11-08 — die Schärfungen unten sind ❌, UC-WP-80)
 
 Der Chat ist eine **Fläche mit eigenem Scroll**: der Verlauf scrollt in seiner **eigenen** Fläche,
 während die **Kachel-Reihe oben** und die **Eingabe unten** stehen bleiben — die Warte-Leiste
 ([R-WP-31](chat.md)) liegt direkt **über** der Eingabe. Neue Zeilen scrollen **nur** dann ans Ende,
-wenn der Nutzer **unten** steht; wer oben nachliest, wird nicht nach unten gerissen. Die Fläche behält
-ihre volle Breite ([R-WP-1](ui.md)) — der Scroll gehört dem Verlauf, nicht der Seite.
+wenn der Nutzer **unten** steht; wer oben nachliest, wird nicht nach unten gerissen. Die Fläche
+nutzt bei behaltenem Rand die **volle Bildschirmbreite** (Paul 2026-11-08, Abnahme: der Chat nahm
+nicht den ganzen Platz ein, die Ränder waren asymmetrisch) — der Scroll gehört dem Verlauf, nicht der
+Seite. Die **Eingabe-Zeile** ist unten **weiß und ruhig über die volle Breite, der Senden-Knopf
+rechts daneben** (Paul 2026-11-08, SOLL-Bild). **Schärfungen 2026-11-08 (❌):** nach der **eigenen
+Eingabe** scrollt der Verlauf **immer** ans Ende — unabhängig von der Leseposition; **scrollt der
+Nutzer zurück an das Ende, greift das Auto-Scrollen wieder**; und **solange er vom Ende entfernt ist,
+steht ein schwebender Knopf** — Pfeil nach unten, „Scroll bottom" (AntD `FloatButton`, wie
+`BackTop`, nur umgekehrt), der zum Ende springt und das Auto-Scrollen wieder bewaffnet.
 
 #### UC-WP-66 — chatScrollsWithFixedComposer ✅
 - GIVEN ein Chat mit langem Verlauf WHEN die Seite geöffnet wird THEN scrollt der Verlauf in seiner
@@ -520,3 +562,14 @@ ihre volle Breite ([R-WP-1](ui.md)) — der Scroll gehört dem Verlauf, nicht de
   ans Ende.
 - GIVEN der Nutzer hat nach oben gelesen WHEN eine neue Zeile erscheint THEN bleibt der Verlauf an
   seiner Position stehen.
+
+#### UC-WP-80 — scrollBottomButtonReArmsAutoScroll ❌ (Paul 2026-11-08, Abnahme)
+- GIVEN der Nutzer ist vom Ende entfernt WHEN neue Zeilen erscheinen THEN bleibt der Verlauf an seiner
+  Position und ein schwebender Knopf (Pfeil nach unten, „Scroll bottom", AntD `FloatButton`) ist
+  sichtbar.
+- GIVEN der Nutzer klickt den Knopf WHEN er springt THEN landet der Verlauf am Ende und das
+  Auto-Scrollen greift wieder — neue Zeilen ziehen wieder ans Ende.
+- GIVEN der Nutzer hat nach oben gelesen und scrollt selbst zurück ans Ende WHEN er dem Ende nahe ist
+  THEN greift das Auto-Scrollen wieder.
+- GIVEN der Nutzer sendet selbst WHEN der Turn läuft THEN scrollt der Verlauf immer ans Ende,
+  unabhängig von der Leseposition.

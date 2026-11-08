@@ -56,14 +56,17 @@ MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabi
 * [UI](ui.md) — Rahmen: Top-Menü + Projektbaum im Sider (AntD), URL-stabil, Auslieferung unter `/ui/`, Look. ◐ (Auslieferung,
   **Sider + URL ✅ [R-WP-38/UC-WP-70](ui.md)**, **Look-Restart ✅ [R-WP-43/UC-WP-76/77](ui.md)**,
   **Design-Übernahme ✅ [R-WP-39/UC-WP-71](ui.md)** gebaut+reviewed 2026-11-07 (Inkremente 1–2 auf
-  `web-factory`); offen bleibt der Look am Browser — Buttons für die Kachel-Aktionen folgen
-  ([R-WP-43](ui.md) Aktionen, [chat.md](chat.md) R-WP-7); Sider-Struktur-Umbau (kein „Projects",
-  kein Files-Slide-out) als nächstes Inkrement, [open-points](open-points.md) Runde 4b)
+  `web-factory`); **Sider-Baum neu spezifiziert ❌ [R-WP-44/UC-WP-78](ui.md)** (Klapp-Gruppen je
+  Projekt, Chats als Einträge — Paul 2026-11-08), **AntD zuerst + wiederverwendbare Widgets ❌
+  [R-WP-46/UC-WP-81](ui.md)**; offen bleiben Look-Reparaturen aus der
+  Browser-Abnahme 2026-11-08 und der Look am Browser; Chat-Aktionen-Buttons folgen
+  ([R-WP-43](ui.md) Aktionen, [chat.md](chat.md) R-WP-7), [open-points](open-points.md) Runde 4b)
 * [Projekte](project.md) — Git-Checkout als Projekt: klonen, eindeutig, entfernen, nie interaktiv, Live-Status. ◐
 * [Jon-Chat](chat.md) — ein Jon, ein Gespräch je Projekt: Streaming, Queue, Neustart, Tools, Kacheln. ◐
   (Herkunft je Zeile ✅ UC-WP-39/40; Kacheln ✅ R-WP-7, Blick je Agent ✅ R-WP-26, **Timeline als AntD-
-  Widget inkl. Think ✅ R-WP-40/UC-WP-72** gebaut 2026-11-07, **Blasen-Maße ⏳ [R-WP-29](chat.md)** bis
-  Look-Abnahme)
+  Widget inkl. Think ✅ R-WP-40/UC-WP-72** gebaut 2026-11-07; **Warte-Rahmen gelöscht, Arbeit am
+  Status-Indikator ❌ [R-WP-31/45/UC-WP-65/79](chat.md)** — Paul 2026-11-08; **Blasen: volle Breite,
+  Höhe = Text ❌ [R-WP-29](chat.md)**)
 * [Dateien](files.md) — Schreiben nur in Projekt + TMP, Datei-Bereich lesend. ◐ (gebaut, reviewed 2026-11-01)
 * [Config](config.md) — eigene Datei der Factory, Config-Seite maskiert, „überschreiben" je Agent. ◐
 * [Nutzer](user.md) — Name statt Login, `[User Name]:` an Jon und Paco.

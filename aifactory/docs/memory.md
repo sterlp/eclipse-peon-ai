@@ -6,6 +6,57 @@ Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwiss
 `peon-plan/review-findings.md` sind das Memory); Docs duplizieren nie Core-Regeln; Plan-Archive werden
 **gelöscht**, nie committet.
 
+## Runde 5 — Browser-Abnahme läuft (2026-11-08)
+
+**Pauls Grundsatz (2026-11-08, dauerhaft):** wie Paul Dinge „im Prinzip" entschieden hat, steht im
+**Eclipse-Plugin** — vor jeder Paritäts-/SOLL-Frage zuerst dort nachschauen (chat.html, Plugin-Dialoge),
+nicht neu fragen.
+
+**Paul antwortet auf JEDE Nachricht nur EINE Frage** (ausdrücklich angemahnt). Look-Abnahme am Browser
+lief als Feedback-Liste: **A1–A8 = Reparaturen** (1 Warte-Rahmen gestrichelt → „ganz weg", 2 Sider-Rand,
+3/4/5 Chat-Fläche füllt Bildschirm nicht, Margen asymmetrisch, 6 Scroll-to-bottom unzuverlässig — nach
+Renderen ans Ende, 7 Tool-Results nach Restore weg — wiederherstellen, prüfen ob Core-History sie
+speichert, sonst Core-Proposal, 8 Agenten-Blick = anderes Widget → C-7), **B1–B6 = neues SOLL**
+(1 Blasen volle Breite, Höhe = Text → R-WP-29 wird umgeschrieben, 2 Input unten weiß/volle Breite,
+Senden rechts, 3 AntD-Widgets überall, 4 wiederverwendbare Widget-Klassen, 5 Settings-Seite weit weg
+vom Plugin-Look → in die Config-Story, 6 AGENTS-DEV → später Projektskill „backend/frontend bauen",
+⏳ offen lassen). **Test-Politik Paul: neue Tests nur für neue Funktionalität — sonst Tests abbauen
+bzw. zusammenfassen.**
+
+**Entschieden 2026-11-08 (Abnahme, laufend):** Top-Menü bleibt (Projekte · Chat · Settings, R-WP-43). **Sider-Baum neu:
+[R-WP-44/UC-WP-78](ui.md) ❌** — Klapp-Gruppe je Projekt (Titel = Projektname), Kinder = Chats/Einheiten
+(Jon; Paco später; Files als letztes), **kein „Projects"-Eintrag** (doppelt), leerer Sider = leer,
+Einklap-Griff (`MenuUnfoldOutlined`/`MenuFoldOutlined`, Slide). Klick auf Chat-Eintrag öffnet Adresse,
+Gruppen-Titel klappt nur. „Einheiten nur unter dem geöffneten Projekt" und „kein Jon-Eintrag"
+zurückgenommen; „Chat" vs. „Jon" als Label egal („nicht ums Wording, sondern das Design"). R-WP-38/70/77,
+open-points (🔒 Sider-Baum, 🔒 „Jon muss weg"), index.md nachgezogen.
+**Warte-Rahmen gelöscht** (Paul 2026-11-08: „zwei Indikatoren"): R-WP-31/UC-WP-65 ❌ neu gefasst —
+Arbeit zeigt der **Status-Indikator der Kachel-Reihe**, **R-WP-45/UC-WP-79 ❌** (blau arbeitet · gelb
+kompaktiert · grün, größerer Kreis, bereit), Reihe **ohne Abstand über dem Chat**; falls doch eine
+Blasen-Kennzeichung: AntD **`BorderBeam`** (Paul-Link), nie ein eigener gestrichelter Rahmen.
+**Blasen: volle Breite, Höhe = Text** → R-WP-29 ❌ nachgetragen. Timeline-Lade-Punkt etwas größer
+(R-WP-40). F3 → 🔒 (R-WP-45). Neue offene Punkte Runde 5: Status-Farbe bei **Fehler = rot** (🔒
+2026-11-08, AntD-Fehler-/Alert-Widget falls vorhanden), A7
+Tool-Results-Restore (⏳, erst prüfen ob Core-History sie trägt — sonst Core-Proposal).
+**R-WP-46/UC-WP-81 ❌ (ui.md):** AntD zuerst — Widget-vor-eigenbau; UI-Funktionen immer als
+**wiederverwendbare Widgets** bauen und nutzen (unabhängig testbar, kein zweiter Anzeige-Pfad).
+
+**Scroll entschieden (A6, Paul 2026-11-08):** Auto-Scroll nur am Ende ✅, nach eigener Eingabe immer,
+Zurück ans Ende bewaffnet neu, schwebender „Scroll bottom"-Knopf (`FloatButton`, umgekehrtes
+`BackTop`) — **R-WP-35/UC-WP-80 ❌**; Chat-Fläche volle Bildschirmbreite bei behaltenem Rand,
+Eingabe weiß/volle Breite, Senden rechts (in R-WP-35 ❌-Anteil). Lade-Punkt Timeline = AntD
+`Spin`/`LoadingOutlined` small (R-WP-40), Spin auch am Kachel-Status (R-WP-45).
+
+**Offen (je EINE Frage an Paul, Reihenfolge):** — ALLE ❓ der Abnahme geklärt (Stand 2026-11-08):
+Modell/Kontext im Chat = später 🔒; in der **Config** MVP: Modell-Feld = Auswahl ODER Eingabe
+(AntD `AutoComplete`, keine Dropdown-Only-Liste — nicht jeder Provider hat eine Liste; F8 ⏳).
+Nächster Schritt: **Inkrement 4 planen** — Sider-Baum R-WP-44, Look-Reparaturen (Sider-Rand A2,
+Fläche/Margen A3–A5), Warte-Rahmen raus + Status-Indikator R-WP-31/45, Scroll R-WP-35/UC-WP-80,
+Blasen R-WP-29. Danach A7 Restore (Core prüfen!), C-7, Config-Story.
+**Mehrere Chats: NICHT im MVP** (Paul 2026-11-08) — PR-5 hält, „es ging mir ums Layout"; auch mit
+Paco bleibt es zunächst bei einem Chat je Agent. **Sider-Voreinstellung:** < 4 Projekte ⇒ alle
+Gruppen offen, sonst nur die erste (in R-WP-44/UC-WP-78 nachgetragen).
+
 ## Runde 4b — Look-Restart (2026-11-07)
 
 Paul hat `web-factory-mvp-2` in **main gemergt** (`542d9f4`, Branch remote gelöscht) — alles Gebaute

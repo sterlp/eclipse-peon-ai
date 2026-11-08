@@ -95,16 +95,12 @@ adressieren können (Befund Paul 2026-11-02; [AGENTS.md](../AGENTS.md): „UI: E
 ### R-WP-38 — Navigation: Projektbaum im Sider, Einheiten je Projekt ✅ (Paul 2026-11-06, AntD-Umbau; gebaut Inkremente 5a und 5b, 2026-11-07; Header und Einheiten-Ordnung seit 2026-11-07 in [R-WP-43](ui.md))
 
 Die Navigation besteht aus dem **Top-Menü im Header** ([R-WP-43](ui.md)) und einem **Sider**
-(`Layout.Sider`) links mit einem Eintrag **je Projekt**. **Sein erster Eintrag ist „Projects"** — die
-Projektliste, in der Projekte **hinzugefügt und entfernt** werden ([R-WP-2](project.md)); er ist
-keine weitere Seite, sondern die bestehende Projekte-Seite — im Sider wie im Top-Menü.
-**Ein Klick auf das Projekt öffnet seinen Chat** — es gibt **keinen eigenen „Jon"-Eintrag** und kein „Jon"-Label
-in der Navigation (Paul 2026-11-06: „Jon … muss weg"; der Agent heißt in den Docs weiter Jon, und
-seine Kachel behält den Namen, [R-WP-7](chat.md)). Unter dem Projekt stehen seine **Einheiten** —
-die Bereiche eines Projekts mit eigener Adresse; die vollständige Ordnung nennt
-[R-WP-43](ui.md). Einheiten zeigt der Sider **nur
-unter dem Projekt, das die Adresse nennt** — ein Projekt, das nicht offen ist, hat keine eigene
-Einheits-Adresse. Der **Header** trägt Marke, gewählten Nutzer und die globale Navigation — geregelt
+(`Layout.Sider`) links. **Der Sider-Baum ist seit 2026-11-08 in [R-WP-44](ui.md) neu spezifiziert**
+(❌, nicht gebaut): Klapp-Gruppen je Projekt mit den **Chats des Projekts als Einträgen** — der erste
+Eintrag „Projects" und das Verbot eines „Jon"-Eintrags (Paul 2026-11-06) sind damit zurückgenommen.
+Projekte **hinzufügen und entfernen** bleibt an der Projekte-Seite im Top-Menü ([R-WP-2](project.md),
+[R-WP-43](ui.md)). Unter dem Projekt stehen seine **Einheiten** — die Bereiche eines Projekts mit
+eigener Adresse; die vollständige Ordnung nennt [R-WP-43](ui.md). Der **Header** trägt Marke, gewählten Nutzer und die globale Navigation — geregelt
 in [R-WP-43](ui.md). Eine **Breadcrumb-Zeile gibt es nicht**: der Sider sagt, wo man ist. Die
 gewählte Einheit ist
 im Sider markiert, und Sider-Markierung und URL sind einig (R-WP-1). Der **Datei-Bereich ist eine eigene
@@ -121,17 +117,14 @@ in voller Höhe daneben. Für die Markierung **und** für die Frage, welches Pro
 die Registry nicht zweimal. Ist diese Lesung **abgelehnt**, ist sie trotzdem zu Ende: der Nutzer sieht die
 Projektliste mit dem Grund, nie eine Ladezeile, die auf eine Antwort wartet, die schon da war.
 
-#### UC-WP-70 — projectTreeAndUnitEntries ✅
-- GIVEN die App WHEN sie öffnet THEN zeigt der Sider **zuerst „Projects"** und darunter **ein Eintrag je
-  Projekt**, ohne „Jon"-Eintrag und ohne „Jon"-Label; ein Klick auf das Projekt öffnet dessen Chat, ein
-  Klick auf „Projects" die Projektliste (Hinzufügen, Entfernen) — Markierung und URL einig.
+#### UC-WP-70 — projectTreeAndUnitEntries ✅ (gebaut; der Struktur-Anteil „Projects zuerst / Klick aufs Projekt öffnet den Chat" ist seit 2026-11-08 in [UC-WP-78](ui.md) neu spezifiziert)
 - GIVEN ein geöffnetes Projekt WHEN der Nutzer die Einheit **Files** wählt THEN wechseln
   Sider-Markierung und URL einig auf dieselbe Einheit, der Chat bleibt daneben sichtbar, und ein Reload
   landet wieder dort; ein laufender Turn endet nicht an diesem Klick.
 - GIVEN ein Fenster unter dem Sider-Breakpoint WHEN die App zeichnet THEN ist der Sider auf **Breite 0**
   eingeklappt und die Chat-Fläche füllt die Zeile allein; über den ausgeklappten Sider bleibt die
-  Auswahl erreichbar — **auch „Projects"**. Der Beleg nennt die Breite des Siders (0) **und** den
-  ausgeklappten Griff; das Nachmessen der Pixel gehört zur Look-Abnahme am Browser (Look-Absatz oben).
+  Auswahl erreichbar. Der Beleg nennt die Breite des Siders (0) **und** den ausgeklappten Griff; das
+  Nachmessen der Pixel gehört zur Look-Abnahme am Browser (Look-Absatz oben).
 
 ### R-WP-39 — Design-Übernahme: die Referenz ist das Design ✅ (gebaut + reviewed 2026-11-07, Inkrement 2 auf `web-factory`; Look-Abnahme am Browser steht aus — Paul 2026-11-07: „übernimm das Design"; ersetzt die Fassung „Muster übernehmen, Farben eigene" von 2026-11-06)
 
@@ -167,10 +160,10 @@ Menü-Einträge sind die globalen Seiten **Projekte · Chat · Settings** (Confi
 **Markierung im Menü folgt der Adresse** ([R-WP-1](ui.md)) — Menü und Sider markieren dieselbe
 Adresse einig.
 
-Der **Sider** bleibt der Projektbaum ([R-WP-38](ui.md)); unter einem geöffneten Projekt stehen dessen
-**Einheiten in dieser Ordnung: Chat, Paco (sobald dessen Story gebaut ist), Files als letztes**. Der
-Chat-Eintrag und der Klick auf das Projekt sind **zwei Griffe auf dieselbe Adresse**
-([R-WP-38](ui.md)) — ein laufender Turn endet an keinem von beiden. Die **Chat-Eingabe** bleibt die
+Der **Sider** bleibt der Projektbaum ([R-WP-44](ui.md) — seit 2026-11-08 Klapp-Gruppen je Projekt
+mit den Chats als Einträgen); darunter stehen die **Einheiten in dieser Ordnung: Chat, Paco (sobald
+dessen Story gebaut ist), Files als letztes**. Ein laufender Turn endet an keinem Klick in der
+Navigation. Die **Chat-Eingabe** bleibt die
 untere Zeile der Chat-Spalte ([R-WP-35](chat.md)) — sie ist die Footer-Zeile des Mockups.
 **Aktionen** (Clear, Compact, Senden, …) sind **echte AntD-Elemente** — `Button` statt nacktem
 Text-Link, `Select`/`Dropdown` statt Textliste — auch an den Kacheln ([R-WP-7](chat.md)); die
@@ -186,8 +179,55 @@ Chat-Optionen (Clear/Compact je Chat) sind ein eigener Punkt (⏳ [open-points](
 
 #### UC-WP-77 — unitsInTheProjectTree ✅ (Verdrahtung bewiesen, Look am Browser abzunehmen)
 - GIVEN ein geöffnetes Projekt WHEN der Sider zeichnet THEN stehen unter dem Projekt in dieser
-  Ordnung **Chat**, **Paco** (sobald gebaut) und **Files** als letztes; der Chat-Eintrag und der
-  Projekt-Klick öffnen dieselbe Adresse, genau ein Eintrag ist markiert, und ein Reload landet wieder
-  dort.
+  Ordnung **Chat**, **Paco** (sobald gebaut) und **Files** als letztes ([R-WP-44](ui.md) — als Kinder
+  der Projekt-Gruppe); der Chat-Eintrag öffnet die Chat-Adresse, genau ein Eintrag ist markiert, und
+  ein Reload landet wieder dort.
 - GIVEN der Nutzer wählt im Sider die Einheit Chat WHEN ein Turn läuft THEN endet der Turn nicht
   (UC-WP-70, GIVEN 2).
+
+### R-WP-46 — AntD zuerst, UI-Funktionen als wiederverwendbare Widgets ❌ (Paul 2026-11-08, Abnahme: „wir schauen immer, ob es da ein Widget gibt, bevor wir was eigenes bauen"; „UI-Funktionen bauen wir immer als Widgets und nutzen diese")
+
+Für jede UI-Funktion gilt zwei Mal nachschauen, bevor etwas Eigenes entsteht: **erst** im AntD-Bestand
+(Gibt es ein Widget dafür — `Spin`, `FloatButton`, `Timeline`, `BorderBeam`, …), **dann** im
+Referenz-Design ([R-WP-39](ui.md)). Eigene Oberfläche entsteht **nur** als **wiederverwendbares
+Widget** — eine Komponente mit genau einer Verantwortung, die die Seiten **nutzen**, nicht
+nachbauen: so ist sie unabhängig testbar (Funktions-Tests gegen das Widget, nicht gegen die Seite)
+und die gleiche Optik steht nicht zweimal. Nachgebaut wird nie — ein zweiter Pfad für dieselbe
+Anzeige ist ein Defekt ([AF-ADR-003](adr/003-reference-ui-is-a-donor-not-a-source.md)).
+
+#### UC-WP-81 — uiFunctionsAreReusableWidgets ❌
+- GIVEN eine UI-Funktion (Status-Indikator, Blase, Timeline, Scroll-Knopf) WHEN die App zeichnet
+  THEN kommt sie aus **einem** wiederverwendbaren Widget — keine Seite baut dieselbe Anzeige ein
+  zweites Mal nach.
+- GIVEN das Widget braucht eine Optik, die AntD nicht mitbringt WHEN es entsteht THEN ist es trotzdem
+  ein Widget (AntD-Pendant oder eigene Komponente), kein Inline-Markup in der Seite.
+
+### R-WP-44 — Sider-Baum: Klapp-Gruppen je Projekt, Chats als Einträge ❌ (Paul 2026-11-08: „in der Sidebar links sind nur die Projekt-Chats, nicht die Projects selbst — das ist doppelt"; ersetzt den ersten Eintrag „Projects" und die „kein Jon-Eintrag"-Fassung von [R-WP-38](ui.md))
+
+Der Sider ist ein AntD-`Menu` (`mode="inline"`) mit **einer Klapp-Gruppe je Projekt** — der
+Gruppen-Titel ist der Projektname, seine **Kinder sind die Chats und Einheiten des Projekts**: der
+Jon-Chat jetzt, **Paco** mit seiner Story ([paco.md](paco.md)) und **Files** als letztes
+([R-WP-43](ui.md)). **Es gibt keinen „Projects"-Eintrag im Sider** — die Projektliste mit Anlegen und
+Entfernen lebt allein im Top-Menü ([R-WP-43](ui.md)); ein Sider ohne Projekte ist **leer** — keine
+Gruppen-Überschrift, kein Platzhalter. Der Klick auf einen **Chat-Eintrag** öffnet dessen Adresse;
+der Gruppen-Titel klappt die Gruppe auf und zu (die alte Abkürzung „Klick aufs Projekt öffnet den
+Chat" entfällt, [R-WP-38](ui.md)). Damit zeigt jedes ausgeklappte Projekt seine Einträge — die
+Einschränkung „Einheiten nur unter dem geöffneten Projekt" (⏳ 2026-11-07) ist zurückgenommen. Der
+Sider ist **einklappbar** mit eigenem Griff (`trigger` = `MenuUnfoldOutlined`/`MenuFoldOutlined`,
+Slide in/out wie in der AntD-Layout-Referenz); Markierung und URL bleiben einig ([R-WP-1](ui.md)).
+**Voreingestellt aufgeklappt** (Paul 2026-11-08): gibt es **weniger als vier** Projekte, stehen
+**alle** Gruppen offen; bei vier oder mehr ist nur die **erste** Gruppe offen — mehrere Chats je
+Agent kommen **nicht** ins MVP (PR-5 hält, Paul 2026-11-08: „es ging mir ums Layout").
+
+#### UC-WP-78 — siderGroupsPerProjectWithChatsAsEntries ❌
+- GIVEN Projekte existieren WHEN der Sider zeichnet THEN steht je Projekt eine Klapp-Gruppe mit dem
+  Projektnamen als Titel, deren Kinder die Chats und Einheiten des Projekts sind (Jon; Paco, sobald
+  gebaut; Files als letztes) — **kein „Projects"-Eintrag**; ein Klick auf den Chat-Eintrag öffnet
+  dessen Adresse, Markierung und URL sind einig ([R-WP-1](ui.md)).
+- GIVEN keine Projekte WHEN der Sider zeichnet THEN ist der Sider leer — keine Gruppen-Überschrift,
+  kein Platzhalter.
+- GIVEN der Nutzer betätigt den Sider-Griff WHEN der Sider zeichnet THEN klappt er ein und aus
+  (Slide in/out), und über den ausgeklappten Sider bleibt die Auswahl erreichbar.
+- GIVEN **weniger als vier** Projekte WHEN der Sider zeichnet THEN stehen **alle** Projekt-Gruppen
+  offen; GIVEN vier oder mehr WHEN der Sider zeichnet THEN ist nur die **erste** Gruppe offen
+  (Paul 2026-11-08).
