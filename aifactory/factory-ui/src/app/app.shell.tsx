@@ -23,8 +23,9 @@ import type { Project } from '../shared/dto'
 import '../styles.css'
 
 /**
- * The frame of the app (R-WP-1, R-WP-38, R-WP-43): the header with the brand, the three pages, the colour
- * switch and this browser's name; the tree of projects in the sider beside the view. Both menus are a
+ * The frame of the app (R-WP-1, R-WP-38, R-WP-43): the header with the brand, the two pages the address can
+ * name (Projects · Settings), the colour switch and this browser's name; the tree of projects in the sider
+ * beside the view. Both menus are a
  * reading of the URL and hold nothing of their own — an address survives a reload that a component's state
  * would not (UC-WP-43, UC-WP-52), and the two readers of that address live in {@link ./app.paths} together.
  *

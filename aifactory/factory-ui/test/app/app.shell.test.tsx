@@ -108,11 +108,11 @@ test('theHeaderCarriesTheBrandThePagesAndTheName', async () => {
   expect(header.textContent).toContain(content.brand)
   expect(within(header).getByLabelText(content.user.name)).toBeInTheDocument()
 
-  // the three pages of R-WP-43 and nothing else, in a navigation of their own: a project entry here would be a
+  // the two global pages of R-WP-43 and nothing else, in a navigation of their own: the chat belongs to a
+  // project and is opened from the tree, so it is no entry here (Paul 2026-11-08); a project entry would be a
   // second answer to the question the tree beside it answers (R-WP-38)
   expect(within(topNav()).getAllByRole('menuitem').map(entry => entry.textContent)).toEqual([
     content.nav.projects,
-    content.nav.chat,
     content.nav.settings,
   ])
   // one mark only, and the list page carries it — `aria-current` is what a screen reader reads (ANTD-A9)
@@ -203,11 +203,15 @@ test('theTopMarkFollowsAnAddressNobodyClicked', async () => {
   expect(app.path()).toBe('/projects')
   expect(markedTopEntries().map(entry => entry.textContent)).toEqual([content.nav.projects])
 
-  // the list row opens a chat: a third address, still no click in the header
+  // the list row opens a chat: a third address, still no click in the header. The header names no chat page
+  // (Paul 2026-11-08), so its reading of a chat address is empty — the tree answers it instead (UC-WP-76)
   fireEvent.click(await screen.findByRole('button', { name: project().name }))
   await screen.findByRole('region', { name: content.chat.title })
   expect(app.path()).toBe(CHAT_PATH)
-  expect(markedTopEntries().map(entry => entry.textContent)).toEqual([content.nav.chat])
+  expect(markedTopEntries(), 'a chat address marks no page of the header').toEqual([])
+  expect(markedEntries().map(entry => entry.textContent), 'the tree answers the same address').toEqual([
+    content.nav.chat,
+  ])
 })
 
 // R-WP-38
@@ -217,56 +221,27 @@ test('theTopMarkFollowsAnAddressNobodyClicked', async () => {
 test('theTopMarkAndTheTreeMarkAgreeInOneRender', async () => {
   // INC-L1-LOW-3: the two menus read one address, so „die Markierung folgt der Adresse und ist einig" only
   // holds **within one render** — two mounts could each be right about another URL. One chat address, both
-  // navigations read in the same render: each carries exactly one mark and both name the chat unit.
+  // navigations read in the same render: the header names no chat page and marks nothing at all, the tree
+  // marks exactly the chat unit — the emptiness on one side and no claim on the other are the agreement
+  // (UC-WP-76 GIVEN 3), a marked header entry would be the contradiction.
   stubAppServer()
   renderApp(CHAT_PATH)
   await screen.findByRole('region', { name: content.chat.title })
 
-  const top = within(topNav()).getByRole('menuitem', { name: content.nav.chat })
   const tree = within(nav()).getByRole('menuitem', { name: content.nav.chat })
 
-  expect(top, 'the header names the page the address names').toHaveAttribute('aria-current', 'page')
+  expect(
+    within(topNav()).queryByRole('menuitem', { name: content.nav.chat }),
+    'the header carries no chat entry',
+  ).toBeNull()
+  expect(markedTopEntries(), 'nothing marks in the header on a chat address').toEqual([])
+  expect(topNav().querySelectorAll('[aria-current]'), 'and the header claims no page').toHaveLength(0)
+
   expect(tree, 'the tree names the unit the address names').toHaveAttribute('aria-current', 'page')
-
-  // one mark per navigation, so nothing can disagree with the other: the header says nothing about the
-  // projects and the settings page, the tree nothing about the project entry or the file area (R-WP-38)
-  expect(markedTopEntries(), 'exactly the chat page marks in the header').toEqual([top])
+  // one mark in the tree, so nothing there can disagree: it says nothing about the project entry or the
+  // file area (R-WP-38)
   expect(markedEntries(), 'exactly the chat unit marks in the tree').toEqual([tree])
-  expect(topNav().querySelectorAll('[aria-current]')).toHaveLength(1)
   expect(nav().querySelectorAll('[aria-current]')).toHaveLength(1)
-})
-
-// R-WP-43
-// UC-WP-76
-test('theTopChatEntryLeadsToTheLastChat', async () => {
-  // UC-WP-51: the entry names the chat on its own, and that address answers with the project this browser
-  // last opened — the menu holds no project of its own
-  stubAppServer()
-  localStorage.setItem('aifactory.lastProject', project().name)
-  const app = renderApp('/settings')
-  await screen.findByText(content.config.provider)
-
-  fireEvent.click(within(topNav()).getByRole('menuitem', { name: content.nav.chat }))
-
-  expect(await screen.findByRole('region', { name: content.chat.title })).toBeInTheDocument()
-  expect(app.path()).toBe(CHAT_PATH)
-  expect(markedTopEntries().map(entry => entry.textContent)).toEqual([content.nav.chat])
-})
-
-// R-WP-43
-// UC-WP-76
-test('theTopChatEntryWithoutAProjectLeadsToTheList', async () => {
-  // nothing stored is a real answer and not a gap: the chat question stays unanswered, and the list is the
-  // page where a project is picked — a fourth page or a guessed project would both be a second answer
-  stubAppServer()
-  const app = renderApp('/settings')
-  await screen.findByText(content.config.provider)
-
-  fireEvent.click(within(topNav()).getByRole('menuitem', { name: content.nav.chat }))
-
-  expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
-  expect(app.path()).toBe('/projects')
-  expect(markedTopEntries().map(entry => entry.textContent)).toEqual([content.nav.projects])
 })
 
 // UC-WP-70
