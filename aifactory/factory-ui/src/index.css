@@ -29,9 +29,6 @@
   --tool: #6b7280;
   --problem: #dc2626;
   --question: #d97706;
-  /* the contour of a line the history has not confirmed yet (R-WP-29): a frame says "waiting", only a voice
-     says "said" — so this is the neutral grey, never an accent */
-  --frame-pending: #9ca3af;
 
   --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, 'Cascadia Code', 'Fira Code', Menlo, Consolas, monospace;
@@ -83,7 +80,6 @@
   --tool: #9ca3af;
   --problem: #f87171;
   --question: #fbbf24;
-  --frame-pending: #6b7280;
 
   color-scheme: dark;
 }

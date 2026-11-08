@@ -23,8 +23,6 @@ interface Props {
   outgoing: PendingLine[]
   /** The live lines of the running turn, each anchored at the rows that already stood when it arrived. */
   live: LiveItem[]
-  /** A turn this browser started is still open — the only thing that may paint a waiting frame (R-WP-31). */
-  pending: boolean
   /** The identity of the turn this view holds open, or none: the only thing that may paint a working step,
    *  and it names WHICH turn — a step of a turn that ended never works for the next one (R-WP-40, UC-WP-72). */
   openTurn?: number | null
@@ -35,8 +33,8 @@ interface Props {
 }
 
 /**
- * One row of the log as the screen shows it (R-WP-29): whose speech it is, who the server named as its
- * author, and whether the history has confirmed it yet.
+ * One row of the log as the screen shows it (R-WP-29): whose speech it is and who the server named as its
+ * author.
  */
 interface Row {
   /** The voice of the row, and with it its colour: the person's blue, the agent's green, a failure's red. */
@@ -45,8 +43,6 @@ interface Row {
   handle: string
   author: string | null
   text: string
-  /** True while the turn that started the line is open — the row is drawn as not a fact yet (R-WP-31, UC-WP-65). */
-  pending: boolean
 }
 
 /**
@@ -94,15 +90,13 @@ type Entry =
  * stamped on it — never one the log invented (R-WP-37, R-WP-40). A diff block is of the same family — a fact
  * about the project's files, seen by everybody watching (R-WP-36).
  */
-export function ChatLog({ messages, outgoing, live, pending, openTurn = null, logRef, onScroll }: Props) {
+export function ChatLog({ messages, outgoing, live, openTurn = null, logRef, onScroll }: Props) {
   const rows: Row[] = [
     ...messages.map((message): Row => ({
       voice: voiceOf(message),
       handle: `chat-line-${message.role}`,
       author: authorOf(message),
       text: message.text,
-      // a line the history carries is a fact — the frame never comes back to it (R-WP-31)
-      pending: false,
     })),
     ...outgoing.map((line): Row => ({
       voice: 'user',
@@ -111,9 +105,6 @@ export function ChatLog({ messages, outgoing, live, pending, openTurn = null, lo
       // line does not jump when it is confirmed (R-WP-37, UC-WP-48)
       author: line.origin ?? content.chat.you,
       text: line.text,
-      // the frame is the page's call and not a property of the row: it ends with the turn, not with the
-      // history read that confirms the text (R-WP-31, UC-WP-65)
-      pending,
     })),
   ]
 
@@ -139,13 +130,12 @@ export function ChatLog({ messages, outgoing, live, pending, openTurn = null, lo
           return <ChatDiff key={`diff-${index}`} file={entry.file} diff={entry.text} />
         }
         if (entry.type === 'live') {
-          // a live failure is already over, so it carries no waiting frame; its text is the server's
-          // reason and never an answer to read as Markdown (R-WP-34)
+          // a live failure is no answer to read: its text is the server's reason, shown as it is (R-WP-34)
           const failure = entry.item.kind === 'error'
           return (
             <li
               key={`live-${index}`}
-              className={failure ? 'chat-line error' : `chat-line agent${pending ? ' pending' : ''}`}
+              className={failure ? 'chat-line error' : 'chat-line agent'}
               data-testid={failure ? 'chat-line-error' : 'chat-live'}
             >
               {failure ? (
@@ -160,7 +150,7 @@ export function ChatLog({ messages, outgoing, live, pending, openTurn = null, lo
         return (
           <li
             key={`row-${index}`}
-            className={`chat-line ${row.voice}${row.pending ? ' pending' : ''}`}
+            className={`chat-line ${row.voice}`}
             data-testid={row.handle}
           >
             {row.author !== null && <ChatRole name={row.author} />}

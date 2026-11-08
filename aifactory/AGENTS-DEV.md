@@ -121,7 +121,9 @@ Ein Code im Testkommentar verweist auf diese Stelle; die Begründung steht am Te
 
 - `eclipseEditFile`/`eclipseReplaceLines` mit **Teilzeile** als `oldString` haben schon Nachbarzeilen
   beschädigt → Region danach neu lesen. `eclipseEditFile` verliert `oldString` bei langen Blöcken →
-  `diskEditFile` mit kurzem Anker. `*InsertLines` scheitern an einer Datei, die mit Leerzeile endet.
+  `diskEditFile` mit kurzem Anker. `*InsertLines` scheitern an einer Datei, die mit Leerzeile endet. **Löschen** heißt bei `*EditFile` `newString: ""` —
+  ein `"\\n"` als Ersatz lässt die geleerte Zeile stehen (16× gemessen; Rückweg nur
+  `git checkout -- <file>`, und das nur bei einer vorher unveränderten Datei).
 - **Nie eine Quelldatei aus dem Kontext neu schreiben** (`*WriteFile` ohne Vorher-Lesen): der Kopf wird
   erfunden. Kleine `*EditFile`-Schritte oder erst komplett lesen; dann `git diff <file>` gegen die geplanten
   Änderungen — `git checkout -- <file>` ist kein Rückweg für fremde Handänderungen.

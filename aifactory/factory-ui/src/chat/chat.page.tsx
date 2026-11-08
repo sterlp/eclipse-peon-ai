@@ -483,8 +483,8 @@ export function ChatPage({ project, files, user }: Props) {
         return
       }
     }
-    // the end he asked for has been taken: the frame goes now, without waiting for a `done` that will not
-    // read anything over it — the lines on the screen stay (R-WP-31, UC-WP-65, D-16)
+    // the end he asked for has been taken: the wait ends now, without waiting for a `done` that will not
+    // read anything over it — the lines on the screen stay (R-WP-31, UC-WP-50, D-16)
     setRunningTurn(null)
     void refreshTiles()
   }
@@ -496,13 +496,6 @@ export function ChatPage({ project, files, user }: Props) {
    */
   const busy =
     (runningTurn !== null && runningTurn === projectId) || tiles.some(tile => tile.state === 'WORKING')
-
-  /**
-   * The waiting frame of the log — ours alone, never another browser's turn: `done`, `error` and an accepted
-   * stop each clear `runningTurn`, so no line carries the frame once this browser's turn is over while the
-   * lines it showed stay (R-WP-31, UC-WP-65).
-   */
-  const pending = runningTurn !== null && runningTurn === projectId
 
   /**
    * Clear or Compact one tile. 202 says <em>taken</em>, so both reads follow; a refusal (409 while a turn
@@ -556,7 +549,6 @@ export function ChatPage({ project, files, user }: Props) {
           messages={messages}
           outgoing={outgoing}
           live={live}
-          pending={pending}
           // the turn this view holds open — another browser's included, because its steps arrive on this
           // stream too: the indicator belongs to a step of THIS turn and to none that has ended (R-WP-40)
           openTurn={openTurn}

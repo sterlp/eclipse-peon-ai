@@ -21,7 +21,7 @@ const ANSWER: ChatMessage = { role: 'jon', text: 'Zwei: pom.xml und README.md' }
 // UC-WP-55
 // R-WP-29
 test('roleChangeDrawsNoRule', () => {
-  render(<ChatLog messages={[QUESTION, FAILURE]} outgoing={[]} live={[]} pending={false} />)
+  render(<ChatLog messages={[QUESTION, FAILURE]} outgoing={[]} live={[]} />)
 
   const log = screen.getByTestId('chat-log')
   expect(separatorsOf(log), 'no line of the log separates two voices').toEqual([])
@@ -40,7 +40,7 @@ test('roleChangeDrawsNoRule', () => {
 // R-WP-29
 test('theLogNeverCountsAnAnswersRuleAsItsSeparator', () => {
   const separating: ChatMessage = { role: 'jon', text: 'zuerst\n\n---\n\nzuletzt' }
-  render(<ChatLog messages={[QUESTION, separating, SENTENCE]} outgoing={[]} live={[]} pending={false} />)
+  render(<ChatLog messages={[QUESTION, separating, SENTENCE]} outgoing={[]} live={[]} />)
 
   const log = screen.getByTestId('chat-log')
   expect(separatorsOf(log), 'the answer is the only line on the screen, and it is no separator').toEqual([])
@@ -51,22 +51,14 @@ test('theLogNeverCountsAnAnswersRuleAsItsSeparator', () => {
 })
 
 /** The other half of the same rule: the failure shows the moment the stream reports it, in the log. */
-// UC-WP-64, UC-WP-65
-test('aLiveFailureIsALineAndNotAWaitingFrame', () => {
+// UC-WP-64
+test('aLiveFailureIsALineOfTheHistory', () => {
   render(
-    <ChatLog
-      messages={[QUESTION]}
-      outgoing={[]}
-      live={appendLiveError([], 'no model configured', 1)}
-      // the page's frame is on for the rest of the log, and the failure still carries none of it
-      pending
-    />,
+    <ChatLog messages={[QUESTION]} outgoing={[]} live={appendLiveError([], 'no model configured', 1)} />,
   )
 
   const failure = screen.getByTestId('chat-line-error')
   expect(failure).toHaveTextContent('no model configured')
-  // the turn is over, so nothing about this line is "not a fact yet"
-  expect(failure.className).not.toContain('pending')
   expect(screen.queryByTestId('chat-live')).toBeNull()
 })
 
@@ -83,7 +75,6 @@ test('aLiveTraceStaysBetweenItsInputAndTheAnswer', () => {
       messages={[QUESTION, SENTENCE, ANSWER]}
       outgoing={[]}
       live={appendLiveTool(appendLiveTool([], 'ls in the checkout', 2), 'wc -l', 2)}
-      pending={false}
     />,
   )
 
@@ -113,7 +104,6 @@ test('onlyAnswersAreMarkdown', () => {
       messages={[quoted, marked, failure]}
       outgoing={[]}
       live={appendLiveError(appendLiveTool([], 'ls **fett**', 3), 'model **nicht** erreichbar', 3)}
-      pending={false}
     />,
   )
 

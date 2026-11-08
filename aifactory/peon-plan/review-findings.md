@@ -246,3 +246,39 @@ Shell-Test („the handle opens the tree") · `inlineCollapsed={false}` gestrich
 den Null-Breiten-Auslöser der Basis).
 
 **Stand nach S1b:** 215 Tests / 22 Dateien grün, `tsc -b` 0, oxlint 0/0, `antd lint ./src` 0 (47 Dateien).
+
+## Inkrement 4 UI — S2 Warte-Rahmen gelöscht (Dev-Bau 2026-11-08, Freigabe Jon)
+
+**Gelöscht, nichts gebaut:** `.chat-log .chat-line.pending` samt Regelkommentar (`styles.css`),
+`--frame-pending` aus **beiden** Tabellen (`index.css` hell + dunkel — Token danach nirgends), und der
+`pending`-Pfad durch die Oberflächen-Schicht: `ChatLogProps`, `Row`, beide `map`-Äste der Zeilen, beide
+className-Ableitungen (`chat.log.tsx`), `const pending` + `pending={pending}` (`chat.page.tsx`).
+**`runningTurn` bleibt** — es speist `busy` (Stop-Knopf) und die Warte-**Leiste** (UC-WP-58), die stehen
+darf. Kommentare, die den Rahmen behaupteten, sind mit dem Rahmen weg oder auf die Leiste umgestellt
+(`chat.page.tsx` im Stop-Pfad: R-WP-31/UC-WP-50 statt UC-WP-65).
+
+**Beweis-Arbeit (memory #4 — verengen statt löschen, Abwesenheit nur falsifizierbar über das Blatt):**
+`pendingFrameExistsWhileTheTurnRuns` **gelöscht** — seine positive Hälfte *ist* die gelöschte Regel. Ihr
+negativer Rest wohnt im einen verbleibenden Rahmen-Test
+`stopLeavesNoPendingFrame` → **`noWaitingFrameOnAnyLineAtAnyTime`** (UC-WP-65): zuerst
+`expect(declares('.chat-line.pending')).toBe(false)` (ohne diesen Anker wäre die DOM-Frage vakuös — eine
+Klasse, die nichts malt, kann nicht gefunden werden), dann „keine Rahmen-Zeile" **während** des Turns,
+**nach** dem Stop und **nach** `done`, dazu die lebenden Behauptungen: Warte-Leiste endet mit dem Stop und
+die gezeigten Zeilen bleiben (`chat-live`, `chat-log`). `failedTurnLeavesNoPendingFrame` auf UC-WP-64
+**verengt** (wartender Input behält seinen Text, genau eine Fehler-Zeile);
+`aLiveFailureIsALineAndNotAWaitingFrame` → **`aLiveFailureIsALineOfTheHistory`** (UC-WP-64).
+`framedLines()` bleibt als Ein-Zeiler des einen Tests, sein Kommentar nennt jetzt den Blatt-Anker.
+
+**Mutation (eine, wie geplant):** `.chat-line.pending` zurück in `styles.css` (mit `var(--tool)`, weil der
+Token weg ist — gemessen wird der Selektor) ⇒ **genau ein** Treffer:
+`noWaitingFrameOnAnyLineAtAnyTime` — „the sheet states no waiting frame anymore: expected true to be
+false". Regel wieder raus, Suite danach grün.
+
+**Nennenswert:** (1) `failedTurnLeavesNoPendingFrame` behält seinen Namen (Plan §6 Zeile 8), obwohl der
+Rahmen weg ist — sein ID-Kommentar heißt jetzt UC-WP-64; Vorschlag an Jon für eine spätere Runde:
+`failedTurnKeepsTheWaitingInputAndOneErrorLine`. (2) Die `pending={false}`-Argumente sind mechanisch aus
+**34** Anrufstellen geflogen (`chat.timeline` 30, `chat.diff` 3, `chat.log` 3) — Compiler-getrieben, kein
+Beweis-Inventar. (3) Zeitsprung der Suite: **215 → 214** Tests (ein Test gelöscht, keiner neu).
+
+**Stand nach S2:** 214 Tests / 22 Dateien grün, `tsc -b` 0, oxlint 0/0 (79 Dateien), `antd lint ./src` 0
+(47 Dateien).

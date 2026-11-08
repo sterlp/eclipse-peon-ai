@@ -598,14 +598,6 @@ button {
   color: var(--on-user);
 }
 
-/* An own line the history has not confirmed yet: a dashed contour in the waiting grey — an accent would read
-   as "said" (R-WP-29, R-WP-31). An outline, because a border would sit under the bubble's radius and, on the
-   person's side, under its own background. Last, so it outvotes the voice's own form on the shared row. */
-.chat-log .chat-line.pending {
-  outline: 1px dashed var(--frame-pending);
-  outline-offset: 2px;
-}
-
 /* Das Feld ist die Auto-Grow-Textarea der Basis: eine Zeile bis fünf, danach scrollt sie (R-WP-41); Enter
    sendet, Shift und Ctrl/Cmd+Enter brechen um (R-WP-30). Die Höhe gehört der Basis — sie steht inline auf dem
    Feld, darum hier kein min-height und kein resize. Die Fläche bleibt unsere eine Maß: dieselbe Padding
