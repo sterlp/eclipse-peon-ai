@@ -53,6 +53,12 @@ Modell/Kontext im Chat = später 🔒; in der **Config** MVP: Modell-Feld = Ausw
 Nächster Schritt: **Inkrement 4 planen** — Sider-Baum R-WP-44, Look-Reparaturen (Sider-Rand A2,
 Fläche/Margen A3–A5), Warte-Rahmen raus + Status-Indikator R-WP-31/45, Scroll R-WP-35/UC-WP-80,
 Blasen R-WP-29. Danach A7 Restore (Core prüfen!), C-7, Config-Story.
+**Offene Kleinklammer aus Inc 3:** AGENTS-DEV.md fehlt noch der Factory-UI-Bullet zur AntD-v6-Timeline
+(Steps-Falle, `itemPaddingBottom` nur im Alternativ-Layout, Beweise nur über `chat-timeline`/`data-trace`,
+nie `.ant-*`; `MAX_TOOL_LINES` kürzt nur Tool-Items) — aus dem Lessons-Learned von Inc 3, vor Inkrement 4
+nachziehen. **AntD-Skill `.agents/skills/antd` existiert (Paul portiert): nie AntD aus dem Gedächtnis,
+`antd info/lint` vor Abschluss; Node-Update 22.12 → 22.23.4 (LTS, entparkt Stagehand) als eigener
+Mini-Schritt, antd 6.7.0 = latest, kein Update nötig.**
 **Mehrere Chats: NICHT im MVP** (Paul 2026-11-08) — PR-5 hält, „es ging mir ums Layout"; auch mit
 Paco bleibt es zunächst bei einem Chat je Agent. **Sider-Voreinstellung:** < 4 Projekte ⇒ alle
 Gruppen offen, sonst nur die erste (in R-WP-44/UC-WP-78 nachgetragen).
