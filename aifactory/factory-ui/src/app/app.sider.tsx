@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Layout, Menu } from 'antd'
-import { FolderOpenOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons'
+import { FolderOpenOutlined } from '@ant-design/icons'
 
 import { content } from '../shared/content'
 import { entry, type NavGroup } from './app.menu'
@@ -21,6 +21,9 @@ interface Props {
   projects: Project[]
   /** `navKeyOfPathname(pathname)` — what the frame read from the address. */
   activeKey: string | null
+  /** Folded away? The frame owns the answer, the band's handle and the breakpoint both write it (R-WP-44). */
+  collapsed: boolean
+  onCollapse: (collapsed: boolean) => void
   onOpen: (project: Project) => void
   /** The second handle of one address change: the file area of the project the address names. */
   onFiles: (project: Project) => void
@@ -55,17 +58,18 @@ function openGroupsOf(projects: Project[], activeKey: string | null): string[] {
  * `aria-hidden` its `role="img"` label would join the entry's accessible name („folder Files") and the entry
  * would answer to no name the catalog states (R-WP-27).
  *
- * `collapsed` is held here and not left to the basis: the basis' responsive listener answers
- * `onCollapse(value, 'responsive')` beside a controlled `collapsed` too (`layout/Sider.js` calls
- * `handleSetCollapsed(mql.matches, 'responsive')`), so the breakpoint keeps working while the tree owns one
- * answer for the state, and `collapsedWidth={0}` gives it the same handle in both of them.
+ * `collapsed` belongs to the frame (`app.shell.tsx`) and not to the tree: the handle that folds it away
+ * stands in the band (R-WP-44), and the basis' responsive listener answers `onCollapse(value, 'responsive')`
+ * beside a controlled `collapsed` too (`layout/Sider.js` calls `handleSetCollapsed(mql.matches,
+ * 'responsive')`) — so the breakpoint keeps working with one owner of the answer. `trigger={null}` takes the
+ * basis' own handle away in both states (`layout/Sider.js`: no trigger node when `trigger === null`), which
+ * leaves the band's button the single way back.
  */
-export function AppSider({ projects, activeKey, onOpen, onFiles }: Props) {
+export function AppSider({ projects, activeKey, collapsed, onCollapse, onOpen, onFiles }: Props) {
   // `null` while the viewer has opened or closed nothing: until then the tree follows the reading above.
   // Derived **during rendering** — an effect would trip `react(set-state-in-effect)`, and a project arriving
   // later would otherwise rewrite what the viewer left open.
   const [touched, setTouched] = useState<string[] | null>(null)
-  const [collapsed, setCollapsed] = useState(false)
 
   const items: NavGroup[] = projects.map(project => ({
     key: groupKeyOf(project),
@@ -87,12 +91,18 @@ export function AppSider({ projects, activeKey, onOpen, onFiles }: Props) {
       collapsedWidth={0}
       collapsible
       collapsed={collapsed}
-      onCollapse={setCollapsed}
-      trigger={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+      onCollapse={onCollapse}
+      // the band's button is the handle of the tree (R-WP-44): the basis' own trigger — a text pill in its
+      // corner — would be a second one, and the tree is folded from the band and not from its own edge
+      trigger={null}
     >
       <nav aria-label={content.nav.views}>
         <Menu
           mode="inline"
+          // folded, the tree stays **inline**: the basis would switch it to its popup form for the moment of
+          // the fold and answer that switch with an empty key list (`onOpenChange([])`), which throws away
+          // every group the viewer had open (measured: `menu.js:88` `inlineCollapsed ?? siderCollapsed`)
+          inlineCollapsed={false}
           items={items}
           openKeys={touched ?? openGroupsOf(projects, activeKey)}
           onOpenChange={setTouched}

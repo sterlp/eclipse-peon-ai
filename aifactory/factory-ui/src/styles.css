@@ -34,6 +34,14 @@
   margin-inline-start: auto;
 }
 
+/* The tree's handle stands on the dark band like the brand, so it speaks the band's colour: a text button of
+   the basis paints its own colour and does not inherit the band's `headerColor` (R-WP-39). Hover included —
+   the glyph must not blink dark for the moment the pointer rests on it. */
+.app-sider-toggle,
+.app-sider-toggle:hover {
+  color: var(--top-text);
+}
+
 /* The browser's own name, last in the row — small, because it is a label and not a workspace. */
 .app-user {
   width: 9rem;

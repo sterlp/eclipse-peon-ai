@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { act, cleanup, fireEvent, screen, within } from '@testing-library/react'
 
 import { closeAppStream, renderApp, stubAppServer } from '../shared/app.harness'
+import { belowTheBreakpoint } from '../shared/media'
 import { content } from '../../src/shared/content'
 import { project } from '../shared/fixtures'
 
@@ -293,4 +294,40 @@ test('theChatInputStandsInsideTheContentBesideTheSider', async () => {
   expect(row, 'the basis answers its sider row for the frame').not.toBeNull()
   expect(row.querySelector(':scope > .app-sider')).toBe(sider)
   expect(row.querySelector(':scope > .app-main')).toBe(main)
+})
+
+/**
+ * The tree is folded away for the chat and reached again from the band (R-WP-44, UC-WP-70): one answer, held
+ * by the frame, asked by two — the breakpoint of the basis and the button of the header. The narrow case is
+ * the honest one, because that is where the tree steps out of the chat's way.
+ */
+// UC-WP-70
+test('theFrameFoldsTheTreeAndTheHandleOfTheBandReachesItAgain', async () => {
+  stubAppServer()
+  belowTheBreakpoint()
+  const app = renderApp('/projects')
+  await flush()
+
+  const sider = app.container.querySelector('.app-sider') as HTMLElement
+  // eng: the basis reports its edge, the frame folds — no click of anyone
+  expect(sider.style.width).toBe('0px')
+
+  // the handle is one button of the band and speaks in glyphs, so its name says what pressing it will do
+  const handle = screen.getByTestId('sider-toggle')
+  expect(handle, 'the band offers the handle, the tree offers none').not.toBeNull()
+  expect(handle).toHaveAttribute('aria-label', content.nav.toggleSider(true))
+
+  fireEvent.click(handle)
+  expect(sider.style.width, 'the handle opens the tree').toBe('250px')
+  expect(handle).toHaveAttribute('aria-label', content.nav.toggleSider(false))
+
+  // and it folds it again — one button, both ways
+  fireEvent.click(handle)
+  expect(sider.style.width).toBe('0px')
+  fireEvent.click(handle)
+  expect(sider.style.width).toBe('250px')
+
+  // the opened tree is reachable: its entry answers with an address the frame was not already at
+  fireEvent.click(await within(nav()).findByRole('menuitem', { name: content.nav.chat }))
+  expect(await screen.findByRole('region', { name: content.chat.title })).toBeInTheDocument()
 })

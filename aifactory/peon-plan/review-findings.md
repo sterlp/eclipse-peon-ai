@@ -209,3 +209,40 @@ als Pin, nicht nur die Token-Tabelle.
 **Stand nach S1:** 214 Tests / 22 Dateien grün, `tsc -b` 0, oxlint 0/0, `antd lint ./src` 0. Look (bündiger
 Rand, 250 px, weiße Fläche, Einrück) ist **nicht** getestet — Paul am Browser. `docs/ui.md` und
 `docs/memory.md` tragen Pauls laufende Edits und sind **nicht** committet. Offen: S1b Drawer unter `xl`.
+
+## Inkrement 4 UI — S1b, Griff im Kopf (Dev-Bau 2026-11-08, Freigabe Jon nach Pauls Entscheidung)
+
+**Übersteuerung des Plans (keine Dev-Entscheidung):** S1 baute den Griff noch am Baum (`trigger` =
+`MenuFold/MenuUnfold`). Paul: das Menü braucht man nur kurz, der Chat soll die Fläche haben ⇒ **ein**
+Text-Button im Kopf, `trigger={null}` am Baum. Pauls Drawer-Hinweis betraf den **Files**-Slide-out
+(R-WP-33, eigener Slice nach S5), **nicht** den Sider — deshalb bleibt der Sider.
+
+**Was zog:** `collapsed` gehört dem **Rahmen** (`app.shell.tsx`), nicht dem Baum — zwei fragen dasselbe
+(Band-Button, Breakpoint-Hörer der Basis) und eine Antwort darf nicht zweimal wohnen. Neu
+`src/app/app.sider.toggle.tsx`; Katalog-Name `content.nav.toggleSider(collapsed)` (Der Button malt Glyphen,
+sein Name sagt, was der Druck tut — dieselbe Lesart wie `theme.toggle`). **Kein zh-Katalog in `factory-ui`**
+(`content.ts` ist englisch, AGENTS.md: „UI: English") — Jons „EN + zh" gilt hier nicht.
+
+**Befund, der S1-Befund 5 behebt statt nur hinzunehmen:** ein `Menu` im gefalteten `Layout.Sider` schaltet auf
+die Popup-Form der Basis und meldet dabei `onOpenChange([])` ⇒ **alle Gruppen zu**, ohne jeden Klick. Mit dem
+Griff im Kopf wird die Kante täglich überschritten, also `inlineCollapsed={false}` gesetzt
+(`menu.js:88`: `inlineCollapsed ?? siderCollapsed`). Nachweis: neuer Shell-Test; Mutation ⇒ Chat-Kind fehlt im
+DOM. Die `antd`-CLI kennt die Prop in `info Menu` nicht und `antd lint` schweigt — Maß ist der Quelltext.
+
+**Look, nicht getestet (Paul am Browser):** ein Text-`Button` der Basis erbt die Bandfarbe **nicht**
+(`Layout.headerColor` wirkt nur auf Text im Band) ⇒ `.app-sider-toggle` über `--top-text`, `:hover`
+mitgenommen, damit das Zeichen beim Draufzeigen nicht dunkel blinkt.
+
+**Beweis-Arbeit:** UC-WP-70 ist **umgezogen**, nicht gemehrt — der Sider-Unit-Test kann einen Kopf-Knopf nicht
+sehen. Neu in `app.shell.test.tsx`: `theFrameFoldsTheTreeAndTheHandleOfTheBandReachesItAgain` (eng ⇒ gefaltet
+ohne Klick; ein Knopf faltet auf und zu; die offene Auswahl führt auf eine Adresse, die vorher nicht galt).
+Im Sider bleibt `theSiderWidthsItsTwoStatesAndCarriesNoHandleOfItsOwn` (0 px / 250 px, die Basis malt in
+**beiden** Zuständen keinen eigenen Griff, `onCollapse(…, 'responsive')` geht an den Rahmen).
+Helper `mediaAnswer`/`belowTheBreakpoint` wandern nach `test/shared/media.ts` (zwei Nutzer statt Kopie).
+
+**Mutationen (drei, jede von genau dem geplanten Beweis getötet).** `onToggle` als Leerhandler ⇒ der neue
+Shell-Test („the handle opens the tree") · `inlineCollapsed={false}` gestrichen ⇒ derselbe
+(„Unable to find role=menuitem name Chat") · `trigger={null}` gestrichen ⇒ der Sider-Test (`handles()` findet
+den Null-Breiten-Auslöser der Basis).
+
+**Stand nach S1b:** 215 Tests / 22 Dateien grün, `tsc -b` 0, oxlint 0/0, `antd lint ./src` 0 (47 Dateien).

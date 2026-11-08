@@ -125,3 +125,7 @@ Ein Code im Testkommentar verweist auf diese Stelle; die Begründung steht am Te
 - **Nie eine Quelldatei aus dem Kontext neu schreiben** (`*WriteFile` ohne Vorher-Lesen): der Kopf wird
   erfunden. Kleine `*EditFile`-Schritte oder erst komplett lesen; dann `git diff <file>` gegen die geplanten
   Änderungen — `git checkout -- <file>` ist kein Rückweg für fremde Handänderungen.
+- **`eclipseWriteFile` mit Workspace-Pfad (`/proj/…`) legt eine **neue** Datei unter `<cwd>/proj/…` an**
+  (Pfad-Dopplung, gemessen 2026-11-08: `aifactory/aifactory/factory-ui/...`); vorhandene Dateien finden dieselben
+  Tools dagegen korrekt. Neue Dateien darum mit `diskWriteFile` und absolutem Pfad schreiben, danach
+  `git status` — die duplizierten Leerverzeichnisse sind sonst der einzige Hinweis.

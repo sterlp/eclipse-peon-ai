@@ -5,6 +5,7 @@ import type { ReactElement } from 'react'
 import { AppSider, SIDER_BREAKPOINT } from '../../src/app/app.sider'
 import { chatKeyOf, filesKeyOf } from '../../src/app/app.paths'
 import { content } from '../../src/shared/content'
+import { answerMediaQueries, belowTheBreakpoint } from '../shared/media'
 import { project } from '../shared/fixtures'
 import type { Project } from '../../src/shared/dto'
 
@@ -17,26 +18,6 @@ const DEMO = project()
 const OTHER = project({ id: 'other-9f8e7d6', name: 'other' })
 const THIRD = project({ id: 'third-5c4b3a2', name: 'third' })
 const FOURTH = project({ id: 'fourth-7b6a5c4', name: 'fourth' })
-
-function mediaAnswer(query: string, matches: boolean): MediaQueryList {
-  return {
-    matches,
-    media: query,
-    onchange: null,
-    addListener: () => undefined,
-    removeListener: () => undefined,
-    addEventListener: () => undefined,
-    removeEventListener: () => undefined,
-    dispatchEvent: () => false,
-  } as MediaQueryList
-}
-
-/** The narrow answer for the sider's own question only — a blanket `true` would answer the dark question too. */
-function belowTheBreakpoint(): void {
-  vi.spyOn(window, 'matchMedia').mockImplementation(
-    (query: string) => mediaAnswer(String(query), String(query).includes('max-width')),
-  )
-}
 
 function nav(): HTMLElement {
   return screen.getByRole('navigation', { name: content.nav.views })
@@ -73,9 +54,24 @@ function sider(): HTMLElement {
   return document.querySelector('.app-sider') as HTMLElement
 }
 
+/**
+ * The handles the basis would paint for a collapsible sider — its text pill at the edge, its zero-width
+ * trigger, and the two glyphs they carry. None of them may appear (R-WP-44): the tree is folded from the
+ * band, so a second handle in the tree is the defect, and `getByText` would never see a glyph anyway.
+ */
+function handles(): Element[] {
+  return Array.from(
+    document.querySelectorAll(
+      '.ant-layout-sider-trigger, .ant-layout-sider-zero-width-trigger, .anticon-menu-fold, .anticon-menu-unfold',
+    ),
+  )
+}
+
 interface Tree {
   projects: Project[]
   activeKey: string | null
+  collapsed: boolean
+  onCollapse: (collapsed: boolean) => void
   onOpen: (p: Project) => void
   onFiles: (p: Project) => void
 }
@@ -85,6 +81,8 @@ function tree(props: Partial<Tree> = {}): ReactElement {
     <AppSider
       projects={props.projects ?? [DEMO, OTHER]}
       activeKey={props.activeKey ?? null}
+      collapsed={props.collapsed ?? false}
+      onCollapse={props.onCollapse ?? vi.fn()}
       onOpen={props.onOpen ?? vi.fn()}
       onFiles={props.onFiles ?? vi.fn()}
     />
@@ -232,40 +230,37 @@ test('noAddressMeansNoMark', () => {
 })
 
 // UC-WP-70
-test('theSiderCollapsesBelowItsBreakpointAndStaysReachable', () => {
-  const onOpen = vi.fn()
+test('theSiderWidthsItsTwoStatesAndCarriesNoHandleOfItsOwn', () => {
+  // eng, aber der Rahmen hat noch nicht gefaltet: der Baum entscheidet **nichts** allein, er meldet die
+  // Kante dem Rahmen (`onCollapse(…, 'responsive')`) und zeigt weiter, was der Rahmen sagt (R-WP-44)
   belowTheBreakpoint()
-  const narrow = show({ activeKey: filesKeyOf(DEMO.name), onOpen })
+  const onCollapse = vi.fn()
+  const asked = show({ collapsed: false, onCollapse, activeKey: filesKeyOf(DEMO.name) })
+  expect(onCollapse, 'the breakpoint of the basis answers the frame, not a handle of the tree').toHaveBeenCalledWith(
+    true,
+    'responsive',
+  )
+  expect(sider().style.width, 'the tree folds only when the frame says so').toBe('250px')
 
-  // eingeklappt, und die Chat-Fläche bekommt die Breite: Width 0 and no rail of its own left
+  // gefaltet: Breite 0, kein Rand, die Chat-Fläche bekommt alles
+  asked.rerender(tree({ collapsed: true, onCollapse, activeKey: filesKeyOf(DEMO.name) }))
   expect(sider().className).toContain('ant-layout-sider-below')
   expect(sider().className).toContain('ant-layout-sider-collapsed')
   expect(sider().className).toContain('ant-layout-sider-zero-width')
   expect(sider().style.width).toBe('0px')
-  const handles = document.querySelectorAll('.ant-layout-sider-zero-width-trigger')
-  // the way back is the basis' own trigger — a `span` it gives neither role nor name, so it is read here
-  // by its class and not by `getByRole('button')`; `collapsedWidth={0}` gives it in both states (R-WP-44)
-  expect(handles).toHaveLength(1)
 
-  // über den ausgeklappten Sider bleibt die Auswahl erreichbar: erst die Gruppe, dann ihr Chat-Kind
-  fireEvent.click(handles[0])
-  expect(sider().className).not.toContain('ant-layout-sider-collapsed')
-  expect(sider().className).not.toContain('ant-layout-sider-zero-width')
-  expect(sider().style.width).toBe('250px')
-  fireEvent.click(within(nav()).getByRole('menuitem', { name: DEMO.name }))
-  fireEvent.click(within(nav()).getByRole('menuitem', { name: content.nav.chat }))
-  expect(onOpen).toHaveBeenCalledTimes(1)
-  expect(onOpen).toHaveBeenCalledWith(DEMO)
-
-  narrow.unmount()
+  asked.unmount()
   vi.restoreAllMocks()
 
-  // breit: nothing is folded, the same handle stands ready, and the tree is 250 px wide (A2's Look measure)
-  show({ activeKey: filesKeyOf(DEMO.name), onOpen })
+  // breit und offen: nichts ist gefaltet, dasselbe Maß (A2: 250 px)
+  show({ collapsed: false, activeKey: filesKeyOf(DEMO.name) })
   expect(sider().className).not.toContain('ant-layout-sider-below')
   expect(sider().className).not.toContain('ant-layout-sider-collapsed')
   expect(sider().style.width).toBe('250px')
-  expect(document.querySelectorAll('.ant-layout-sider-zero-width-trigger')).toHaveLength(1)
+
+  // in **beiden** Zuständen malt die Basis keinen eigenen Griff (R-WP-44): weder die Text-Pille am Rand noch
+  // den Null-Breiten-Auslöser noch eines ihrer Zeichen — der eine Griff steht im Kopf (`app.shell.tsx`)
+  expect(handles()).toEqual([])
 })
 
 // R-WP-38
@@ -273,9 +268,9 @@ test('theBreakpointIsTheMeasuredOne', () => {
   // asked and answered in the plan's Rechnung: under 992 px the file panel would be pushed into the chat,
   // and `md` (768) leaves the row too narrow long before that
   const asked: string[] = []
-  vi.spyOn(window, 'matchMedia').mockImplementation((query: string) => {
+  answerMediaQueries(query => {
     asked.push(String(query))
-    return mediaAnswer(String(query), false)
+    return false
   })
   show()
 

@@ -16,13 +16,20 @@ export const content = {
     views: 'Views',
     /** The name of the header's menu, for the screen reader (R-WP-43): its three pages. */
     pages: 'Pages',
-    /** The sider's first entry: the list itself, where projects are added and removed (R-WP-38). */
+    /** The list of projects: a page of the header, no place in the tree (R-WP-43, R-WP-44). */
     projects: 'Projects',
     /** The chat as one of the header's pages (R-WP-43, UC-WP-76) — the same word as `chat.title` (M15). */
     chat: 'Chat',
     /** The one unit a project has (R-WP-38): the file area, hung under its project in the tree. */
     files: 'Files',
     settings: 'Settings',
+    /**
+     * The handle that folds the tree away and brings it back (R-WP-44): the button of the header is two
+     * glyphs and carries no word of its own, so the name says what pressing it will do — the same reading
+     * as `theme.toggle`.
+     */
+    toggleSider: (collapsed: boolean): string =>
+      collapsed ? 'Show the project tree' : 'Hide the project tree',
   },
 
   user: {

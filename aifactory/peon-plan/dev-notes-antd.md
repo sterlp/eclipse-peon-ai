@@ -1209,6 +1209,19 @@ Drei Punkte, **kein Verhalten** — zwei Nachweislücken und ein Kommentar mit w
   statische Methoden), `antd list`, `antd lint ./src` (Regeln A001–A099) und `antd migrate`. `antd usage` ist in
   6.4.1 weg. `antd env <pfad>` **schreibt** in das Projekt (main.tsx, vite.config.ts, …; Backup nach
   `.antd-backups/`) — für eine Demo-Seite also nur nutzen, wenn dieser Überschreib-Plan gewollt ist.
+- **`Layout.Sider` ohne eigenen Griff:** `trigger={null}` nimmt **beide** Auslöser (Text-Pille
+  `…-sider-trigger`, Null-Breiten-Auslöser `…-sider-zero-width-trigger`, Default-Glyphe `BarsOutlined`) —
+  `layout/Sider.js`: `triggerDom = trigger !== null ? zeroWidthTrigger || <div …> : null`; die Klasse
+  `…-has-trigger` gibt es nur mit eigenem Griff. Ein `getByText(/menu.?fold/)` sieht davon **nie** etwas:
+  die Griffe sind `span`/`div` ohne Rolle, ihre Zeichen sind Icons.
+- **`Menu` im gefalteten Sider verliert seine offenen Gruppen:** `menu.js:88` rechnet
+  `inlineCollapsed ?? siderCollapsed`, die Basis schaltet also auf die Popup-Form und meldet beim Umschalten
+  `onOpenChange([])` ⇒ alle Gruppen zu, ohne Klick. `inlineCollapsed={false}` hält die Inline-Form (bei
+  `collapsedWidth={0}` ohnehin nichtsichtbar) und rettet die offenen Gruppen. **Weder `antd info Menu` noch
+  `antd lint` sagen dazu etwas** — Maß ist `node_modules/antd/es/**`.
+- **Ein Text-`Button` auf dem dunklen Band malt seine eigene Farbe:** `Layout.headerColor` gilt dem Text im
+  Band, nicht der Button-Oberfläche — darum eine Zeile im eigenen Blatt (`color: var(--top-text)`),
+  `:hover` nicht vergessen, sonst blinkt das Zeichen beim Draufzeigen dunkel.
 
 
 
