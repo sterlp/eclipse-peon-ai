@@ -2,8 +2,11 @@
    Geometry the basis already states — its layout column, its header height, its field surfaces — is not
    repeated here; where it had to move, `shared/theme.ts` moved it (R-WP-39). */
 
+/* The frame keeps no gutter of its own: tree and band **kleben bündig an der Fensterkante** — links, oben,
+   unten ohne Rand (R-WP-44, A2). The measure of a page is the view's own, the header's inside measure the
+   `headerPadding` token of `shared/theme.ts`. */
 .app {
-  padding: 0 1rem 2rem;
+  padding: 0;
   background: var(--bg);
 }
 
@@ -14,7 +17,8 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin: 0 -1rem 1rem;
+  /* no negative margin: the frame carries no gutter of its own for the band to bleed out of (A2) */
+  margin: 0 0 1rem;
 }
 
 /* the brand stands on the dark band, so it speaks in the band's colour and does not inherit the page's */
@@ -41,9 +45,10 @@
   min-height: 0;
 }
 
-/* The project tree (R-WP-38): only its edge is ours — its surface is the theme's `lightSiderBg`, mapped to
+/* The project tree (R-WP-44): only its edge is ours — its surface is the theme's `lightSiderBg`, mapped to
    `--surface` in `shared/theme.ts`, so the tree is a surface of its own beside the page; the mark on its
-   entry is the basis' own accent (R-WP-39). */
+   entry is the basis' own accent (R-WP-39). The step an entry sits in is the basis' own level measure —
+   nothing here adds a second one. */
 .app-sider {
   border-right: 1px solid var(--border);
 }
@@ -51,12 +56,6 @@
 /* the inline menu draws its own edge on the same side, which beside the one above reads as a double line */
 .app-sider .ant-menu {
   border-inline-end: 0;
-}
-
-/* The unit of the addressed project hangs under its project (R-WP-38) — one step in from the flat entries,
-   and the mark stays on exactly one of them. Specificity over the basis' own item rule, no `!important`. */
-.app-sider .ant-menu-item.app-sider-unit {
-  padding-inline-start: 2.25rem;
 }
 
 /* The pages' menu fills the header between the brand and the name (R-WP-43). `min-width: 0` is what lets it
@@ -91,6 +90,9 @@
   overflow-y: auto;
   min-width: 0;
   padding-inline: var(--content-gutter);
+  /* the room the frame used to carry below the row (A2): a page ends with air, the tree beside it with the
+     window edge */
+  padding-block-end: 2rem;
 }
 
 .add-project {
@@ -701,7 +703,9 @@ button {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* its own measures, none inherited from the page rule — the input is the footer row of the window (A2) */
   padding-inline: 0;
+  padding-block-end: 0;
 }
 
 /* The tab at the right edge, written sideways: the visible promise that this side opens (R-WP-33). Out

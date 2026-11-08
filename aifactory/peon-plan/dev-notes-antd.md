@@ -1192,6 +1192,23 @@ Drei Punkte, **kein Verhalten** — zwei Nachweislücken und ein Kommentar mit w
 - **Toter Zweig ist ein Befund, kein Schmuck:** `activeKey === key` an der Projekt-Marke war seit D6
   unerreichbar (der Deuter antwortet nie `project:<seg>`; `AppSider` hat nur `app.shell.tsx` als Producer; kein
   Test setzt den Key) ⇒ **nur-löschend** entfernt. `projectKeyOf` bleibt Item-Key und Klick-Griff.
+- **`Menu`-Baum (rc-menu 1.6.1) ist nur über Rollen beweisbar, nie über Klassen:** Gruppentitel =
+  `div[role=menuitem]` **mit** `aria-expanded`+`aria-haspopup`, Kind = `li[role=menuitem]` **ohne** sie;
+  Kinder einer geschlossenen Gruppe fehlen im DOM ganz. Das Einrück des Titels steht **inline**
+  (`hooks/useDirectionStyle.js:24`) ⇒ eine eigene CSS-Regel für die Kinderstufe trifft keinen Knoten.
+  Ein Icon im Kind gehört `aria-hidden`, sonst hängt sein `aria-label` am Accessible Name („folder Files").
+- **Gesteuerte `openKeys` + responsive Basis = leere Keyliste:** überscheitet `Layout.Sider` seinen
+  `breakpoint`, meldet `Menu` `onOpenChange([])` (`hooks/index.js:55-58`, Umschalten inline ↔ popup) ⇒ alle
+  Gruppen zu, ohne Nutzeraktion. Eigene Ableitung nur bis `touched === null` tragen lassen, oder — S1b — den
+  Sider unter dem Breakpoint durch einen `Drawer` ersetzen, dann gibt es keinen Umschalt-Punkt mehr.
+- **`Layout.Sider` mit `collapsedWidth={0}`:** den `zeroWidthTrigger` gibt es in **beiden** Zuständen, und
+  `onCollapse(value,'responsive')` feuert auch bei **gesteuertem** `collapsed` (`layout/Sider.js` ruft
+  `handleSetCollapsed(mql.matches,'responsive')`) — gesteuertes Ein- und Ausklappen und automatisches
+  Ansprechen vertragen sich; der alte Glaube „gesteuertes `collapsed` schaltet den Breakpoint ab" ist falsch.
+- **`antd`-CLI ist der billige Vorgeschmack:** `npm i -D antd` liefert `antd info <Komponente>` (Props, Import,
+  statische Methoden), `antd list`, `antd lint ./src` (Regeln A001–A099) und `antd migrate`. `antd usage` ist in
+  6.4.1 weg. `antd env <pfad>` **schreibt** in das Projekt (main.tsx, vite.config.ts, …; Backup nach
+  `.antd-backups/`) — für eine Demo-Seite also nur nutzen, wenn dieser Überschreib-Plan gewollt ist.
 
 
 

@@ -704,9 +704,10 @@ test('oneChatPerProject', async () => {
     content.tiles.open('Plan'),
   ])
 
-  // A1 (R-WP-39): the frame's entry is the basis' menu item now — the click and its claim are unchanged
+  // A1 (R-WP-39): the frame's entry is the basis' menu item now — the click and its claim are unchanged.
+  // Since R-WP-44 the way to the list is the header's page entry: the tree holds projects and their units.
   fireEvent.click(
-    within(screen.getByRole('navigation', { name: content.nav.views })).getByRole('menuitem', {
+    within(screen.getByRole('navigation', { name: content.nav.pages })).getByRole('menuitem', {
       name: content.nav.projects,
     }),
   )

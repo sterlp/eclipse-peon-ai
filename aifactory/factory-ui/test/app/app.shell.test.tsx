@@ -18,6 +18,13 @@ function nav(): HTMLElement {
   return screen.getByRole('navigation', { name: content.nav.views })
 }
 
+/** The group titles of the tree — a title is the basis' disclosure and carries `aria-expanded` (R-WP-44). */
+function groups(): HTMLElement[] {
+  return within(nav())
+    .getAllByRole('menuitem')
+    .filter(entry => entry.getAttribute('aria-expanded') !== null)
+}
+
 /** The header's navigation — named of its own, so the tree's helpers stay unambiguous (R-WP-43). */
 function topNav(): HTMLElement {
   return screen.getByRole('navigation', { name: content.nav.pages })
@@ -49,12 +56,10 @@ test('theFrameShowsTheProjectTree', async () => {
   // the frame owns the read (D1), so the tree fills in with it
   expect(await within(nav()).findByText(project().name)).toBeInTheDocument()
 
-  // the frame is the tree (R-WP-38): the list first, then one entry per project; the showing entry carries
-  // the basis' item state (ANTD-A1, R-WP-39) and the answer a screen reader reads (ANTD-A9)
-  const entries = within(nav()).getAllByRole('menuitem')
-  expect(entries.map(entry => entry.textContent)).toEqual([content.nav.projects, project().name])
-  expect(entries.map(entry => entry.getAttribute('aria-current'))).toEqual(['page', null])
-  expect(entries.filter(entry => entry.className.includes('ant-menu-item-selected'))).toHaveLength(1)
+  // the frame is the tree (R-WP-44): one group per project, named by the project — the list of projects is a
+  // page of the header and no entry here anymore
+  expect(groups().map(group => group.textContent)).toEqual([project().name])
+  expect(within(nav()).queryByRole('menuitem', { name: content.nav.projects })).toBeNull()
 })
 
 // UC-WP-53
@@ -62,12 +67,9 @@ test('theUiSpeaksEnglish', async () => {
   stubAppServer()
   const { container } = renderApp('/projects')
 
-  // R-WP-38: the frame's navigation is the tree in the sider — the list first, then one entry per project
+  // R-WP-44: the frame's navigation is the tree in the sider — one group per project
   expect(await within(nav()).findByText(project().name)).toBeInTheDocument()
-  expect(within(nav()).getAllByRole('menuitem').map(entry => entry.textContent)).toEqual([
-    content.nav.projects,
-    project().name,
-  ])
+  expect(groups().map(group => group.textContent)).toEqual([project().name])
   expect(screen.getByLabelText(content.user.name)).toBeInTheDocument()
   // the colour switch of the frame (UC-WP-71) is a control of the basis and speaks the catalog's word
   expect(screen.getByRole('switch', { name: content.theme.toggle('light') })).toBeInTheDocument()
@@ -156,12 +158,14 @@ test('theSettingsEntryIsCurrentOnSettings', async () => {
   expect(settingsEntry()).toHaveAttribute('aria-current', 'page')
   expect(markedEntries()).toEqual([])
 
-  fireEvent.click(within(nav()).getByRole('menuitem', { name: content.nav.projects }))
+  fireEvent.click(within(topNav()).getByRole('menuitem', { name: content.nav.projects }))
   await screen.findByLabelText(content.projects.gitUrl)
   expect(settingsEntry(), 'the header entry marks nothing where another page shows').not.toHaveAttribute(
     'aria-current',
   )
-  expect(markedEntries().map(entry => entry.textContent)).toEqual([content.nav.projects])
+  // the list is a page of the header, not a place in the tree (R-WP-44): the tree names nothing here
+  expect(markedEntries()).toEqual([])
+  expect(markedTopEntries().map(entry => entry.textContent)).toEqual([content.nav.projects])
 
   // and here the address changes without any click in the tree — the list row opened the chat while the
   // frame stayed mounted, so only a reading of the address can know which entry shows now
@@ -191,8 +195,9 @@ test('theTopMarkFollowsAnAddressNobodyClicked', async () => {
   expect(markedTopEntries().map(entry => entry.textContent)).toEqual([content.nav.settings])
   expect(settingsEntry()).toHaveAttribute('aria-current', 'page')
 
-  // the tree is the handle of every step below, so the header is only ever read
-  fireEvent.click(within(nav()).getByRole('menuitem', { name: content.nav.projects }))
+  // the tree is the handle of every step below, so the header is only ever read; the list itself is a page
+  // of the header and not an entry of the tree (R-WP-44)
+  fireEvent.click(within(topNav()).getByRole('menuitem', { name: content.nav.projects }))
   await screen.findByLabelText(content.projects.gitUrl)
   expect(app.path()).toBe('/projects')
   expect(markedTopEntries().map(entry => entry.textContent)).toEqual([content.nav.projects])

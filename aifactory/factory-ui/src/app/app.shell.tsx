@@ -12,7 +12,6 @@ import {
   navKeyOfPathname,
   pageKeyOfPathname,
   projectSegment,
-  projectsPath,
 } from './app.paths'
 import type { AppContext } from './app.context'
 import { content } from '../shared/content'
@@ -82,7 +81,6 @@ export default function AppShell() {
           projects={projects}
           activeKey={navKeyOfPathname(pathname)}
           onOpen={openProject}
-          onProjects={() => navigate(projectsPath)}
           onFiles={openFiles}
         />
         <Layout.Content className="app-main">

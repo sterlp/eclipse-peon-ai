@@ -157,3 +157,55 @@ damit war „kein Remount" nicht falsifizierbar (diese BUG-Art ist wiederkehrend
 als Pin, nicht nur die Token-Tabelle.
 
 **Stand nach N1:** 224 Tests / 22 Dateien, `tsc -b` 0, oxlint 0/0. Die Browser-Abnahme des Rahmens steht aus.
+
+## Inkrement 4 UI — S1 Sider-Baum (Dev-Bau 2026-11-08, Branch `web-factory-4`)
+
+**Abweichungen vom Plan (Dev meldet, Jon zieht ❌→✅).**
+
+1. **Chat-Kind ohne Icon.** `docs/ui.md` R-WP-44 verlangt das Ordner-Zeichen nur für Files; Paul: „die icons
+   für pacos … brauchen wir nicht, … so wie die einträge im top-menu". Die Referenzbilder (`SOLL.png`,
+   `side soll.png`) zeigen plain Kinder + Ordner an Files.
+2. **`trigger` gesetzt** (`MenuUnfoldOutlined`/`MenuFoldOutlined`) statt Plan-„Default": R-WP-44 nennt die
+   beiden Zeichen als **eigenen Griff**; die Basis malt ihr Text-Pill-Rechteck (`ant-layout-sider-trigger`).
+3. **`app-sider-unit` und seine CSS-Regel sind weg.** Der Titel bekommt sein Einrück **inline**
+   (`@rc-component/menu/hooks/useDirectionStyle.js:24`), die Kinder erben die Stufenmaß 24 px — die eigene
+   Regel traf im DOM **0** Knoten, war also tot. Ein Einrück-Beweis wäre ein `.ant-*`-Pin auf die Basis ⇒ Look
+   bleibt Browser-Abnahme.
+4. **`openGroupsOf` öffnet zusätzlich die Gruppe der Adresse** (Plan nannte nur „< 4 alle, sonst erste"): eine
+   Markierung hinter einer zugeklappten Gruppe beantwortete die URL, ohne etwas zu zeigen.
+5. **`onOpenChange={setTouched}` erbt einen Basis-Befund:** überscheitet der Sider seinen Breakpoint, liefert
+   die Basis eine **leere** Keyliste (`@rc-component/menu/hooks/index.js:55-58`) ⇒ alle Gruppen zu. Bewusst
+   hingenommen, weil S1b (Drawer statt Sider unter `xl`, Pauls Vorgabe) den Umschalt-Punkt auflöst.
+6. **Plan §5 `npm run check` existiert nicht** in `factory-ui/package.json` ⇒ `npm run lint` + `npx tsc -b` +
+   `npx vitest run` + `npx antd lint ./src`.
+7. **Plan §7 unterschlug Kollateralschäden:** `app.routes.test.tsx` (6 Stellen: Gruppentitel statt flachem
+   Projekt-Eintrag, `/projects` markiert nichts mehr, Klick aufs Chat-Kind), `app.shell.test.tsx` (4 Stellen,
+   Kopf-Nav statt Baum), `chat.page.test.tsx:711` (Settings liegt im Kopf, R-WP-43), `app.paths.test.ts`
+   (2 Stellen). Alle Beweise bleiben in ihrer Aussage gleich, keiner ist gelöst.
+8. **Der Warte-Rahmen bleibt stehen** (`styles.css` `.chat-line.pending`) — S2, nicht S1.
+
+**Einmalige Messungen (Beweise stehen am Test, die Maßzahlen hier).**
+
+- Submenu-Titel = `div[role=menuitem][aria-expanded][aria-haspopup=true]` im `li[role=none]`, Kind =
+  `li[role=menuitem]` **ohne** diese Attribute; Kinder einer geschlossenen Gruppe sind gar nicht im DOM.
+  ⇒ Differenz über `aria-expanded`, nie über Klassen der Basis.
+- Ein Icon-`aria-label` färbt auf den Accessible Name durch („folder Files") ⇒ `aria-hidden` am Ordner-Zeichen.
+- **Mutation aus dem Plan überlebt in jsdom:** „Gruppentitel an `onOpen`" als `label: <span onClick=…>` gemalt,
+  bleibt grün — ein Klick auf den Titel-Knoten trifft ein **Kind** nicht. Die Mutation muss am Menü selbst
+  ansetzen (`onOpenChange`/`onClick`).
+- **Klick-Falle (AGENTS-DEV, hier wieder gemessen):** der Titel klappt **und** die Adresse bleibt — der
+  Nicht-Klick erfüllt „Adresse unverändert" ohnehin. Der Beweis ist das **Attribut** (`aria-expanded`
+  wechselt) plus „weder `onOpen` noch `onFiles`".
+
+**Mutationen (Plan §7-S1, drei, alle getötet).**
+
+- Gruppentitel an `onOpen` (über `onOpenChange`) ⇒ `groupTitleOnlyTogglesTheGroup` **und** der
+  Collapse-Test rot.
+- Chat-Zweig im `onClick` gestrichen ⇒ `chatUnitOpensTheChatAddress` **und** der Collapse-Test rot.
+- `openKeys` auf „immer alle" ⇒ **genau** `groupsAreOpenUntilFourProjects` rot.
+- Wie im Plan vorgesehen **nicht** gefahren: „Projekt zurück als flaches `entry`" — der Struktur-Test ist durch
+  seinen Aufbau falsifizierbar (`aria-expanded` am Titel, `previousElementSibling` für „Files zuletzt").
+
+**Stand nach S1:** 214 Tests / 22 Dateien grün, `tsc -b` 0, oxlint 0/0, `antd lint ./src` 0. Look (bündiger
+Rand, 250 px, weiße Fläche, Einrück) ist **nicht** getestet — Paul am Browser. `docs/ui.md` und
+`docs/memory.md` tragen Pauls laufende Edits und sind **nicht** committet. Offen: S1b Drawer unter `xl`.
