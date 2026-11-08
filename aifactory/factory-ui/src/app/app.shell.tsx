@@ -78,10 +78,10 @@ export default function AppShell() {
   return (
     <Layout className="app">
       <Layout.Header className="app-header">
+        <AppSiderToggle collapsed={collapsed} onToggle={() => setCollapsed(value => !value)} />
         <span className="app-title">{content.brand}</span>
         <AppTop active={pageKeyOfPathname(pathname)} onNavigate={navigate} />
         <AppThemeToggle />
-        <AppSiderToggle collapsed={collapsed} onToggle={() => setCollapsed(value => !value)} />
         <AppUser user={user} onChange={setUser} />
       </Layout.Header>
       <Layout className="app-body">
