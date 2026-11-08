@@ -6,9 +6,9 @@
 ## Build
 
 - **pnpm auf dem PATH**, sonst `factory-ui FAILURE: Cannot run program "pnpm"` vor jedem Backend-Modul:
-  `export PATH=~/.nvm/versions/node/v22.12.0/bin:$PATH` + `COREPACK_ENABLE_PROJECT_SPEC=0` (corepack 0.33 in
-  Node 22.12 kennt pnpm ≥ 11 nicht). **Aktiv: pnpm 10.28.0** (`lockfileVersion: '9.0'`); pnpm 12 ist kein
-  Drop-in (`ERR_PNPM_PACKAGE_MANAGER_REMOVE_MODULES_DIR`). Das ungetrackte Root-`package.json` ist nicht uns.
+  `export PATH=~/.nvm/versions/node/v22.23.4/bin:$PATH`; ein neuer nvm-Node bringt keine pnpm-Shims —
+  einmal `corepack enable` (corepack 0.36: `COREPACK_ENABLE_PROJECT_SPEC=0` nicht mehr nötig). **Aktiv:
+  pnpm 10.28.0** (`lockfileVersion: '9.0'`); pnpm 12 ist kein Drop-in (`ERR_PNPM_PACKAGE_MANAGER_REMOVE_MODULES_DIR`). Das ungetrackte Root-`package.json` ist nicht uns.
 - **Jeder Maven-Lauf mit `clean`**: Eclipse (JDT+Lombok) lässt fehlerhafte Class-Files in `target/classes`
   zurück → `500 "Unresolved compilation problems"`, oder `NoClassDefFoundError: <SimpleTypeName>` ohne
   Paket. Eclipse meldet Lombok-Getter als „undefined" — Maven ist die Wahrheit.
@@ -55,6 +55,10 @@
 
 - **Doc-Lint-Baseline ist nicht 0** (❌-UCs kommender Inkremente): findings-frei = **keine neuen** Findings
   und die eigenen UCs von der Liste genommen.
+- **AntD-v6-Timeline (Inc 3)**: `Steps` erzwingt `min-height:48px` + `padding-bottom:12px` — Geometrie nur
+  im Chat-Scope überschreiben (`.chat-log .chat-line.trace .ant-timeline-item`); `itemPaddingBottom` liest
+  AntD **nur im Alternativ-Layout**, die `title`-Prop baut eine Zweitspalte. Beweise nur über
+  `data-testid="chat-timeline"`/`data-trace`, nie `.ant-*`; `MAX_TOOL_LINES` kürzt nur Tool-Items.
 - **jsdom misst weder Farbe noch Layout** (`getComputedStyle` = `canvastext`, `var()`/Nesting lösen nicht,
   `scrollHeight` = 0): **Look wird nicht als Sheet-Text gepinnt** — keine Farb-Literale in `test/`, eine
   Design-Änderung darf keinen Test anfassen. `test/shared/sheets.ts` bleibt für **Mechanik-Grenzen**
