@@ -303,6 +303,13 @@ test('enterSendsBothLinesInOneTurn', async () => {
 
   // Enter is the send (R-WP-30), and what the field holds goes with it — both lines, in their order, one turn
   const field = screen.getByTestId('chat-input') as HTMLTextAreaElement
+
+  // the empty keystroke first, while nothing runs: here only the composer's guard can be the reason that no
+  // request follows — the copy of this keystroke below is stopped by the running turn instead (UC-WP-56 GIVEN 1)
+  expect(fireEvent.keyDown(field, { key: 'Enter' }), 'an empty Enter keeps its prevented default').toBe(false)
+  await flush()
+  expect(chat.countOf('/messages', 'POST'), 'an empty Enter opens no turn').toBe(0)
+
   fireEvent.change(field, { target: { value: 'erste Zeile' } })
 
   // the second line is set the way the user sets it, at the caret of the field, so the chain
@@ -318,10 +325,11 @@ test('enterSendsBothLinesInOneTurn', async () => {
   expect(sentTexts(chat)).toEqual(['erste Zeile\nzweite Zeile'])
   expect(field, 'the send took the text').toHaveValue('')
 
-  // the same keystroke on an empty field opens nothing: the send needs a text (UC-WP-56 GIVEN 1)
+  // and again on a field the send has just emptied: here the **turn** is what stands in the way, its `done`
+  // has not come — the guard's own proof is the probe above and `emptyEnterSendsNothing` (UC-WP-57 GIVEN 2)
   fireEvent.keyDown(field, { key: 'Enter' })
   await flush()
-  expect(chat.countOf('/messages', 'POST')).toBe(1)
+  expect(chat.countOf('/messages', 'POST'), 'an empty Enter behind a running turn opens nothing').toBe(1)
 })
 
 // UC-WP-75
@@ -1625,11 +1633,47 @@ test('emptySendResendsTheLastUserMessage', async () => {
   fireEvent.click(screen.getByTestId('chat-send'))
   await flush()
 
-  // the loaded history is the only source — the text goes out as it stands, on the same edge as a fresh one
+  // the last line the screen shows, here the history's — nothing is pending — and it goes out as it stands,
+  // on the same edge as a fresh one
   expect(chat.countOf('/messages', 'POST')).toBe(1)
   expect(sentTexts(chat)).toEqual([QUESTION.text])
   expect(chat.countOf('/messages', 'GET'), 'a repeat reads nothing again').toBe(reads)
   expect(userLineTexts(), 'the history line and the repeated one').toEqual([QUESTION.text, QUESTION.text])
+  expect(screen.getByTestId('chat-input')).toHaveValue('')
+})
+
+// UC-WP-57
+test('emptySendResendsTheStoppedUserMessage', async () => {
+  const chat = stubChat({ messages: [QUESTION], agents: [tile('Jon', 'IDLE')] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  const stopped = 'mach die zweiten Dateien fertig'
+  // the second question goes out; the history never confirms it, so it stays this browser's pending line
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: stopped } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+
+  // the stop is accepted and its `done` reads nothing back (D-16): the history keeps **less** than the screen
+  // shows, so the repeat has to answer to what is visible and not to the last line of the history
+  fireEvent.click(screen.getByTestId('chat-stop'))
+  await flush()
+  chat.setMessages([QUESTION])
+  await chat.push(event('done', { millis: 5 }))
+  const reads = chat.countOf('/messages', 'GET')
+
+  // no turn runs, the field stands empty, and the newest user line on the screen is the stopped one
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+
+  expect(chat.countOf('/messages', 'POST')).toBe(2)
+  expect(sentTexts(chat), 'the stopped input, never the older history line').toEqual([stopped, stopped])
+  expect(userLineTexts(), 'history line, pending line, the repeated one').toEqual([
+    QUESTION.text,
+    stopped,
+    stopped,
+  ])
+  expect(chat.countOf('/messages', 'GET'), 'a repeat reads nothing again').toBe(reads)
   expect(screen.getByTestId('chat-input')).toHaveValue('')
 })
 

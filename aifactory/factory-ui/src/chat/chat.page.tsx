@@ -25,7 +25,7 @@ import {
   livePreview,
   type LiveItem,
 } from './chat.live'
-import { withoutConfirmed, type PendingLine } from './chat.pending'
+import { lastVisibleUserText, withoutConfirmed, type PendingLine } from './chat.pending'
 import { useFollowBottom } from './chat.scroll'
 import { ScrollBottomButton } from './chat.scroll.bottom'
 import { ChatTiles } from './chat.tiles'
@@ -411,10 +411,10 @@ export function ChatPage({ project, files, user }: Props) {
     (runningTurn !== null && runningTurn === projectId) || tiles.some(tile => tile.state === 'WORKING')
 
   /**
-   * One text into this project's conversation — whether the field wrote it or an empty send repeated it from
-   * the history makes no difference on the wire (UC-WP-57): the same edge, the same queue while a turn runs
-   * (R-WP-10). Never reached with a blank text: the backend answers 400, so the empty way ends in `submit`
-   * before any request.
+   * One text into this project's conversation — whether the field wrote it or an empty send repeated the last
+   * line the screen shows makes no difference on the wire (UC-WP-57): the same edge, the same queue while a
+   * turn runs (R-WP-10). Never reached with a blank text: the backend answers 400, so the empty way ends in
+   * `submit` before any request.
    */
   async function send(text: string) {
     if (projectId === null) {
@@ -448,10 +448,11 @@ export function ChatPage({ project, files, user }: Props) {
 
   /**
    * The one decider of the send way (UC-WP-57), because the composer answers nothing on its own (UC-WP-74):
-   * a text goes out as it stands; an empty field repeats the last user line of the loaded history while no
-   * turn works, and does nothing while one works or when the history holds no line. A repeat is not a second
-   * way on the wire — it is `send` with the text the history kept. The field keeps what he typed in the
-   * meantime: an empty send had nothing to clear.
+   * a text goes out as it stands; an empty field repeats the last user line the screen shows — the history's
+   * or this browser's pending one, which is what makes "send it again after a stop" work — and does nothing
+   * while a turn works or when no line has been shown at all. A repeat is not a second way on the wire — it
+   * is `send` with the text the screen kept. The field keeps what he typed in the meantime: an empty send had
+   * nothing to clear.
    */
   function submit(event: FormEvent) {
     event.preventDefault()
@@ -464,7 +465,7 @@ export function ChatPage({ project, files, user }: Props) {
     if (busy) {
       return // no empty turn and no queue line behind a running one (UC-WP-57 GIVEN 2)
     }
-    const repeated = lastUserText(messages)
+    const repeated = lastVisibleUserText(messages, pendingLines.current)
     if (repeated !== null) {
       void send(repeated)
     }
@@ -576,18 +577,5 @@ export function ChatPage({ project, files, user }: Props) {
  */
 function isAlreadyOver(error: unknown): boolean {
   return error instanceof ApiRequestError && (error.apiError?.status ?? 0) === 409
-}
-
-/**
- * The last user line of the **loaded history** — the only source of a repeat (UC-WP-57): no second read, no
- * peeking at the pending lines, which are this browser's view and not the conversation. The text goes out as
- * it stands, sender prefix and queue marker included: `ProjectRuntime.history()` parses the sender out of the
- * text again and `submit` of the same class puts the prefix back (factory-backend
- * `src/main/java/com/factory/runtime/ProjectRuntime.java:519-541`), so a copy of it cannot double it.
- */
-function lastUserText(messages: ChatMessage[]): string | null {
-  const line = messages.findLast(message => message.role === 'user')
-  // a blank line would answer with the text the backend refuses with 400 — nothing to repeat then
-  return line === undefined || line.text.trim() === '' ? null : line.text
 }
 

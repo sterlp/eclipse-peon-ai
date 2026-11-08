@@ -6,12 +6,12 @@ import type { GetRef } from 'antd'
 
 import { content } from '../shared/content'
 
-/** The growth's upper bound (R-WP-41 / UC-WP-74 GIVEN 3): five lines, then the field scrolls. */
+/** The growth's upper bound (R-WP-41 / UC-WP-74 GIVEN 4): five lines, then the field scrolls. */
 export const MAX_ROWS = 5
 
 /**
  * Is the user typing somewhere that is not this field? The end of a turn gives the field its focus back
- * (UC-WP-74 GIVEN 4) — it must not steal the caret out of the search field he is working in.
+ * (UC-WP-74 GIVEN 5) — it must not steal the caret out of the search field he is working in.
  */
 function typingElsewhere(own: HTMLFormElement | null): boolean {
   const active = document.activeElement
@@ -52,12 +52,12 @@ interface Props {
  * second way to a line break, which the browser does not add by itself (R-WP-30). An **empty** Enter is no
  * send at all — the keystroke keeps its prevented default and reaches no turn, while the same click on the
  * button may repeat a text (UC-WP-56 GIVEN 1, Paul 2026-11-08). The field owns its focus: it takes it
- * when the project opens and gets it back when a turn ends (UC-WP-74 GIVEN 4).
+ * when the project opens and gets it back when a turn ends (UC-WP-74 GIVEN 5).
  */
 export function ChatComposer({ draft, busy, onDraftChange, onSubmit, onStop }: Props) {
   const field = useRef<GetRef<typeof Input.TextArea> | null>(null)
   const form = useRef<HTMLFormElement>(null)
-  /** The turn that just ended is the moment the field gets its focus back (UC-WP-74 GIVEN 4). */
+  /** The turn that just ended is the moment the field gets its focus back (UC-WP-74 GIVEN 5). */
   const wasBusy = useRef(busy)
 
   function keys(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -85,7 +85,7 @@ export function ChatComposer({ draft, busy, onDraftChange, onSubmit, onStop }: P
     form.current?.requestSubmit()
   }
 
-  // the project opened with this field: it owns the focus from the first drawing (UC-WP-74 GIVEN 4)
+  // the project opened with this field: it owns the focus from the first drawing (UC-WP-74 GIVEN 5)
   useEffect(() => {
     field.current?.focus()
   }, [])

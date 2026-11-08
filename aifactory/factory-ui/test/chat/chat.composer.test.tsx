@@ -23,7 +23,7 @@ function renderComposer(over: Over = {}) {
   }
   const view = render(<ChatComposer {...props} />)
 
-  /** The page's next render, the doubles kept — a call count has to survive it (UC-WP-74 GIVEN 4). */
+  /** The page's next render, the doubles kept — a call count has to survive it (UC-WP-74 GIVEN 5). */
   function rerender(next: Over): void {
     Object.assign(props, next)
     view.rerender(<ChatComposer {...props} />)
@@ -176,7 +176,7 @@ test('theFieldGrowsWithItsText', () => {
   // the smoke test looks at.
   const page = renderComposer({ draft: 'erste\nzweite' })
 
-  expect(MAX_ROWS, 'the bound of the growth is a named constant (UC-WP-74 GIVEN 3)').toBe(5)
+  expect(MAX_ROWS, 'the bound of the growth is a named constant (UC-WP-74 GIVEN 4)').toBe(5)
 
   const fields = page.container.querySelectorAll('textarea.chat-composer-field')
   expect(fields, 'one field, and it is the basis own').toHaveLength(1)

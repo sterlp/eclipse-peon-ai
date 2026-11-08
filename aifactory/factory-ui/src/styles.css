@@ -17,7 +17,7 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  /* the band klebt bündig auf dem Inhalt (A2, R-WP-43): a margin here is the white gap between band and page
+  /* the band sits flush on the content (A2, R-WP-43): a margin here is the white gap between band and page
      that Paul photographed 2026-11-08 — the air a page ends with is the view's own `padding-block-end` */
   margin: 0;
 }
@@ -619,11 +619,11 @@ button {
   }
 }
 
-/* Das Feld ist die Auto-Grow-Textarea der Basis: eine Zeile bis fünf, danach scrollt sie (R-WP-41); Enter
-   sendet, Shift und Ctrl/Cmd+Enter brechen um (R-WP-30). Die Höhe gehört der Basis — sie steht inline auf dem
-   Feld, darum hier kein min-height und kein resize. Die Zeile ist die ruhige Fußzeile über die ganze Breite
-   und so weiß wie ihre Fläche; das Senden steht rechts daneben, unten am Feld, die beiden anderen Knöpfe in
-   der zweiten Zeile, damit eine lange Frage ihre Breite behält (R-WP-35, Paul 2026-11-08: SOLL-Bild). */
+/* The field is the basis' auto-grow textarea: one line to five, then it scrolls (R-WP-41); Enter sends, Shift
+   and Ctrl/Cmd+Enter break the line (R-WP-30). The height belongs to the basis — it stands inline on the
+   field, so neither a min-height nor a resize here. The row is the quiet foot across the whole width and as
+   white as its surface; the send stands to its right, at the bottom of the field, the one secondary control
+   on the second row, so a long question keeps its width (R-WP-35, Paul 2026-11-08: SOLL picture). */
 .chat-composer {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -657,11 +657,11 @@ button {
   gap: 0.5rem;
 }
 
-/* Die Warte-Leiste eines Turns (R-WP-31) — die Zeile des Plugins: in beiden Themen dunkel, Mono, mit dem
-   Cursor, der während des Turns blinkt. Das Grün ist das Agenten-Grün von chat.html. Sie steht als Block
-   über dem Feld: der Chat scrollt in seiner eigenen Fläche, also hängt nichts mehr am Seiten-Scroll
-   (R-WP-35). Sie steht als Bar in demselben Maß wie Verlauf und Feld — darum der Einzug am Rand ihrer
-   eigenen Fläche und nicht in ihrem Innenmaß, das die Zeile des Plugins bleibt. */
+/* The waiting bar of a turn (R-WP-31) — the plugin's own line: dark in both themes, mono, with the caret that
+   blinks while the turn runs. The green is the agent green of chat.html. It stands as a block above the
+   field: the chat scrolls in its own area, so nothing hangs on the page scroll any more (R-WP-35). It keeps
+   the measure of the log and the field — hence the inset on the edge of its own area and not in its padding,
+   which stays the plugin's line. */
 .chat-waiting {
   display: flex;
   flex: none;
@@ -677,7 +677,7 @@ button {
   font-size: 0.8rem;
 }
 
-/* Vorschau, nicht Verlauf: was der Stream zuletzt meldete, auf einer Zeile. */
+/* A preview, not the conversation: what the stream reported last, on one line. */
 .chat-waiting-text {
   overflow: hidden;
   white-space: nowrap;

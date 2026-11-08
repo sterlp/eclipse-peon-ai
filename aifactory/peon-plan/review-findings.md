@@ -610,3 +610,68 @@ Der eingeblendete Plan-Kontext dieser Sitzung meldete Fortschritt, den `git log`
 dem ersten Edit `git log --oneline -8` + `git status --porcelain` + gezieltes `grep` gegen die betroffene
 Datei; ein Hash, der in `git log` fehlt, widerlegt den ganzen Block — keine Zeile daraus in Dateien oder
 Commits übernehmen.
+
+## Inkrement 4 UI — N1 Nacharbeit (Review REJECTED, Dev-Bau 2026-11-08)
+
+Delta über `6084b449`: **BUG-1** (Wiederholung nach einem Stop) + LOW 1–3. Plan: Runde 6 — N1.
+
+### BUG-1 — die Wiederholung fragte den Verlauf, die Doc verlangt den Schirm
+
+**Ursache.** Der Stop liest den Verlauf nicht neu (`chat.page.tsx` `done`-Zweig, D-16, gepinnt durch
+`stopKeepsTheShownLines`), die Wiederholung las aber nur `messages`. Nach Mount `[Q1]` → Q2 senden → Stop →
+`done` stand auf dem Schirm Q1 + **Pending Q2**, im Verlauf nur Q1 ⇒ der leere Klick sandte Q1.
+R-WP-30/UC-WP-57 GIVEN 1 sagen „letzte **sichtbare** Nutzer-Zeile … bestätigt oder noch ausstehend".
+
+**Gebaut (D1–D3).** Neuer reiner Helfer `lastVisibleUserText(history, pending)` in `src/chat/chat.pending.ts`
+(Ordnungsregel = **Platz im Log**: `chat.log.tsx` zeichnet Verlauf dann Pending ⇒ eine ausstehende Zeile
+gewinnt; bewusst nicht die Draht-Chronologie — steht im Helfer-Kommentar). `chat.page.tsx` fragt sie in
+`submit` mit `pendingLines.current` (ref, nicht State) und verliert `lastUserText`; Backend-Pfad des
+Kommentars berichtigt: `factory-backend/src/main/java/**org/sterl/open/aifactory/chat/**/ProjectRuntime.java:519-541`
+(`history()` parst den Absender, `submit:373` setzt das Präfix wieder ⇒ kein Doppelpräfix). Kein Read, keine
+Dateilesung, kein Marker-Agriff.
+
+**Rot vor grün (Protokoll).** Test `emptySendResendsTheStoppedUserMessage` zuerst geschrieben, Produktionscode
+unverändert ⇒ **rot** wie erwartet: `chat.page.test.tsx:1661` — „the stopped input, never the older history
+line: expected [stopped, stopped], received `[mach die zweiten Dateien fertig, wo liegen die Dateien?]`". Nach
+dem Helferwechsel grün, 215/215.
+
+| Mutation am Helfer | Getötete Tests |
+|---|---|
+| Pending-Zweig gestrichen (nur Verlauf) | **genau** `emptySendResendsTheStoppedUserMessage` (1 failed / 117 passed in `test/chat`) |
+| Verlaufszweig gestrichen (nur Pending) | **genau** `emptySendResendsTheLastUserMessage` (1 failed / 117 passed) |
+
+Beide Zweige sind also gebraucht; keiner ist Dekoration. Kein Unit-Test auf den Helfer selbst (beide Zweige
+sind verhaltensseitig bewiesen, AGENTS: Redundanz ist LOW).
+
+### LOW 1 — GIVEN-Nummern des UC-WP-74 (gemessen **7** Stellen, Review nannte 8)
+
+`docs/chat.md:449-458`: 1 leer aktiv · 2 Turn läuft, tippen + senden ⇒ Queue · 3 Turn läuft, leerer Klick ⇒
+nichts · 4 Auto-Grow · 5 Refocus. Gezogen: `chat.composer.tsx:9` 3→4, `:14,:55,:60,:88` 4→5,
+`chat.composer.test.tsx:179` 3→4, `:26` 4→5. Richtig und unangetastet: `chat.composer.tsx:45`,
+`chat.page.test.tsx:510`, `chat.composer.test.tsx:143` (je GIVEN 1). **Achte Stelle außerhalb des
+Commit-Umfangs:** `docs/open-points.md:148` zitiert „UC-WP-74 GIVEN 4" für den Refocus ⇒ **Jons Seite**.
+Messgröße grep, kein Test.
+
+### LOW 2 — die Leer-Enter-Probe war blind, jetzt ist sie es nicht mehr
+
+`enterSendsBothLinesInOneTurn` fragte Enter auf leerem Feld **nach** einem Send ohne `done`: dort steht
+`runningTurn` ⇒ `busy` = true, der leere Weg wäre also auch **ohne** den Composer-Guard nichts gegangen. Jetzt
+steht dieselbe Probe **vor** der ersten Eingabe (kein Turn läuft ⇒ nur der Guard kann der Grund sein) mit
+`expect(fireEvent.keyDown(…)).toBe(false)` (kein Default) und `POST` 0; der hintere Rest bleibt, sein
+Kommentar nennt jetzt den **laufenden Turn** als Hinderungsgrund (UC-WP-57 GIVEN 2). Kein neuer Test, keiner
+gelöscht. Der Guard selbst bleibt zusätzlich in `chat.composer.test.tsx` `emptyEnterSendsNothing` bewiesen.
+
+### LOW 3 — Sprachregel im Blatt
+
+Übersetzt: `.chat-composer` (war `:622-626`), `.chat-waiting` (`:660-664`), `.chat-waiting-text` (`:680`) —
+Selektoren und Werte unverändert, dabei „die beiden anderen Knöpfe" ⇒ **ein** Secondary-Control (Stop)
+berichtigt. Der vom Review genannte **Sliver**-Kommentar war bereits Englisch, trifft also nicht.
+**Zusätzlich gebaut (von mir in Runde 6 selbst geschrieben, `f1de3b97`):** der `.app-header`-Kommentar
+(`:20`) war halb Deutsch ⇒ Englisch. **Bewusst nicht gebaut (Scope):** weitere deutsche Kommentare im Blatt
+`:5`, `:212-213`, `:240`, `:953`, `:1029` — ältere Runden, kein Befund, nicht committet; `content.ts:204` ist
+ein **Zitat** aus der deutschen Doku, keine Kommentar-Prosa. Akzeptanz- grep (`nicht|damit|weil` in
+`src/styles.css`) ist leer.
+
+**Stand nach dem Delta:** 215 Tests / 22 Dateien grün (214 + der neue Stop-Fall), `npx tsc -b` 0, `npx oxlint`
+0/0 (82 Dateien), `npx antd lint ./src` 0 (50 Dateien), Eclipse-Bau `factory-ui` ohne Meldung. Browser-
+Stichprobe (nach einem Abbruch leer „Send" ⇒ dieselbe Frage nochmal) steht bei Paul/Jon aus.
