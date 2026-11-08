@@ -106,7 +106,9 @@ function ThinkEntry({ item, working }: { item: ThinkItem; working: boolean }) {
 /**
  * One delegation: the member the order went to and, while his turn is the open one, the word that he works.
  * The order itself stays the wording of the step above — the wire carries no task text, so this entry parses
- * nothing out of anybody (UC-WP-72 GIVEN 3). The basis' loading dot is the indicator; the word needs none.
+ * nothing out of anybody (UC-WP-72 GIVEN 3). What says <em>he works</em> is the point of the open entry, and
+ * that point is our own `WorkingIndicator` — `timelineItems` hands it as `icon`, because the basis' loading
+ * glyph would paint a second mark of the same answer (R-WP-46); the word beside the name carries no mark.
  */
 function DelegationEntry({ item, working }: { item: DelegationItem; working: boolean }) {
   return (

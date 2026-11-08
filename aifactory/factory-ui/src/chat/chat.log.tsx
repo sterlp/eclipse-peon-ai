@@ -75,10 +75,11 @@ type Entry =
  * carry yet, and the live lines of the running turn — each live line at the place it happened, so tool
  * activity stands between the parts of an answer it belongs to (R-WP-28, D-7).
  *
- * The person's own input stands in a bubble on the right, an answer as a card on the left — no row carries
- * an accent edge, and no answer is centred or right-aligned. Bubble and card are what tell the voices
- * apart: the log draws no line of its own between two rows (R-WP-29). An answer reads as Markdown, so the
- * model's headings, lists and code blocks are what the user sees; the person's line stays the text he typed.
+ * Every voice fills the measure of the log (R-WP-29): the person's own input as the reference's blue bubble,
+ * an answer as a card on the page's own surface with a border of its own. Colour and border tell the voices
+ * apart and never a side — no row carries an accent edge, none is centred or right-aligned, none leaves the
+ * flow, and the log draws no line of its own between two rows. An answer reads as Markdown, so the model's
+ * headings, lists and code blocks are what the user sees; the person's line stays the text he typed.
  *
  * A user's line always names its author — the person the server named, or the role label of the doc —
  * because the chat is shared and every viewer has to read the same thing (R-WP-25, UC-WP-48). An agent's

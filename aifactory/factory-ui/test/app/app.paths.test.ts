@@ -27,11 +27,6 @@ test('theAddressNamesTheEntryThatShows', () => {
   // The project list is a page of the header since R-WP-44, so it names nothing in the tree either.
   expect(navKeyOfPathname('/projects')).toBeNull()
   expect(navKeyOfPathname('/settings')).toBeNull()
-  // the chat address names the **unit** of its project and not the project entry: the tree lists chat · files
-  // under the project, and the unit is the finer handle the mark has to follow (UC-WP-77)
-  expect(navKeyOfPathname(chatPath(project().name))).toBe(chatKeyOf(project().name))
-  // an address that names no entry of the tree marks nothing — guessing the first would lie about the page
-  expect(navKeyOfPathname('/settings')).toBeNull()
   expect(navKeyOfPathname('/chat')).toBeNull()
   expect(navKeyOfPathname('/no/such/route')).toBeNull()
   // an escaped name marks the unit whose chat opens: the chat resolves what `useParams` hands it — decoded

@@ -67,7 +67,14 @@ export function baseDeclarations(selector: string): string {
   return declarationsIn(BASE_SHEET, selector)
 }
 
-/** Whether a sheet names a rule for this selector at all — the question behind "that block is gone". */
+/**
+ * Whether the app's sheet spells a rule for this selector — the question behind "that block is gone". Read as
+ * written: a substring hit on `selector` + **one** space + `{`. A rule with two spaces, a break before the
+ * brace or a grouped selector (`a, b {`) is therefore not found, and `index.css` is never searched — so a
+ * `false` can stay green while the rule exists in another spelling. Anyone who wants that read otherwise
+ * changes this helper and reports its callers: `chat.page.test.tsx` (UC-WP-65), `code.test.tsx`,
+ * `theme.test.ts`.
+ */
 export function declares(selector: string): boolean {
   return SHEETS[APP_SHEET].includes(`${selector} {`)
 }

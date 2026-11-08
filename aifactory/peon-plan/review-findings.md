@@ -495,3 +495,52 @@ Zweig war vorher haltlos: `theSiderMarksTheEntryTheAddressNames` rendert durchge
 
 **Stand nach N1-1:** 217 Tests / 22 Dateien grün, `tsc -b` 0, oxlint 0/0 (82 Dateien), `antd lint ./src` 0
 (50 Dateien).
+
+### N1-2 BUG 2 (Kommentare) + LOW a/b/c
+
+**BUG 2 — zwei Kommentare auf den gebauten Stand (kein Code-Wechsel):**
+- `src/chat/chat.log.tsx` — „bubble on the right / card on the left" ist seit S4 falsch. Neu am Blatt
+  (`styles.css:329-347`, beide Stimmen `justify-self: stretch`): beide füllen das Maß, die eigene Eingabe als
+  blaue Blase (`--user`), eine Antwort als Karte auf `--surface` mit eigener Einfassung — **Farbe und
+  Einfassung** unterscheiden, keine Seite. Der Satz „the log draws no line of its own between two rows"
+  **bleibt** stehen (lebende Behauptung, gehalten von `test/shared/log.parts.ts`); der Delta-Plan ließ ihn
+  fallen — gestrichen hätte er den Beweis der Trennlinien stillschweigend seiner Klammer beraubt.
+- `src/chat/chat.timeline.tsx` (`DelegationEntry`) — „The basis' loading dot is the indicator" ist seit S3
+  falsch. Neu: der Punkt des offenen Eintrags ist **unser** `WorkingIndicator`, den `timelineItems` als `icon`
+  übergibt; der Lade-Glyphe der Basis wäre ein zweites Zeichen derselben Antwort (R-WP-46).
+
+**LOW a — die drei Kachel-Einzeiler unterscheiden jetzt wirklich Zustände** (je **eine** Assertion, kein neuer
+Test). Zwei DOM-Fallen bestimmen die Schreibweise, beide gemessen: `Spin` legt `classNames.indicator` auf das
+**geklonte** Indikator-Element (`node_modules/antd/es/spin/Indicator/index.js:17-24`, Wurzel
+`spin/index.js:97-98,122-131`) ⇒ Klasse sitzt **unter** dem TestId-Knoten, `toHaveClass` am Knoten wäre grün
+trotz Defekt; und der `agent-status`-Wrapper trägt `aria-hidden` ⇒ keine Rollen-Query findet darin etwas,
+`getByTestId`/`querySelector` sind der Weg. Klassen sind unsere, kein `.ant-*`.
+
+| Mutation an `chat.status.tsx` (`AgentStatus`) | Getötete Tests |
+|---|---|
+| IDLE malt den Spin statt des Kreises | **genau** `teamTilesShowContextAndStatus` |
+| COMPACTING verliert die Frage-Farbe (`tone` weg) | **genau** `compactShowsItsOwnState` |
+| ERROR malt den Idle-Kreis statt des gefüllten Zeichens | **genau** `clearStaysOfferedAfterAFailure` |
+
+(`test/chat`: je 1 failed / 117 passed von 118 — keine Nebenwirkung auf die Timeline-Beweise.)
+
+**LOW b — `test/app/app.paths.test.ts`:** der beim S1-Umbau doppelt eingefügte Block (wörtlich dieselben
+`expect`-Aufrufe wie zwei Zeilen darüber) ist ersatzlos raus; keine Behauptung fehlt, kein Name geändert.
+
+**LOW c — `test/shared/sheets.ts::declares()`:** Semantik jetzt am Helper (Substring auf `selector` + genau
+**ein** Leerzeichen + `{`; zwei Leerzeichen, Umbruch vor der Klammer und Gruppen-Selektoren werden nicht
+gefunden, `index.css` wird nie gelesen — ein `false` kann grün bleiben, obwohl die Regel in anderer
+Schreibweise steht), **Verhalten unverändert** wie im Delta vorgesehen. Empfehlung des Reviews
+(whitespace-normalisierte Suche) ist damit **nicht** gebaut — wer sie will, ändert den Helper und meldet die
+Aufrufer.
+
+**Plan-Fund — die Aufrufer-Liste des Deltas:** N1.3(c) nennt `chat.page.test.tsx` (UC-WP-65) und
+`chat.log.test.tsx`. Gemessen benutzt `chat.log.test.tsx` den Helper **nicht**; die Aufrufer der geteilten
+Funktion sind `chat.page.test.tsx:1036,1763`, `test/shared/code.test.tsx:23`, `test/shared/theme.test.ts:47` —
+diese Liste steht jetzt am Helper. **Daneben liegengeblieben (unangetastet, außerhalb des Deltas):**
+`test/chat/chat.tiles.test.tsx:285` besitzt eine **eigene** Kopie von `declarations`/`declares` mit derselben
+Schreibweisen-Grenze; wer die Suche normalisiert, muss **beide** erwischen.
+
+**Stand nach N1-2:** 217 Tests / 22 Dateien grün, `tsc -b` 0, oxlint 0/0 (82 Dateien), `antd lint ./src` 0
+(50 Dateien), `vite build` grün. Kommentare und Testverstärkungen, kein neues Verhalten, keine neue UC-ID —
+R-WP-44/R-WP-1 zieht Jon selbst.

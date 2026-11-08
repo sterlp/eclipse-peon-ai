@@ -64,6 +64,11 @@ test('teamTilesShowContextAndStatus', () => {
     within(screen.getByTestId('tile-state-Dev')).getByTestId('working-indicator'),
     'a working agent is drawn by the working indicator itself',
   ).toBeInTheDocument()
+  // and the spin is the mark of a state that works — an idle agent shows its own circle and nothing turning
+  expect(
+    within(screen.getByTestId('tile-state-Jon')).queryByTestId('working-indicator'),
+    'idle is not drawn as work',
+  ).toBeNull()
 })
 
 // UC-WP-11
@@ -91,8 +96,11 @@ test('compactShowsItsOwnState', () => {
   )
 
   expect(screen.getByTestId('tile-state-Dev')).toHaveTextContent(content.tiles.state.COMPACTING)
-  // a compact is work in the asking colour (R-WP-45): the mark is there, and it is not the accent's one
+  // a compact is work in the asking colour (R-WP-45): the mark is there, and it is not the accent's one —
+  // the basis puts `classNames.indicator` on the cloned glyph, so the tone sits **under** the test handle
   expect(within(screen.getByTestId('tile-state-Dev')).getByTestId('agent-status')).toBeInTheDocument()
+  const mark = within(screen.getByTestId('tile-state-Dev')).getByTestId('working-indicator')
+  expect(mark.querySelector('.working-indicator-question'), 'a compact turns in the asking colour').not.toBeNull()
   // an agent that works or compacts offers nothing — a second action would write over the running one
   expect(screen.getByTestId('tile-clear-Dev')).toBeDisabled()
   expect(screen.getByTestId('tile-compact-Dev')).toBeDisabled()
@@ -113,8 +121,13 @@ test('clearStaysOfferedAfterAFailure', () => {
   )
 
   expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.ERROR)
-  // a failure of the agent is marked as one (R-WP-45) while the tile still offers its way out
+  // a failure of the agent is marked as one (R-WP-45) while the tile still offers its way out — the filled
+  // sign of it, and read as decoration: the wrapper is `aria-hidden`, so no role query reaches inside it
   expect(within(screen.getByTestId('tile-state-Jon')).getByTestId('agent-status')).toBeInTheDocument()
+  expect(
+    within(screen.getByTestId('tile-state-Jon')).getByTestId('agent-status').querySelector('.agent-status-error'),
+    'a failure carries the filled problem mark',
+  ).not.toBeNull()
   // a failure is over: UC-WP-12 names no state condition and the server takes a Clear on an idle agent,
   // so a tile that stayed shut here would strand the only way out of the failed conversation
   expect(screen.getByTestId('tile-clear-Jon')).toBeEnabled()
