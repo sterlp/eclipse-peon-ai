@@ -21,15 +21,28 @@ Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwiss
 * **A2 geklärt (Paul):** Sider **bündig an der Fensterkante** (links/oben/unten **ohne Rand**, App-Padding
   weicht) + **Breite 250 px** statt 200 („Projektname passt nicht sauber rein") — steht im Look-Absatz
   ([ui.md](ui.md)) und in [R-WP-44](ui.md).
-* **Plan Inc 4 fertig** (`peon-plan/overview.md`, S1 Sider+Rand+250 → S2 Rahmen löschen → S3
-  Status-Indikator+Timeline-Spin+Kachel-Buttons → S4 Blasen/Fläche/Composer → S5 Scroll; BDD-Tabelle 14
-  Zeilen, Mutationen je neuer Verdrahtung, Plan-Messbefunde: responsive Collapse feuert auch bei controlled
-  `collapsed`, Timeline-Spin braucht `loading:true` **und** `dot`). **Kein Dev-Bau — Paul macht ein
-  IDE-Update; Freigabe kommt von Paul.** **Plan nachbearbeitet (neuer Plan-Prompt, Tests minimal):**
-  0 neue Test-Dateien, **4 neue Tests** (2 Sider, 2 Scroll), 7 gelöscht, ~8 Einzeiler, Mutationen auf 8
-  reduziert (`chat.status.test.tsx`/`chat.scroll.test.tsx` entfallen — bestehende Beweise decken es,
-  Messungen F1–F8 in §1.10); **Kachel-Zustand kommt fertig vom Server** (`AgentTiles.stateOf`, keine
-  UI-Ableitung), `data-state` existiert schon (`chat.tiles.tsx:67`).
+* **Plan Inc 4 gebaut + reviewed + geflippt ✅** (S1 `97449349` → S1b `8ef6a9b0` → Toggle top-left
+  `09f74e7c` → S2 `8ee655ba` → S3 `f090b5b8` → S4 `93e49b8b` → S5 `3627ccc5` → Delta N1 `36c69808`+
+  `3f0b43eb`). **Look-Reparaturen + neue Funktionalität drin:** Sider-Baum/Breite 250/bündig
+  (A2), Griff **oben links im Header** (Paul queued: „schöner im Header links als unten im Menü"),
+  Warte-Rahmen gelöscht, Status-Indikator + Timeline-Spin, Blasen volle Breite/randlose Fläche
+  (A3–A5), Composer weiß/Senden rechts, Scroll + FloatButton, Kachel- + Composer-Buttons = AntD
+  `Button` (R-WP-43). **217 Tests/22 Dateien**, tsc 0, oxlint 0/0, `antd lint` 0. **Docs geflippt**
+  (R-WP-44/31/45/29/35/40/46 + UC-WP-65/78/79/80/81 ✅, Look-Anteile „Abnahme am Browser steht aus").
+* **Review REJECTED → Delta N1:** (1) `openKeys`-Union — **die Gruppe der Adresse steht immer offen**
+  (Doc-Präzisierung in R-WP-44/R-WP-1; Plan-Konflikt „≥4 nur erste" vs „Markierung/URL einig"
+  so aufgelöst); (2) zwei veraltete Kommentare; 3 LOW (Kachel-Zustand-Assertions, Duplikat,
+  `declares()`-JavaDoc). Verdict REJECTED heißt: erst Delta-Plan, meine Abnahme, dann Bau.
+* **Plan-Verität und Agenten-Behauptungen prüfen:** Dev behauptete „Paul will einen Sider-Drawer
+  (4× nachdrücklich)" — gemessen: der Hinweis galt dem **Files-Slide-out rechts** (R-WP-33 → AntD
+  `Drawer`, ❌-Anteil, eigener Slice). Und der Plan-Kopf behauptete `Badge`/`failedAt`-Ableitung —
+  beide existierten nie (gemessen). **Vor jedem „Paul will X" aus dem Mund eines Agenten: einmal beim
+  User rückversichern oder in den Docs belegen.**
+* **AntD-Skill jetzt user-level:** über die Skill-Tools erreichbar, `.agents/skills/antd` existiert
+  nicht mehr.
+* **Nächste Schritte:** **Pauls Look-Abnahme am Browser** (Inc 4: Sider bündig/250/Griff oben links,
+  Status-Farben, Blasen, randlose Fläche, Composer, Scroll-Knopf, Kachel-Buttons) — danach A7
+  Restore (Core prüfen!), **Files-Drawer-Delta** (R-WP-33 ❌), C-7, Config-Story (F8).
 * Plan-Vorschlag (⏳ prüfen): `antd`-Skill um Abschnitt „API-Verifikation ohne Netz" ergänzen
   (`node_modules/antd/es/**` als Beweismittel statt Kopf-Wissen — 3× widerlegt diese Session).
 
