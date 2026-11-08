@@ -223,7 +223,7 @@ eigene Gespräch ([R-WP-26](chat.md)).
 - GIVEN eine Kachel WHEN **Compact** geklickt wird THEN kompaktiert genau dieser Agent und die
   Kachel zeigt den Compact als eigenen Zustand.
 
-### R-WP-45 — Status-Indikator der Kacheln: blau arbeitet, gelb kompaktiert, grün bereit ❌ (Paul 2026-11-08, Abnahme — „wir nutzen den Status-Indikator, keinen weiteren Status im Chat"; ersetzt den grauen Warte-Rahmen, [R-WP-31](chat.md))
+### R-WP-45 — Status-Indikator der Kacheln: blau arbeitet, gelb kompaktiert, grün bereit ✅ (Paul 2026-11-08, Abnahme — „wir nutzen den Status-Indikator, keinen weiteren Status im Chat"; ersetzt den grauen Warte-Rahmen, [R-WP-31](chat.md); gebaut + reviewed 2026-11-08, Inkrement 4 — **Farb-/Maß-Abnahme am Browser steht aus**)
 
 Der Status-Indikator je Kachel (heute ein schwarzer/grauer Punkt) zeigt den Zustand des Agenten
 in **drei Farben**: **blau** = der Agent arbeitet, **gelb** = er kompaktiert, **bereit** = ein
@@ -238,7 +238,7 @@ Team-Mitglieder, deren Arbeit sonst nur in der Delegations-Zeile sichtbar wäre 
 AntD-Fehler-/Alert-Indikator, **wenn** AntD dafür ein fertiges Widget hat (Widget-vor-eigenbau,
 [R-WP-46](ui.md)).
 
-#### UC-WP-79 — tileStatusIndicatorColors ❌
+#### UC-WP-79 — tileStatusIndicatorColors ✅ (gebaut 2026-11-08, Inkrement 4 — **Farb-Abnahme am Browser steht aus**)
 - GIVEN ein Agent arbeitet WHEN seine Kachel zeichnet THEN zeigt ihr Status-Indikator **Blau**.
 - GIVEN ein Agent kompaktiert WHEN seine Kachel zeichnet THEN zeigt ihr Status-Indikator **Gelb**.
 - GIVEN ein Agent ist bereit WHEN seine Kachel zeichnet THEN zeigt ihr Status-Indikator einen
@@ -303,7 +303,7 @@ Verlauf; kompakt (klein, grau, Tool-Zeilen gemerged wie in `chat.html`) und nach
 - GIVEN eine Nutzer-Eingabe mit Markdown-Zeichen WHEN sie im Verlauf steht THEN erscheint sie als
   Wortlaut, nicht als Markup.
 
-### R-WP-40 — Werkzeug- und Delegationsschritte stehen als Timeline im Verlauf ✅ (Paul 2026-11-06; Optik-Umbau AntD `Timeline` gebaut + reviewed 2026-11-07, Inkrement 3 auf `web-factory` — Look-Abnahme am Browser steht aus)
+### R-WP-40 — Werkzeug- und Delegationsschritte stehen als Timeline im Verlauf ✅ (Paul 2026-11-06; Optik-Umbau AntD `Timeline` gebaut + reviewed 2026-11-07, Inkrement 3 auf `web-factory`; **Lade-Punkt = AntD `Spin`/`LoadingOutlined` small — 2026-11-08-Schärfung — gebaut + reviewed 2026-11-08, Inkrement 4**; Look-Abnahme am Browser steht aus)
 
 Die Schritte eines Turns — Werkzeug, Think-Abschnitt, Delegation — werden als **AntD `Timeline`**
 dargestellt: laufen mehrere Schritte **direkt hintereinander** (unterbrochen von einer LLM-Nachricht,
@@ -389,7 +389,7 @@ Datei-Bereich ([Dateien](files.md)).
   ist im Datei-Bereich sichtbar.
 
 
-### R-WP-29 — Farben und Fließtext der Chat-Zeilen ❌ (Paul 2026-11-07: die **Optik** folgt der Design-Übernahme — [R-WP-39](ui.md); die Fließtext-Grenzen unten bleiben gebaut)
+### R-WP-29 — Farben und Fließtext der Chat-Zeilen ✅ (Paul 2026-11-07: die **Optik** folgt der Design-Übernahme — [R-WP-39](ui.md); die Fließtext-Grenzen unten bleiben gebaut. **Blasen: volle Breite, Höhe = Text** (Paul 2026-11-08) gebaut 2026-11-08, Inkrement 4 — **Abnahme am Browser steht aus**)
 
 **Übernahme 2026-11-07:** die Verlaufs-Optik folgt dem Referenz-Design (`ai-schulung` `MessageList` —
 Nutzer-**Bubble** rechts in Blau, Antworten links im Fluss); die frühere Fassung „Akzent links, keine
@@ -476,7 +476,7 @@ gesendete Nachricht erneut senden**, ohne sie neu zu tippen — etwa nach einem 
 - GIVEN der Nutzer hat eine Nachricht gesendet WHEN er „Resend" wählt THEN geht dieselbe Nachricht
   erneut in die Queue (auch nach einem Fehler), ohne dass er sie neu tippt.
 
-### R-WP-31 — Warte-Indikator während des Turns ✅ (Paul 2026-11-02; **Warte-Rahmen seit 2026-11-08 zurückgenommen** — Paul, Abnahme: „einfach löschen"; der Umbau ist nicht gebaut, UC-WP-65 ❌)
+### R-WP-31 — Warte-Indikator während des Turns ✅ (Paul 2026-11-02; **Warte-Rahmen seit 2026-11-08 zurückgenommen** — Paul, Abnahme: „einfach löschen"; gebaut + reviewed 2026-11-08, Inkrement 4, UC-WP-65 ✅)
 
 Während ein Turn läuft, zeigt der Chat eine kompakte **Warte-Leiste** („Waiting for AI…" wie im
 Plugin: dunkel, Mono, blinkender Cursor) mit dem Live-Preview des Streams; sie steht **über der
@@ -493,7 +493,7 @@ eines anderen Nutzers ([UC-WP-22](chat.md)).
 - GIVEN ein laufender Turn WHEN er noch nichts geliefert hat THEN zeigt die Warte-Leiste „Waiting for
   AI…"; WHEN der Stream liefert THEN wechselt sie auf das Live-Preview und endet mit dem Turn.
 
-#### UC-WP-65 — waitingMarkEndsWithTheTurn ❌ (neu gefasst Paul 2026-11-08: der Warte-Rahmen ist gelöscht, die Arbeit zeigt der Status-Indikator — [R-WP-7](chat.md)/[R-WP-45](chat.md))
+#### UC-WP-65 — waitingMarkEndsWithTheTurn ✅ (gebaut 2026-11-08, Inkrement 4: der Rahmen ist gelöscht, die Arbeit zeigt der Status-Indikator — [R-WP-7](chat.md)/[R-WP-45](chat.md))
 - GIVEN ein laufender Turn WHEN die vorläufige Eingabezeile steht THEN trägt **keine** Zeile des
   Verlaufs eine Rahmen-Kontur — der arbeitende Zustand steht im Status-Indikator der Kachel-Reihe.
 - GIVEN ein von diesem Browser gestarteter Turn WHEN `done` eintrifft THEN endet der Arbeits-Status,
@@ -540,7 +540,7 @@ dass sein Turn gescheitert ist). Zwei Fehlschläge sind **zwei** Fehlerzeilen �
   weiterhin im Verlauf (derselbe Bestand wie vor dem Reload).
 
 
-### R-WP-35 — Der Chat scrollt, die Eingabe steht unten ✅ (Runde 2, Inc 3; Scroll-Verhalten geschärft Paul 2026-11-08 — die Schärfungen unten sind ❌, UC-WP-80)
+### R-WP-35 — Der Chat scrollt, die Eingabe steht unten ✅ (Runde 2, Inc 3; Scroll-Verhalten geschärft Paul 2026-11-08 — Schärfungen + FloatButton gebaut + reviewed 2026-11-08, Inkrement 4, UC-WP-80 ✅; die **Look-Anteile** — volle Bildschirmbreite, weißer Composer, Senden rechts — nehmen wir am Browser ab)
 
 Der Chat ist eine **Fläche mit eigenem Scroll**: der Verlauf scrollt in seiner **eigenen** Fläche,
 während die **Kachel-Reihe oben** und die **Eingabe unten** stehen bleiben — die Warte-Leiste
@@ -563,7 +563,7 @@ steht ein schwebender Knopf** — Pfeil nach unten, „Scroll bottom" (AntD `Flo
 - GIVEN der Nutzer hat nach oben gelesen WHEN eine neue Zeile erscheint THEN bleibt der Verlauf an
   seiner Position stehen.
 
-#### UC-WP-80 — scrollBottomButtonReArmsAutoScroll ❌ (Paul 2026-11-08, Abnahme)
+#### UC-WP-80 — scrollBottomButtonReArmsAutoScroll ✅ (gebaut + reviewed 2026-11-08, Inkrement 4)
 - GIVEN der Nutzer ist vom Ende entfernt WHEN neue Zeilen erscheinen THEN bleibt der Verlauf an seiner
   Position und ein schwebender Knopf (Pfeil nach unten, „Scroll bottom", AntD `FloatButton`) ist
   sichtbar.

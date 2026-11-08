@@ -196,14 +196,14 @@ nachbauen: so ist sie unabhängig testbar (Funktions-Tests gegen das Widget, nic
 und die gleiche Optik steht nicht zweimal. Nachgebaut wird nie — ein zweiter Pfad für dieselbe
 Anzeige ist ein Defekt ([AF-ADR-003](adr/003-reference-ui-is-a-donor-not-a-source.md)).
 
-#### UC-WP-81 — uiFunctionsAreReusableWidgets ❌
+#### UC-WP-81 — uiFunctionsAreReusableWidgets ✅ (gebaut 2026-11-08, Inkrement 4: `WorkingIndicator`/`AgentStatus` (`chat.status.tsx`), `useFollowBottom` (`chat.scroll.ts`), `FloatButton` (`chat.scroll.bottom.tsx`) — die einzigen drei neuen Widgets, Beweis-Marker an den zwei Oberflächen)
 - GIVEN eine UI-Funktion (Status-Indikator, Blase, Timeline, Scroll-Knopf) WHEN die App zeichnet
   THEN kommt sie aus **einem** wiederverwendbaren Widget — keine Seite baut dieselbe Anzeige ein
   zweites Mal nach.
 - GIVEN das Widget braucht eine Optik, die AntD nicht mitbringt WHEN es entsteht THEN ist es trotzdem
   ein Widget (AntD-Pendant oder eigene Komponente), kein Inline-Markup in der Seite.
 
-### R-WP-44 — Sider-Baum: Klapp-Gruppen je Projekt, Chats als Einträge ❌ (Paul 2026-11-08: „in der Sidebar links sind nur die Projekt-Chats, nicht die Projects selbst — das ist doppelt"; ersetzt den ersten Eintrag „Projects" und die „kein Jon-Eintrag"-Fassung von [R-WP-38](ui.md))
+### R-WP-44 — Sider-Baum: Klapp-Gruppen je Projekt, Chats als Einträge ✅ (Paul 2026-11-08: „in der Sidebar links sind nur die Projekt-Chats, nicht die Projects selbst — das ist doppelt"; ersetzt den ersten Eintrag „Projects" und die „kein Jon-Eintrag"-Fassung von [R-WP-38](ui.md); gebaut + reviewed 2026-11-08, Inkrement 4 auf `web-factory-4` — **Look-Abnahme am Browser steht aus**: bündiger Rand, 250 px, Griff oben links im Header)
 
 Der Sider ist ein AntD-`Menu` (`mode="inline"`) mit **einer Klapp-Gruppe je Projekt** — der
 Gruppen-Titel ist der Projektname, seine **Kinder sind die Chats und Einheiten des Projekts**: der
@@ -224,10 +224,13 @@ Der Sider klebt **bündig an der Fensterkante** — links, oben und unten **ohne
 2026-11-08, Abnahme: „er soll direkt links oben und unten ohne Rand dran kleben"); das App-Padding
 hält ihn nicht von der Kante.
 **Voreingestellt aufgeklappt** (Paul 2026-11-08): gibt es **weniger als vier** Projekte, stehen
-**alle** Gruppen offen; bei vier oder mehr ist nur die **erste** Gruppe offen — mehrere Chats je
-Agent kommen **nicht** ins MVP (PR-5 hält, Paul 2026-11-08: „es ging mir ums Layout").
+**alle** Gruppen offen; bei vier oder mehr ist nur die **erste** Gruppe offen — **die Gruppe der Adresse steht
+darüber hinaus immer offen**: navigiert die Adresse (Projektliste, Browser-Zurück, Deep-Link)
+in eine andere Gruppe, klappt diese auf, auch wenn der Nutzer vorher eine Gruppe zugeklappt hat
+(Markierung und URL bleiben einig, [R-WP-1](ui.md) — mehrere Chats je
+Agent kommen **nicht** ins MVP (PR-5 hält, Paul 2026-11-08: „es ging mir ums Layout")).
 
-#### UC-WP-78 — siderGroupsPerProjectWithChatsAsEntries ❌
+#### UC-WP-78 — siderGroupsPerProjectWithChatsAsEntries ✅
 - GIVEN Projekte existieren WHEN der Sider zeichnet THEN steht je Projekt eine Klapp-Gruppe mit dem
   Projektnamen als Titel, deren Kinder die Chats und Einheiten des Projekts sind (Jon; Paco, sobald
   gebaut; Files als letztes) — **kein „Projects"-Eintrag**; ein Klick auf den Chat-Eintrag öffnet

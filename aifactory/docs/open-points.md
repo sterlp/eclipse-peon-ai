@@ -60,11 +60,12 @@ werden echte Buttons/Selects. Neu im SOLL, Rückprüfung offen:
   bei 20 Schritten mit Verdrängung — bewusst MVP-nachgelassen (Paul).
 * **🔒 Sider-Baum entschieden (2026-11-08, Paul per Sider-Beispiel + `side soll.png`): Klapp-Gruppen
   je Projekt, Chats und Einheiten als Kinder, kein „Projects"-Eintrag, leerer Sider ohne Projekte,
-  Einklap-Griff (`trigger`)** — steht jetzt in [R-WP-44/UC-WP-78](ui.md) ❌; gebaut wird es im
-  Sider-Inkrement (neue Tests erlaubt — Navigation ist Funktionalität, nicht Look). Offen bleibt daraus
-  nur der Anteil **kein Files-Slide-out** ([R-WP-33](files.md) „zwei Griffe" auf die Adresse) — ⏳,
-  im selben Inkrement umgebaut. „Top-Menü ist richtig" (Paul 2026-11-08): Projekte · Chat · Settings
-  bleibt, [R-WP-43](ui.md) unverändert.
+  Einklap-Griff (`trigger`)** — steht in [R-WP-44/UC-WP-78](ui.md) ✅; gebaut + reviewed im
+  Sider-Inkrement (Inc 4, 2026-11-08), Look-Abnahme am Browser steht aus. Der Anteil
+  **Files-Slide-out** ist entschieden (2026-11-08, Paul: „der Drawer ist das richtige Element für das
+  Slide-out rechts"): das Slide-out **bleibt**, als **AntD `Drawer`** von rechts — ❌-Anteil in
+  [R-WP-33](files.md), eigener Slice nach Inc 4. „Top-Menü ist richtig" (Paul 2026-11-08):
+  Projekte · Chat · Settings bleibt, [R-WP-43](ui.md) unverändert.
 
 ## Runde 3 — AntD-Umbau der Oberfläche (Paul 2026-11-06)
 
