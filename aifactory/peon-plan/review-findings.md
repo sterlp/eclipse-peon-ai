@@ -466,3 +466,32 @@ am Feld.
 **Stand nach S5:** 216 Tests / 22 Dateien grün, `tsc -b` 0, oxlint 0/0 (82 Dateien), `antd lint ./src` 0
 (50 Dateien), `vite build` grün. `chat.page.tsx` **588** Zeilen (vorher 594; der Plan nannte 602) — unter der
 600er-Grenze, der Scroll-Anteil ist draußen.
+
+---
+
+## Inkrement 4 UI — N1 Review-Fixes (Dev-Bau 2026-11-08, Freigabe Jon · Stand `3627ccc5`)
+
+### N1-1 BUG 1 — die Adresse öffnet ihre Gruppe immer
+
+**Gebaut:** `src/app/app.sider.tsx` — neue interne Lesart `namedGroupOf(projects, activeKey)` (eine Antwort auf
+„welche Gruppe nennt die Adresse?"), von `openGroupsOf` **und** vom Render benutzt. Effektive offenen Gruppen
+= `touched ?? openGroupsOf(…)` **∪** Gruppe der Adresse; die Union begrenzt die **Voreinstellung**, nie die
+Adresse-Gruppe (R-WP-44 „steht darüber hinaus immer offen", R-WP-1 „Markierung und URL einig" — sichtbar
+einig). Kein neuer Zustand, keine Schleife: `touched` ändert sich einmal, der Rest ist Rechnung.
+
+**Bewusst hingenommen (Kommentar an der Union, damit niemand es „repariert"):** den Titel der Gruppe anzuklicken,
+die die Adresse nennt, klappt sie nicht zu — sie schnappt offen zurück. Das ist die Doc-Entscheidung „immer
+offen" und kein zweiter Defekt. `touched`-Einträge verschwundener Projekte ignoriert das `Menu` (Kinder fehlen),
+ebenfalls hingenommen.
+
+**Test (der einzige neue des Deltas):** `test/app/app.sider.test.tsx
+theAddressGroupOpensEvenAfterAToggle` (R-WP-44, R-WP-1, UC-WP-78). Der Wechsel der Adresse kommt per `rerender`
+und **nicht** per Baum-Klick — genau das, was Projektliste, Browser-Zurück und Deep-Link dem Rahmen geben. Der
+Zweig war vorher haltlos: `theSiderMarksTheEntryTheAddressNames` rendert durchgehend mit `touched === null`.
+
+| Mutation | Getötete Tests |
+|---|---|
+| Union gestrichen (`openKeys={openKeys}`, nur `touched`) | **genau** `theAddressGroupOpensEvenAfterAToggle` (`test/app`: 1 failed / 5 passed von 6 Dateien) |
+
+**Stand nach N1-1:** 217 Tests / 22 Dateien grün, `tsc -b` 0, oxlint 0/0 (82 Dateien), `antd lint ./src` 0
+(50 Dateien).

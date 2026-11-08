@@ -34,6 +34,15 @@ const chatKeyFor = (project: Project): string => chatKeyOf(projectSegment(projec
 const filesKeyFor = (project: Project): string => filesKeyOf(projectSegment(project))
 
 /**
+ * The group the address names, `null` when it names no unit of the tree. The one reading of "which group
+ * stands under the mark" — the preset and the union of the effective keys both ask it (R-WP-1).
+ */
+function namedGroupOf(projects: Project[], activeKey: string | null): string | null {
+  const named = projects.find(project => chatKeyFor(project) === activeKey || filesKeyFor(project) === activeKey)
+  return named === undefined ? null : groupKeyOf(named)
+}
+
+/**
  * The groups standing open before the viewer has said anything: all of them while the list is short, the
  * first one only from {@link ALL_GROUPS_OPEN_BELOW} on (R-WP-44) — plus the group the address names, because
  * a mark inside a closed group would answer the URL while showing nothing (R-WP-1).
@@ -42,10 +51,8 @@ function openGroupsOf(projects: Project[], activeKey: string | null): string[] {
   const keys = projects
     .slice(0, projects.length < ALL_GROUPS_OPEN_BELOW ? projects.length : 1)
     .map(groupKeyOf)
-  const named = projects.find(project => chatKeyFor(project) === activeKey || filesKeyFor(project) === activeKey)
-  return named === undefined || keys.includes(groupKeyOf(named))
-    ? keys
-    : [...keys, groupKeyOf(named)]
+  const named = namedGroupOf(projects, activeKey)
+  return named === null || keys.includes(named) ? keys : [...keys, named]
 }
 
 /**
@@ -80,6 +87,14 @@ export function AppSider({ projects, activeKey, collapsed, onCollapse, onOpen, o
     ],
   }))
 
+  // the **union**, not the viewer's list: `touched` limits the preset of open groups and never the group the
+  // address names, whose mark has to be seen (R-WP-44, R-WP-1). Accepted consequence — clicking the title of
+  // exactly that group folds nothing, it snaps open again; no state and no loop behind it, `touched` changes
+  // once and the union is arithmetic. Do not "repair" this into `touched` alone.
+  const openKeys = touched ?? openGroupsOf(projects, activeKey)
+  const named = namedGroupOf(projects, activeKey)
+  const shownOpenKeys = named === null || openKeys.includes(named) ? openKeys : [...openKeys, named]
+
   return (
     <Layout.Sider
       className="app-sider"
@@ -104,7 +119,7 @@ export function AppSider({ projects, activeKey, collapsed, onCollapse, onOpen, o
           // every group the viewer had open (measured: `menu.js:88` `inlineCollapsed ?? siderCollapsed`)
           inlineCollapsed={false}
           items={items}
-          openKeys={touched ?? openGroupsOf(projects, activeKey)}
+          openKeys={shownOpenKeys}
           onOpenChange={setTouched}
           selectedKeys={activeKey === null ? [] : [activeKey]}
           onClick={({ key }) => {

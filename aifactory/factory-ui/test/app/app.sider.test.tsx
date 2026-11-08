@@ -220,6 +220,35 @@ test('theSiderMarksTheEntryTheAddressNames', () => {
   expect(within(branchOf(FOURTH.name)).getByRole('menuitem', { name: content.nav.chat })).toBe(named[0])
 })
 
+/**
+ * A move that is no click of the tree — the project list, the browser's back, a bookmark — has to open the
+ * group it marks: the viewer's folding limits the **preset** of open groups and never the group of the
+ * address, whose mark would otherwise sit in a branch that is not drawn (R-WP-44, R-WP-1).
+ */
+// R-WP-44
+// R-WP-1
+// UC-WP-78
+test('theAddressGroupOpensEvenAfterAToggle', () => {
+  const view = show({ projects: [DEMO, OTHER], activeKey: chatKeyOf(DEMO.name) })
+  expect(openGroups()).toEqual([DEMO.name, OTHER.name])
+
+  // the viewer folds `other` — the click that hands the open groups to the tree and away from the reading
+  fireEvent.click(within(nav()).getByRole('menuitem', { name: OTHER.name }))
+  expect(openGroups()).toEqual([DEMO.name])
+
+  // the address moves to `other` **without** a click of the tree: list, back and deep link all give the frame
+  // a new key and nothing else, so this rerender is the whole input of the case
+  view.rerender(tree({ projects: [DEMO, OTHER], activeKey: chatKeyOf(OTHER.name) }))
+
+  expect(openGroups(), 'the group the address names folds only for its own title').toEqual([
+    DEMO.name,
+    OTHER.name,
+  ])
+  const current = entries().filter(entry => entry.getAttribute('aria-current') === 'page')
+  expect(current, 'and the mark it brings stays a single one').toHaveLength(1)
+  expect(within(branchOf(OTHER.name)).getByRole('menuitem', { name: content.nav.chat })).toBe(current[0])
+})
+
 // R-WP-1
 test('noAddressMeansNoMark', () => {
   // `/settings`, `/projects` and the bare `/chat` name no entry of the tree: marking the first anyway would
