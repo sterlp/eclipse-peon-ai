@@ -15,8 +15,9 @@ Eine schlanke Browser-App mit **Top-Menü und Projektbaum im Sider** ([R-WP-43](
 Basis bleibt **AntD 6** — Palette, Layout und Element-Optik werden aus der Referenz
 `ai-schulung/app/frontend` (`App.css`/`index.css` + Komponenten-Struktur) und dem Mockup
 (`factory-ui-mockup.tsx`) **übernommen, nicht nachgebaut**: dunkles Top-Band mit Menü, **Sider mit
-fester Breite** (200 px, `Menu mode="inline"` — der Seitenmenü-Defekt der bisherigen Fassung ist damit
-gestellt), Chat-Fläche zentriert über `--content-max`, Element-Optik wie dort. **Defekte der Referenz
+fester Breite** (250 px, `Menu mode="inline"` — der Seitenmenü-Defekt der bisherigen Fassung ist damit
+gestellt; Paul 2026-11-08, Abnahme: „etwas breiter, der Projektname passt nicht sauber rein" — statt
+der ursprünglichen 200 px), Chat-Fläche zentriert über `--content-max`, Element-Optik wie dort. **Defekte der Referenz
 werden nicht mitkopiert** — bekannt: das `Select`, das das Top-Menü überlappt (CSS-Fehler). Was die
 Referenz nicht löst, wird eigen gebaut (wie das Tool-Zeit-Ding dort, nicht final) — bei Zweifeln
 entscheidet die **Referenz-Optik** (hell); das `chat.html` des Plugins bleibt nur Herkunfts-Hinweis
@@ -213,8 +214,15 @@ Gruppen-Überschrift, kein Platzhalter. Der Klick auf einen **Chat-Eintrag** öf
 der Gruppen-Titel klappt die Gruppe auf und zu (die alte Abkürzung „Klick aufs Projekt öffnet den
 Chat" entfällt, [R-WP-38](ui.md)). Damit zeigt jedes ausgeklappte Projekt seine Einträge — die
 Einschränkung „Einheiten nur unter dem geöffneten Projekt" (⏳ 2026-11-07) ist zurückgenommen. Der
-Sider ist **einklappbar** mit eigenem Griff (`trigger` = `MenuUnfoldOutlined`/`MenuFoldOutlined`,
-Slide in/out wie in der AntD-Layout-Referenz); Markierung und URL bleiben einig ([R-WP-1](ui.md)).
+Sider ist **einklappbar** — der Griff ist ein **Text-Button oben links im Header** (`MenuUnfoldOutlined`/
+`MenuFoldOutlined`, AntD-Referenzmuster; Paul 2026-11-08: „das Menü braucht man nur kurz, der Chat
+soll die Fläche nutzen"; schöner ist der Button **im Header links** statt unten am Menü — direkt am
+Menü ist er auch okay), der Sider selbst hat keinen eigenen Trigger (`trigger={null}`); unterhalb
+des Breakpoints klappt er automatisch zu, Slide in/out wie in der AntD-Layout-Referenz; Markierung
+und URL bleiben einig ([R-WP-1](ui.md)).
+Der Sider klebt **bündig an der Fensterkante** — links, oben und unten **ohne Rand** (A2, Paul
+2026-11-08, Abnahme: „er soll direkt links oben und unten ohne Rand dran kleben"); das App-Padding
+hält ihn nicht von der Kante.
 **Voreingestellt aufgeklappt** (Paul 2026-11-08): gibt es **weniger als vier** Projekte, stehen
 **alle** Gruppen offen; bei vier oder mehr ist nur die **erste** Gruppe offen — mehrere Chats je
 Agent kommen **nicht** ins MVP (PR-5 hält, Paul 2026-11-08: „es ging mir ums Layout").

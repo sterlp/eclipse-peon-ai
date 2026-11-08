@@ -61,13 +61,14 @@ Standard ist der **Git-Checkout** des Projekts; umschaltbar dazu: das **temporä
   gewählten Wurzel liegt (`..`, absoluter Pfad, oder ein Symlink, der aus der Wurzel hinausführt)
   THEN antwortet der Server mit einem Fehler und liefert keinen Inhalt.
 
-### R-WP-33 — Datei-Bereich als Slide-out rechts ✅ (Paul 2026-11-02; Tab-Bündigkeit geschärft Runde 2, Inc 5)
+### R-WP-33 — Datei-Bereich als Slide-out rechts ✅ (Paul 2026-11-02; Tab-Bündigkeit geschärft Runde 2, Inc 5; **Panel als AntD `Drawer` ❌** — Paul 2026-11-08, Abnahme)
 
 Der Datei-Bereich ist ein **Slide-out am rechten Rand** mit einem **vertikalen „Files"-Tab** — so ist
-sichtbar, dass hier aufklappbar ist. Der Tab hängt **am Panel, nicht am Bildschirm**: er sitzt **bündig
-an der Oberkante** des Panels, an dem er hängt, und **wandert mit der Panelbreite** mit; im
-geschlossenen Zustand sitzt er am **rechten Rand der Chat-Fläche** — nicht am Viewport — damit sich Tab-
-und Panel-Oberkante bei jeder Fensterhöhe treffen. Auf- und Zuklappen steuern **Icons** (`<` / `>` —
+sichtbar, dass hier aufklappbar ist. **Das Slide-out ist ein AntD `Drawer`** (von rechts — Widget-vor-
+eigenbau, [R-WP-46](ui.md); Paul 2026-11-08: „wenn es um das Slide-out rechts geht, ist der Drawer das
+richtige Element"): die eigene Slide-Mechanik weicht, der Drawer legt sich über den rechten Rand und der
+Chat bleibt links daneben sichtbar; der **Tab sitzt weiter am Panel** — bündig an der Oberkante, im
+geschlossenen Zustand am rechten Rand der Chat-Fläche. Auf- und Zuklappen steuern **Icons** (`<` / `>` —
 welche Bibliothek die liefert, regelt [R-WP-39](ui.md)), Schließen ist immer möglich. Im Panel: **Baum-Navigation**
 über die zwei Wurzeln ([R-WP-14](files.md)), die als **Cards** erscheinen (Checkout, TMP —
 Paul-Vorschlag); der **Projektname wird im Panel nicht wiederholt** (er steht in der Kopfzeile des

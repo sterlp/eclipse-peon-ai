@@ -6,6 +6,33 @@ Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwiss
 `peon-plan/review-findings.md` sind das Memory); Docs duplizieren nie Core-Regeln; Plan-Archive werden
 **gelöscht**, nie committet.
 
+## Runde 5b — Reboot, Inc-4-Vorbereitung (2026-11-08)
+
+* **main = `df248453`; `web-factory` ist als Squash-Merge `dbd89d30` („Web factory (#175)") drin**, Branch
+  gelöscht, `ee72cd1b` dangling (Code byte-identisch, main-Docs neuer). **Stale korrigiert:**
+  `SearchAgentTool.java` + Core-Prompts sind **tracked & sauber**; `aifactory/ui-bugs.md` und
+  `aifactory/ant-design.md` existieren an den alten Pfaden **nicht mehr**. Untracked bleiben nur 5 PNGs +
+  `factory-ui-mockup.tsx`.
+* **Branch `web-factory-4`** (von main) + Commit `369292bb` (AGENTS-DEV.md: pnpm-Bullet auf
+  Node 22.23.4/corepack 0.36 + AntD-v6-Timeline-Fallen-Bullet).
+* **Node 22.23.4 installiert** (nvm 0.40.1), pnpm 10.28.0 via einmaligem `corepack enable`,
+  **`COREPACK_ENABLE_PROJECT_SPEC=0` nicht mehr nötig**; 218 Tests/22 Dateien grün. **nvm-`default` bleibt
+  22.12** ⇒ PATH-Export Pflicht. Stagehand entparkt (≥ 22.18 erfüllt).
+* **A2 geklärt (Paul):** Sider **bündig an der Fensterkante** (links/oben/unten **ohne Rand**, App-Padding
+  weicht) + **Breite 250 px** statt 200 („Projektname passt nicht sauber rein") — steht im Look-Absatz
+  ([ui.md](ui.md)) und in [R-WP-44](ui.md).
+* **Plan Inc 4 fertig** (`peon-plan/overview.md`, S1 Sider+Rand+250 → S2 Rahmen löschen → S3
+  Status-Indikator+Timeline-Spin+Kachel-Buttons → S4 Blasen/Fläche/Composer → S5 Scroll; BDD-Tabelle 14
+  Zeilen, Mutationen je neuer Verdrahtung, Plan-Messbefunde: responsive Collapse feuert auch bei controlled
+  `collapsed`, Timeline-Spin braucht `loading:true` **und** `dot`). **Kein Dev-Bau — Paul macht ein
+  IDE-Update; Freigabe kommt von Paul.** **Plan nachbearbeitet (neuer Plan-Prompt, Tests minimal):**
+  0 neue Test-Dateien, **4 neue Tests** (2 Sider, 2 Scroll), 7 gelöscht, ~8 Einzeiler, Mutationen auf 8
+  reduziert (`chat.status.test.tsx`/`chat.scroll.test.tsx` entfallen — bestehende Beweise decken es,
+  Messungen F1–F8 in §1.10); **Kachel-Zustand kommt fertig vom Server** (`AgentTiles.stateOf`, keine
+  UI-Ableitung), `data-state` existiert schon (`chat.tiles.tsx:67`).
+* Plan-Vorschlag (⏳ prüfen): `antd`-Skill um Abschnitt „API-Verifikation ohne Netz" ergänzen
+  (`node_modules/antd/es/**` als Beweismittel statt Kopf-Wissen — 3× widerlegt diese Session).
+
 ## Runde 5 — Browser-Abnahme läuft (2026-11-08)
 
 **Pauls Grundsatz (2026-11-08, dauerhaft):** wie Paul Dinge „im Prinzip" entschieden hat, steht im
@@ -50,15 +77,10 @@ Eingabe weiß/volle Breite, Senden rechts (in R-WP-35 ❌-Anteil). Lade-Punkt Ti
 **Offen (je EINE Frage an Paul, Reihenfolge):** — ALLE ❓ der Abnahme geklärt (Stand 2026-11-08):
 Modell/Kontext im Chat = später 🔒; in der **Config** MVP: Modell-Feld = Auswahl ODER Eingabe
 (AntD `AutoComplete`, keine Dropdown-Only-Liste — nicht jeder Provider hat eine Liste; F8 ⏳).
-Nächster Schritt: **Inkrement 4 planen** — Sider-Baum R-WP-44, Look-Reparaturen (Sider-Rand A2,
-Fläche/Margen A3–A5), Warte-Rahmen raus + Status-Indikator R-WP-31/45, Scroll R-WP-35/UC-WP-80,
-Blasen R-WP-29. Danach A7 Restore (Core prüfen!), C-7, Config-Story.
-**Offene Kleinklammer aus Inc 3:** AGENTS-DEV.md fehlt noch der Factory-UI-Bullet zur AntD-v6-Timeline
-(Steps-Falle, `itemPaddingBottom` nur im Alternativ-Layout, Beweise nur über `chat-timeline`/`data-trace`,
-nie `.ant-*`; `MAX_TOOL_LINES` kürzt nur Tool-Items) — aus dem Lessons-Learned von Inc 3, vor Inkrement 4
-nachziehen. **AntD-Skill `.agents/skills/antd` existiert (Paul portiert): nie AntD aus dem Gedächtnis,
-`antd info/lint` vor Abschluss; Node-Update 22.12 → 22.23.4 (LTS, entparkt Stagehand) als eigener
-Mini-Schritt, antd 6.7.0 = latest, kein Update nötig.**
+**Inkrement 4: Plan FERTIG, wartet auf Jons Freigabe** (siehe Runde 5b unten). Danach A7 Restore (Core
+prüfen!), C-7, Config-Story. AGENTS-DEV-Klammer aus Inc 3 **erledigt** (Timeline-Bullet, `369292bb`).
+AntD-Skill `.agents/skills/antd` existiert (Paul portiert): nie AntD aus dem Gedächtnis,
+`antd info/lint` vor Abschluss; **Node 22.23.4 ist installiert** (siehe Runde 5b), antd 6.7.0 = latest.
 **Mehrere Chats: NICHT im MVP** (Paul 2026-11-08) — PR-5 hält, „es ging mir ums Layout"; auch mit
 Paco bleibt es zunächst bei einem Chat je Agent. **Sider-Voreinstellung:** < 4 Projekte ⇒ alle
 Gruppen offen, sonst nur die erste (in R-WP-44/UC-WP-78 nachgetragen).
