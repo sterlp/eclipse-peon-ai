@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
 
-import { Input } from 'antd'
+import { Button, Input } from 'antd'
 import type { GetRef } from 'antd'
 
 import { content } from '../shared/content'
@@ -111,34 +111,33 @@ export function ChatComposer({
         onKeyDown={keys}
       />
       {/* the send stands beside the field, on its right and at its bottom (R-WP-35); the two secondary
-          controls keep the quiet second row, so a long question keeps its width */}
-      <button
+          controls keep the quiet second row, so a long question keeps its width. All three are elements of
+          the basis, like every action of the app (R-WP-43) */}
+      <Button
         className="chat-send"
-        type="submit"
+        htmlType="submit"
         data-testid="chat-send"
         disabled={draft.trim() === ''}
       >
         {content.chat.send}
-      </button>
+      </Button>
       <div className="chat-composer-actions">
-        <button
-          type="button"
+        <Button
           className="chat-resend"
           data-testid="chat-resend"
           disabled={lastSent === null}
           onClick={onResend}
         >
           {content.chat.resend}
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
           className="chat-stop"
           data-testid="chat-stop"
           disabled={!busy}
           onClick={() => void onStop()}
         >
           {content.chat.stop}
-        </button>
+        </Button>
       </div>
     </form>
   )

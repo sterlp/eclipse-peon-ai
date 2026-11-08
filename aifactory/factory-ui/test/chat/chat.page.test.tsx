@@ -1897,6 +1897,63 @@ test('readingUpIsNotRippedDown', async () => {
   expect(log.scrollTop, 'the end of the log is where the stream keeps him').toBe(1_000)
 })
 
+/**
+ * The way back to the end (UC-WP-80): the button stands while the reading position is away from it, takes the
+ * view there and re-arms the follow that gave up on it. All three GIVENs of the rule in one mount, because
+ * each one is what makes the next one mean something.
+ */
+// UC-WP-80
+test('scrollBottomButtonAppearsAboveAndReArmsAutoScroll', async () => {
+  const chat = stubChat({ messages: [QUESTION, ANSWER] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  const log = screen.getByTestId('chat-log')
+  mockScrollOf(log, 1_000, 300)
+  expect(screen.queryByTestId('scroll-bottom'), 'at the end there is nothing to come back to').toBeNull()
+
+  // GIVEN he has read up WHEN a new line arrives THEN the view stays his and the way back appears
+  log.scrollTop = 120
+  fireEvent.scroll(log)
+  await chat.push(event('partial', { kind: 'answer', text: 'noch eine Zeile' }))
+  expect(log.scrollTop, 'the place he read up to stays his').toBe(120)
+  const backToTheEnd = await screen.findByTestId('scroll-bottom')
+
+  // GIVEN he clicks it WHEN the view moves THEN he stands at the end and the button has nothing left to offer
+  fireEvent.click(backToTheEnd)
+  expect(log.scrollTop, 'the click takes him to the end').toBe(1_000)
+  expect(screen.queryByTestId('scroll-bottom'), 'at the end again: no button').toBeNull()
+
+  // GIVEN the button brought him back WHEN the next line arrives THEN the follow works again
+  await chat.push(event('partial', { kind: 'answer', text: 'und noch eine' }))
+  expect(log.scrollTop, 'the click armed the follow again').toBe(1_000)
+})
+
+/**
+ * His own input is the one line he always wants to see (UC-WP-80): the send answers to the send, not to the
+ * reading position. The button is gone in the same breath — he is at the end.
+ */
+// UC-WP-80
+test('ownInputAlwaysShowsWhenSentFromTheTop', async () => {
+  stubChat({ messages: [QUESTION, ANSWER] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  const log = screen.getByTestId('chat-log')
+  mockScrollOf(log, 1_000, 300)
+  log.scrollTop = 120
+  fireEvent.scroll(log)
+  expect(screen.getByTestId('scroll-bottom'), 'read up: the way back stands').toBeInTheDocument()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+
+  expect(log.scrollTop, 'his own input is shown wherever he had read up to').toBe(1_000)
+  expect(screen.queryByTestId('scroll-bottom'), 'and the way back is on no screen').toBeNull()
+})
+
+
 
 
 

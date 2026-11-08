@@ -400,3 +400,69 @@ Feld, Resend/Stop ruhig darunter, Warte-Leiste und Fehler-Zeile im selben Rand w
 
 **Stand nach S4:** 214 Tests / 22 Dateien grün (kein Test geändert), `tsc -b` 0, oxlint 0/0 (80 Dateien),
 `antd lint ./src` 0 (48 Dateien), `vite build` grün.
+
+
+## Inkrement 4 UI — S5 Scroll am Ende + Weg zurück (Dev-Bau 2026-11-08, Freigabe Jon)
+
+**Gebaut:** `src/chat/chat.scroll.ts` (neu, 68 Z) — `useFollowBottom(logRef)` hält Lese-Position (Ref),
+`following` (State für den Knopf), `onLogScroll`, `followNow`, `followIfFollowing` und `SCROLL_END_SLOP`;
+`src/chat/chat.scroll.bottom.tsx` (neu, 28 Z) — AntD `FloatButton` + `ArrowDownOutlined`,
+`tooltip`/`aria-label` aus dem Katalog (`content.chat.scrollBottom`); `send()` ruft `followNow()` **vor**
+`writePending`, `resend()` erbt es. Zwei neue Tests in `chat.page.test.tsx` (UC-WP-80), beide UC-WP-66-Beweise
+unangetastet grün. **Teilaufgabe Composer (R-WP-43):** drei Knöpfe → AntD `Button`, Senden mit
+`htmlType="submit"` — Griffe, `disabled`-Semantik, Enter-Submit und der eingefrorene
+Aufzählungs-Beweis (`chat.page.test.tsx:681`) unverändert grün.
+
+**Plan-Fund 1 — der Sprung:** §2.4/§2.2 wollen `scrollTop = scrollHeight - clientHeight`. Die beiden
+bestehenden UC-WP-66-Beweise pinnen `1_000` bei `scrollHeight = 1_000, clientHeight = 300` — die neue Formel
+hätte beide umgeschrieben, Jon verlangte ausdrücklich „unangetastet grün". Gebaut wie bisher
+(`scrollTop = scrollHeight`): ein Browser klemmt auf das Maximum ab, das Ziel ist dasselbe.
+
+**Plan-Fund 2 — `LanguagePack`/zh:** §2.2 verlangt den Text „EN **und** zh, sonst TS-Fehler"; es gibt keinen
+zh-Katalog und keinen `src/i18n`-Ordner — `src/shared/content.ts` ist EN-only (Jons Freigabe hatte das
+berechtigterweise korrigiert).
+
+**Abweichung 1 — der Auslöser bleibt auf der Seite:** der Hook besitzt Sprung, Lese-Position, Hörer und Slop;
+die drei Zeilen `useEffect(() => followIfFollowing(), [messages, live, outgoing, …])` bleiben in
+`chat.page.tsx`. Nur diese Seite weiß, welche Zustände neue Zeilen bedeuten. Hinein gezogen hätte es entweder
+ein variables Dependency-Array (React-/Lint-Anti-Pattern) oder eine Revisionszahl gekostet — und eine Zahl
+hätte das Wachstum des Textes **innerhalb** eines Live-Eintrags übersehen: Teil-Antworten ziehen heute mit,
+weil jedes Event ein neues Array schreibt. Dafür eine Methode mehr im API (`followIfFollowing`).
+
+**Abweichung 2 — Signatur des Hörers:** `onLogScroll: () => void` statt `UIEventHandler<HTMLElement>`.
+`ChatLog` nimmt `onScroll?: () => void`; ein Handler mit Parameter ist darauf nicht assignable. Gelesen wird
+die Fläche ohnehin am Ref, nicht am Event.
+
+**Fund 3 — die Stelle des FloatButtons:** die Basis setzt `.ant-float-btn-individual` auf
+`position: fixed` samt Einzug-Tokens (`node_modules/antd/es/float-button/style/button.js:44-51`) — an der
+Fensterecke landet der Knopf **auf** der Eingabe-Zeile, genau auf „Senden" (Band ≈ 78 px, Knopf 40 px bei
+24 px Einzug). Darum trägt er `classNames={{ root: 'chat-scroll-bottom-btn' }}` und hängt in unserer
+null-hohen Box am Fuß des Verlaufs: Knopf und Aussehen bleiben die der Basis, die Stelle ist unsere
+(R-WP-39). Kein `.ant-*` im eigenen Blatt, kein gesetztes Pixelmaß. Die `pure`-Variante der Basis ist kein
+öffentliches Prop (nur `PurePanel`).
+
+**Basis-Wache, wie in S3 zugunsten der Doc erweitert:** `test/shared/theme.test.ts` —
+`basisOwnSurface` um `chat.scroll.bottom.tsx`, Kommentar nennt jetzt R-WP-35 („ein schwebender Knopf … AntD
+`FloatButton`, wie `BackTop`, nur umgekehrt"). Der Stimmen-Bann (`chat.log`, `chat.markdown`) ist unangetastet.
+**Bitte:** der Ausnahme-Satz in R-WP-39/UC-WP-71 bleibt Jons Seite.
+
+**Mutationen (drei statt zwei, weil eine nicht einfach war):**
+
+| Mutation | Getötete Tests |
+|---|---|
+| `followNow()` im `send`-Pfad gestrichen | **genau** `ownInputAlwaysShowsWhenSentFromTheTop` |
+| Sichtbarkeit auf „nie" (`{false && …}`) | **beide** UC-WP-80-Tests — der zweite pinnt die Anwesenheit des Knopfes selbst |
+| Klick mit nichts verbunden (`onClick` → noop) | **genau** `scrollBottomButtonAppearsAboveAndReArmsAutoScroll` |
+
+Jons Vorgabe war „je genau ein Treffer"; die Sichtbarkeits-Mutation kann das nicht liefern, ohne einen der
+beiden Tests zu schwächen — deshalb die dritte Mutation am Verdrahtungspunkt Knopf → Hook. `htmlType="submit"`
+braucht keine eigene Mutation: ~30 bestehende Tests klicken `chat-send` und verlangen den Send, ein
+`type="button"`-Rückfall ließe keinen davon grün werden.
+
+**Look, nicht getestet (Paul am Browser):** schwebender Pfeil rechts über dem Verlauf (über der Warte-Leiste,
+wenn sie steht), Composer-Knöpfe in den Maßen der Basis statt unserer `0.4rem/0.8rem`-Regel, Senden rechts unten
+am Feld.
+
+**Stand nach S5:** 216 Tests / 22 Dateien grün, `tsc -b` 0, oxlint 0/0 (82 Dateien), `antd lint ./src` 0
+(50 Dateien), `vite build` grün. `chat.page.tsx` **588** Zeilen (vorher 594; der Plan nannte 602) — unter der
+600er-Grenze, der Scroll-Anteil ist draußen.

@@ -587,6 +587,22 @@ button {
   color: var(--on-user);
 }
 
+/* The floating way back to the end (UC-WP-80) hangs at the bottom edge of a box that takes no part of the
+   column's height: it stands over the log and never on the input under it. The basis fixes its float to the
+   corner of the window, which would drop it onto the input row — the place is our measure, the button and its
+   look stay the basis' (R-WP-39). */
+.chat-scroll-bottom {
+  position: relative;
+  flex: none;
+  height: 0;
+
+  > .chat-scroll-bottom-btn {
+    position: absolute;
+    inset-inline-end: var(--chat-gutter);
+    bottom: 0;
+  }
+}
+
 /* Das Feld ist die Auto-Grow-Textarea der Basis: eine Zeile bis fünf, danach scrollt sie (R-WP-41); Enter
    sendet, Shift und Ctrl/Cmd+Enter brechen um (R-WP-30). Die Höhe gehört der Basis — sie steht inline auf dem
    Feld, darum hier kein min-height und kein resize. Die Zeile ist die ruhige Fußzeile über die ganze Breite

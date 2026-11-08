@@ -26,6 +26,8 @@ import {
   type LiveItem,
 } from './chat.live'
 import { withoutConfirmed, type PendingLine } from './chat.pending'
+import { useFollowBottom } from './chat.scroll'
+import { ScrollBottomButton } from './chat.scroll.bottom'
 import { ChatTiles } from './chat.tiles'
 import { ChatWaiting } from './chat.waiting'
 import { openChatStream } from './chat.stream'
@@ -51,9 +53,6 @@ interface Props {
 
 /** How long the view waits before it asks again — long enough not to hammer a restarting server. */
 const RECONNECT_MS = 500
-
-/** How far from the end of the log still counts as "the user reads the newest line" (R-WP-35). */
-const SCROLL_END_SLOP = 24
 
 /**
  * The chat of one project (R-WP-4, R-WP-5): the history is the only truth for finished text, the
@@ -157,20 +156,17 @@ export function ChatPage({ project, files, user }: Props) {
   /** The number of the read whose content is on the screen. An older answer never overwrites a newer one. */
   const appliedRead = useRef(0)
   /**
-   * The scroll area of the chat and whether the user stands at its end (R-WP-35): a new line follows him
-   * while he does, and leaves him reading while he does not. A ref and not a state, because the answer to
-   * "where is he" must not decide whether the log re-renders.
+   * The scroll area of the chat. Where the user reads and what a new line owes him — follow him to its end,
+   * or leave him reading (R-WP-35) — is `useFollowBottom`'s question; this view only says when the log has
+   * new content, because that is the only thing here that knows it.
    */
   const log = useRef<HTMLUListElement>(null)
-  const atBottom = useRef(true)
+  const { following, onLogScroll, followNow, followIfFollowing } = useFollowBottom(log)
   const projectId = project?.id ?? null
 
   useEffect(() => {
-    const area = log.current
-    if (area !== null && atBottom.current) {
-      area.scrollTop = area.scrollHeight
-    }
-  }, [messages, live, outgoing])
+    followIfFollowing()
+  }, [messages, live, outgoing, followIfFollowing])
 
   /**
    * One write place per list: the ref and the state of a fact change together and nowhere else. The screen
@@ -416,6 +412,9 @@ export function ChatPage({ project, files, user }: Props) {
     if (projectId === null) {
       return
     }
+    // his own input is always shown, wherever he had read up to (UC-WP-80) — before the line is written, so
+    // the follow is re-armed when the effect that carries the new line runs
+    followNow()
     // shown before the server has it: a turn writes the user line into the memory only when it starts,
     // so a queued input would vanish from the screen until the next history read. The number of history
     // lines standing now and this browser's sender name are what confirm the line later — the name is
@@ -519,17 +518,6 @@ export function ChatPage({ project, files, user }: Props) {
     void refresh()
   }
 
-  /**
-   * Where the user reads (R-WP-35): the slop keeps a line whose last pixels still touch the bottom from
-   * counting as "reading up" — a log that stops following a hair too early is the worse failure.
-   */
-  function onLogScroll() {
-    const area = log.current
-    if (area !== null) {
-      atBottom.current = area.scrollHeight - area.scrollTop - area.clientHeight < SCROLL_END_SLOP
-    }
-  }
-
   if (project === null) {
     return (
       <section className="view" aria-label={content.chat.title}>
@@ -555,6 +543,12 @@ export function ChatPage({ project, files, user }: Props) {
           logRef={log}
           onScroll={onLogScroll}
         />
+        {/* the way back to the end, on the screen exactly while he reads away from it (UC-WP-80). The box
+            carries no height of the column: the button hangs at its bottom edge, which is the top edge of
+            whatever stands below — the wait, the notice, the input — and never on them. */}
+        <div className="chat-scroll-bottom">
+          {!following && <ScrollBottomButton onFollow={followNow} />}
+        </div>
         {/* this notice is the page's own trouble only — a request that failed here: a send refused, a
             refused stop, a tile action that did not run. A failed turn is not announced here: it is a
             line of the log, read from the conversation like every other line (R-WP-34, UC-WP-64) */}

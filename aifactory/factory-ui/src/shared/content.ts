@@ -98,6 +98,8 @@ export const content = {
     resend: 'Resend',
     /** The wait of a turn that has delivered nothing yet — the words of the plugin (R-WP-31). */
     waitingForAi: 'Waiting for AI…',
+    /** The one label of the way back to the end of the log (R-WP-35, UC-WP-80). */
+    scrollBottom: 'Scroll bottom',
     /** The fallback of an `error` event that carries no reason — better than an empty line. */
     unknownError: 'unknown error',
   },
