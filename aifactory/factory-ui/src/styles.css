@@ -710,9 +710,10 @@ button {
   padding-inline: var(--chat-gutter);
 }
 
-/* The row a chat view sits in: the conversation and the file panel side by side, so an open file keeps
-   the chat on the screen instead of covering it (R-WP-33). The row is the positioned box the file tab
-   hangs on, and it is the height the chat's own scroll measures against (R-WP-35). */
+/* The row a chat view sits in (R-WP-33): the positioned box that both handles of the file area hang on —
+   the tab, and the drawer of the basis, which renders **in this row** instead of in a portal, so header and
+   tree keep their place and the chat keeps its width. It is the height the chat's own scroll measures
+   against (R-WP-35), and the scope both handles read their measures from. */
 .chat-workspace {
   --files-width: clamp(17rem, 28vw, 24rem);
   --files-wide: clamp(32rem, 56vw, 52rem);
@@ -739,14 +740,15 @@ button {
 }
 
 /* The tab at the right edge, written sideways: the visible promise that this side opens (R-WP-33). Out
-   of the flow, because a panel that slides in must not move the edge of the chat, and hung on the row
+   of the flow, because the panel lies over the edge instead of moving it, and hung on the row
    (`.chat-workspace` is the positioned box) instead of on the viewport — only so do tab and panel share
-   one top edge at every window height, and only so does the closed tab sit at the chat's edge. */
+   one top edge at every window height, and only so does the closed tab sit at the chat's edge. Above the
+   drawer of the row (that one is asked for 2): the handle is never to be covered by what it opens. */
 .files-tab {
   position: absolute;
   top: 0;
   right: 0;
-  z-index: 2;
+  z-index: 3;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -761,7 +763,9 @@ button {
   font-size: 0.8rem;
   letter-spacing: 0.08em;
   cursor: pointer;
-  transition: right 0.15s ease-out;
+  /* the edge it rides on moves at the pace of the basis (its wrapper transitions `all`, slow); a quicker
+     tab would sit behind the panel it belongs to */
+  transition: right 0.3s ease-out;
 
   &:hover {
     color: var(--accent);
@@ -774,32 +778,49 @@ button {
   }
 }
 
-/* an open file widens the panel, and the tab moves to the new edge with it. Read off the panel beside it:
-   the width is the area's own state, and a second copy of it on the tab would be the second owner this
-   increment removes (INC-5B-D1). */
-.files-panel[data-wide='true'] + .files-tab {
+/* An open file widens the panel and the tab moves to the new edge with it. The wide state stays the area's
+   own: the row is asked whether a panel inside it is wide, which is position and not descent — the tab is
+   mounted outside the drawer and has been no neighbour of the panel since the drawer took the slide over
+   (INC-5B-D1). */
+.chat-workspace:has(.files-panel[data-wide='true']) .files-tab {
   right: var(--files-wide);
 }
 
-/* The panel is a column of the row and not an overlay, and it reads from the left — code and a tree are
-   never centred (R-WP-33). It keeps the height the row gives it: the shell is a fixed frame, so the panel
-   stretches with it and scrolls on its own (R-WP-35) — a viewport-based cap would cut it below the frame. */
-.files-panel {
-  flex: 0 0 var(--files-width);
+/* The drawer of the basis, held to our measures. Its wrapper carries the `width` the drawer was asked with
+   — the wide one, always — so the sheet clamps it back while no file is open: `max-width` is another
+   property than the inline `width` and wins without `!important`. The basis states `max-width: 100vw` for
+   that element under two classes, hence the drawer class above our own. */
+.chat-workspace .files-drawer .files-drawer-wrapper {
   max-width: var(--files-width);
-  align-self: stretch;
+}
+
+.chat-workspace:has(.files-panel[data-wide='true']) .files-drawer-wrapper {
+  max-width: var(--files-wide);
+}
+
+/* The body of the basis brings padding; the area inside decides where its air is. Same scope reason as the
+   wrapper above: the basis injects after this sheet, so a tie there would be a loss here. */
+.chat-workspace .files-drawer .files-drawer-body {
+  padding: 0;
+}
+
+/* The area as the drawer shows it, reading from the left — code and a tree are never centred (R-WP-33). Its
+   width is no longer its own: the drawer brings the measure and the rules above clamp it. Neither is its
+   scroll: the body of the basis scrolls its content, so the area only takes at least that height, to keep its
+   surface and edge painted the whole way down. */
+.files-panel {
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  min-height: 0;
   padding: 0.4rem 0 1rem 0.75rem;
-  overflow-y: auto;
   border-left: 1px solid var(--border);
   text-align: left;
 
+  /* the wide state, decided where it is known: the code side gets the air its new width can use, and the two
+     rules above read this very attribute for where the edge is */
   &[data-wide='true'] {
-    flex-basis: var(--files-wide);
-    max-width: var(--files-wide);
+    padding-inline-end: 1.25rem;
   }
 }
 
@@ -844,13 +865,6 @@ button {
 
 .files-root-hint {
   font-size: 0.7rem;
-  color: var(--text);
-}
-
-/* The way out of the panel is an icon: the tab beside it already says what the area is. */
-.files-collapse {
-  padding: 0.2rem 0.45rem;
-  background: none;
   color: var(--text);
 }
 
@@ -905,8 +919,8 @@ button {
   }
 }
 
-/* The viewer stands under the tree of its own panel — a split with the chat beside it, not a dialog over
-   it (R-WP-33). */
+/* The viewer stands under the tree of its own panel, inside the drawer — no second layer of its own over the
+   conversation it belongs to (R-WP-33). */
 .files-viewer {
   display: flex;
   flex-direction: column;

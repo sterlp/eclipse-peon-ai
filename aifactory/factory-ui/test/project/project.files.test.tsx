@@ -144,10 +144,11 @@ function json(status: number, body: unknown): Response {
 }
 
 /** Renders the shell, opens the project, and lands in its chat — the way Jon reaches the file area. */
-async function openProjectChat(): Promise<void> {
-  renderApp()
+async function openProjectChat(): Promise<{ path(): string }> {
+  const app = renderApp()
   fireEvent.click(await screen.findByRole('button', { name: 'demo' }))
   await screen.findByTestId('chat-log')
+  return app
 }
 
 /** The way down a tree is walked: open the area, then one level per click, then the file. */
@@ -349,8 +350,9 @@ test('theFilesTabOpensTheSlideOut', async () => {
   expect(screen.getByTestId('files-root-tmp')).toHaveTextContent(content.files.roots.tmpHint)
   expect(within(screen.getByTestId('files-panel')).getByRole('group', { name: content.files.root }))
     .toBeInTheDocument()
-  // and the panel carries its own way out: the icon of the tab, repeated where the eye is
-  expect(screen.getByTestId('files-close').querySelector('.anticon-right')).not.toBeNull()
+  // the drawer of the basis is a named dialog, and its own close is the way out — no second visible word
+  expect(screen.getByRole('dialog')).toHaveAccessibleName(content.files.title)
+  expect(screen.getByTestId('files-close')).toHaveClass('anticon-close')
 })
 
 // UC-WP-60
@@ -420,10 +422,30 @@ test('theViewerCanAlwaysBeClosed', async () => {
   expect(screen.getByTestId('files-tree')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'main/' })).toBeInTheDocument()
 
-  // and the area closes from its own icon, with the chat beside it untouched
+  // and the area closes from the close of the drawer, with the chat beside it untouched
   fireEvent.click(screen.getByTestId('files-close'))
   await waitFor(() => expect(screen.queryByTestId('files-panel')).toBeNull())
   expect(screen.getByRole('region', { name: content.chat.title })).toBeInTheDocument()
+  expect(screen.getByTestId('files-open')).toHaveAttribute('aria-expanded', 'false')
+})
+
+// UC-WP-60
+test('escapeClosesTheFilesDrawer', async () => {
+  // closing is always possible, and Esc is the basis' own gesture: it hangs on the window, so it reaches the
+  // drawer from wherever the focus stands — here from the field of the chat, where a reader is typing
+  stubFactory()
+  const app = await openProjectChat()
+  const field = screen.getByTestId('chat-input') as HTMLElement
+  field.focus()
+  fireEvent.click(screen.getByTestId('files-open'))
+  await screen.findByTestId('files-panel')
+
+  fireEvent.keyDown(window, { key: 'Escape' })
+
+  await waitFor(() => {
+    expect(screen.queryByTestId('files-panel')).toBeNull()
+    expect(app.path(), 'closing is the address stepping back').not.toContain('/files')
+  })
   expect(screen.getByTestId('files-open')).toHaveAttribute('aria-expanded', 'false')
 })
 
@@ -438,28 +460,40 @@ test('theChatStaysVisibleWhileTheViewerIsOpen', async () => {
   const panel = screen.getByTestId('files-panel')
   // the conversation is still on the screen: its field is there and reachable
   expect(within(chat).getByRole('textbox')).toBeEnabled()
-  // and the panel shares the row with it instead of standing over it
-  expect(panel.parentElement?.contains(chat), 'chat and panel are columns of one row').toBe(true)
+  // the overlay stands inside the chat's own row instead of in a portal of its own — that is what keeps the
+  // header and the tree free and gives tab and panel one top edge (R-WP-33)
+  const row = panel.closest('.chat-workspace')
+  expect(row, 'the drawer renders in the row of the chat').not.toBeNull()
+  expect(row!.contains(chat), 'the chat is beside the panel, not behind it').toBe(true)
+  // and nothing locks the page the chat stands on: the drawer is deliberately no modal
+  expect(document.body.style.overflow, 'no scroll lock of a mask').not.toBe('hidden')
 })
 
 // UC-WP-60
 test('theWideTabRidesTheEdgeOfTheWidePanel', async () => {
-  // the wide edge is a **sibling** rule, and jsdom sees neither the edge nor the order it depends on, so the
-  // mount that order has to be true for is made right here
   stubFactory()
   await openProjectChat()
   await openFileInTree('app.tsx (12 B)')
   await screen.findByTestId('files-viewer')
-  const panel = screen.getByTestId('files-panel')
-  const handle = screen.getByTestId('files-open')
-  expect(panel, 'a read file is what makes the panel wide').toHaveAttribute('data-wide', 'true')
-  expect(handle.previousElementSibling, 'the wide rule can only read the panel directly beside the tab').toBe(
-    panel,
+  expect(screen.getByTestId('files-panel'), 'a read file is what makes the panel wide').toHaveAttribute(
+    'data-wide',
+    'true',
   )
 
-  // INC-5B-D1: the width is the area's own state and is read where it lives — a second copy of that state on
-  // the tab would be the second owner this increment removed
-  expect(declarations(".files-panel[data-wide='true'] + .files-tab")).toContain('right: var(--files-wide)')
+  // INC-5B-D1: the width stays the area's own state — the drawer is asked for the wide measure once and the
+  // sheet clamps it back while no file is open. The tab hangs outside the drawer, so it reads the wide state
+  // through the row it shares with the panel: position, no longer descent (`+` was the old mechanism)
+  expect(declarations('.chat-workspace .files-drawer .files-drawer-wrapper')).toContain(
+    'max-width: var(--files-width)',
+  )
+  expect(declarations(".chat-workspace:has(.files-panel[data-wide='true']) .files-drawer-wrapper")).toContain(
+    'max-width: var(--files-wide)',
+  )
+  expect(declarations(".chat-workspace:has(.files-panel[data-wide='true']) .files-tab")).toContain(
+    'right: var(--files-wide)',
+  )
+  // and the area is no column of that row any more: a flex measure here would be the old slide returning
+  expect(declarations('.files-panel'), 'the panel is an overlay, not a column').not.toMatch(/flex: 0|flex-basis/)
 })
 
 // UC-WP-60

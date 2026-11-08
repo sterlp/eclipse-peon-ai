@@ -176,10 +176,11 @@ test('theTabOpensTheUnitAddressAndBack', async () => {
   expect(screen.getByTestId('files-open')).toHaveAttribute('aria-expanded', 'true')
   await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.files))
 
-  // the same tab closes it, and the address is the chat again — nothing is left behind to reload into
+  // the same tab closes it, and the address is the chat again — nothing is left behind to reload into. The
+  // drawer of the basis runs its leave to the end before the area is thrown away, hence the wait
   fireEvent.click(screen.getByTestId('files-open'))
   await waitFor(() => expect(app.path()).toBe(CHAT_PATH))
-  expect(screen.queryByTestId('files-panel')).toBeNull()
+  await waitFor(() => expect(screen.queryByTestId('files-panel')).toBeNull())
   expect(screen.getByTestId('files-open')).toHaveAttribute('aria-expanded', 'false')
   await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.chat))
 })
@@ -200,7 +201,7 @@ test('theSiderEntryAndTheTabNameTheSameAddress', async () => {
   // and the chat child of the same group is the way back to the chat address (R-WP-44: the title only toggles)
   fireEvent.click(within(nav()).getByRole('menuitem', { name: content.nav.chat }))
   await waitFor(() => expect(app.path()).toBe(CHAT_PATH))
-  expect(screen.queryByTestId('files-panel')).toBeNull()
+  await waitFor(() => expect(screen.queryByTestId('files-panel')).toBeNull())
   await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.chat))
 })
 

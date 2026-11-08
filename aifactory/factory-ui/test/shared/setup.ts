@@ -44,3 +44,24 @@ if (typeof globalThis.ResizeObserver !== 'function') {
   }
   globalThis.ResizeObserver = NoResizeObserver
 }
+
+/**
+ * AntD's styles stay out of the document — measured, not assumed.
+ *
+ * The basis writes every component style as `style[data-css-hash]` into `document.head`. jsdom pays for
+ * every accessibility query with a cascade over every rule of every sheet in the document: with the Drawer
+ * mounted the document holds 983 rules instead of 891, and the first `getAllByRole` of a file goes from
+ * 49 ms to 494 ms — paid again after each DOM change, so one file of this suite ran 7 s at HEAD and 48 s
+ * here. No test of this app reads a computed style (jsdom answers `canvastext` for colour and nothing for
+ * layout); the mechanics tests read our own sheet as text. So the styles are moved to a detached element
+ * the moment they arrive: the components render and behave unchanged, the cascade has nothing to do.
+ */
+const detachedStyles = document.createElement('div')
+const moveBasisStyle = (node: Node): void => {
+  if (node instanceof HTMLStyleElement && node.hasAttribute('data-css-hash')) detachedStyles.append(node)
+}
+document.head.querySelectorAll('style[data-css-hash]').forEach(moveBasisStyle)
+new MutationObserver(records => records.forEach(record => record.addedNodes.forEach(moveBasisStyle))).observe(
+  document.head,
+  { childList: true },
+)
