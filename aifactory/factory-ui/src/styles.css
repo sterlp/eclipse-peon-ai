@@ -275,23 +275,27 @@ button {
   }
 }
 
-/* The tile's state mark (R-WP-45): `chat.status.tsx` paints it, so the row owns measure and colour only.
-   0.75rem is the timeline dot's measure (`theme.ts`, Timeline.dotSize = 12) — the two places where work
-   shows have to read at one size. */
+/* The tile's state mark (R-WP-45): `chat.status.tsx` paints it, so the row owns measure and colour only. The
+   turning mark is NOT measured here — it comes from the component token `Spin.dotSize` (`shared/theme.ts`,
+   16 px), which the basis writes into the indicator's `font-size` while width and height follow with `1em`
+   (`antd/es/spin/style/index.js`); a rule on that class here would fight the token. What this sheet does hold
+   is the measure of the two marks that are ours: the idle circle and the error glyph answer at 1rem too, so
+   every state reads at one size and none of them smaller than the word beside it (Paul 2026-11-08). */
 .agent-status {
   display: inline-flex;
   align-items: center;
 }
 
 .agent-status-idle {
-  width: 0.75rem;
-  height: 0.75rem;
+  width: 1rem;
+  height: 1rem;
   border-radius: 50%;
   background: var(--agent);
 }
 
 .agent-status-error {
   color: var(--problem);
+  font-size: 1rem;
 }
 
 /* A compact is the same work in the asking colour of R-WP-45. The class lands on the indicator node, which
