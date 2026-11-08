@@ -2,6 +2,45 @@
 
 Status: ❓ offen · ⏳ selbst entschieden (Rückversicherung steht aus) · 🔒 geklärt.
 Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entfällt.
+
+## Runde 6 — Browser-Abnahme Inc 4 (2026-11-08, abends, Screenshot `17.31.29`)
+
+Gemessen (Dev, 2026-11-08): kein Stale-Build — Pauls Screenshot zeigt die **Inc-4-UI** (IDE-Lauf auf
+8080, Bundle `target/classes/static/ui` 17:09:55, jünger als jede Quelle). Die Defekte sind echt im
+Inc-4-Stand; Sider-Klappe, Blasen-Höhe, Band-Spalt, Top-Menü-„Chat", Resend und Agent-Status/Spinner
+werden im Runde-6-Delta gebaut.
+
+* **🔒 Chat liefert keine Antwort — Ursache: Pauls Core-Arbeitsstand kompilierte nicht** (2026-11-08,
+  A/B-gemessen): `AsyncStreamingBridge.java` gelöscht, Referenzen standen noch in
+  `ToolLoopRequest.java:21,22,54,67,195,199` ⇒ Eclipse baute Error-Stub-Klassen
+  (`throw new Error("Unresolved compilation problem:")`); der `Error` entging allen `catch`-Zweigen
+  (`AbstractAgent.call:314` fängt `Exception`, `ProjectRuntime:422` nur `RuntimeException`) und starb
+  still im Future — kein `partial`, kein `done`, **keine Log-Zeile**, Provider nie kontaktiert.
+  Bestätigt Pauls Beobachtung „Requests nie am LLM-Server angekommen". **Paul behoben** (Core-Commits,
+  2026-11-08). Nebenfunde: ein gesunder Turn loggt in diesem Bereich ebenfalls nichts.
+* **🔒 Stale-Fallen für künftige Läufe (nicht Ursache, aber reale Spreizfallen):** `factory-ui/pom.xml`
+  clean-Filesets zeigen auf `web-app/` (existiert nicht) ⇒ `mvn clean` löscht `factory-ui/dist` nie,
+  `copy-resources` ist additiv (drei Asset-Generationen in `target/classes/static/ui`); ein
+  Eclipse-Bau führt `pnpm run build` **nie** aus (lifecycle-mapping `<ignore/>`); ein
+  repo-aufgelöster `mvn spring-boot:run` liefert die **Oktober-SPA** aus `~/.m2`.
+* **🔒 Top-Menü ohne „Chat"** (Paul 2026-11-08: „das muss weg — chat ist nur an der Seite") — in
+  [R-WP-43/UC-WP-76](ui.md) nachgetragen.
+* **🔒 Resend neu gefasst** (Paul 2026-11-08, zwei Nachrichten: erst „der kommt aber ja eh raus" zum
+  Inaktiv-Defekt nach Reload, dann BWT) — es gibt **keinen eigenen Resend-Knopf** mehr; stattdessen
+  sendet der **Send-Knopf mit leerer Eingabe** (kein laufender Turn, Chat-Nachrichten vorhanden) die
+  **letzte Nutzer-Nachricht** erneut — genau der Fall „nach Abbruch sonst passiert nichts". Der
+  Send-Knopf ist **nie deaktiviert** ([R-WP-41](chat.md) nachgezogen), leere Eingabe im laufenden
+  Turn tut nichts. Steht in [R-WP-30/UC-WP-57](chat.md) ❌ (neu gefasst), gebaut im Runde-6-Delta.
+* **⏳ Agent-Status „weiter defekt", Spinner fehlt** (Paul 2026-11-08, „es funktioniert wieder") —
+  gegen [R-WP-45/UC-WP-79](chat.md) prüfen (blau arbeitet · gelb kompaktiert · grün bereit, Spin),
+  Ursache suchen und im Runde-6-Delta reparieren.
+* **⏳ Fabrik-Härtung „je Turn genau ein Endereignis"** — der Runde-3/4b-Verdacht (unten) ist damit
+  **belegt**: ein `Error` im Turn-Task schweigt vollständig (kein `done`, kein `error`, keine
+  Log-Zeile, Kachel zurück auf IDLE). Fix gehört der Fabrik (`ProjectRuntime` fängt `Throwable` bzw.
+  wertet den Future aus), kein Core-Eingriff — Story nach dem Runde-6-Delta.
+* **Nebenbefund (Messung):** `runningTurn` wird nur von `done`/`error`/Stop/Send-Fehler gelöscht,
+  **nicht** vom Reconnect-Pfad (`chat.page.tsx:373-383`) — nach Send+Reload bliebt der Composer ohne
+  Endereignis für immer im Warte-Zustand; übernimmt in die Härtungs-Story oben.
 ## Runde 5 — Browser-Abnahme läuft (2026-11-08)
 
 * **🔒 Status-Indikator bei Fehler = rot** (2026-11-08, Paul: „genau rot wie im Plugin") — als

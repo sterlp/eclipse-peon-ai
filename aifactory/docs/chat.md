@@ -430,23 +430,28 @@ Antwortblocks horizontal, ein **Bild** bleibt innerhalb der Antwortbreite.
   Tabelle **im Antwortblock**, die Seite bleibt ungeändert breit, und das Bild bleibt in der
   Antwortbreite.
 
-### R-WP-41 — Die Eingabe wächst mit und findet ihren Fokus zurück ✅ (Paul 2026-11-06, Muster aus `ai-schulung`)
+### R-WP-41 — Die Eingabe wächst mit und findet ihren Fokus zurück ✅ (Paul 2026-11-06, Muster aus `ai-schulung`; Send-Knopf seit 2026-11-08 **nie deaktiviert**)
 
 Das Eingabefeld ist eine **Auto-Grow-Textarea** (von einer Zeile bis ca. fünf, danach scrollt sie) und
-steht **unten seiner Spalte** ([R-WP-35](chat.md)). **Senden kann nur, wer etwas getippt hat**: bei
-leerer Eingabe ist der Send-Knopf deaktiviert, nicht versteckt. **Während eines laufenden Turns bleibt
+steht **unten seiner Spalte** ([R-WP-35](chat.md)). **Senden kann man immer** (Paul 2026-11-08, BWT:
+„Senden kann man ja immer"): der Send-Knopf ist **nie deaktiviert** — die frühere Fassung „bei leerer
+Eingabe deaktiviert" ist zurückgenommen. Bei **leerer Eingabe** entscheidet der Zustand: **kein
+laufender Turn** + Chat-Nachrichten vorhanden ⇒ **Resend** ([R-WP-30](chat.md)); laufender Turn ⇒
+passiert nichts. **Während eines laufenden Turns bleibt
 die Eingabe benutzbar und der Send-Knopf aktiv** — eine weitere Eingabe geht in die Queue
 ([R-WP-10](chat.md)); die Referenz-App sperrt ihr Feld im Stream, weil sie keine Queue kennt, und
 genau deshalb folgen wir ihr hier **nicht** ([AF-ADR-003](adr/003-reference-ui-is-a-donor-not-a-source.md)).
 Ist der Turn vorbei, **kehrt der Fokus in die Eingabe zurück** (Refocus beim Übergang von deaktiviert
-zu aktiviert) — der Nutzer tippt weiter, ohne zu klicken. Tastatur und Resend bleiben, wie sie sind
+zu aktiviert) — der Nutzer tippt weiter, ohne zu klicken. Tastatur bleibt, wie sie ist
 ([R-WP-30](chat.md)). Sichtbare Texte kommen aus dem String-Catalog ([R-WP-27](ui.md)).
 
-#### UC-WP-74 — inputGrowsAndRefocuses ✅
-- GIVEN eine leere Eingabe WHEN die App zeichnet THEN ist der Send-Knopf deaktiviert; WHEN Text
-  entsteht THEN wird er aktiv.
+#### UC-WP-74 — inputGrowsAndRefocuses ✅ (GIVEN 1 seit 2026-11-08 neu: Send nie deaktiviert)
+- GIVEN eine leere Eingabe WHEN die App zeichnet THEN bleibt der Send-Knopf **aktiv**; WHEN Text
+  entsteht THEN sendet er die Eingabe.
 - GIVEN ein Turn läuft WHEN der Nutzer tippt und sendet THEN ist der Knopf **aktiv** und die Eingabe
   geht in die Queue ([UC-WP-14](chat.md)) — kein Sperren des Feldes, kein Deaktivieren im Turn.
+- GIVEN ein Turn läuft WHEN der Nutzer bei **leerer** Eingabe Senden drückt THEN passiert nichts —
+  keine Leerzeile, keine Queue-Eingabe.
 - GIVEN ein langer Mehrzeiler WHEN der Nutzer tippt THEN wächst das Feld bis zu seiner Obergrenze
   und scrollt danach, statt die Chat-Fläche zu verdrängen.
 - GIVEN ein Turn war läuft und ist jetzt vorbei WHEN die Eingabe wieder aktiv wird THEN steht der
@@ -460,21 +465,30 @@ Referenz-App). **`Shift+Enter` UND `Ctrl/Cmd+Enter` setzen eine neue Zeile** (Pa
 ist `Cmd` das `Ctrl`) — die neue Zeile hat damit zwei Wege, das Senden nur einen. Der
 Send-Knopf bleibt die klickbare Alternative und ist bei leerer Eingabe deaktiviert
 ([R-WP-41](chat.md)). **Mehrzeilige Eingaben bleiben möglich** — über Shift+Enter, und ein Text mit
-eingebetteten Umbrüchen wird so gesendet, wie er dasteht. Zusätzlich kann der Nutzer die **letzte
-gesendete Nachricht erneut senden**, ohne sie neu zu tippen — etwa nach einem Fehler
-(„Resend"); sie läuft wie jede Eingabe in die Queue ([R-WP-10](chat.md)), wenn ein Turn läuft.
+eingebetteten Umbrüchen wird so gesendet, wie er dasteht. **Resend ist der Send-Knopf selbst**
+(Paul 2026-11-08, BWT): drückt der Nutzer **Senden mit leerer Eingabe**, während **kein Turn läuft**,
+aber Chat-Nachrichten existieren, geht die **letzte Nutzer-Nachricht erneut an das LLM** — etwa nach
+einem Abbruch, sonst „passiert einfach nichts"; sie läuft wie eine frische Eingabe in die Queue
+([R-WP-10](chat.md)) und erscheint als neue Nutzer-Zeile. **Läuft ein Turn, tut der Knopf bei leerer
+Eingabe nichts**, und es gibt **keinen eigenen „Resend"-Knopf** (2026-11-08: „der kommt aber ja eh
+raus" — die frühere Knopf-Fassung von UC-WP-57 ist damit ersetzt).
 
 #### UC-WP-56 — enterSendsShiftEnterNewlines ✅ (war `enterNewlinesCtrlEnterSends` ✅, Umkehrung Paul 2026-11-06)
 - GIVEN das Eingabefeld mit Text WHEN der Nutzer Enter drückt THEN wird gesendet und das Feld ist
   danach leer; WHEN er **Shift+Enter** drückt THEN entsteht eine neue Zeile und es wird **nicht**
-  gesendet. GIVEN leere Eingabe WHEN Enter THEN passiert nichts (der Knopf ist deaktiviert, die
-  Eingabe bleibt, kein leerer Turn).
+  gesendet. GIVEN leere Eingabe WHEN Enter THEN passiert nichts (die Eingabe bleibt, kein leerer
+  Turn) — das Resend lebt allein am Send-Knopf ([R-WP-30](chat.md)).
 - GIVEN ein Text mit zwei per Shift+Enter gesetzten Zeilen WHEN der Nutzer Enter drückt THEN kommen
   beide Zeilen **gemeinsam und in der Reihenfolge** in einem Turn an.
 
-#### UC-WP-57 — resendWithoutNewInput ✅
-- GIVEN der Nutzer hat eine Nachricht gesendet WHEN er „Resend" wählt THEN geht dieselbe Nachricht
-  erneut in die Queue (auch nach einem Fehler), ohne dass er sie neu tippt.
+#### UC-WP-57 — resendLastMessageOnEmptySend ❌ (neu gefasst 2026-11-08, Paul BWT — der eigene Resend-Knopf entfällt, das Resend lebt am Send-Knopf)
+- GIVEN der Agent arbeitet **nicht** und der Chat hat Nachrichten WHEN der Nutzer **Senden mit
+  leerer Eingabe** drückt THEN geht die **letzte Nutzer-Nachricht** erneut an das LLM — sie
+  erscheint als neue Nutzer-Zeile und der Turn startet.
+- GIVEN ein Turn läuft WHEN der Nutzer bei leerer Eingabe Senden drückt THEN passiert **nichts** —
+  keine Leerzeile, keine Queue-Eingabe.
+- GIVEN der Chat hat keine Nachrichten WHEN der Nutzer bei leerer Eingabe Senden drückt THEN
+  passiert nichts.
 
 ### R-WP-31 — Warte-Indikator während des Turns ✅ (Paul 2026-11-02; **Warte-Rahmen seit 2026-11-08 zurückgenommen** — Paul, Abnahme: „einfach löschen"; gebaut + reviewed 2026-11-08, Inkrement 4, UC-WP-65 ✅)
 

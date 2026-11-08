@@ -43,6 +43,7 @@ zurückgenommen.
 (**Aktion → URL → UI-Change**) — kein rein funktionierender `useState`-Zustand; ein Reload bleibt auf
 der Seite (UC-WP-43). Die Adresse `/ui/chat` **ohne** Projekt führt auf **Projekte**; war zuletzt ein
 Projekt aktiv, öffnet sich dessen Chat (UC-WP-51) — der Menüeintrag „Chat" führt dorthin
+Projekt aktiv, öffnet sich dessen Chat (UC-WP-51) — der Chat selbst ist nur über den Sider erreichbar
 ([R-WP-43](ui.md)).
 
 #### UC-WP-1 — pagesOfTheMvpApp ✅ (früher „showsExactlyTheseFourPages", umgebaut Paul 2026-11-02)
@@ -59,7 +60,7 @@ Projekt aktiv, öffnet sich dessen Chat (UC-WP-51) — der Menüeintrag „Chat"
 
 #### UC-WP-51 — chatOpensLastActiveProject ✅
 - GIVEN mehrere Projekte WHEN `/ui/chat` **ohne** Projekt geöffnet wird (Adresse, Lesezeichen,
-  Weiterleitung oder der Menüeintrag „Chat", [R-WP-43](ui.md)) THEN öffnet der Chat des
+  Weiterleitung, [R-WP-43](ui.md)) THEN öffnet der Chat des
   zuletzt aktiven Projekts; ohne zuletzt aktives Projekt führt die Adresse auf die Projektliste.
 
 #### UC-WP-52 — everyNavigationChangesTheUrl ✅
@@ -152,14 +153,18 @@ String-Catalog ([R-WP-27](ui.md)), ein Weg je Verantwortung.
   Startwert wird nie zurückgeschrieben, Klick schreibt die Auswahl) sitzt im bestehenden
   `appRootSetsTheDocumentTheme`, Klick und Reload am Browser abnehmen (Design-Tests-Regel oben).
 
-### R-WP-43 — Rahmen: Top-Menü, Einheiten im Sider, Aktionen als Elemente ✅ (Paul 2026-11-07 — Mockup `factory-ui-mockup.tsx` + Referenz `ai-schulung`; gebaut als Inkrement 1a/1b+N1 auf `web-factory`, 2026-11-07 — die Verdrahtung ist bewiesen, der Pinselstrich wird am Browser abgenommen)
+### R-WP-43 — Rahmen: Top-Menü, Einheiten im Sider, Aktionen als Elemente ✅ (Paul 2026-11-07 — Mockup `factory-ui-mockup.tsx` + Referenz `ai-schulung`; gebaut als Inkrement 1a/1b+N1 auf `web-factory`, 2026-11-07 — die Verdrahtung ist bewiesen, der Pinselstrich wird am Browser abgenommen; Menü seit 2026-11-08 **ohne „Chat"**)
 
 Der **Header** trägt Marke, das horizontale **Top-Menü** (AntD `Menu`, `mode="horizontal"`, dunkel —
-wie die erste Version der App und wie im Mockup), den gewählten Nutzernamen und **Settings**. Die
-Menü-Einträge sind die globalen Seiten **Projekte · Chat · Settings** (Config, [R-WP-16](config.md)):
-„Chat" öffnet den Chat des zuletzt aktiven Projekts (UC-WP-51), „Projekte" die Projektliste. Die
+wie die erste Version der App und wie im Mockup), den gewählten Nutzernamen und **Settings**. Das
+dunkle Band liegt **ohne Spalt** direkt auf Sider und Inhalt — es gibt keinen Rand zwischen Band und
+Fläche (Paul 2026-11-08, Abnahme: „das Menü oben ist nicht verbunden mit dem Header"). Die
+Menü-Einträge sind die globalen Seiten **Projekte · Settings** (Config, [R-WP-16](config.md)) —
+**„Chat" steht nicht im Top-Menü**: der Chat ist nur über den Sider erreichbar (Paul 2026-11-08,
+Abnahme: „das muss weg — chat ist nur an der Seite"). Die
 **Markierung im Menü folgt der Adresse** ([R-WP-1](ui.md)) — Menü und Sider markieren dieselbe
-Adresse einig.
+Adresse einig; auf einer **Chat-Adresse** bleibt der Kopf unmarkiert („Chat" steht dort nicht mehr,
+der Sider markiert allein — „Projekte" zu markieren wäre falsch).
 
 Der **Sider** bleibt der Projektbaum ([R-WP-44](ui.md) — seit 2026-11-08 Klapp-Gruppen je Projekt
 mit den Chats als Einträgen); darunter stehen die **Einheiten in dieser Ordnung: Chat, Paco (sobald
@@ -170,11 +175,11 @@ untere Zeile der Chat-Spalte ([R-WP-35](chat.md)) — sie ist die Footer-Zeile d
 Text-Link, `Select`/`Dropdown` statt Textliste — auch an den Kacheln ([R-WP-7](chat.md)); die
 Chat-Optionen (Clear/Compact je Chat) sind ein eigener Punkt (⏳ [open-points](open-points.md)).
 
-#### UC-WP-76 — topMenuNavigates ✅ (Verdrahtung bewiesen, Look am Browser abzunehmen)
+#### UC-WP-76 — topMenuNavigates ✅ (Verdrahtung bewiesen, Look am Browser abzunehmen; Menü seit 2026-11-08 ohne „Chat")
 - GIVEN die App WHEN sie zeichnet THEN trägt der Header ein dunkles horizontales Menü mit genau
-  **Projekte · Chat · Settings**.
-- GIVEN der Nutzer wählt „Chat" WHEN kein Projekt aktiv ist THEN öffnet sich die Projektliste; mit
-  zuletzt aktivem Projekt dessen Chat (UC-WP-51).
+  **Projekte · Settings**.
+- GIVEN die Adresse `/ui/chat` ohne Projekt WHEN sie geöffnet wird THEN öffnet sich die
+  Projektliste; mit zuletzt aktivem Projekt dessen Chat (UC-WP-51).
 - GIVEN die Adresse wechselt WHEN der Rahmen zeichnet THEN folgt die Menü-Markierung der Adresse —
   Menü- und Sider-Markierung sind einig.
 
