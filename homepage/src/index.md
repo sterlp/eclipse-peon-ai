@@ -47,7 +47,7 @@ Install directly from Eclipse:
 After installation, configure the plugin via **Window > Preferences > AI Peon > Peon Configuration**:
 
 1. **Provider**: Select your LLM provider (Ollama, OpenAI, Anthropic, etc.)
-2. **Model**: Enter the model name (e.g., `qwen3-coder`, `qwen3.6-27b` for Ollama)
+2. **Model**: Enter the model name (e.g., `qwen3-coder`, `qwen3.8-27b` for Ollama)
 3. **Base URL**: Set the API endpoint (e.g., `http://localhost:11434` for Ollama)
 4. **API Key**: Enter your API key if required
 

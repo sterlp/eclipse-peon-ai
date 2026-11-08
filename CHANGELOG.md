@@ -5,6 +5,21 @@ All notable changes to Peon AI are documented here. Format loosely follows
 
 Releases before `2.12.4` are documented via [GitHub Releases](https://github.com/sterlp/eclipse-peon-ai/releases).
 
+## [2.16.3] - 08.11.2026
+
+### Changed
+
+- improved system prompts
+- allow self improvement in Agents / Jon mode
+
+## [2.16.2] - 07.11.2026
+
+### Changed
+
+- fixed compact
+- rescue tool calls v1
+- better info for LLM concerning eclipse vs. disk tools
+
 ## [2.16.0] - 01.11.2026
 
 ### Changed

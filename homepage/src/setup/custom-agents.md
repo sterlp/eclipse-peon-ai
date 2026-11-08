@@ -39,7 +39,7 @@ system prompt:
 name: Docs-Assistant
 description: Answers only from the retrieved documents
 read-only: true
-model: qwen3.6-27b
+model: qwen3.8-27b
 think: true
 tools:
   - eclipseReadFile
@@ -52,7 +52,7 @@ with your tools. Never answer from prior knowledge.
 
 ::: warning No `#` comments in the frontmatter
 The frontmatter parser does **not** strip trailing `# ...` comments. A line like
-`model: qwen3.6-27b   # my model` is read as the literal value `qwen3.6-27b   # my model`
+`model: qwen3.8-27b   # my model` is read as the literal value `qwen3.8-27b   # my model`
 and breaks. Keep frontmatter values comment-free.
 :::
 

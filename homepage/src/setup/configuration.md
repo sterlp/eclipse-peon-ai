@@ -43,7 +43,7 @@ Run models locally — e.g. for windows.
 | Setting | Value |
 |---------|-------|
 | Provider | `LM Studio / OpenAI HTTP 1.1` |
-| Model | `qwen/qwen3.5-9b` |
+| Model | `qwen/qwen3.8-27b` |
 | Base URL | `http://localhost:1234/v1` (default — may be left empty) |
 
 ![google gemnini](../assets/lm-studio-setup.png)
@@ -70,7 +70,7 @@ Set the API Key to a dummy value like `none` if the server does not require one.
 | Setting | Value |
 |---------|-------|
 | Provider | `GOOGLE_GEMINI` |
-| Model | `gemini-2.0-flash`, `gemini-2.5-pro-preview-03-25` |
+| Model | `gemini-3.8-flash` |
 | Base URL | *(leave empty)* |
 | API Key | Your Google AI Studio API key |
 

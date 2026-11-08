@@ -53,10 +53,6 @@ Title, navigation tabs, and Mermaid/component setup are project-specific — add
 - **Local LLM Support** - Works with Ollama for privacy-focused local inference
 - **Multi-Provider** - Supports Ollama, OpenAI (and compatible), Google Gemini, Mistral AI, Anthropic Claude, and GitHub Copilot
 
-## Known Issues
-
-- LM Studio Qwen 3.5 9B may never call tools: https://github.com/lmstudio-ai/lmstudio-bug-tracker/issues/1592
-
 ## Installation
 
 ### Eclipse marketplace
@@ -95,9 +91,9 @@ Configure via **Window > Preferences > Peon AI**:
 | Provider | Model | Base URL | API Key |
 |----------|-------|----------|---------|
 | `OLLAMA` | `llama3.2`, `codellama`, `qwen2.5-coder` | `http://localhost:11434` | — |
-| `LM Studio` | `qwen/qwen3.5-9b` | `http://localhost:1234/v1` | — |
+| `LM Studio` | `qwen/qwen3.8-27b` | `http://localhost:1234/v1` | — |
 | `OPEN_AI` | `gpt-4o`, `gpt-4o-mini` | `https://api.openai.com/v1` | required |
-| `GOOGLE_GEMINI` | `gemini-2.0-flash`, `gemini-2.5-pro-preview-03-25` | *(leave empty)* | required |
+| `GOOGLE_GEMINI` | `gemini-3.8-flash` | *(leave empty)* | required |
 | `MISTRAL` | `mistral-large-latest`, `devstral-latest` | *(leave empty)* — `https://api.mistral.ai` for voice | required |
 | `ANTHROPIC` | `claude-sonnet-4-6`, `claude-opus-4-8` | *(leave empty)* | required |
 | `GITHUB_MODELS` | Various (use model picker) | `https://models.inference.ai.azure.com` | GitHub PAT |
