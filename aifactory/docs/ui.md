@@ -224,11 +224,11 @@ Der Sider klebt **bündig an der Fensterkante** — links, oben und unten **ohne
 2026-11-08, Abnahme: „er soll direkt links oben und unten ohne Rand dran kleben"); das App-Padding
 hält ihn nicht von der Kante.
 **Voreingestellt aufgeklappt** (Paul 2026-11-08): gibt es **weniger als vier** Projekte, stehen
-**alle** Gruppen offen; bei vier oder mehr ist nur die **erste** Gruppe offen — **die Gruppe der Adresse steht
-darüber hinaus immer offen**: navigiert die Adresse (Projektliste, Browser-Zurück, Deep-Link)
-in eine andere Gruppe, klappt diese auf, auch wenn der Nutzer vorher eine Gruppe zugeklappt hat
-(Markierung und URL bleiben einig, [R-WP-1](ui.md) — mehrere Chats je
-Agent kommen **nicht** ins MVP (PR-5 hält, Paul 2026-11-08: „es ging mir ums Layout")).
+**alle** Gruppen offen; bei vier oder mehr ist nur die **erste** Gruppe offen. **Die Gruppe der
+Adresse steht darüber hinaus immer offen:** navigiert die Adresse (Projektliste, Browser-Zurück,
+Deep-Link) in eine andere Gruppe, klappt diese auf, auch wenn der Nutzer vorher eine Gruppe
+zugeklappt hat — Markierung und URL bleiben einig ([R-WP-1](ui.md)). Mehrere Chats je Agent kommen
+**nicht** ins MVP (PR-5 hält, Paul 2026-11-08: „es ging mir ums Layout").
 
 #### UC-WP-78 — siderGroupsPerProjectWithChatsAsEntries ✅
 - GIVEN Projekte existieren WHEN der Sider zeichnet THEN steht je Projekt eine Klapp-Gruppe mit dem
