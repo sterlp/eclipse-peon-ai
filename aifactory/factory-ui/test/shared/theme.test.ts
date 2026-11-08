@@ -98,11 +98,13 @@ test('theBasisIsTheOnlyDesignLibraryOfTheApp', () => {
     'buttons, cards, fields, choices and icons come from the basis',
   ).toBeGreaterThanOrEqual(6)
   // R-WP-39 / UC-WP-71 GIVEN 4 draws the line where the basis stops: the conversation keeps our classes.
-  // So the ban is the whole chat folder and the exception is the two surfaces the docs hand to the basis —
-  // R-WP-39 names `Input`, R-WP-41 its auto-grow, and R-WP-40 the timeline the trace is drawn with. A new
-  // file of the conversation arrives inside the ban, which is exactly GIVEN 1 — the same mistake a second
-  // time makes the suite red, not the file list.
-  const basisOwnSurface = ['chat.composer.tsx', 'chat.timeline.tsx']
+  // So the ban is the whole chat folder and the exception is the surfaces **the docs** hand to the basis —
+  // R-WP-39 names `Input`, R-WP-41 its auto-grow, R-WP-40 the timeline the trace is drawn with, R-WP-43 the
+  // actions ("echte AntD-Elemente … auch an den Kacheln", ui.md) and R-WP-45 the working spin ("AntD `Spin`
+  // mit `LoadingOutlined` … keine eigene CSS-Rotation", chat.md). A new file of the conversation arrives
+  // inside the ban, which is exactly GIVEN 1 — the same mistake a second time makes the suite red, not the
+  // file list. A voice of the conversation is in none of them and stays ours (below).
+  const basisOwnSurface = ['chat.composer.tsx', 'chat.timeline.tsx', 'chat.tiles.tsx', 'chat.status.tsx']
   const basisInsideTheChat = builtWithBasis
     .map(([path]) => path)
     .filter((path) => path.includes('/chat/') && !basisOwnSurface.some((name) => path.endsWith(`/${name}`)))

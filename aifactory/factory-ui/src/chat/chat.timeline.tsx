@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { Timeline, type TimelineItemProps } from 'antd'
 
 import { content } from '../shared/content'
+import { WorkingIndicator } from './chat.status'
 import {
   arrivalTime,
   MAX_TOOL_LINES,
@@ -53,7 +54,15 @@ function timelineItems(items: TraceItem[], open: TraceItem | null): TimelineItem
       return
     }
     const working = item === open
-    shown.push({ key: index, loading: working, content: entryOf(item, working) })
+    shown.push({
+      key: index,
+      // both and not one: without `loading` the basis answers `status: finish` and without `icon` its own
+      // loading glyph, which carries no handle of ours — the working dot is our widget (R-WP-40, UC-WP-72).
+      // `icon` and not the deprecated `dot` (`useItems.js`: `mergedIcon = icon ?? dot`)
+      loading: working,
+      icon: working ? <WorkingIndicator size="small" /> : undefined,
+      content: entryOf(item, working),
+    })
   })
   return shown
 }

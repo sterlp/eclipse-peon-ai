@@ -282,3 +282,72 @@ Beweis-Inventar. (3) Zeitsprung der Suite: **215 → 214** Tests (ein Test gelö
 
 **Stand nach S2:** 214 Tests / 22 Dateien grün, `tsc -b` 0, oxlint 0/0 (79 Dateien), `antd lint ./src` 0
 (47 Dateien).
+
+## Inkrement 4 UI — S3 Status-Indikator (Dev-Bau 2026-11-08, Freigabe Jon)
+
+**Gebaut:** neu `src/chat/chat.status.tsx` — `WorkingIndicator` (AntD `Spin` + `LoadingOutlined`, Griff
+`working-indicator`) und `AgentStatus` (Griff `agent-status`, **kein** eigenes `data-state` — der Wirt
+`chat.tiles.tsx` trägt `data-state` seit je). Kachel: `AgentStatus` zieht in den `tile-state-<name>`-Span,
+Wort bleibt; Clear/Compact sind `Button size="small"` (R-WP-43). Timeline: offener Eintrag bekommt
+`loading` **und** das Widget als Punkt. Blatt: `.chat-tiles{margin:0}`, drei Widget-Klassen
+(`.agent-status`, `.agent-status-idle` 0.75rem = 12 px, `.agent-status-error`),
+`.working-indicator-question` auf dem **Indikator**-Knoten.
+
+**Plan-Fund 1 — die „gestrichenen" Badge-Reste gab es nie:** §3-S3 wollte `Badge` im Titel,
+`badgeColor`/`badgeStatus` und den Kommentar „kein quadratischer Icon-Würfel" streichen; `git log -S Badge`
+auf `chat.tiles.tsx` ist **leer**, die Datei kannte nie ein Badge. Die zweite Anzeige, die R-WP-45 meint,
+war der **8-px-Punkt des Blatts** (`.chat-tile-state::before` samt drei Zustandsvarianten) — genau den
+beschreibt die Doc („heute ein schwarzer/grauer Punkt"). Gestrichen; „größer als bisher" heißt damit
+12 px gegen 8 px, nicht gegen einen 6-px-Badge-Dot.
+
+**Plan-Fund 2 — zwei veraltete Props:** `items.dot` der Timeline ist in v6 **veraltet** („Please use
+`items.icon`", gemessen als Runtime-Warnung der Suite) — gebaut mit `icon`, dasselbe Ergebnis
+(`useItems.js`: `mergedIcon = icon ?? dot`, `status: loading ? 'process' : 'finish'`). Und `Spin`-`size`
+heißt `small|medium|large`; `size="default"` ist veraltet (`spin/index.js:86`) — die Signatur von §2.2
+(`'small' | 'default'`) ist auf `'small' | 'medium' | 'large'` gestellt, dazu `tone: 'accent' | 'question'`.
+
+**Warum die Farbe auf dem Indikator sitzt:** die Basis färbt `.ant-spin.ant-spin-section` mit `colorPrimary`
+(0,2,0). Ein Farbanspruch des Wrappers verliert gegen diese Erklärung am Kind; eine Klasse **auf dem
+Indikator-Knoten** (`classNames.indicator`, von der Basis nicht eingefärbt) gewinnt gegen jede Vererbung —
+kein `.ant-*` im eigenen Blatt, kein hex in TSX.
+
+**Konflikt mit der Basis-Wache, zugunsten der Docs gelöst:** `test/shared/theme.test.ts`
+(`theBasisIsTheOnlyDesignLibraryOfTheApp`) verbietet Basis-Importe im ganzen `src/chat`-Ordner, Ausnahmen
+waren `chat.composer.tsx` + `chat.timeline.tsx`. Beides in S3 ist von den Docs **verlangt**: R-WP-43
+(`docs/ui.md:169` — „Aktionen … sind echte AntD-Elemente … auch an den Kacheln") und R-WP-45
+(`docs/chat.md:230` — „AntD `Spin` mit `LoadingOutlined` … keine eigene CSS-Rotation"). Ausnahmeliste um
+`chat.tiles.tsx` und `chat.status.tsx` erweitert, der Kommentar nennt jetzt die vier Regel-Geber. Der
+Stimmen-Bann (`chat.log.tsx`, `chat.markdown.tsx`) ist unangetastet und beweist weiter. **Bitte:** den
+Ausnahme-Satz in R-WP-39/UC-WP-71 nachzuziehen ist Jons Seite, nicht meine.
+
+**Beweis-Arbeit:** Helper `workingEntries()` → **`workingMarks()`**, verankert am
+`[data-testid=working-indicator]` im Log — AntDs eigener Lade-Punkt trägt keinen Griff, also ist der
+Hersteller bewiesen. Zwei Identitäts-Assertions lasen `data-trace` **über das Mark-Element**; der Punkt sitzt
+außerhalb unseres Inhalts-Knotens, deshalb fragen sie jetzt `data-working` am Eintrag (zwei Stellen in
+`onlyOneEntryOfTheTurnWorksAtATime`). Drei Einzeiler in `chat.tiles.test.tsx` (WORKING/IDLE, COMPACTING,
+ERROR), `// UC-WP-79` an den drei, `// UC-WP-81` an `teamTilesShowContextAndStatus` und an
+`onlyOneEntryOfTheTurnWorksAtATime`. Kein neuer Test, keine neue Test-Datei.
+
+**Mutationen (beide geplant, jede tötet wie gemeldet):** (1) `icon:` an `chat.timeline.tsx` gestrichen ⇒
+**genau zwei** sterben (`onlyOneEntryOfTheTurnWorksAtATime`, `aThinkEntryWorksAndHandsTheDotToTheNextStep`).
+Die übrigen drei der fünf können per Konstruktion nicht sterben — sie behaupten Abwesenheit; der
+Hersteller-Beweis liegt an den zwei „genau eine Mark"-Behauptungen. (2) `AgentStatus` mit eigenem `Spin`
+statt Delegation ⇒ **genau** `teamTilesShowContextAndStatus`.
+
+**Einmalige Messung (Doppel-Spin), Ergebnis statt Test:** zweiten `WorkingIndicator` in die
+Live-Antwortzeile von `chat.log.tsx` gebaut, Suite laufen lassen ⇒ **zwei** Tests sterben:
+`aStepNeverWorksForATurnThatDidNotReportIt` („an open turn without a step of its own has no working step")
+und `theIndicatorOfAStepEndsWithTheNextStepAndNotWithTheAnswer` („with the end of the answer no step works").
+Besser als §3-S3 annahm: die neue Verankerung bemerkt eine zweite Arbeits-Mark **im Log**. Ungeschützt
+bleibt bewusst „Kachel **und** Log gleichzeitig" — zwei Fragen (Agent arbeitet / dieser Schritt arbeitet),
+die nie in einem Mount zusammenkommen. Messung zurückgebaut, kein Test angelegt.
+
+**Zusatzaufgabe (genehmigt):** `failedTurnLeavesNoPendingFrame` →
+`failedTurnKeepsTheWaitingInputAndOneErrorLine` (nur Name, Behauptungen unverändert).
+
+**Look, nicht getestet (Paul am Browser):** Spin in Kachel und im Timeline-Punkt (`size="small"`), Gelb beim
+Kompaktieren, rotes gefülltes Zeichen bei Fehler, 12-px-Kreis bei bereit, Kachelreihe ohne Abstand über dem
+Chat, und die **Knopfmaße der Kachel**: unsere `button`-Regel im Blatt ist weg, sonst hätte sie der Basis
+jede Erklärung weggenommen (R-WP-39 — ein Aussehen, ein Owner).
+
+**Stand nach S3:** 214 Tests / 22 Dateien grün, `tsc -b` 0, oxlint 0/0 (79 Dateien), `antd lint ./src` 0

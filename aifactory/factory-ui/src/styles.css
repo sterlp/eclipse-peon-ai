@@ -205,7 +205,8 @@ button {
    darunter (R-WP-7, R-WP-32). Das Listenelement bleibt die Liste, die Fläche darin ist die Kachel. */
 .chat-tiles {
   list-style: none;
-  margin: 0 0 1rem;
+  /* the row belongs to the chat and stands directly above it (R-WP-45): no gap of its own */
+  margin: 0;
   padding: 0;
   padding-inline: var(--content-gutter);
   display: flex;
@@ -270,42 +271,32 @@ button {
     align-items: center;
     gap: 0.25rem;
     color: var(--text);
-
-    &::before {
-      content: '';
-      width: 0.5rem;
-      height: 0.5rem;
-      border-radius: 50%;
-      background: var(--border);
-    }
-
-    &.working::before {
-      background: var(--accent);
-    }
-
-    &.compacting::before {
-      background: var(--question);
-    }
-
-    &.error::before {
-      background: var(--problem);
-    }
   }
+}
 
-  /* Knopfmaße wie die Wurzel-Umschalter des Datei-Bereichs — dieselbe Zeile, derselbe Takt. */
-  button {
-    border: 1px solid transparent;
-    border-radius: 0.4rem;
-    padding: 0.2rem 0.5rem;
-    background: none;
-    color: var(--text);
-    cursor: pointer;
+/* The tile's state mark (R-WP-45): `chat.status.tsx` paints it, so the row owns measure and colour only.
+   0.75rem is the timeline dot's measure (`theme.ts`, Timeline.dotSize = 12) — the two places where work
+   shows have to read at one size. */
+.agent-status {
+  display: inline-flex;
+  align-items: center;
+}
 
-    &:disabled {
-      opacity: 0.5;
-      cursor: default;
-    }
-  }
+.agent-status-idle {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: var(--agent);
+}
+
+.agent-status-error {
+  color: var(--problem);
+}
+
+/* A compact is the same work in the asking colour of R-WP-45. The class lands on the indicator node, which
+   the basis leaves uncoloured, so no rule of the basis outvotes ours. */
+.working-indicator-question {
+  color: var(--question);
 }
 
 /* The log is the scroll area of the chat: the tiles above and the input below keep their place while the

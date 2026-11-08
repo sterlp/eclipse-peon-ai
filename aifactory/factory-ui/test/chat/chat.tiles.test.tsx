@@ -1,5 +1,5 @@
 import { expect, test, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 
 import { ChatTiles } from '../../src/chat/chat.tiles'
 import { content } from '../../src/shared/content'
@@ -44,6 +44,8 @@ function renderTeam(onAction = vi.fn()) {
 }
 
 // UC-WP-11
+// UC-WP-79
+// UC-WP-81
 test('teamTilesShowContextAndStatus', () => {
   renderTeam()
 
@@ -55,6 +57,13 @@ test('teamTilesShowContextAndStatus', () => {
   expect(screen.getByTestId('tile-context-Plan')).toHaveTextContent('4k')
   // the dash is the server's `null`, never a computed 0 — a number nobody reported would be a lie
   expect(screen.getByTestId('tile-context-Review')).toHaveTextContent('—')
+  // the state mark beside the word is the widget of R-WP-45, and an agent that works shows the ONE working
+  // display — the same the open step of the log shows, not a second rendering of the same answer
+  expect(within(screen.getByTestId('tile-state-Jon')).getByTestId('agent-status')).toBeInTheDocument()
+  expect(
+    within(screen.getByTestId('tile-state-Dev')).getByTestId('working-indicator'),
+    'a working agent is drawn by the working indicator itself',
+  ).toBeInTheDocument()
 })
 
 // UC-WP-11
@@ -71,6 +80,7 @@ test('searchTileShowsNoContextAndNoButtons', () => {
 })
 
 // UC-WP-13
+// UC-WP-79
 test('compactShowsItsOwnState', () => {
   render(
     <ChatTiles
@@ -81,12 +91,15 @@ test('compactShowsItsOwnState', () => {
   )
 
   expect(screen.getByTestId('tile-state-Dev')).toHaveTextContent(content.tiles.state.COMPACTING)
+  // a compact is work in the asking colour (R-WP-45): the mark is there, and it is not the accent's one
+  expect(within(screen.getByTestId('tile-state-Dev')).getByTestId('agent-status')).toBeInTheDocument()
   // an agent that works or compacts offers nothing — a second action would write over the running one
   expect(screen.getByTestId('tile-clear-Dev')).toBeDisabled()
   expect(screen.getByTestId('tile-compact-Dev')).toBeDisabled()
 })
 
 // UC-WP-12
+// UC-WP-79
 test('clearStaysOfferedAfterAFailure', () => {
   render(
     <ChatTiles
@@ -100,6 +113,8 @@ test('clearStaysOfferedAfterAFailure', () => {
   )
 
   expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.ERROR)
+  // a failure of the agent is marked as one (R-WP-45) while the tile still offers its way out
+  expect(within(screen.getByTestId('tile-state-Jon')).getByTestId('agent-status')).toBeInTheDocument()
   // a failure is over: UC-WP-12 names no state condition and the server takes a Clear on an idle agent,
   // so a tile that stayed shut here would strand the only way out of the failed conversation
   expect(screen.getByTestId('tile-clear-Jon')).toBeEnabled()

@@ -1,5 +1,8 @@
 import type { KeyboardEvent } from 'react'
+import { Button } from 'antd'
+
 import type { AgentAction, AgentTile } from './chat.agents.client'
+import { AgentStatus } from './chat.status'
 import { content } from '../shared/content'
 
 interface Props {
@@ -67,13 +70,14 @@ export function ChatTiles({ tiles, onAction, onInspect }: Props) {
                   data-state={tile.state}
                   data-testid={`tile-state-${tile.name}`}
                 >
+                  <AgentStatus state={tile.state} />
                   {content.tiles.state[tile.state]}
                 </span>
               </span>
               <span className="chat-tile-actions">
                 {tile.capabilities.includes('CLEAR') && (
-                  <button
-                    type="button"
+                  <Button
+                    size="small"
                     data-testid={`tile-clear-${tile.name}`}
                     disabled={busy}
                     onClick={event => {
@@ -82,11 +86,11 @@ export function ChatTiles({ tiles, onAction, onInspect }: Props) {
                     }}
                   >
                     {content.tiles.clear}
-                  </button>
+                  </Button>
                 )}
                 {tile.capabilities.includes('COMPACT') && (
-                  <button
-                    type="button"
+                  <Button
+                    size="small"
                     data-testid={`tile-compact-${tile.name}`}
                     disabled={busy}
                     onClick={event => {
@@ -95,7 +99,7 @@ export function ChatTiles({ tiles, onAction, onInspect }: Props) {
                     }}
                   >
                     {content.tiles.compact}
-                  </button>
+                  </Button>
                 )}
               </span>
             </div>

@@ -1791,7 +1791,7 @@ test('noWaitingFrameOnAnyLineAtAnyTime', async () => {
 })
 
 // UC-WP-64
-test('failedTurnLeavesNoPendingFrame', async () => {
+test('failedTurnKeepsTheWaitingInputAndOneErrorLine', async () => {
   const chat = stubChat({ messages: [] })
   render(<ChatPage project={project()} />)
   await flush()
