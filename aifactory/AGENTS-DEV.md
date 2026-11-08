@@ -74,7 +74,10 @@
 - **AntD unter jsdom**: `matchMedia` **und** `ResizeObserver` sind load-bearing (jsdom 26.1.0: Property da,
   Wert `undefined`); `Select` über `<id>_list` (`id` je Choice Pflicht, `useId()` ist im Testbaum nicht
   eindeutig), Helfer `test/shared/choices.ts`; `Layout.Sider` malt ohne `width` schon **200 px**, ein
-  `'200px'`-Pin beweist nichts. Tokens ohne Dunkel-Zeile (Fonts) fallen auf hell zurück.
+  `'200px'`-Pin beweist nichts. Tokens ohne Dunkel-Zeile (Fonts) fallen auf hell zurück. `Spin` legt
+  `classNames.indicator` auf das **geklonte** Indikator-Element (`spin/Indicator/index.js`) — die Klasse sitzt
+  **unter** dem Test-Handle, `toHaveClass` am Handle wäre grün trotz Defekt; ein `aria-hidden`-Wrapper blendet
+  Rollen-Queries aus ⇒ über `getByTestId` + `querySelector` beweisen, nie über `getByRole`.
 - **Markdown/Shiki**: `remarkPlugins`/`components` als Modul-Konstante (stabile Props), `remark-breaks`
   Pflicht (v10 hat keine `breaks`-Option), rohes HTML bleibt Wortlaut; `white-space: normal` auf
   `.chat-log .chat-markdown` ist tragend und Markdown zerteilt Text in Spans ⇒ **Zeile** über
