@@ -475,15 +475,27 @@ test('streamingUpdatesChatWithoutReload', async () => {
   ).toBe(2)
 
   // the finished text is no event: done means read the history once, and it replaces the live line
-  chat.setMessages([QUESTION, { role: 'user', text: 'zähl die Dateien' }, ANSWER])
+  // since R-WP-47 the read carries the step as well — name and excerpt out of the memory — so the live line
+  // gives way to the Bestand's own account of it instead of standing twice (UC-WP-82)
+  chat.setMessages([
+    QUESTION,
+    { role: 'user', text: 'zähl die Dateien' },
+    { role: 'tool', text: 'pom.xml README.md', origin: 'shellRunCommand' },
+    ANSWER,
+  ])
   await chat.push(event('done', { millis: 1234 }))
 
   expect(screen.getByTestId('chat-line-jon')).toHaveTextContent(ANSWER.text)
   expect(chat.countOf('/messages', 'GET')).toBe(readsBefore + 1)
   expect(screen.queryByTestId('chat-live')).toBeNull()
-  // the trace of the turn is not lost by the read: it stays where it happened, while the streaming text
-  // gives way to the history that carries it now (R-WP-28, UC-WP-54)
-  expect(screen.getByTestId('chat-timeline')).toHaveTextContent('Running: `ls`')
+  // the trace of the turn is not lost by the read: the Bestand hands the step back, named and with its
+  // excerpt, and the Think entry of the same place stays beside it in the ONE widget (R-WP-28, R-WP-40,
+  // UC-WP-54, UC-WP-82)
+  const widget = screen.getByTestId('chat-timeline')
+  expect(widget, 'the step of the read stands in the log with the name the memory carries').toHaveTextContent(
+    'shellRunCommand',
+  )
+  expect(widget).toHaveTextContent('pom.xml README.md')
   expect(
     thoughtEntries(),
     'a think entry is of the same family — it exists on the wire only, so the read may not drop it',
@@ -1088,14 +1100,20 @@ test('toolLinesSurviveTheDoneRefresh', async () => {
   await chat.push(event('tool', { text: 'ls in the checkout' }))
   expect(screen.getByTestId('chat-timeline')).toHaveTextContent('ls in the checkout')
 
-  // the turn ends and the history is read: the trace exists on the wire only, so this read is the moment
-  // it would be lost — it is not (UC-WP-54)
-  chat.setMessages([QUESTION, { role: 'user', text: 'zähl die Dateien' }, ANSWER])
+  // the turn ends and the history is read: since R-WP-47 the step is a line of that history — the read is
+  // the moment it would be lost, and it is not (UC-WP-54, UC-WP-82)
+  chat.setMessages([
+    QUESTION,
+    { role: 'user', text: 'zähl die Dateien' },
+    { role: 'tool', text: 'ls in the checkout', origin: 'shellRunCommand' },
+    ANSWER,
+  ])
   await chat.push(event('done', { millis: 7 }))
 
   const entries = [...screen.getByTestId('chat-log').children]
   const tool = screen.getByTestId('chat-timeline')
   expect(tool).toHaveTextContent('ls in the checkout')
+  expect(tool, 'and it names the tool the memory names').toHaveTextContent('shellRunCommand')
   // and it stands where it happened: after the input it belongs to, before the answer that followed it
   const answerAt = entries.findIndex(entry => entry.getAttribute('data-testid') === 'chat-line-jon')
   expect(entries.indexOf(tool)).toBeGreaterThanOrEqual(0)
@@ -1104,6 +1122,44 @@ test('toolLinesSurviveTheDoneRefresh', async () => {
   expect(screen.queryByTestId('chat-live')).toBeNull()
   expect(agentLinesSaying(ANSWER.text)).toHaveLength(1)
 })
+
+/**
+ * The reload's own account of what the tools did (R-WP-47, UC-WP-82 GIVEN 1): the history carries a line per
+ * tool with its name and an excerpt of its result, and the page draws them between the input that caused them
+ * and the answer that followed — one widget, no second block, and no line of a voice, since a step is not a
+ * voice. A delegation's step names the member it asked, not the tool that asked him.
+ */
+// UC-WP-82
+test('aReloadedChatDrawsTheStepsOfTheBestand', async () => {
+  stubChat({
+    messages: [
+      QUESTION,
+      { role: 'tool', text: 'Im Root liegen pom.xml und README.md', origin: 'shellRunCommand' },
+      { role: 'tool', text: '', origin: 'Dev' },
+      ANSWER,
+    ],
+  })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  expect([...screen.getByTestId('chat-log').children].map(line => line.getAttribute('data-testid'))).toEqual([
+    'chat-line-user',
+    'chat-timeline',
+    'chat-line-jon',
+  ])
+  const steps = [
+    ...screen.getByTestId('chat-timeline').querySelectorAll('.chat-trace-item[data-trace="tool"]'),
+  ]
+  expect(
+    steps.map(step => step.textContent),
+    'one step per tool, in the order of the Bestand, each named by the name it carries',
+  ).toEqual(['shellRunCommandIm Root liegen pom.xml und README.md', 'Dev'])
+  expect(
+    screen.queryAllByTestId('chat-line-tool'),
+    'a step has exactly one drawing path — the timeline, never a line of a voice',
+  ).toEqual([])
+})
+
 
 // UC-WP-54
 test('aLiveAnswerKeepsItsAnchorWhenAnInputIsQueuedMidTurn', async () => {
@@ -1307,15 +1363,38 @@ test('theRunningStepEndsWithTheTurn', async () => {
   expect(steps).toHaveLength(2)
   expect(working, 'one open turn has one working step').toHaveLength(1)
   expect(working[0], 'and it is the step that came last').toBe(steps[1])
+  expect(
+    steps[0].getAttribute('title'),
+    'the step the next one ended carries the clock of its arrival — the wire brought the moment',
+  ).toMatch(/^\d{2}:\d{2}$/)
+  expect(steps[1], 'a step that works has no clock yet').not.toHaveAttribute('title')
 
-  // the turn ends and the history is read: no step works any more, and the one that did keeps its place on
-  // the screen with the clock of its arrival (R-WP-40, UC-WP-54, UC-WP-72 GIVEN 2)
-  chat.setMessages([QUESTION, { role: 'user', text: 'zähl die Dateien' }, ANSWER])
+  // the turn ends and the history is read: no step works any more, and both keep their place — as lines of
+  // the Bestand, which knows no moment, so no step carries a title now (R-WP-40, UC-WP-54, UC-WP-72 GIVEN 2,
+  // R-WP-47)
+  chat.setMessages([
+    QUESTION,
+    { role: 'user', text: 'zähl die Dateien' },
+    { role: 'tool', text: 'ls in the checkout', origin: 'shellRunCommand' },
+    { role: 'tool', text: '3 pom.xml', origin: 'shellRunCommand' },
+    ANSWER,
+  ])
   await chat.push(event('done', { millis: 12 }))
+  await flush()
 
-  expect([...widget.querySelectorAll('[data-working="true"]')], 'with the turn the indicator ends').toEqual([])
-  const finished = [...widget.querySelectorAll('.chat-trace-item[data-trace="tool"]')]
-  expect(finished[1].getAttribute('title'), 'a finished step carries its arrival clock').toMatch(/^\d{2}:\d{2}$/)
+  const restored = screen.getByTestId('chat-timeline')
+  expect(
+    [...restored.querySelectorAll('[data-working="true"]')],
+    'with the turn the indicator ends, and a step of the Bestand works for nobody',
+  ).toEqual([])
+  const finished = [...restored.querySelectorAll('.chat-trace-item[data-trace="tool"]')]
+  expect(finished.map(step => step.textContent), 'both steps stand, named by the memory').toEqual([
+    'shellRunCommandls in the checkout',
+    'shellRunCommand3 pom.xml',
+  ])
+  for (const step of finished) {
+    expect(step, 'the Bestand knows no moment — a restored step carries no title').not.toHaveAttribute('title')
+  }
 })
 
 /**
@@ -1341,11 +1420,16 @@ test('aSecondTurnDrawsNoIndicatorOnTheStepsOfTheFinishedOne', async () => {
   await chat.push(event('tool', { text: 'ls in the checkout' }))
   expect(working(), 'a step of the open turn works').toHaveLength(1)
 
-  chat.setMessages([QUESTION, { role: 'user', text: 'zähl die Dateien' }, ANSWER])
+  chat.setMessages([
+    QUESTION,
+    { role: 'user', text: 'zähl die Dateien' },
+    { role: 'tool', text: 'ls in the checkout', origin: 'shellRunCommand' },
+    ANSWER,
+  ])
   await chat.push(event('done', { millis: 12 }))
   await flush()
 
-  // the turn is over and its trace stands: nothing of it works any more
+  // the turn is over and its trace stands — since R-WP-47 as a line of the Bestand: nothing of it works
   expect(screen.getByTestId('chat-timeline')).toHaveTextContent('ls in the checkout')
   expect(working()).toEqual([])
 
@@ -1355,6 +1439,10 @@ test('aSecondTurnDrawsNoIndicatorOnTheStepsOfTheFinishedOne', async () => {
   fireEvent.click(screen.getByTestId('chat-send'))
   await flush()
   expect(screen.getByTestId('chat-waiting'), 'a turn is open').toBeInTheDocument()
+  expect(
+    steps(),
+    'the step of the Bestand still stands there while the new turn waits',
+  ).toHaveLength(1)
   expect(working(), 'the old step does not work for a turn it never belonged to').toEqual([])
 
   // the first step of the open turn is where the indicator goes — the rule is not simply switched off
@@ -1365,15 +1453,16 @@ test('aSecondTurnDrawsNoIndicatorOnTheStepsOfTheFinishedOne', async () => {
 
 /**
  * The identity a step answers to is its turn, never the number of rows that turn anchored at (R-WP-40,
- * UC-WP-72 GIVEN 2). A Clear gives the log back exactly the row count the finished turn anchored at while
- * that turn's trace stays on the screen (UC-WP-54) — so both turns anchor at the same number, and only the
- * identity tells them apart.
+ * UC-WP-72 GIVEN 2). A Clear hands the log back exactly the row count the finished turn anchored at — and
+ * takes the step with it, since R-WP-47 makes it a line of the Bestand like every answer (UC-WP-54). So the
+ * next turn, opening at that same count, finds no step of the finished one left to work on.
  */
 // UC-WP-72
 test('twoTurnsCountingTheSameRowsAreNotTheSameTurn', async () => {
+  // queries, not getters: a cleared conversation draws no widget at all, and that is one of the facts here
   const steps = () =>
     screen
-      .getAllByTestId('chat-timeline')
+      .queryAllByTestId('chat-timeline')
       .flatMap(widget => [...widget.querySelectorAll('.chat-trace-item[data-trace="tool"]')])
   const working = () => steps().filter(step => step.hasAttribute('data-working'))
 
@@ -1387,17 +1476,29 @@ test('twoTurnsCountingTheSameRowsAreNotTheSameTurn', async () => {
   await chat.push(event('tool', { text: 'ls in the checkout' }))
   expect(working(), 'a step of the open turn works').toHaveLength(1)
 
-  chat.setMessages([{ role: 'user', text: 'zähl die Dateien' }, ANSWER])
+  // R-WP-47: the read hands the step back as a line of its own, so the finished turn's step stands there
+  // without working — it belongs to nobody's open turn (UC-WP-82)
+  chat.setMessages([
+    { role: 'user', text: 'zähl die Dateien' },
+    { role: 'tool', text: 'ls in the checkout', origin: 'shellRunCommand' },
+    ANSWER,
+  ])
   await chat.push(event('done', { millis: 11 }))
+  await flush()
   expect(userLineTexts(), 'the read of the finished turn has landed').toEqual(['zähl die Dateien'])
+  expect(steps(), 'the step of the finished turn stands, named by the memory').toHaveLength(1)
   expect(working(), 'the turn ended with its step').toEqual([])
 
-  // the conversation is cleared: the log counts the rows of its log again from zero — the same number the
-  // finished turn anchored at — while the trace of that turn stays
+  // the conversation is cleared: since R-WP-47 a step is a line of the Bestand, so it leaves with the rest
+  // of it (UC-WP-54) — and the log counts its rows from zero again, the same number the finished turn
+  // anchored at
   chat.setMessages([])
   fireEvent.click(screen.getByTestId('tile-clear-Jon'))
   await waitFor(() => expect(userLineTexts()).toEqual([]))
-  expect(screen.getByTestId('chat-timeline')).toHaveTextContent('ls in the checkout')
+  expect(
+    screen.queryByTestId('chat-timeline'),
+    'a step is no longer a live-only line, so a cleared conversation shows no trace',
+  ).toBeNull()
   expect(working(), 'a cleared conversation works nothing').toEqual([])
 
   // the next input opens its turn at the same row number and answers with text before its first step
@@ -1406,7 +1507,7 @@ test('twoTurnsCountingTheSameRowsAreNotTheSameTurn', async () => {
   await chat.push(event('partial', { kind: 'answer', text: 'Im Root liegen ' }))
   expect(
     working(),
-    'the open turn takes no step of the finished one, though both anchor at the same number of rows',
+    'a word is no step: the open turn works nowhere before the wire reports one',
   ).toEqual([])
 
   // the first step of the open turn is where the indicator goes — the rule is not simply switched off
@@ -1497,10 +1598,12 @@ test('aDelegationStandsWhereItHappenedAndNotAtTheEndOfTheLog', async () => {
   ).toEqual(['tool', 'delegation'])
 
   // the turn ends and its history is read — the moment a live entry of the wrong anchor would fall behind
-  // the last answer, since the read brings the two inputs and both answers
+  // the last answer, since the read brings the two inputs and both answers, and since R-WP-47 the step of
+  // the delegation as well: it names the member and stands where the call happened (UC-WP-82)
   chat.setMessages([
     QUESTION,
     { role: 'user', text: 'frag Dev nach einer Frucht' },
+    { role: 'tool', text: '', origin: 'Dev' },
     { role: 'user', text: 'und was macht Plan?' },
     TEAM_ANSWER,
     JONS_ANSWER,
@@ -1581,18 +1684,32 @@ test('theIndicatorOfAStepEndsWithTheNextStepOnTheWire', async () => {
   expect(working()).toHaveLength(1)
   expect(working()[0].textContent).toContain('wc -l pom.xml')
 
-  // the end of the answer ends it; both steps stay with their arrival clock and without a duration
-  chat.setMessages([QUESTION, { role: 'user', text: 'zähl die Dateien' }, ANSWER])
+  // the end of the answer ends it. The read that follows carries the two steps as lines of the Bestand
+  // (R-WP-47), which knows no moment: both stand, named, and neither carries a clock or a duration
+  // (UC-WP-72 GIVEN 2 and 5, UC-WP-82)
+  chat.setMessages([
+    QUESTION,
+    { role: 'user', text: 'zähl die Dateien' },
+    { role: 'tool', text: 'pom.xml README.md', origin: 'shellRunCommand' },
+    { role: 'tool', text: '3 pom.xml', origin: 'shellRunCommand' },
+    ANSWER,
+  ])
   await chat.push(event('done', { millis: 9 }))
+  await flush()
   expect(working(), 'with the end of the answer no step works').toEqual([])
   expect(
-    steps().map(step => step.getAttribute('title')),
-    'every finished step keeps its own arrival clock and no duration',
-  ).toEqual([expect.stringMatching(/^\d{2}:\d{2}$/), expect.stringMatching(/^\d{2}:\d{2}$/)])
+    steps().map(step => step.textContent),
+    'both steps stand on the read, named by the memory',
+  ).toEqual(['shellRunCommandpom.xml README.md', 'shellRunCommand3 pom.xml'])
+  for (const step of steps()) {
+    expect(step, 'the Bestand knows no moment and no duration — a restored step carries no title').not.toHaveAttribute(
+      'title',
+    )
+  }
 })
 
 
-// UC-WP-68
+// UC-WP-68, UC-WP-82
 test('aFileChangeIsLiveAndDoesNotOutliveTheReload', async () => {
   const chat = stubChat({ messages: [QUESTION] })
   render(<ChatPage project={project()} />)
@@ -1607,18 +1724,27 @@ test('aFileChangeIsLiveAndDoesNotOutliveTheReload', async () => {
   expect(within(screen.getByTestId('chat-timeline')).queryByTestId('chat-diff')).toBeNull()
 
   // the turn ends and the history is read: the block has no line in that history and keeps its place on
-  // the screen, exactly like the trace of the same turn (R-WP-11, R-WP-36)
-  chat.setMessages([QUESTION, ANSWER])
+  // the screen, while the step of the same turn is handed back as a line of its own (R-WP-11, R-WP-36,
+  // R-WP-47)
+  chat.setMessages([
+    QUESTION,
+    { role: 'tool', text: 'write src/App.java', origin: 'diskWriteFile' },
+    ANSWER,
+  ])
   await chat.push(event('done', { millis: 9 }))
+  await flush()
   expect(screen.getByTestId('chat-diff')).toHaveTextContent('+b')
-  expect(screen.getByTestId('chat-timeline')).toHaveTextContent('write src/App.java')
+  const step = screen.getByTestId('chat-timeline')
+  expect(step).toHaveTextContent('write src/App.java')
+  expect(step, 'the read names the tool it carries').toHaveTextContent('diskWriteFile')
 
-  // a dropped connection is the reload's stand-in: what the wire will not send back leaves the screen,
-  // and the history that comes back with the new connection carries no diff (R-WP-11)
+  // a dropped connection is the reload's stand-in: what the wire will not send back leaves the screen —
+  // the block is of that family, the step is not, since the history of the new connection carries it
+  // as a line (R-WP-11, R-WP-36, UC-WP-82)
   await chat.closeStream()
   await waitFor(() => expect(chat.countOf('/events', 'GET')).toBe(2), { timeout: 1500 })
-  expect(screen.queryByTestId('chat-diff')).toBeNull()
-  expect(screen.queryByTestId('chat-timeline')).toBeNull()
+  expect(screen.queryByTestId('chat-diff'), 'a diff is no line of the Bestand').toBeNull()
+  expect(screen.getByTestId('chat-timeline')).toHaveTextContent('write src/App.java')
   expect(agentLinesSaying(ANSWER.text)).toHaveLength(1)
 })
 

@@ -9,6 +9,7 @@ import {
   liveRuns,
   openTimelineItem,
   type LiveItem,
+  type ToolItem,
   type TraceItem,
 } from './chat.live'
 import type { PendingLine } from './chat.pending'
@@ -43,6 +44,8 @@ interface Row {
   handle: string
   author: string | null
   text: string
+  /** A step of the trace and not a voice: it never draws a row of its own, only the timeline of its place. */
+  trace: boolean
 }
 
 /**
@@ -66,8 +69,9 @@ type Entry =
   /** The trace of one place of the log: its steps, its Think sections and its delegations in the order they
    *  arrived, in the one timeline they share (R-WP-40). `open` is the one entry the open turn works on and
    *  stands in at most one of the widgets the log draws — identity, so neither the cap nor the place in the
-   *  list decides it. */
-  | { type: 'trace'; items: TraceItem[]; open: TraceItem | null }
+   *  list decides it. `restored` marks the group the history handed back: it is the same account as the live
+   *  entries beside it, so those join this widget instead of drawing a second one. */
+  | { type: 'trace'; items: TraceItem[]; open: TraceItem | null; restored?: boolean }
   | { type: 'diff'; file: string; text: string }
 
 /**
@@ -98,6 +102,9 @@ export function ChatLog({ messages, outgoing, live, openTurn = null, logRef, onS
       handle: `chat-line-${message.role}`,
       author: authorOf(message),
       text: message.text,
+      // the step the memory handed back (R-WP-47): its name is the Bestand's and it joins the timeline
+      // of its place instead of speaking as a row of its own
+      trace: message.role === 'tool',
     })),
     ...outgoing.map((line): Row => ({
       voice: 'user',
@@ -106,6 +113,7 @@ export function ChatLog({ messages, outgoing, live, openTurn = null, logRef, onS
       // line does not jump when it is confirmed (R-WP-37, UC-WP-48)
       author: line.origin ?? content.chat.you,
       text: line.text,
+      trace: false,
     })),
   ]
 
@@ -174,7 +182,9 @@ export function ChatLog({ messages, outgoing, live, openTurn = null, logRef, onS
  * what stood at that moment — the history plus the inputs that were still pending then — so it names the
  * same place before and after the read that confirms those inputs, and a run pointing past the rows that
  * stand today falls to the end (D-A, UC-WP-54). The steps, Think sections and delegations of one run become
- * ONE timeline, a diff block stands beside it as a block of its own (R-WP-36, R-WP-40).
+ * ONE timeline, a diff block stands beside it as a block of its own (R-WP-36, R-WP-40). A step the history
+ * handed back is a row like any other and groups by the same rule (R-WP-47): consecutive steps are one
+ * widget, and the live entries beside them join it instead of drawing a second account of one place.
  */
 function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entry[] {
   const entries: Entry[] = []
@@ -184,10 +194,46 @@ function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entr
   // (R-WP-40, UC-WP-72 GIVEN 2 and 3)
   const open = openTimelineItem(live, openTurn)
 
+  // one widget per uninterrupted group (R-WP-40): the steps the Bestand handed back are the same account as
+  // the live entries beside them, so a group joins the widget that stood first instead of opening a second
+  // one for one place. Two live runs of two turns never join — only the read moves a step of the same run
+  // next to the entries that streamed live.
+  const pushTrace = (items: TraceItem[], openItem: TraceItem | null, restored: boolean) => {
+    const previous = entries[entries.length - 1]
+    if (previous !== undefined && previous.type === 'trace' && (previous.restored === true || restored)) {
+      entries[entries.length - 1] = {
+        type: 'trace',
+        // the restored step stands at its row and the live entries arrived behind it, so a group the read
+        // hands back leads the merged account — the wire's order, not the order the two groups were pushed
+        items:
+          restored && previous.restored !== true
+            ? [...items, ...previous.items]
+            : [...previous.items, ...items],
+        open: previous.open ?? openItem,
+        restored: true,
+      }
+      return
+    }
+    entries.push({ type: 'trace', items, open: openItem, restored })
+  }
+
   const pushRows = (until: number) => {
     while (shown < Math.min(until, rows.length)) {
-      entries.push({ type: 'row', row: rows[shown] })
-      shown += 1
+      const row = rows[shown]
+      if (!row.trace) {
+        entries.push({ type: 'row', row })
+        shown += 1
+        continue
+      }
+      // R-WP-40 for the restored trace: steps that stand in a row are ONE widget at the place of the
+      // first, and a voice, a failure or the anchor of a live run ends the group. Each step still counts
+      // as one row, so the anchor of a live run keeps naming the same place before and after the read.
+      const steps: TraceItem[] = []
+      while (shown < Math.min(until, rows.length) && rows[shown].trace) {
+        steps.push(restoredStep(rows[shown]))
+        shown += 1
+      }
+      pushTrace(steps, null, true)
     }
   }
 
@@ -201,7 +247,7 @@ function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entr
       if (trace.length === 0) {
         return
       }
-      entries.push({ type: 'trace', items: trace, open })
+      pushTrace(trace, open, false)
       trace = []
     }
     for (const item of run) {
@@ -225,6 +271,16 @@ function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entr
   }
   pushRows(rows.length)
   return entries
+}
+
+/**
+ * A step the memory handed back, drawn as what it is (R-WP-47): `origin` is the Bestand's name and `text`
+ * his excerpt. `at` stays null — the history knows no moment, so the entry carries no title (UC-WP-72
+ * GIVEN 5) — and `turn` stays null, because no turn works on a line that is already written. `afterLines`
+ * is the anchor a live run places itself by; the log has already placed this one.
+ */
+function restoredStep(row: Row): ToolItem {
+  return { kind: 'tool', text: row.text, afterLines: 0, origin: row.author, at: null, turn: null }
 }
 
 /** The voice a stored line speaks with — a failure speaks for nobody (R-WP-34). */

@@ -220,9 +220,13 @@ export function endLiveDelegation(items: LiveItem[], member: string, turn: numbe
 
 /**
  * What a history read leaves of the live list: the answer has become a line of the history and would
- * stand there twice, while tool lines, Think sections, diff blocks and delegation entries exist on the wire
- * only — losing them at `done` is exactly what UC-WP-54 forbids, and R-WP-36 puts its block in the same
- * family, as does R-WP-40 its delegation and its thinking.
+ * stand there twice, while a Think section, a diff block and a delegation entry exist on the wire only —
+ * losing them at `done` is exactly what UC-WP-54 forbids, and R-WP-36 puts its block in the same family,
+ * as does R-WP-40 its delegation and its thinking.
+ *
+ * A tool step belongs to the history's family since R-WP-47: the read carries it as a line of its own, so
+ * a live step that stayed would stand twice under one answer — one widget, not two (R-WP-40). What
+ * arrived behind `mark` is another matter: the read could not know it, so it stays until the next read.
  *
  * `mark` is how many items stood when that read was issued. Everything behind it arrived while the server
  * was already answering, so the read cannot carry it and it stays on the screen: a read may only give up
@@ -233,7 +237,6 @@ export function endLiveDelegation(items: LiveItem[], member: string, turn: numbe
 export function liveLinesAfterHistory(items: LiveItem[], mark = items.length): LiveItem[] {
   return items.filter(
     (item, index) =>
-      item.kind === 'tool' ||
       item.kind === 'think' ||
       item.kind === 'diff' ||
       item.kind === 'delegation' ||

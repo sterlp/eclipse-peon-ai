@@ -206,17 +206,24 @@ test('theCapKeepsTheArrivalTimesOfWhatStays', () => {
 })
 
 /**
- * A reload knows only what the memory holds (R-WP-11, UC-WP-72 GIVEN 4): the trace exists on the wire only,
- * so the reloaded log draws no step, no working indicator and no clock. A step whose arrival the browser
- * never received stays without a title — the screen invents no time to look complete.
+ * A reload knows only what the memory holds (R-WP-11, UC-WP-72 GIVEN 4): a step the Bestand carries stands —
+ * with the name that line carries and the excerpt it carries — and nothing else: no working indicator, no
+ * clock. A step whose arrival the browser never received stays without a title, since the memory names no
+ * moment (UC-WP-72 GIVEN 5) — the screen invents no time to look complete (R-WP-47).
  */
 // UC-WP-72
+// UC-WP-82
 test('aReloadedLogInventsNoTimes', () => {
   // the reloaded log is not empty: it draws the finished lines with the author the history named, so the
   // empty queries below say something about a log that has content in it (UC-WP-72 GIVEN 4)
   const view = render(
     <ChatLog
-      messages={[QUESTION, ANSWER, { role: 'jon', text: 'Eine Banane.', origin: 'Dev' }]}
+      messages={[
+        QUESTION,
+        { role: 'tool', text: 'Im Root liegen pom.xml', origin: 'shellRunCommand' },
+        ANSWER,
+        { role: 'jon', text: 'Eine Banane.', origin: 'Dev' },
+      ]}
       outgoing={[]}
       live={[]}
     />,
@@ -229,9 +236,10 @@ test('aReloadedLogInventsNoTimes', () => {
   ).toEqual(['Paul', 'Dev'])
   expect(log.querySelector('[title]'), 'nothing of a finished turn is titled by a time').toBeNull()
   expect(workingMarks(log), 'no step works after a reload').toEqual([])
-  expect([...log.querySelectorAll('.chat-step-name')], 'and none names an agent the wire did not name').toEqual(
-    [],
-  )
+  expect(
+    [...log.querySelectorAll('.chat-step-name')].map(name => name.textContent),
+    'the step names exactly what its line names — no agent, no tool the Bestand did not name',
+  ).toEqual(['shellRunCommand'])
   expect(log.textContent, 'no clock appears anywhere in a reloaded log').not.toMatch(/\d{2}:\d{2}/)
 
   view.unmount()

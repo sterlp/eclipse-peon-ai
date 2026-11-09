@@ -11,6 +11,9 @@ const FAILURE: ChatMessage = { role: 'error', text: 'turn needs a model — set 
 /** The input the trace belongs to, read back from the history — the anchor of the trace counts it (D-A). */
 const SENTENCE: ChatMessage = { role: 'user', text: 'zähl die Dateien', origin: 'Paul' }
 const ANSWER: ChatMessage = { role: 'jon', text: 'Zwei: pom.xml und README.md' }
+/** A step of the trace as the history hands it back: the tool's name in `origin`, its result as the excerpt (R-WP-47). */
+const STEP_LS: ChatMessage = { role: 'tool', text: 'pom.xml README.md', origin: 'shellRunCommand' }
+const STEP_WC: ChatMessage = { role: 'tool', text: '3 pom.xml', origin: 'shellRunCommand' }
 
 /**
  * A change of voice draws no line of its own (R-WP-29): the two rows are separated by the form each voice is
@@ -86,6 +89,65 @@ test('aLiveTraceStaysBetweenItsInputAndTheAnswer', () => {
   expect([
     ...screen.getByTestId('chat-timeline').querySelectorAll('.chat-trace-item'),
   ]).toHaveLength(2)
+})
+
+/**
+ * The same account, read back instead of streamed (R-WP-47, UC-WP-82): the steps the history carries are the
+ * trace of their place, so consecutive steps draw ONE timeline at the place of the first, between the input
+ * they belong to and the answer that followed them — and the voice between two steps ends the group, which
+ * is the same rule R-WP-40 states for a live run. A step is never a line of the conversation: the log has
+ * exactly one drawing path for it.
+ */
+// UC-WP-82
+// UC-WP-72
+test('restoredToolLinesStandAsOneTimelineBetweenTheirInputAndTheAnswer', () => {
+  const shape = () =>
+    [...screen.getByTestId('chat-log').children].map(line => line.getAttribute('data-testid'))
+
+  const view = render(
+    <ChatLog messages={[QUESTION, SENTENCE, STEP_LS, STEP_WC, ANSWER]} outgoing={[]} live={[]} />,
+  )
+
+  expect(shape(), 'one group of steps is one widget, where the first of them stands').toEqual([
+    'chat-line-user',
+    'chat-line-user',
+    'chat-timeline',
+    'chat-line-jon',
+  ])
+  const widget = screen.getByTestId('chat-timeline')
+  expect([...widget.querySelectorAll('.chat-trace-item')], 'both steps are links of it').toHaveLength(2)
+  expect(widget.textContent).toContain('pom.xml README.md')
+  expect(widget.textContent).toContain('3 pom.xml')
+  expect(
+    screen.queryAllByTestId('chat-line-tool'),
+    'a step is no voice, so the log draws no line of one',
+  ).toEqual([])
+
+  // a voice between two steps ends the account of one place and opens the next (R-WP-40)
+  view.rerender(
+    <ChatLog messages={[QUESTION, SENTENCE, STEP_LS, ANSWER, STEP_WC]} outgoing={[]} live={[]} />,
+  )
+  expect(shape(), 'an answer ends the group, so the step behind it is a widget of its own').toEqual([
+    'chat-line-user',
+    'chat-line-user',
+    'chat-timeline',
+    'chat-line-jon',
+    'chat-timeline',
+  ])
+})
+
+/**
+ * UC-WP-82 GIVEN 3: a conversation the model answered without a tool gains no step and no placeholder —
+ * the log of a chat with no tool activity is the conversation and nothing else.
+ */
+// UC-WP-82
+test('aConversationWithoutStepsDrawsNoTimeline', () => {
+  render(<ChatLog messages={[QUESTION, ANSWER]} outgoing={[]} live={[]} />)
+
+  expect(screen.queryByTestId('chat-timeline'), 'no step, no widget').toBeNull()
+  expect(
+    [...screen.getByTestId('chat-log').children].map(line => line.getAttribute('data-testid')),
+  ).toEqual(['chat-line-user', 'chat-line-jon'])
 })
 
 /**

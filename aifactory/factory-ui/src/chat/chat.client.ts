@@ -7,11 +7,17 @@ import type { AgentTile } from './chat.agents.client'
  * carries none and the screen shows its role label; an agent's line without one stays unnamed, because
  * the server never guesses and the UI invents nothing (R-WP-4).
  *
- * `error` is the third role (R-WP-34): the line a failed turn left in the conversation. It carries no
- * origin by construction and its text is the server's reason — the UI knows no wording of its own for it.
+ * `error` is the role of a failed turn (R-WP-34): it carries no origin by construction and its text is the
+ * server's reason — the UI knows no wording of its own for it.
+ *
+ * `tool` is the fourth role (R-WP-47): one step of Jon's own trace, named by `origin` — the tool he used,
+ * or the member a delegation went to — with `text` as the excerpt of what came back. An empty `text` is a
+ * call whose result the memory does not hold: the step shows its arrival (UC-WP-82 GIVEN 2). A step is
+ * never a voice: the log draws it in the timeline of its place, beside the answer it led to. A status line
+ * and a diff stay live-only and never arrive here (R-WP-11, R-WP-36).
  */
 export interface ChatMessage {
-  role: 'user' | 'jon' | 'error'
+  role: 'user' | 'jon' | 'error' | 'tool'
   text: string
   origin?: string | null
 }
