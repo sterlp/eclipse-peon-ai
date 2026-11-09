@@ -600,19 +600,22 @@ class FactoryConfigServiceTest {
     }
 
     /**
-     * A7: the header field is prefilled, so its value does belong to the read model — but it is an
-     * outbound request value, so neither a rendered record nor a refusal may repeat it.
+     * A7: both param fields are prefilled, so their values do belong to the read model — but they are
+     * outbound request values, so neither a rendered record nor a refusal may repeat them.
      */
     @Test
     // UC-WP-87
     void headerParamsNeverAppearInALogOrInAHint() {
+        String query = "tag=query-secret-0123456789";
         String sent = "Authorization=Bearer sk-header-secret-0123456789";
 
         SettingsSnapshot stored = service().update(new SettingsUpdate(null, null, null, null, null, null, null,
-                null, null, null, sent, false));
+                null, null, query, sent, false));
 
+        assertThat(stored.queryParams()).isEqualTo(query);
         assertThat(stored.headerParams()).isEqualTo(sent);
-        assertThat(stored.toString()).doesNotContain(sent, "sk-header-secret", "Bearer");
+        assertThat(stored.toString()).doesNotContain(sent, "sk-header-secret", "Bearer",
+                query, "query-secret");
 
         assertThatThrownBy(() -> service().update(new SettingsUpdate(null, null, null, null, null, null, null,
                 null, null, null, sent + ",oops", false)))

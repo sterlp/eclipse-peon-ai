@@ -109,6 +109,7 @@ export function Agents({
   connection,
   loadModels,
   extraBodySupported,
+  reloadToken,
 }: {
   think: ThinkInput
   /** The base connection the slots inherit from: provider and base URL as the form holds them (R-WP-50). */
@@ -116,6 +117,9 @@ export function Agents({
   loadModels: (slotId: string, slotUrl: string, force: boolean) => Promise<string[]>
   /** R-WP-52: whether the form's provider can carry an extra body at all. */
   extraBodySupported: boolean
+  /** Change it to read the files again: the dev slot holds the default think value, so a save on the
+      default side changes a slot draft's source (R-WP-49). */
+  reloadToken: number
 }) {
   const [slots, setSlots] = useState<AgentSettings[]>([])
   const [drafts, setDrafts] = useState<Record<string, Draft>>({})
@@ -128,14 +132,15 @@ export function Agents({
   const [saving, setSaving] = useState<string | null>(null)
 
   useEffect(() => {
-    // mount = read the files; a slot that never overrode anything has no file, and reading creates none
+    // a read of the files; a slot that never overrode anything has no file, and reading creates none.
+    // The token re-reads after a save on the default side — that save can write this section's dev file
     listAgents()
       .then((loaded) => {
         setSlots(loaded)
         setDrafts(Object.fromEntries(loaded.map((slot) => [slot.id, draftOf(slot)])))
       })
       .catch((error) => setMessage(errorMessage(error)))
-  }, [])
+  }, [reloadToken])
 
   /** The one way a field of a slot changes: by its new value, whatever control reported it. */
   function edit(id: string, field: Exclude<keyof Draft, 'overridden'>) {
@@ -257,9 +262,10 @@ export function Agents({
                     R-WP-52: the provider's body, only where a provider can carry it — and with the
                     capability gone the draft still carries the stored value into the save (D8), because
                     a field the screen does not show must never answer empty. Compact runs no project
-                    tools: neither field, no preview (D6).
+                    tools — neither the tools field nor its preview (D6) — but the core sends its extra
+                    body like every other slot's (R-WP-23: same handling), so the field is compact's too.
                   */}
-                  {extraBodySupported && slot.id !== COMPACT_SLOT && (
+                  {extraBodySupported && (
                     <div className="config-agents-field">
                       <label htmlFor={'agent-' + slot.id + '-extra-body'}>
                         {content.agents.extraBody}

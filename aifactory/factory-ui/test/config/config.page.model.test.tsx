@@ -165,3 +165,27 @@ test('afailedListingLeavesAFreeTextField', async () => {
   expect(screen.queryAllByRole('option')).toHaveLength(0)
   expect(screen.queryByRole('alert')).toBeNull()
 })
+
+/**
+ * R-WP-50: the list is exactly the models of the connection that was asked for. When the form drafts a
+ * different connection, the answer of the old one is stale and must not act on the field either: an id
+ * of the old connection names nothing the new one could run, so it cannot canonicalize anything.
+ */
+// UC-WP-86
+test('astaleAnswerOfTheOldConnectionIsNotOffered', async () => {
+  const server = stubServer({ GET: settingsAnswer(), MODELS: ['gpt-x'] })
+  render(<ConfigPage />)
+  await screen.findByText(content.config.provider)
+  await openChoice(content.config.model, MODEL_FIELD)
+
+  // the same question is now asked of another connection — the recorded answer belongs to the old one
+  server.script.MODELS = []
+  fireEvent.change(screen.getByLabelText(content.config.url), {
+    target: { value: 'https://other.example/v1' },
+  })
+
+  // typed text that matched the old list is nobody's id on the new one: nothing canonicalizes it
+  fireEvent.change(screen.getByLabelText(content.config.model), { target: { value: 'GPT-X' } })
+  expect(screen.getByLabelText(content.config.model)).toHaveValue('GPT-X')
+})
+

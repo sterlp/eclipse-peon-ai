@@ -4,6 +4,41 @@ Regel: Befunde stehen **hier**, nie nur in `overview.md` — der nächste Plan �
 Maßstab ist immer das Feature-Doc; „ein Doc erwähnt einen Fall nicht" ist nie eine Erlaubnis für den
 Gegenteil-Fall. Review repariert nichts, Jon entscheidet.
 
+## F8 (Review 2026-11-09, Scope `1ba90f55`..`844e0fb5`) — Verdict **REJECTED** → Delta N1
+
+Selbst gemessen: Backend 257/0 (`missCount=1`), UI 243/27 grün, tsc/oxlint/antd-lint 0, Doc-Lint 28
+(nur Fremd-Baseline UC-CR/UC-PC).
+
+- **BUG 1 (Vorschau):** `ProjectToolPreview.java:42` baut die Basis ohne `addDelegateTool`,
+  `ProjectRuntime.java:127` registriert `PoDelegateTool` auf demselben ToolService — ein `po`-Turn
+  führt ein Tool aus, das die Vorschau nie nennt (UC-WP-88 GIVEN 4, config.md „nicht mehr und nicht
+  weniger"). Test `AgentSettingsTest:340` prüft nur `contains(...)` und bliebe grün.
+  **Jon: Code-Fix** — Vorschau-Basis + `addDelegateTool`, Doc-Zeile bleibt.
+- **BUG 2 (zwei Think-Orte):** `config.agents.tsx:130-138` liest Slot-Werte nur beim Mount,
+  `patchOf` sendet `think` immer, `config.page.tsx` lädt nach dem Default-Save nicht neu ⇒
+  „Think (Default)" auf der Default-Seite ändern+speichern und dann die Dev-Karte speichern dreht den
+  Wert still zurück (R-WP-49: beide Orte zeigen **einen** Wert). **Jon: Code-Fix** — nach erfolgreichem
+  Default-Save die Agent-Werte neu lesen (geöffnete Karte zeigt dann den neuen Dev-Think).
+- **Suspicion Compact+Extra-Body:** Doku R-WP-23 „Compact … gleiche Bedienung" vs. Inc 6 „compact ohne
+  beides" (Plan D6 deckt nur die Tools). Core wendet `extraBody` für Compact an ⇒ **Jon: UI-Fix** —
+  Compact bekommt das Extra-Body-Feld, ohne Tools/Vorschau (wie im Plugin: „Compact ohne Tools").
+- **Instruktionslücke:** `SettingsSnapshot.toString()` gibt `queryParams` aus (A7 deckt nur Header/
+  Extra-Body) — **Jon: toString ohne queryParams**, Log-Oberfläche wie die anderen.
+- **Mutation:** Identitäts-/Stale-Guard in `config.model.tsx` ungetestet → **ein** Mutationsnachweis
+  im Delta (Guard weg ⇒ Suite muss rot werden, Restore per `cp`+`diff`).
+- LOW/Pre-existing: Details in `overview.md` §Review findings; nichts Sperrendes.
+
+**N1 gebaut (2026-11-09):** BUG 1 — `ProjectToolPreview` registriert das Delegation-Werkzeug jetzt genau
+wie `ProjectRuntime`, bevor geantwortet wird (Vorschau inklusive der 11 `poDelegate`-Namen; Test pinnt
+`containsExactly` über alle 33 Namen). BUG 2 — `Agents` liest die Slot-Dateien nach jedem erfolgreichen
+Default-Save neu (`reloadToken`; Test `savingTheDefaultThinkShowsTheNewValueInTheDevSlot`). Compact —
+bekommt das Extra-Body-Feld, Tools-Feld und Vorschau bleiben aus
+(`compactCarriesTheExtraBodyFieldWithoutTools`). `SettingsSnapshot.toString()` nennt nur noch
+`queryParamsPresent`. Mutation — der Guard `config.model.tsx:45` überlebte die alte Suite; der neue Test
+`astaleAnswerOfTheOldConnectionIsNotOffered` tötet ihn (getipptes `GPT-X` bleibt wortgleich), Restore per
+`cp`+`diff` sauber. Grün: Backend 257/0 (`missCount=1`), UI 246/27, tsc/oxlint/antd-lint 0, Doc-Lint 28
+(Fremd-Baseline unverändert), test IDs 394.
+
 ## Inkrement 5a — Sider + URL (Review 2026-11-07, Scope `c04f8ed1`..`87949a90`) — Verdict **REJECTED** → Delta
 
 Grund nur im Test: die Markierung ist nicht als **Funktion der Adresse** bewiesen. Code korrekt.

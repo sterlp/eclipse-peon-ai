@@ -330,7 +330,11 @@ class AgentSettingsTest extends FactorySpringTest {
         assertThat(HOME.resolve("agents")).doesNotExist();
     }
 
-    /** No allowlist is every tool the agent could send — the set a project's turn would be built with. */
+    /**
+     * No allowlist is every tool the agent could send — the set a project's turn would be built with,
+     * named exactly (UC-WP-88 GIVEN 4: not more, not less). Jon's delegation tool counts: a project's
+     * runtime registers it on the same set before the agent starts ({@code ProjectRuntime}).
+     */
     @Test
     // R-WP-52
     void previewWithoutAllowlistNamesEveryToolOfTheAgent() {
@@ -338,7 +342,14 @@ class AgentSettingsTest extends FactorySpringTest {
 
         assertThat(preview.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(values(preview.getBody(), "$")).isSorted()
-                .contains("diskReadFile", "diskWriteFile", "shellRunCommand", "searchAgent", "compactSession");
+                .containsExactly("askDev", "buildWithDev", "clearDev", "clearPlan", "clearReview",
+                        "compactDev", "compactPlan", "compactReview", "compactSession", "diskCopyFile",
+                        "diskDeleteFile", "diskEditFile", "diskGrepFiles", "diskInsertLines",
+                        "diskListDirectory", "diskReadFile", "diskReadPicture", "diskRenameResource",
+                        "diskReplaceLines", "diskSearchFiles", "diskWriteFile", "lintDocs",
+                        "lintDocsAndTests", "nextIds", "planWithPlanAgent", "readOperationSystemInformation",
+                        "reviewPlanAgent", "searchAgent", "shellRunCommand", "talkPlan", "webFetchAsMarkdown",
+                        "webGet", "webSearch");
     }
 
     /**

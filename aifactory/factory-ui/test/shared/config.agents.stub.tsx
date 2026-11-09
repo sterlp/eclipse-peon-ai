@@ -134,6 +134,7 @@ export function renderAgents(
       think={think}
       connection={BASE.provider + ' ' + BASE.url}
       extraBodySupported={extraBodySupported}
+      reloadToken={0}
       loadModels={(slotId, slotUrl, force) =>
         listModels({ ...BASE, agent: slotId, agentUrl: slotUrl, refresh: force })
       }

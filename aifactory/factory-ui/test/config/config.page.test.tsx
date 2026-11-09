@@ -274,6 +274,54 @@ test('agentThinkFollowsTheProviderOfTheForm', async () => {
   expect(server.calls.filter((call) => call.path === '/api/settings/providers')).toHaveLength(1)
 })
 
+/**
+ * R-WP-49: the default form and the Dev slot edit one and the same value — so a save on one side has
+ * to refresh the other. Without the re-read the slot keeps its old draft and its next save silently
+ * writes the superseded value back: the second store R-WP-49 rules out.
+ */
+// UC-WP-85
+test('savingTheDefaultThinkShowsTheNewValueInTheDevSlot', async () => {
+  const devFile = (think: string) => ({
+    id: 'dev',
+    name: 'Dev',
+    overridden: true,
+    model: null,
+    url: null,
+    think,
+    temperature: null,
+    keySet: false,
+  })
+  const server = stubServer({
+    GET: settingsAnswer(),
+    PUT: settingsAnswer({ think: 'high' }),
+    AGENTS: [devFile('low')],
+  })
+  render(<ConfigPage />)
+
+  const devSlot = await screen.findByTestId('agent-slot-dev')
+  await within(devSlot).findByLabelText(content.agents.thinkDefault)
+  expect(shownChoice(content.agents.thinkDefault, 'agent-dev-think')).toBe('low')
+
+  // what the dev file holds once the default form has saved: the value the PUT below writes
+  server.script.AGENTS = [devFile('high')]
+
+  await chooseOption(content.agents.thinkDefault, 'high', 'settings-think')
+  // the slot card has a save of its own — the default form's is the one being pressed here
+  const form = document.querySelector('form') as HTMLElement
+  fireEvent.click(within(form).getByRole('button', { name: content.config.save }))
+
+  // the section reads its files again and the card shows the saved value — while only the settings
+  // were written: the slot itself was not saved (the PUT to /api/settings is the page's only write)
+  await waitFor(() =>
+    expect(server.calls.filter((call) => call.path === '/api/settings/agents')).toHaveLength(2),
+  )
+  await waitFor(() =>
+    expect(shownChoice(content.agents.thinkDefault, 'agent-dev-think')).toBe('high'),
+  )
+  expect(server.calls.filter((call) => call.method === 'PUT')).toHaveLength(1)
+})
+
+
 // UC-WP-63
 test('removeKeyDeletesItAndRefreshesTheStatus', async () => {
   const server = stubServer({

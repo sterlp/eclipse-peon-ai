@@ -155,3 +155,27 @@ test('thetoolsPreviewFollowsTheTypedValue', async () => {
   await waitFor(() => expect(within(preview).queryByText('diskReadFile')).toBeNull())
   expect(within(preview).getByText('searchAgent')).toBeTruthy()
 })
+
+/**
+ * UC-WP-88: compact runs no project tools, but the core still sends its extra body — R-WP-23 gives
+ * every slot the same handling, so the body field belongs to compact while the tools field and its
+ * preview do not.
+ */
+// UC-WP-88
+test('compactCarriesTheExtraBodyFieldWithoutTools', async () => {
+  stubServer({
+    slots: [
+      agent({ id: 'compact', name: 'Compact', overridden: true, extraBody: '{"a":1}', tools: 'read' }),
+    ],
+  })
+
+  renderAgents()
+
+  const slot = await waitFor(() => row('compact'))
+  expect(
+    (within(slot).getByLabelText(content.agents.extraBody) as HTMLTextAreaElement).value,
+  ).toBe('{"a":1}')
+  expect(within(slot).queryByLabelText(content.agents.tools)).toBeNull()
+  expect(within(slot).queryByRole('button', { name: content.agents.preview })).toBeNull()
+})
+

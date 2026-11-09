@@ -103,6 +103,8 @@ export function ConfigPage() {
   const [message, setMessage] = useState<string | null>(null)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  // R-WP-49: the dev slot's file holds the default think value — after a save the section reads again
+  const [agentsReload, setAgentsReload] = useState(0)
 
   useEffect(() => {
     // mount = read the config and the provider defaults, two reads of external systems. The form does
@@ -162,6 +164,9 @@ export function ConfigPage() {
       setSettings(saved)
       setDraft(draftOf(saved))
       setRemoveKey(false)
+      // the save can have written the dev slot's file (think, R-WP-49) — the section may not keep a
+      // draft of a value the page has just changed, its next save would write the old one back
+      setAgentsReload((current) => current + 1)
     } catch (error) {
       // the typed values stay: the message names the field to fix, nothing the user wrote is lost
       setSaveMessage(errorMessage(error))
@@ -404,6 +409,7 @@ export function ConfigPage() {
         connection={draft === null ? '' : draft.provider + ' ' + draft.url}
         extraBodySupported={chosen?.extraBodySupported === true}
         loadModels={loadSlotModels}
+        reloadToken={agentsReload}
       />
     </section>
   )
