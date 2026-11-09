@@ -9,7 +9,7 @@ import {
   liveRuns,
   openTimelineItem,
   type LiveItem,
-  type ToolItem,
+  type TimelineEntry,
   type TraceItem,
 } from './chat.live'
 import type { PendingLine } from './chat.pending'
@@ -71,7 +71,7 @@ type Entry =
    *  stands in at most one of the widgets the log draws — identity, so neither the cap nor the place in the
    *  list decides it. `restored` marks the group the history handed back: it is the same account as the live
    *  entries beside it, so those join this widget instead of drawing a second one. */
-  | { type: 'trace'; items: TraceItem[]; open: TraceItem | null; restored?: boolean }
+  | { type: 'trace'; items: TimelineEntry[]; open: TraceItem | null; restored?: boolean }
   | { type: 'diff'; file: string; text: string }
 
 /**
@@ -198,7 +198,7 @@ function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entr
   // the live entries beside them, so a group joins the widget that stood first instead of opening a second
   // one for one place. Two live runs of two turns never join — only the read moves a step of the same run
   // next to the entries that streamed live.
-  const pushTrace = (items: TraceItem[], openItem: TraceItem | null, restored: boolean) => {
+  const pushTrace = (items: TimelineEntry[], openItem: TraceItem | null, restored: boolean) => {
     const previous = entries[entries.length - 1]
     if (previous !== undefined && previous.type === 'trace' && (previous.restored === true || restored)) {
       entries[entries.length - 1] = {
@@ -217,7 +217,7 @@ function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entr
   // the steps the Bestand handed back, drawn where they stand: consecutive trace rows are ONE widget, and a
   // voice, a failure or the anchor of a live run ends the group (R-WP-40)
   const pushTraceAtPlace = () => {
-    const steps: TraceItem[] = []
+    const steps: TimelineEntry[] = []
     while (shown < rows.length && rows[shown].trace) {
       steps.push(restoredStep(rows[shown]))
       shown += 1
@@ -285,11 +285,11 @@ function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entr
 /**
  * A step the memory handed back, drawn as what it is (R-WP-47): `origin` is the Bestand's name and `text`
  * his excerpt. `at` stays null — the history knows no moment, so the entry carries no title (UC-WP-72
- * GIVEN 5) — and `turn` stays null, because no turn works on a line that is already written. `afterLines`
- * is the anchor a live run places itself by; the log has already placed this one.
+ * GIVEN 5) — and `turn` stays null, because no turn works on a line that is already written. No anchor: the
+ * log placed this step where its line stands, so an invented one would only invite a wrong read.
  */
-function restoredStep(row: Row): ToolItem {
-  return { kind: 'tool', text: row.text, afterLines: 0, origin: row.author, at: null, turn: null }
+function restoredStep(row: Row): Extract<TimelineEntry, { kind: 'tool' }> {
+  return { kind: 'tool', text: row.text, origin: row.author, at: null, turn: null }
 }
 
 /** The voice a stored line speaks with — a failure speaks for nobody (R-WP-34). */

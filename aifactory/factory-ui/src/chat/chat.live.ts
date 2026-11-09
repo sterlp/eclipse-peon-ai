@@ -60,6 +60,16 @@ export type DelegationItem = Extract<LiveItem, { kind: 'delegation' }>
  */
 export type TraceItem = ToolItem | ThinkItem | DelegationItem
 
+/**
+ * One entry of the timeline as the log **draws** it: a `TraceItem` without the anchor, which the log has
+ * already used up to place its widget. A live item satisfies this as it stands — nothing is copied, so the
+ * entry the open turn works on stays the very object (`chat.timeline.tsx` compares by identity).
+ */
+export type TimelineEntry =
+  | Omit<ToolItem, 'afterLines'>
+  | Omit<ThinkItem, 'afterLines'>
+  | Omit<DelegationItem, 'afterLines'>
+
 /** What `chat.html` keeps of a tool block: the tail, so a chatty turn cannot push the answer away. */
 export const MAX_TOOL_LINES = 10
 
