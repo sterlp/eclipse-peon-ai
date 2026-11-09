@@ -1,8 +1,6 @@
 package org.sterl.open.aifactory.shared;
 
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -55,19 +53,21 @@ public class ApiExceptionHandler {
 
     /**
      * A request body the Bean Validation of its own shape refused (R-WP-55, UC-WP-92): one entry per
-     * field, in the order the validator found them, each naming the property it rejects — and the
-     * <em>first</em> reason of a field wins, so one wrong value never becomes two lines for one field.
-     * Nothing is checked here: the rules live on the shape, so a field is stated exactly once.
+     * violation, in the order the validator found them, each naming the property it rejects. Nothing is
+     * checked here — the rules live on the shape, and <em>one entry per field</em> is what the shapes
+     * themselves guarantee: a rule targets the field only (D12), and two rules of one field cannot both
+     * hold. Proven by {@code SettingsFieldErrorsTest#everyWrongFieldIsNamedOnceInOneAnswer}.
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> invalidFields(MethodArgumentNotValidException e, WebRequest request) {
-        Map<String, ApiFieldError> firstReasonPerField = new LinkedHashMap<>();
-        for (ObjectError violated : e.getBindingResult().getAllErrors()) {
-            String field = violated instanceof FieldError rejected
-                    ? rejected.getField()
-                    : violated.getObjectName();
-            firstReasonPerField.putIfAbsent(field, new ApiFieldError(field, violated.getDefaultMessage()));
-        }
-        return ApiErrorResponses.invalidFields(List.copyOf(firstReasonPerField.values()), request);
+        List<ApiFieldError> fieldErrors = e.getBindingResult().getAllErrors().stream()
+                .map(violated -> new ApiFieldError(nameOf(violated), violated.getDefaultMessage()))
+                .toList();
+        return ApiErrorResponses.invalidFields(fieldErrors, request);
+    }
+
+    /** A class-level constraint names no property, so its target stands in for the field (E5). */
+    private static String nameOf(ObjectError violated) {
+        return violated instanceof FieldError rejected ? rejected.getField() : violated.getObjectName();
     }
 }
