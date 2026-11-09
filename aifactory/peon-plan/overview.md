@@ -470,7 +470,13 @@ Abweichungen D9 (`none(...)` nicht gebaut) und D10 (Violations-Dedupe erst in In
 - Green: komplette Backend-Suite grün, `missCount = 1`, kein Eintrag in
   `SingleContextGuardTest.java:83-87` nötig.
 
-### Inc 2 — Settings-Ebene validiert am Draht (R-WP-55, UC-WP-92)
+### Inc 2 — Settings-Ebene validiert am Draht (R-WP-55, UC-WP-92) — ✅ FERTIG (2026-11-09)
+
+Gebaut wie gelistet, plus D10 (Dedupe „ein Eintrag je Feld" in `ApiExceptionHandler`, erster Grund gewinnt —
+A5 grün). Abweichungen D12 (`@Target(FIELD)` statt FIELD/PARAMETER/METHOD), D13 (toString-Hälfte bleibt im
+Service-Test), D14 (neue Schnittstelle `KeyIntentRequest`). Zusätzlicher Test `clearingAFieldIsNeverAFieldError`
+sichert R6 (leer ⇒ „gelöscht", nie Feldfehler) über die HTTP-Kante. Suite: 273 Tests grün, `missCount = 1`,
+45 s; Doc-Lint: UC-WP-92 ist jetzt belegt, keine neuen Findings.
 
 - Neu: `config/WireValidationHints.java`, `config/WireProviderName`, `config/WireIntegerText`,
   `config/WireBooleanText`, `config/WireParamListText`, `config/WireKeyIntent` (je mit verschachteltem
@@ -688,6 +694,23 @@ bewusst kein „Die Datei existiert"-Test (AGENTS.md: trivial/implanationsgekopp
 - **D11 — `docs/api-errors.md` und `docs/index.md` sind mit Inkrement 1 committet** (Jons Zuruf vom
   2026-11-09). Damit ist A1/D6 für **diese beiden** Dateien aufgehoben; `docs/open-points.md` (C-8-Zeile,
   M3-⏳) und `.agents/**` bleiben außerhalb meiner Commit-Liste.
+
+- **D12 — Wire-Constraints tragen nur `@Target(FIELD)`** (im Plan-Beispiel §4.3 standen FIELD, PARAMETER,
+  METHOD): eine Annotation auf einer Record-Komponente wird auf **jedes** passende Ziel übertragen — mit
+  METHOD und PARAMETER stünde dieselbe Regel auf Feld, Accessor **und** kanonischem Konstruktor, also drei
+  Antworten auf einen falschen Wert, genau gegen UC-WP-92 G2 (D10). Gemessen:
+  `SettingsFieldErrorsTest.everyWrongFieldIsNamedOnceInOneAnswer` liefert pro Feld genau einen Eintrag.
+  Grund steht einmal in `WireValidationHints`.
+- **D13 — die `toString`-Hälfte von `headerParamsNeverAppearInALogOrInAHint` bleibt im Service-Test**: der
+  umgezogene Test beweist auf der HTTP-Kante, dass ein Hint keinen Wert wiederholt; dass die Textdarstellung
+  des Snapshot sauber bleibt, ist kein Drahtverhalten und lebt als eigener Test
+  `FactoryConfigServiceTest.snapshotToStringNeverRepeatsTheParamFields` weiter. Kein Beweis verloren, der
+  umgezogene Test behält seinen Namen.
+- **D14 — neue Schnittstelle `config/KeyIntentRequest`** (stand nicht in der Datei-Liste von §5 Inc 2):
+  `@WireKeyIntent` ist **eine** Regel für beide Update-Bodies (Config jetzt, Agent in Inc 3) — ohne die
+  gemeinsame Schnittstelle bräuchte der Validator `Object` + Reflection oder eine Kopie pro Level.
+  Folge für Inc 4 prüfen: der Generator könnte die Schnittstelle nach `server-api.ts` ziehen; dann im
+  Generator-Muster eingrenzen, statt die Schnittstelle aufzugeben.
 
 ## 9. Messaufträge (Ergebnis nach `peon-plan/api-error-notes.md`)
 

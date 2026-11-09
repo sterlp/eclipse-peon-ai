@@ -269,6 +269,8 @@ class SettingsControllerTest extends FactorySpringTest {
         assertThat(rejected.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         String body = rejected.getBody();
         assertThat(field(body, "$.message").toString()).contains("provider");
+        // UC-WP-92: the reason is also carried as a field entry, so the page marks the field and not the form
+        assertThat(field(body, "$.fieldErrors[*].field")).isEqualTo(List.of("provider"));
         // UC-WP-23's "auch nicht in einem Fehlerfall": the whole body, not only a field, stays clean
         assertThat(body).doesNotContain("sk-secret-value", "secret", "NOPE");
 

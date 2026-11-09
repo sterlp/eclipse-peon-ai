@@ -1,11 +1,14 @@
 package org.sterl.open.aifactory.shared;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -51,19 +54,20 @@ public class ApiExceptionHandler {
     }
 
     /**
-     * A request body the Bean Validation of its own DTO refused (R-WP-55, UC-WP-92): one entry per
-     * violation, in the order the validator found them, each naming the property it rejects. Nothing is
-     * checked here — the rules live on the DTO, so a field is stated exactly once.
+     * A request body the Bean Validation of its own shape refused (R-WP-55, UC-WP-92): one entry per
+     * field, in the order the validator found them, each naming the property it rejects — and the
+     * <em>first</em> reason of a field wins, so one wrong value never becomes two lines for one field.
+     * Nothing is checked here: the rules live on the shape, so a field is stated exactly once.
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> invalidFields(MethodArgumentNotValidException e, WebRequest request) {
-        List<ApiFieldError> fieldErrors = e.getBindingResult().getAllErrors().stream()
-                .map(violated -> new ApiFieldError(
-                        violated instanceof FieldError field
-                                ? field.getField()
-                                : violated.getObjectName(),
-                        violated.getDefaultMessage()))
-                .toList();
-        return ApiErrorResponses.invalidFields(fieldErrors, request);
+        Map<String, ApiFieldError> firstReasonPerField = new LinkedHashMap<>();
+        for (ObjectError violated : e.getBindingResult().getAllErrors()) {
+            String field = violated instanceof FieldError rejected
+                    ? rejected.getField()
+                    : violated.getObjectName();
+            firstReasonPerField.putIfAbsent(field, new ApiFieldError(field, violated.getDefaultMessage()));
+        }
+        return ApiErrorResponses.invalidFields(List.copyOf(firstReasonPerField.values()), request);
     }
 }

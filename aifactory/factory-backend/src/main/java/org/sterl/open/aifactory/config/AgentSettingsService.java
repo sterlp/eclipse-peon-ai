@@ -110,7 +110,7 @@ public class AgentSettingsService {
      */
     private static void validate(AgentSettingsUpdate update) {
         if (update.removeApiKey() && present(update.apiKey())) {
-            throw new IllegalArgumentException(FactoryConfigService.KEY_INTENT_HINT);
+            throw new IllegalArgumentException(WireValidationHints.KEY_INTENT_HINT);
         }
         if (present(update.temperature()) && !isNumber(update.temperature())) {
             throw new IllegalArgumentException(TEMPERATURE_HINT);

@@ -38,26 +38,10 @@ import org.sterl.open.aifactory.shared.FactoryHome;
 public class FactoryConfigService {
 
     /**
-     * Static and value-free on purpose — this text reaches the 400 body (R-WP-16 "kein Zeichen nach
-     * draußen"). One wording for both doors that take a provider name, the save and the model list
-     * ({@link ModelListService}).
+     * Static and value-free on purpose — this text reaches the browser as a live line (R-WP-16), and a
+     * turn's failure must not repeat what someone typed. The wire's own sentences live in
+     * {@link WireValidationHints}, beside the constraints that state them.
      */
-    static final String PROVIDER_HINT = "provider must name one of the supported providers";
-    private static final String TOKEN_WINDOW_HINT = "tokenWindow must be a positive number of tokens";
-    private static final String TIMEOUT_HINT = "timeoutSeconds must be a positive number of seconds";
-    private static final String SEND_THINKING_HINT = "sendThinking must be true or false";
-    /** 0 is a legal answer here and means "the provider decides" — unlike the two fields above (R-WP-51). */
-    private static final String MAX_TOKENS_HINT = "maxTokens must be a whole number of tokens, or 0 for the "
-            + "provider default";
-    private static final String QUERY_PARAMS_HINT = "queryParams must be comma separated key=value pairs";
-    private static final String HEADER_PARAMS_HINT = "headerParams must be comma separated key=value pairs";
-    /**
-     * Both at once is no answer at all: the write order would silently delete the key the same request
-     * just set, so the request is refused instead of guessed. The agent level reads the same rule
-     * ({@link AgentSettingsService}) — one sentence, one source.
-     */
-    static final String KEY_INTENT_HINT = "apiKey and removeApiKey are two answers — send one";
-    /** Value-free for the same reason — a turn's failure reaches the browser as a live line (Q1). */
     private static final String TURN_MODEL_HINT = "turn needs a model — set model in the factory config";
 
     /** Key-free is factory knowledge (R-WP-9 names exactly these two); the core has no such flag. */
@@ -174,9 +158,10 @@ public class FactoryConfigService {
      * exception: write-only, never prefilled, so an empty field means unchanged and only
      * {@code removeApiKey} deletes (UC-WP-24 GIVEN 2, UC-WP-63).
      *
-     * <p>Validation runs before the first write, so a rejected request leaves the file untouched, and the
-     * answer is a fresh masked read rather than the submitted body — the next delivery therefore shows
-     * what is really stored (UC-WP-24 GIVEN 1).</p>
+     * <p>The rules of the wire are checked on the request's own shape before this method is entered
+     * (R-WP-55) — nothing here weighs them a second time. A save therefore either writes what was
+     * accepted whole or writes nothing, and the answer is a fresh masked read rather than the submitted
+     * body: the next delivery shows what is really stored (UC-WP-24 GIVEN 1).</p>
      *
      * <p>Deleting a key the file does not carry rewrites nothing, so a save without an edit still changes
      * no byte even though the page names every field. The write uses the same connector as the read: that
@@ -186,7 +171,6 @@ public class FactoryConfigService {
     public SettingsSnapshot update(SettingsUpdate update) {
         writeLock.lock();
         try {
-            validate(update);
             LlmConfigStore connector = store();
             apply(connector, LlmConfigKeys.PROVIDER_TYPE, update.provider());
             apply(connector, LlmConfigKeys.MODEL, update.model());
@@ -206,92 +190,6 @@ public class FactoryConfigService {
     }
 
     /**
-     * Hand-written because this module has no Bean Validation starter — and policy is the internal
-     * facade's job anyway. Every message is a constant naming the <em>field</em>: a submitted value,
-     * least of all a key, must not be repeated into a response body or a log line.
-     */
-    private static void validate(SettingsUpdate update) {
-        if (update.removeApiKey() && present(update.apiKey())) {
-            throw new IllegalArgumentException(KEY_INTENT_HINT);
-        }
-        // AiProvider.parse is forbidden here: it coerces an unknown name to OLLAMA, so a typo would be
-        // answered with 200 and stored as garbage.
-        if (present(update.provider()) && !isProviderName(update.provider().trim())) {
-            throw new IllegalArgumentException(PROVIDER_HINT);
-        }
-        if (present(update.tokenWindow())) {
-            requirePositive(update.tokenWindow(), TOKEN_WINDOW_HINT, Integer.MAX_VALUE);
-        }
-        if (present(update.timeoutSeconds())) {
-            requirePositive(update.timeoutSeconds(), TIMEOUT_HINT, Long.MAX_VALUE);
-        }
-        if (present(update.sendThinking()) && !isBoolean(update.sendThinking().trim())) {
-            throw new IllegalArgumentException(SEND_THINKING_HINT);
-        }
-        if (present(update.maxTokens())) {
-            requireTokenCount(update.maxTokens(), MAX_TOKENS_HINT);
-        }
-        if (present(update.queryParams())) {
-            requireParamList(update.queryParams(), QUERY_PARAMS_HINT);
-        }
-        if (present(update.headerParams())) {
-            requireParamList(update.headerParams(), HEADER_PARAMS_HINT);
-        }
-    }
-
-    /**
-     * {@code LlmConfigLoader.parseInt} turns garbage into 0, which is the core's "provider default" — so
-     * a value it cannot read has to be refused here, where an answer can still name the field. 0 itself
-     * is legal and stores as the key being gone; the range is the one the core parses back.
-     */
-    private static void requireTokenCount(String value, String hint) {
-        long number;
-        try {
-            number = Long.parseLong(value.trim());
-        } catch (NumberFormatException notANumber) {
-            throw new IllegalArgumentException(hint);
-        }
-        if (number < 0 || number > Integer.MAX_VALUE) {
-            throw new IllegalArgumentException(hint);
-        }
-    }
-
-    /**
-     * One segment without {@code =} would reach the core as a header or query variable named after
-     * itself with an empty value ({@code parseCsvMap}) — that is never what was typed, so R-WP-51's
-     * "unparsbar ⇒ nichts speichern" answers it. Blank segments are the core's own tolerance (a trailing
-     * comma stays a trailing comma), so they stay legal.
-     */
-    private static void requireParamList(String value, String hint) {
-        for (String segment : value.split(",")) {
-            if (!segment.isBlank() && !segment.contains("=")) {
-                throw new IllegalArgumentException(hint);
-            }
-        }
-    }
-
-    /**
-     * The file holds text and the core reads these fields back as a number, so the range the core can
-     * parse is the range this edge accepts — anything else would be stored happily and answer later with
-     * the core's silent default, which is a wrong value the user never asked for.
-     */
-    private static void requirePositive(String value, String hint, long limit) {
-        long number;
-        try {
-            number = Long.parseLong(value.trim());
-        } catch (NumberFormatException notANumber) {
-            throw new IllegalArgumentException(hint);
-        }
-        if (number <= 0 || number > limit) {
-            throw new IllegalArgumentException(hint);
-        }
-    }
-
-    private static boolean isBoolean(String value) {
-        return "true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value);
-    }
-
-    /**
      * The provider a turn is built for, from the raw stored name — the loaded {@link LlmConfig} has
      * already been through the core's silent coercion, so it cannot answer whether the name was real.
      */
@@ -302,7 +200,7 @@ public class FactoryConfigService {
         }
         rawName = rawName.trim();
         if (!isProviderName(rawName)) {
-            throw new TurnNotConfiguredException(PROVIDER_HINT);
+            throw new TurnNotConfiguredException(WireValidationHints.PROVIDER_HINT);
         }
         return AiProvider.valueOf(rawName);
     }

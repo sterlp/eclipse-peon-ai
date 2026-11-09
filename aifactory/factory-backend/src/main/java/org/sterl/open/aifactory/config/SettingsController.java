@@ -13,10 +13,15 @@ import org.sterl.open.aifactory.config.dto.ProviderDefaultsDto;
 import org.sterl.open.aifactory.config.dto.SettingsDto;
 import org.sterl.open.aifactory.config.dto.SettingsUpdateRequest;
 
+import jakarta.validation.Valid;
+
 /**
  * The masked settings over HTTP (R-WP-16). The external facade only maps between snapshot and DTO —
  * nothing is filtered here, because {@link SettingsDto} has no field a key could sit in. Reading never
  * writes the config file; writing answers with a fresh masked read, never with the submitted body.
+ *
+ * <p>Both inbound bodies are validated against their own shape before the config is opened (R-WP-55),
+ * so a refusal names its fields and changes nothing.</p>
  */
 @RestController
 @RequestMapping("/api/settings")
@@ -47,7 +52,7 @@ public class SettingsController {
 
     /** The only place the inbound key is translated away — it stops in the internal facade. */
     @PutMapping
-    public SettingsDto update(@RequestBody SettingsUpdateRequest request) {
+    public SettingsDto update(@Valid @RequestBody SettingsUpdateRequest request) {
         return SettingsDto.of(settings.update(request.toUpdate()));
     }
 
@@ -57,7 +62,7 @@ public class SettingsController {
      * neither — the page never has it, and this answer never carries it.
      */
     @PostMapping("/models")
-    public List<String> models(@RequestBody ModelListRequest request) {
+    public List<String> models(@Valid @RequestBody ModelListRequest request) {
         return modelList.listModels(request);
     }
 }

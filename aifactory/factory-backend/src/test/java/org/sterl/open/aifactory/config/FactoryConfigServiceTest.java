@@ -286,52 +286,6 @@ class FactoryConfigServiceTest {
         assertThat(service().load().isDiskToolsEnabled()).isTrue();
     }
 
-    @Test
-    void nonPositiveTokenWindowOrTimeoutIsRejectedAndNothingIsWritten() throws IOException {
-        writeConfig("%s=old-model%n".formatted(LlmConfigKeys.MODEL));
-        byte[] untouched = Files.readAllBytes(config());
-
-        assertThatThrownBy(() -> service().update(
-                new SettingsUpdate(null, null, null, null, "0", null, null, null, null, null, null, false)))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("tokenWindow");
-        assertThatThrownBy(() -> service().update(
-                new SettingsUpdate(null, null, null, null, null, "-1", null, null, null, null, null, false)))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("timeoutSeconds");
-        // text on the wire means text the core can read back — garbage is refused, never stored
-        assertThatThrownBy(() -> service().update(
-                new SettingsUpdate(null, null, null, null, "many", null, null, null, null, null, null, false)))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("tokenWindow")
-                .hasMessageNotContaining("many");
-        assertThatThrownBy(() -> service().update(
-                new SettingsUpdate(null, null, null, null, null, null, "maybe", null, null, null, null, false)))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("sendThinking")
-                .hasMessageNotContaining("maybe");
-
-        // rejected before the first write — and the message carries no submitted value
-        assertThat(Files.readAllBytes(config())).containsExactly(untouched);
-    }
-
-    @Test
-    void anUnknownProviderIsRejectedWithoutTouchingTheFile() throws IOException {
-        writeConfig("%s=OLLAMA%n".formatted(LlmConfigKeys.PROVIDER_TYPE));
-        byte[] untouched = Files.readAllBytes(config());
-
-        // AiProvider.parse would have answered 200 and stored OLLAMA — garbage accepted, typo invisible
-        assertThatThrownBy(() -> service().update(new SettingsUpdate("NOPE", null, null, WRITTEN_KEY,
-                null, null, null, null, null, null, null, false)))
-                        .isInstanceOf(IllegalArgumentException.class)
-                        .hasMessageContaining("provider")
-                        .hasMessageNotContaining(WRITTEN_KEY)
-                        .hasMessageNotContaining("NOPE");
-
-        assertThat(Files.readAllBytes(config())).containsExactly(untouched);
-        assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.API_KEY, null)).isNull();
-    }
-
     /**
      * The whole-tree assertion of UC-WP-24 ("config.properties is the one file that changed") is only
      * as strong as this helper: a save that <em>deletes</em> something must count as a change.
@@ -398,26 +352,6 @@ class FactoryConfigServiceTest {
         assertThat(Files.readAllBytes(config())).containsExactly(untouched);
         assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.API_KEY, null)).isEqualTo(KEY);
         assertThat(service().snapshot().keySet()).isTrue();
-    }
-
-    /**
-     * A body that both writes a key and asks to delete it has no honest meaning: applied in order it
-     * deletes the key this same request set, so the request is refused rather than guessed at.
-     */
-    @Test
-    // UC-WP-63
-    void aKeyIsNeverSetAndRemovedAtOnce() throws IOException {
-        writeConfig("%s=%s%n".formatted(LlmConfigKeys.API_KEY, KEY));
-        byte[] untouched = Files.readAllBytes(config());
-
-        assertThatThrownBy(() -> service().update(
-                new SettingsUpdate(null, null, null, WRITTEN_KEY, null, null, null,
-                        null, null, null, null, true)))
-                        .isInstanceOf(IllegalArgumentException.class)
-                        .hasMessageContaining("apiKey")
-                        .hasMessageNotContaining(WRITTEN_KEY);
-
-        assertThat(Files.readAllBytes(config())).containsExactly(untouched);
     }
 
     /**
@@ -551,61 +485,15 @@ class FactoryConfigServiceTest {
         assertThat(cleared.headerParams()).isNull();
     }
 
-    @Test
-    // UC-WP-87
-    void aNonNumericMaxTokensIsRefusedAndNamesTheField() throws IOException {
-        writeConfig("%s=OLLAMA%n%s=4096%n".formatted(LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.MAX_TOKENS));
-        Map<Path, byte[]> before = treeBytes();
-
-        for (String rejected : List.of("abc", "-1", "4.5", "99999999999999")) {
-            assertThatThrownBy(() -> service().update(new SettingsUpdate(null, null, null, null, null, null, null,
-                    null, rejected, null, null, false)))
-                            .isInstanceOf(IllegalArgumentException.class)
-                            .hasMessageContaining("maxTokens")
-                            .hasMessageNotContaining(rejected);
-        }
-
-        // refused before the first write — the stored number is still the one the file had
-        assertThat(differingPaths(before, treeBytes())).isEmpty();
-        assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.MAX_TOKENS, null)).isEqualTo("4096");
-    }
-
-    /**
-     * The core turns a segment without {@code =} into a variable named after the whole segment with an
-     * empty value — nobody means that, so R-WP-51's "unparsbar ⇒ nichts speichern" answers it. A blank
-     * segment stays legal, because that one the core reads as nothing at all.
-     */
-    @Test
-    // UC-WP-87
-    void aParamSegmentWithoutEqualsIsRefusedAndNamesTheField() throws IOException {
-        writeConfig("%s=OLLAMA%n%s=a=b%n".formatted(LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.QUERY_PARAMS));
-        Map<Path, byte[]> before = treeBytes();
-
-        assertThatThrownBy(() -> service().update(new SettingsUpdate(null, null, null, null, null, null, null,
-                null, null, "oops", null, false)))
-                        .isInstanceOf(IllegalArgumentException.class)
-                        .hasMessageContaining("queryParams")
-                        .hasMessageNotContaining("oops");
-        assertThatThrownBy(() -> service().update(new SettingsUpdate(null, null, null, null, null, null, null,
-                null, null, null, "a=b,cdef", false)))
-                        .isInstanceOf(IllegalArgumentException.class)
-                        .hasMessageContaining("headerParams")
-                        .hasMessageNotContaining("cdef");
-
-        assertThat(differingPaths(before, treeBytes())).isEmpty();
-
-        service().update(new SettingsUpdate(null, null, null, null, null, null, null,
-                null, null, "a=b,", null, false));
-        assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.QUERY_PARAMS, null)).isEqualTo("a=b,");
-    }
-
     /**
      * A7: both param fields are prefilled, so their values do belong to the read model — but they are
-     * outbound request values, so neither a rendered record nor a refusal may repeat them.
+     * outbound request values, so the record's own text stays clean. The other half of that promise —
+     * a refusal names only the field — is proven on the wire, where the refusal is answered
+     * ({@code SettingsFieldErrorsTest#headerParamsNeverAppearInALogOrInAHint}).
      */
     @Test
     // UC-WP-87
-    void headerParamsNeverAppearInALogOrInAHint() {
+    void snapshotToStringNeverRepeatsTheParamFields() {
         String query = "tag=query-secret-0123456789";
         String sent = "Authorization=Bearer sk-header-secret-0123456789";
 
@@ -616,13 +504,6 @@ class FactoryConfigServiceTest {
         assertThat(stored.headerParams()).isEqualTo(sent);
         assertThat(stored.toString()).doesNotContain(sent, "sk-header-secret", "Bearer",
                 query, "query-secret");
-
-        assertThatThrownBy(() -> service().update(new SettingsUpdate(null, null, null, null, null, null, null,
-                null, null, null, sent + ",oops", false)))
-                        .isInstanceOf(IllegalArgumentException.class)
-                        .hasMessageContaining("headerParams")
-                        .hasMessageNotContaining("Bearer")
-                        .hasMessageNotContaining("sk-header-secret");
     }
 
     /**

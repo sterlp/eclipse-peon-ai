@@ -86,14 +86,18 @@ public class ModelListService {
                 slot.think(), slot.extraBody(), slot.temperature());
     }
 
-    /** An empty field names nothing, so the stored provider lists; a name the core lacks is the request's fault. */
+    /**
+     * An empty field names nothing, so the stored provider lists; a name the core lacks is the request's
+     * fault. The endpoint refuses that name before this line (R-WP-55) — what is here is the same
+     * sentence for a caller that reaches the service without going over the wire, not a second rule.
+     */
     private static AiProvider providerOf(String name, AiProvider stored) {
         if (!present(name)) {
             return stored;
         }
         String draft = name.trim();
         if (!FactoryConfigService.isProviderName(draft)) {
-            throw new IllegalArgumentException(FactoryConfigService.PROVIDER_HINT);
+            throw new IllegalArgumentException(WireValidationHints.PROVIDER_HINT);
         }
         return AiProvider.valueOf(draft);
     }

@@ -17,7 +17,12 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * <p>Component record rather than a {@code dto} shape: nothing is translated here — no key stops at the
  * facade, no three states have to be interpreted — so a second copy of these five fields would only be
  * a second place to keep them in step.</p>
+ *
+ * <p>The provider carries the same rule as the save (R-WP-55): a name the core does not have is refused
+ * here, where the answer can still name the field, and never answered with an empty list that looks
+ * like a provider without models.</p>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record ModelListRequest(String provider, String url, String agent, String agentUrl, Boolean refresh) {
+public record ModelListRequest(@WireProviderName String provider, String url, String agent,
+        String agentUrl, Boolean refresh) {
 }
