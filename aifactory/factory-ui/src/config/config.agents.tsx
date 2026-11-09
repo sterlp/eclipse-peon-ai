@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Card, Checkbox, Input } from 'antd'
+import { Alert, Button, Card, Checkbox, Input, Tag } from 'antd'
 
 import { errorMessage } from '../shared/api.client'
 import { content } from '../shared/content'
 import {
   listAgents,
+  previewTools,
   updateAgent,
   type AgentPatch,
   type AgentSettings,
@@ -15,6 +16,9 @@ import { ThinkField } from './config.think'
 
 /** The slot whose record carries the base think value of every other agent (R-THINK-10). */
 const DEV_SLOT = 'dev'
+
+/** The slot that runs no project tools — so it has neither the allowlist field nor its preview (D6). */
+const COMPACT_SLOT = 'compact'
 
 /**
  * One slot as its row holds it: text everywhere, so empty is one state across the four fields and it
@@ -28,6 +32,8 @@ interface Draft {
   url: string
   think: string
   temperature: string
+  extraBody: string
+  tools: string
   apiKey: string
 }
 
@@ -38,6 +44,10 @@ function draftOf(slot: AgentSettings): Draft {
     url: slot.url ?? '',
     think: slot.think ?? '',
     temperature: slot.temperature ?? '',
+    // R-WP-52: even a field the screen does not show (D8, compact) starts from the stored value —
+    // an invisible field must never answer empty, that would delete what the file holds
+    extraBody: slot.extraBody ?? '',
+    tools: slot.tools ?? '',
     // write-only: a stored key never comes back over the wire, so the field always starts empty
     apiKey: '',
   }
@@ -54,6 +64,8 @@ function patchOf(draft: Draft, removeKey: boolean): AgentPatch {
     url: draft.url,
     think: draft.think,
     temperature: draft.temperature,
+    extraBody: draft.extraBody,
+    tools: draft.tools,
     apiKey: draft.apiKey,
     ...(removeKey ? { removeApiKey: true } : {}),
   }
@@ -88,22 +100,30 @@ function Field(props: {
  * The think field takes the form of the base provider, which the page owns and hands in (`think`): the
  * slots have no provider of their own, so a second read of the provider list would only be a second
  * answer to one question. The model lists follow the same rule (`connection`, `loadModels`): a slot's
- * connection is the base one plus whatever its own URL field drafts, so only the page can name it.
+ * connection is the base one plus whatever its own URL field drafts, so only the page can name it. The
+ * extra body follows the same rule in reverse (`extraBodySupported`): it is the base provider's capacity,
+ * and without it the field is not on the screen (R-WP-52, D8).
  */
 export function Agents({
   think,
   connection,
   loadModels,
+  extraBodySupported,
 }: {
   think: ThinkInput
   /** The base connection the slots inherit from: provider and base URL as the form holds them (R-WP-50). */
   connection: string
   loadModels: (slotId: string, slotUrl: string, force: boolean) => Promise<string[]>
+  /** R-WP-52: whether the form's provider can carry an extra body at all. */
+  extraBodySupported: boolean
 }) {
   const [slots, setSlots] = useState<AgentSettings[]>([])
   const [drafts, setDrafts] = useState<Record<string, Draft>>({})
   // the removal of a key is queued per slot: the slot's own save carries it (R-WP-16, UC-WP-63)
   const [removeKey, setRemoveKey] = useState<Record<string, boolean>>({})
+  // the preview is one answer, shown on the slot it was asked for (UC-WP-88) — the entry it read stays put
+  const [preview, setPreview] = useState<{ slot: string; tools: string[] } | null>(null)
+  const [previewBusy, setPreviewBusy] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [saving, setSaving] = useState<string | null>(null)
 
@@ -153,6 +173,24 @@ export function Agents({
       setMessage(errorMessage(error))
     } finally {
       setSaving(null)
+    }
+  }
+
+  /**
+   * The tools that would run with the entry as typed (UC-WP-88): a read, never a save. An offer that
+   * cannot be made says nothing — silent like the model list, with nothing stored to roll back.
+   */
+  async function runPreview(id: string) {
+    if (previewBusy !== null) {
+      return
+    }
+    setPreviewBusy(id)
+    try {
+      setPreview({ slot: id, tools: await previewTools(id, drafts[id].tools) })
+    } catch {
+      setPreview(null)
+    } finally {
+      setPreviewBusy(null)
     }
   }
 
@@ -215,6 +253,69 @@ export function Agents({
                     numeric
                     onChange={edit(slot.id, 'temperature')}
                   />
+                  {/*
+                    R-WP-52: the provider's body, only where a provider can carry it — and with the
+                    capability gone the draft still carries the stored value into the save (D8), because
+                    a field the screen does not show must never answer empty. Compact runs no project
+                    tools: neither field, no preview (D6).
+                  */}
+                  {extraBodySupported && slot.id !== COMPACT_SLOT && (
+                    <div className="config-agents-field">
+                      <label htmlFor={'agent-' + slot.id + '-extra-body'}>
+                        {content.agents.extraBody}
+                      </label>
+                      <Input.TextArea
+                        id={'agent-' + slot.id + '-extra-body'}
+                        rows={2}
+                        value={draft.extraBody}
+                        onChange={(event) => edit(slot.id, 'extraBody')(event.target.value)}
+                      />
+                    </div>
+                  )}
+                  {slot.id !== COMPACT_SLOT && (
+                    <div className="config-agents-field">
+                      <label htmlFor={'agent-' + slot.id + '-tools'}>{content.agents.tools}</label>
+                      <div className="config-agents-tools">
+                        <div className="config-agents-tools-row">
+                          <Input
+                            id={'agent-' + slot.id + '-tools'}
+                            placeholder={content.agents.toolsPlaceholder}
+                            value={draft.tools}
+                            onChange={(event) => edit(slot.id, 'tools')(event.target.value)}
+                          />
+                          <Button
+                            size="small"
+                            loading={previewBusy === slot.id}
+                            onClick={() => void runPreview(slot.id)}
+                          >
+                            {content.agents.preview}
+                          </Button>
+                        </div>
+                        <span className="hint">{content.agents.previewHint}</span>
+                        {preview?.slot === slot.id &&
+                          (preview.tools.length === 0 ? (
+                            <span
+                              className="hint"
+                              data-testid={'agent-' + slot.id + '-tools-preview'}
+                            >
+                              {content.agents.previewEmpty}
+                            </span>
+                          ) : (
+                            <div
+                              className="config-agents-preview"
+                              data-testid={'agent-' + slot.id + '-tools-preview'}
+                            >
+                              <span className="hint">
+                                {content.agents.previewCount(preview.tools.length)}
+                              </span>
+                              {preview.tools.map((name) => (
+                                <Tag key={name}>{name}</Tag>
+                              ))}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="config-agents-key">
                     <label htmlFor={'agent-' + slot.id + '-key'}>{content.config.key}</label>
                     <Input

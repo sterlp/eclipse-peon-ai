@@ -116,6 +116,12 @@
   `test/shared/log.parts.ts` → `separatorsOf(log)`; ein `<hr>` gehört in die `<li>`, nie dazwischen.
 - **Modellierte Draht-Form braucht die erzeugende Core-Regel** (Datei:Zeile am Test), sonst prüft der Test
   eine Form, die der Core nie liefert (`docs/adr/003`).
+- **Modell-Feld ist eine Liste, kein Anhängen** (R-WP-50): `ModelField` zeigt ausschließlich Server-Ids als
+  Optionen und kanonisiert case-insensiv auf den Servereintrag; ein getippter Fremdwert bleibt Freitext im
+  Feld, wird aber nie Option. Kein Fetch beim Mount — `settingsShowsMaskedConfig` (drei GETs) ist der Guard.
+- **Werkzeug-Vorschau**: `GET /api/settings/agents/{id}/tools?allowlist=` nennt die aktiven Namen zum
+  getippten Wortlaut (leer = volle Liste; `compact`/unbekannt ⇒ 400). Eine Quelle ist
+  `AbstractAgent.resolveActiveTools` — die UI filtert nichts selbst, der Kern deutet den Wortlaut (D9).
 - **jsdom bleibt auf 26.1.0 gepinnt**: jsdom 30 verlangt Node ≥ 22.22.2 → undici-Crash `reading 'bind'`.
   `vite.config.ts` braucht `defineConfig` aus `vitest/config`, sonst findet `tsc -b` das `test`-Feld nicht.
 

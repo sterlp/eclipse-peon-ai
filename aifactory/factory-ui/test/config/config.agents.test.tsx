@@ -1,13 +1,18 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 
-import { Agents } from '../../src/config/config.agents'
 import { content } from '../../src/shared/content'
 import { chooseOption, openChoice, shownChoice } from '../shared/choices'
-import type { AgentSettings } from '../../src/config/config.agents.client'
-import { listModels, type ThinkInput } from '../../src/config/config.client'
-
-const KEY = 'sk-agent-secret-0123456789'
+import {
+  agent,
+  BASE,
+  FIELDS,
+  KEY,
+  modelQueries,
+  renderAgents,
+  row,
+  stubServer,
+} from '../shared/config.agents.stub'
 
 beforeEach(() => {
   cleanup()
@@ -17,113 +22,6 @@ afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
-
-/** A slot as the file answers it — nothing overridden unless a test says otherwise. */
-function agent(overrides: Partial<AgentSettings> = {}): AgentSettings {
-  return {
-    id: 'dev',
-    name: 'Dev',
-    overridden: false,
-    model: null,
-    url: null,
-    think: null,
-    temperature: null,
-    keySet: false,
-    ...overrides,
-  }
-}
-
-type Call = { method: string; path: string; body?: string }
-
-/**
- * Mutable `fetch` stand-in: the slots for the read, one saved slot for the write, every call recorded with
- * its body. Honest limit, as in `config.page.test.tsx` — the answers are stubbed, so this view cannot go
- * red from a backend mutation; the file itself is proven by `AgentConfigFileTest`.
- */
-function stubServer(initial: {
-  slots: AgentSettings[]
-  saved?: AgentSettings
-  /** set to make every PUT answer as the server refuses it — the 400 path of R-WP-16 */
-  rejectWith?: string
-  /** the answer of the model list of a drafted connection (R-WP-50) — asked, never mounted */
-  models?: string[]
-}): {
-  calls: Call[]
-  body: (method: string) => Record<string, unknown>
-} {
-  const calls: Call[] = []
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const method = (init?.method ?? 'GET').toUpperCase()
-      const path = String(input)
-      calls.push({ method, path, body: init?.body as string | undefined })
-      if (path.endsWith('/api/settings/models')) {
-        return response(200, initial.models ?? [])
-      }
-      if (method === 'PUT') {
-        if (initial.rejectWith) {
-          return response(400, { status: 400, error: 'Bad Request', message: initial.rejectWith })
-        }
-        return response(200, initial.saved ?? initial.slots[0])
-      }
-      return response(200, initial.slots)
-    }),
-  )
-  return {
-    calls,
-    // the LAST write — a test that saves twice reads the second intent, not the first
-    body: (method) => {
-      const match = calls.filter((call) => call.method === method).at(-1)
-      expect(match, 'a ' + method + ' call was made').toBeDefined()
-      return JSON.parse(match?.body ?? '{}') as Record<string, unknown>
-    },
-  }
-}
-
-function response(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'content-type': 'application/json' },
-  })
-}
-
-/** One slot's row — every assertion stays inside it, because the page shows the slots side by side. */
-function row(id = 'dev'): HTMLElement {
-  return screen.getByTestId('agent-slot-' + id)
-}
-
-/**
- * The four inheritable fields of a slot — visible only while the slot overrides (R-WP-23).
- * The Dev slot carries the base think value of every other agent (R-THINK-10), so its field is named for
- * that — the labels below are the Dev row's, which is the row both tests below read.
- */
-const FIELDS = [
-  content.agents.model,
-  content.agents.url,
-  content.agents.thinkDefault,
-  content.agents.temperature,
-]
-
-/**
- * The section with the think form of the chosen base provider (UC-WP-67) and the model loader of the page
- * (R-WP-50): a slot has no provider of its own, so the base the default form holds is what the page hands
- * down. The think default is the core's honest `UNKNOWN` — a text field, which is what every test here that
- * is not about the form always saw.
- */
-const BASE = { provider: 'OPEN_AI', url: 'https://api.example.com/v1' }
-
-function renderAgents(think: ThinkInput = { form: 'UNKNOWN', values: [] }) {
-  return render(
-    <Agents
-      think={think}
-      connection={BASE.provider + ' ' + BASE.url}
-      loadModels={(slotId, slotUrl, force) =>
-        listModels({ ...BASE, agent: slotId, agentUrl: slotUrl, refresh: force })
-      }
-    />,
-  )
-}
 
 // UC-WP-44
 test('anAgentWithoutConfigShowsNoFields', async () => {
@@ -416,13 +314,6 @@ test('devThinkIsLabeledAsTheDefault', async () => {
   expect(jon.getByLabelText(content.agents.think)).toBeTruthy()
   expect(jon.queryByLabelText(content.agents.thinkDefault)).toBeNull()
 })
-
-/** The connections a section asked model lists for, in the order it asked (R-WP-50). */
-function modelQueries(server: { calls: Call[] }): Record<string, unknown>[] {
-  return server.calls
-    .filter((call) => call.path === '/api/settings/models')
-    .map((call) => JSON.parse(call.body ?? '{}') as Record<string, unknown>)
-}
 
 /**
  * UC-WP-86 for a slot: the field asks for the slot's own connection. The section hands the slot and its

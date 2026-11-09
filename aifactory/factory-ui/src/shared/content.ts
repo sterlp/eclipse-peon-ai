@@ -211,6 +211,19 @@ export const content = {
     /** R-WP-23: the base provider has no per-request think input, so no field could do anything. */
     thinkUnsupported: 'the base provider has no thinking input',
     temperature: 'Temperature',
+    /**
+     * R-WP-52: the two slot fields of the provider's body and of the tool allowlist. The label of the
+     * body is the core's own name for the field, as the server's refusal repeats it.
+     */
+    extraBody: 'Extra Body',
+    tools: 'Tools',
+    /** The shape of the allowlist — the entry the core interprets, names and negations (D9). */
+    toolsPlaceholder: 'read, grep, -write',
+    /** UC-WP-88: the offer of what runs with the typed entry — it never saves and never warns. */
+    preview: 'Preview',
+    previewCount: (count: number): string => `${count} tools`,
+    previewEmpty: 'no tool runs with that entry',
+    previewHint: 'empty = every tool the agent has',
     save: 'Save',
     /** UC-WP-44 "ein leeres Feld erbt den Default-Feld für Feld" — the empty state of these fields. */
     inherits: 'empty = inherits the default',

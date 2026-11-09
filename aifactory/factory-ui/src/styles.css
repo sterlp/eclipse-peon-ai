@@ -1111,6 +1111,7 @@ button {
    radius, colours — belongs to the basis and is not repeated here (R-WP-39). */
 .settings input,
 .config-agents-field input,
+.config-agents-field textarea,
 .config-agents-key input {
   min-width: 0;
   padding: 0.4rem 0.6rem;
@@ -1190,6 +1191,30 @@ button {
     font-size: 0.8rem;
     text-align: right;
   }
+}
+
+/*
+ * The tools field (R-WP-52): the entry and the offer of what runs with it, below it the preview of
+ * exactly the typed entry — an offer, not a state of the field (UC-WP-88).
+ */
+.config-agents-tools {
+  display: grid;
+  gap: 0.3rem;
+  width: 100%;
+}
+
+.config-agents-tools-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.config-agents-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 /* the key row keeps the status and its removal beside the field, as the default level does */

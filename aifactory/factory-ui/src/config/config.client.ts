@@ -39,6 +39,8 @@ export interface Provider {
   thinkSupported: boolean
   thinkForm: ThinkForm
   thinkValues: string[]
+  /** R-WP-52: whether the provider can carry an `extra_body` — the slots build their field from this. */
+  extraBodySupported: boolean
 }
 
 /**

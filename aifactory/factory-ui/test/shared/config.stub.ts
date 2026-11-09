@@ -31,6 +31,7 @@ const PROVIDER_ANSWER = [
     thinkSupported: true,
     thinkForm: 'VALUES',
     thinkValues: ['minimal', 'low', 'medium', 'high'],
+    extraBodySupported: true,
   },
   {
     name: 'OLLAMA',
@@ -38,8 +39,16 @@ const PROVIDER_ANSWER = [
     thinkSupported: true,
     thinkForm: 'TOGGLE',
     thinkValues: [],
+    extraBodySupported: false,
   },
-  { name: 'GOOGLE_GEMINI', defaultUrl: null, thinkSupported: false, thinkForm: 'NONE', thinkValues: [] },
+  {
+    name: 'GOOGLE_GEMINI',
+    defaultUrl: null,
+    thinkSupported: false,
+    thinkForm: 'NONE',
+    thinkValues: [],
+    extraBodySupported: false,
+  },
 ]
 
 /**

@@ -396,10 +396,13 @@ export function ConfigPage() {
           think field is built from the provider the form names (UC-WP-67), so the section reads the
           answer of this page rather than asking the server the same question a second time. The model
           lists of the slots are asked the same way (R-WP-50): a slot has no connection of its own, so
-          the page names provider and base URL and the section adds only the slot and its drafted URL. */}
+          the page names provider and base URL and the section adds only the slot and its drafted URL.
+          The extra body's capacity is the same provider's answer (R-WP-52) — a provider the list does
+          not offer cannot carry it, and the draft keeps the stored value either way. */}
       <Agents
         think={thinkInput}
         connection={draft === null ? '' : draft.provider + ' ' + draft.url}
+        extraBodySupported={chosen?.extraBodySupported === true}
         loadModels={loadSlotModels}
       />
     </section>
