@@ -31,6 +31,12 @@ export async function openChatStream(
     return
   }
 
+  if (!signal.aborted) {
+    // the answer <em>is</em> the subscription: the server registered this emitter before it answered, so
+    // whatever the view reads now, no event of this connection can have passed it unread (R-WP-48)
+    handlers.onOpen?.()
+  }
+
   try {
     await readSseStream(response.body, message => {
       const mapped = toEvent(message.event, message.data)

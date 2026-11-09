@@ -493,7 +493,7 @@ raus" — die frühere Knopf-Fassung von UC-WP-57 ist damit ersetzt).
 - GIVEN der Chat hat keine Nutzer-Zeile WHEN der Nutzer bei leerer Eingabe Senden drückt THEN
   passiert nichts.
 
-### R-WP-47 — Der Restore zeigt Jons Werkzeug-Schritte ❌ (Paul 2026-11-08, Runde 5: „warum machen wir das nicht?" — A7; Annahme als ⏳ in [open-points](open-points.md) zurückversichert)
+### R-WP-47 — Der Restore zeigt Jons Werkzeug-Schritte ✅ (Paul 2026-11-08, Runde 5: „warum machen wir das nicht?" — A7; Annahme als ⏳ in [open-points](open-points.md) zurückversichert; gebaut + reviewed 2026-11-08 (A7 `bf3ce6ec`…`227db893`, N1 `9066a149`…`1bf336bd`), Look-/Verhaltens-Abnahme am Browser steht aus)
 
 Jons **eigene** Werkzeug-Nutzung überlebt den Reload: Call und Result stehen bereits vollständig im
 Core-History-Bestand (`<agent>-history.jsonl`) — die Fabrik hält dafür **keinen** zweiten Speicher
@@ -506,7 +506,7 @@ und der Diff ([R-WP-36/UC-WP-68](chat.md)), Jons **Think** (kein Eintrag, R-WP-4
 Mitglieder-**Innen**-Schritte (liegen in deren RAM-Memory, [R-WP-4](chat.md), ADR-0024). Die
 Mitglieds-**Antwort** überlebt als Delegations-Ergebnis weiter (UC-WP-40 GIVEN 3 bleibt).
 
-#### UC-WP-82 — restoredHistoryShowsToolSteps ❌
+#### UC-WP-82 — restoredHistoryShowsToolSteps ✅ (gebaut + reviewed 2026-11-08, A7 + N1; Abnahme am Browser steht aus)
 - GIVEN Jons History enthält Werkzeug-Calls und -Results (Disk, Shell, Web, Delegation) WHEN der
   Nutzer nach einem Reload denselben Chat öffnet THEN zeigt die Timeline je Werkzeug einen Schritt
   mit Name und Result-Auszug, Delegationen mit ihrem Mitglied — in der Reihenfolge des Bestands.
@@ -578,6 +578,39 @@ dass sein Turn gescheitert ist). Zwei Fehlschläge sind **zwei** Fehlerzeilen �
   Fehlerzeile.
 - GIVEN ein gescheiterter Turn WHEN die Seite neu geladen wird THEN sind Nachricht und Fehlerzeile
   weiterhin im Verlauf (derselbe Bestand wie vor dem Reload).
+
+### R-WP-48 — Je Turn genau ein Endereignis auf dem Draht ❌ (Verdacht 2026-11-06, **belegt 2026-11-08** — Runde-6-Diagnose: ein `Error` im Turn-Task schweigt vollständig, keine Log-Zeile, Kachel zurück auf IDLE, Warteschleife stand; Nachtzyklus 2026-11-08)
+
+Jeder Turn, der einen Turn **eröffnet**, endet auf dem Draht mit **genau einem** Endereignis:
+`done` (normal oder nach Stop) oder `error` — **auch** wenn im Turn-Task ein `Error` (oder sonst
+ein `Throwable`) entkommt, der die `RuntimeException`-Zweige passiert: er zählt als gescheiterter
+Turn ([R-WP-34](chat.md) — Verlaufszeile + `error`). Ein Submit, das nur **einreiht** (der Turn
+läuft bereits), sendet **kein** Endereignis — der besitzende Turn endet für beide. Die Garantie
+liegt beim **finally-Pfad der Fabrik** (`ProjectRuntime`), kein Core-Eingriff.
+
+Dazu die Browser-Seite: der Warte-Zustand („busy", [R-WP-31](chat.md)/[R-WP-45](chat.md)) wird
+**nie** aus einem Schnappschuss abgeleitet, der **vor** dem Verbinden aufgenommen wurde — nach
+jedem (Re)Connect wird der Kachel-Stand **frisch gelesen**, sobald die Verbindung steht. Sonst
+bleibt ein Turn, der zwischen Kachel-Read und Stream-Abonnement endete, für immer als „arbeitet"
+stehen.
+
+#### UC-WP-83 — everyOpenedTurnEndsOnTheWireExactlyOnce ❌
+- GIVEN ein Turn-Task, in dem ein `Error` entkommt (kein `RuntimeException`-Zweig) WHEN der Task
+  durchläuft THEN **genau ein** `error`-Ereignis mit Verlaufszeile nach [R-WP-34](chat.md), danach
+  der `agents`-Endschnappschuss und der Turn-Claim ist frei.
+- GIVEN ein Turn scheitert mit `RuntimeException` (nicht Canceled) WHEN der Task durchläuft THEN
+  **genau ein** `error` (Bestand, nicht neu).
+- GIVEN ein Turn wird gestoppt WHEN der Task durchläuft THEN **genau ein** `done`, kein `error`
+  (Bestand, [UC-WP-50](chat.md)).
+- GIVEN ein einreiender Submit (Turn läuft bereits) WHEN der Task durchläuft THEN sendet **er**
+  kein Endereignis; der besitzende Turn sendet seines.
+
+#### UC-WP-84 — theWaitStateIsDerivedFromAFreshReadAfterConnect ❌
+- GIVEN ein Turn endet **zwischen** Kachel-Read und Stream-Verbindung WHEN die Seite (neu) verbindet
+  THEN wird der Kachel-Stand nach dem Verbinden frisch gelesen und die Kachel-Reihe zeigt **bereit** —
+  kein Warte-Zustand aus dem alten Schnappschuss.
+- GIVEN der Stream fällt während eines laufenden Turns weg WHEN der Reconnect durchläuft THEN wird
+  der Kachel-Stand ebenfalls frisch gelesen (derselbe Beweis wie beim ersten Verbinden).
 
 
 ### R-WP-35 — Der Chat scrollt, die Eingabe steht unten ✅ (Runde 2, Inc 3; Scroll-Verhalten geschärft Paul 2026-11-08 — Schärfungen + FloatButton gebaut + reviewed 2026-11-08, Inkrement 4, UC-WP-80 ✅; die **Look-Anteile** — volle Bildschirmbreite, weißer Composer, Senden rechts — nehmen wir am Browser ab)

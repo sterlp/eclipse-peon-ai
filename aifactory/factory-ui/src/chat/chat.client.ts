@@ -59,6 +59,12 @@ export type ChatStreamEvent =
 export interface ChatStreamHandlers {
   onEvent: (event: ChatStreamEvent) => void
   /**
+   * The stream's answer arrived: from here on the server delivers every event of this project to this view,
+   * so a state read taken now cannot miss the end of something that already ended (R-WP-48). Optional —
+   * only a viewer that shows state it has to re-read cares whether the connection stands.
+   */
+  onOpen?: () => void
+  /**
    * The connection ended on its own. `reconnect` is false only when the server <em>answered</em> a
    * status: a project without a chat will not become reachable by asking again.
    */

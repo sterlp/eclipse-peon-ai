@@ -264,7 +264,7 @@ export function ChatPage({
       .catch(reason => setError(errorMessage(reason)))
   }, [applyHistory, projectId])
 
-  /** The roster of tiles is read, not kept: an `agents` snapshot may have been dropped by a slow reader. */
+  /** Read, never kept, and only while a stream stands — before it, a WORKING is a wait nobody will end (R-WP-48). */
   const refreshTiles = useCallback((): Promise<void> => {
     if (projectId === null) {
       return Promise.resolve()
@@ -384,6 +384,8 @@ export function ChatPage({
         projectId,
         {
           onEvent: applyEvent,
+          // the board is read on the answer, never before the subscription stands (R-WP-48)
+          onOpen: () => void refreshTiles(),
           onEnd: retry => {
             if (!mounted || !retry) {
               return
@@ -400,15 +402,13 @@ export function ChatPage({
       )
     }
 
-    // the stream opens only once the history has been read: the anchor of the first live line is a
-    // statement about the rows that stand, and an event that anchored in front of the read would later be
-    // drawn above the whole conversation (D-E)
+    // the stream opens only once the history has been read: an event that anchored before it would be drawn
+    // above the whole history (D-E); the board is read on the stream's answer, not here (R-WP-48)
     void refresh().then(() => {
       if (mounted) {
         connect()
       }
     })
-    void refreshTiles()
     return () => {
       mounted = false
       controller.abort()

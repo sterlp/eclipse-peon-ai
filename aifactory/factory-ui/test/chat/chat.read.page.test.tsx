@@ -82,6 +82,51 @@ test('theStreamOpensAfterTheFirstHistoryRead', async () => {
   expect(agentLinesSaying(ANSWER.text)).toHaveLength(1)
 })
 
+// UC-WP-84
+test('aTurnEndingBeforeTheStreamStandsLeavesNoWaitingTile', async () => {
+  // the board is asked while no subscription stands yet: a WORKING it read then is a wait this view can
+  // never see end, because the end event goes to subscribers and not to the past (R-WP-48)
+  const chat = stubChat({ messages: [QUESTION] })
+  chat.setAgents([tile('Jon', 'WORKING')])
+  const open = chat.deferNextStreamOpen()
+
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  expect(chat.countOf('/events', 'GET')).toBe(1)
+  expect(chat.countOf('/agents', 'GET'), 'no roster read while the connection does not stand').toBe(0)
+
+  // the answer arrives and with it the subscription; the project says: nobody works any more
+  chat.setAgents([tile('Jon', 'IDLE')])
+  open.resolve()
+  await flush()
+
+  await waitFor(() =>
+    expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.IDLE),
+  )
+  expect(chat.countOf('/agents', 'GET'), 'exactly the one roster read the standing connection allows').toBe(1)
+})
+
+// UC-WP-84
+test('theReconnectReadsTheRosterFresh', async () => {
+  const chat = stubChat({ messages: [QUESTION], agents: [tile('Jon', 'WORKING')] })
+  render(<ChatPage project={project()} />)
+  await flush()
+  expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.WORKING)
+  const rosterReads = chat.countOf('/agents', 'GET')
+
+  // the wire drops and the turn behind that WORKING ends while no one is watching: only a fresh read of
+  // the roster can bring this board back from the wait (R-WP-48, R-WP-7)
+  chat.setAgents([tile('Jon', 'IDLE')])
+  await chat.closeStream()
+
+  await waitFor(() => expect(chat.countOf('/events', 'GET')).toBe(2), { timeout: 1500 })
+  await waitFor(() =>
+    expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.IDLE),
+  )
+  expect(chat.countOf('/agents', 'GET'), 'the reconnect read the roster again').toBe(rosterReads + 1)
+})
+
 // UC-WP-7
 test('aLaterTurnKeepsStreamingWhileAnEarlierReadInFlight', async () => {
   const chat = stubChat({ messages: [QUESTION] })

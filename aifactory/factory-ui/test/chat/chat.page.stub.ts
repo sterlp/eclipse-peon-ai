@@ -10,6 +10,14 @@ export interface Chat {
   countOf(pathEnd: string, method: string): number
   /** The answer of the next history read, so a test can hand back what the turn wrote. */
   setMessages(messages: ChatMessage[]): void
+  /** The roster the next `GET …/agents` answers with — what the board shows after a connect (R-WP-7). */
+  setAgents(tiles: AgentTile[]): void
+  /**
+   * Holds the answer of the next `GET …/events` back until the test resolves it. The answer is what tells the
+   * view its subscription stands, so a held answer is exactly a connection that does not stand yet
+   * (R-WP-48). Resolve it before the test ends: an unanswered request leaves the view waiting for a stream.
+   */
+  deferNextStreamOpen(): { resolve(): void }
   /**
    * Holds the next history read open until the test resolves it — a read in flight, without a sleep, so a
    * test can say what the screen looks like <em>while</em> the server is still answering. May be used twice:
@@ -87,6 +95,8 @@ export function stubChat(
   // the history reads the test holds open, in the order they were asked for — each with the conversation it
   // is allowed to bring back, which is the point of a slow answer: the conversation moved on since
   let heldReads: { wait: Promise<void>; answersWith?: ChatMessage[] }[] = []
+  // the stream answers the test holds back: no answer means no subscription, which is what R-WP-48 reads
+  let heldOpens: { wait: Promise<void> }[] = []
 
   vi.stubGlobal(
     'fetch',
@@ -96,14 +106,20 @@ export function stubChat(
       calls.push({ method, path, body: init?.body as string | undefined })
 
       if (path.endsWith('/events')) {
-        return new Response(
-          new ReadableStream<Uint8Array>({
-            start(opened) {
-              controller = opened
-            },
-          }),
-          { status: 200, headers: { 'content-type': 'text/event-stream' } },
-        )
+        const answered = () =>
+          new Response(
+            new ReadableStream<Uint8Array>({
+              start(opened) {
+                controller = opened
+              },
+            }),
+            { status: 200, headers: { 'content-type': 'text/event-stream' } },
+          )
+        // built when the answer goes out and not when it was asked for: the stream a held answer finally
+        // opens is the stream the test writes into from then on
+        const [heldOpen, ...restOpens] = heldOpens
+        heldOpens = restOpens
+        return heldOpen === undefined ? answered() : heldOpen.wait.then(answered)
       }
       if (path.endsWith('/agents') && method === 'POST') {
         if (state.refusal !== undefined) {
@@ -157,6 +173,21 @@ export function stubChat(
       calls.filter(call => call.method === method && call.path.endsWith(pathEnd)).length,
     setMessages: messages => {
       state.messages = messages
+    },
+    setAgents: tiles => {
+      state.agents = tiles
+    },
+    deferNextStreamOpen: () => {
+      let settle: (() => void) | undefined
+      const wait = new Promise<void>(done => {
+        settle = done
+      })
+      heldOpens = [...heldOpens, { wait }]
+      return {
+        resolve: () => {
+          settle?.()
+        },
+      }
     },
     deferNextHistoryRead: answersWith => {
       let settle: (() => void) | undefined
