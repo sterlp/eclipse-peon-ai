@@ -176,6 +176,38 @@ class TurnFailureTest {
     }
 
     @Test
+    // UC-WP-83
+    void anErrorThatEscapesTheTurnEndsItAsOneFailedTurn() {
+        // an Error is no RuntimeException, so it passed every catch of the turn: the tile fell back to IDLE
+        // and the turn was handed back, while the browser waited for an end event that never came (R-WP-48)
+        ChatStreamRegistry streams = new ChatStreamRegistry();
+        RecordedWire wire = new RecordedWire();
+        streams.subscribe(PROJECT, wire);
+        ProjectRuntime runtime = runtime(() -> {
+            throw new LinkageError("the config class is gone");
+        }, streams);
+
+        runtime.submit(INPUT, "Paul");
+
+        awaitUntil(() -> wire.countOf("agents") == 2, 20_000, "the failed turn sent its end snapshot");
+        assertThat(wire.names())
+                .as("one opened turn ends with exactly one ending event, a Throwable included, and its end"
+                        + " snapshot follows behind it (R-WP-48)")
+                .containsExactly("agents", "error", "agents");
+        assertThat(runtime.history())
+                .as("the escaped Error counts as a failed turn, so its pair stands in the conversation")
+                .containsExactly(
+                        ChatLine.user(INPUT, "Paul"),
+                        ChatLine.error(MID_MODEL_REASON));
+        assertThatThrownBy(runtime::stop)
+                .as("the turn that escaped is over — a stop after it addresses nothing")
+                .isInstanceOf(IllegalStateException.class);
+        assertThatCode(() -> runtime.act(AiPoAgent.NAME, AgentAction.CLEAR))
+                .as("and its project is taken again: the escaped Error gave it back")
+                .doesNotThrowAnyException();
+    }
+
+    @Test
     @Timeout(60)
     // UC-WP-14, UC-WP-50
     void aQueuedSubmitThatFailsOwnsNothingOfTheRunningTurn() {
@@ -309,6 +341,22 @@ class TurnFailureTest {
 
         boolean reportsToolLine() {
             return events.stream().anyMatch(event -> event.contains("Running:"));
+        }
+
+        /** The events this wire was given, in the order the server named them — {@code done} and {@code error}
+         *  are the two endings of a turn (R-WP-48). A failure crosses the wire under the name {@code error}. */
+        List<String> names() {
+            return events.stream().map(RecordedWire::nameOf).toList();
+        }
+
+        long countOf(String eventName) {
+            return names().stream().filter(eventName::equals).count();
+        }
+
+        private static String nameOf(String event) {
+            int from = event.indexOf("event:");
+            int to = from < 0 ? -1 : event.indexOf('\n', from);
+            return to < 0 ? "" : event.substring(from + "event:".length(), to);
         }
     }
 

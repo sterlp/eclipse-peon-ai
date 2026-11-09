@@ -347,6 +347,10 @@ final class ProjectRuntime {
      * in while he worked is answered by that turn and by its {@code done}, so it sends none of its
      * own.</p>
      *
+     * <p>A turn that was opened ends with <b>exactly one</b> ending event — {@code done} or {@code error},
+     * a {@code Throwable} that escapes the model call included (R-WP-48, UC-WP-83): the branches own that
+     * event, the {@code finally} owns the counter, the end snapshot and the claim.</p>
+     *
      * <p>A task of a queued input therefore also <b>owns nothing</b>: it frees no project, resets no cancel
      * flag and ends no turn — its {@code call()} answers {@code null} precisely because another turn is
      * running, and a task that cleared the project there would hand out a turn the project still has
@@ -416,7 +420,9 @@ final class ProjectRuntime {
                 ranTurn = opensTurn;
                 failedAgent = jon.getName();
                 fail(message, notConfigured.getMessage());
-            } catch (RuntimeException failure) {
+            } catch (Throwable failure) {
+                // nothing passes this catch: an opened turn owes exactly one ending event, an Error
+                // included (R-WP-48) — before it the tile fell IDLE while every browser waited for nothing
                 ranTurn = opensTurn;
                 if (TurnOutcome.of(failure) == TurnOutcome.CANCELED) {
                     // the user ended this turn himself: done, no error, no failed tile — and the lines he
@@ -425,6 +431,7 @@ final class ProjectRuntime {
                     streams.publish(projectId,
                             new ChatEvent.Done(Duration.ofNanos(System.nanoTime() - startedAt).toMillis()));
                 } else {
+                    // both halves of the end: the log for the server, the history line for every reader
                     failedAgent = jon.getName();
                     LOG.error("chat turn of project {} failed", projectId, failure);
                     fail(message, "the turn failed — the server log names the reason");

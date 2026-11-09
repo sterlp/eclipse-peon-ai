@@ -91,6 +91,10 @@
   **oxlint**: `react(only-export-components)` — eine Datei mit Komponenten-Export exportiert keine
   Funktionen/Hooks (auch im `test`-Baum nicht), Konstanten dürfen; `react(set-state-in-effect)` verboten
   (Projektwechsel remountet die Chat-Seite über `key={project.id}`).
+- **Vitest nie über den Dateipfad fahren** (`pnpm test -- test/chat/x.test.tsx` ⇒ jsdom
+  `Could not parse CSS stylesheet` über die Dateigrenze, der Test läuft gar nicht): einzelne Fälle mit
+  `pnpm test -t '<test-name>'` filtern (fährt die Suite), Gleiches für `npm test`.
+
 - **Routing macht Navigation async** → `findBy*`. Quellen-Scan nur über `import.meta.glob` mit `?raw`
   (`node:fs`/`process` sind in `src`+`test` nicht typisiert). **Kein Mount-Beweis über
   Schwesterrouten:** gleiche Komponente an derselben Stelle behält React Router die Instanz — „bleibt
