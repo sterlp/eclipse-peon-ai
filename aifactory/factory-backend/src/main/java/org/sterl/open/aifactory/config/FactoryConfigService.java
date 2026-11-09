@@ -35,8 +35,12 @@ import org.sterl.open.aifactory.shared.FactoryHome;
 @Service
 public class FactoryConfigService {
 
-    /** Static and value-free on purpose — this text reaches the 400 body (R-WP-16 "kein Zeichen nach draußen"). */
-    private static final String PROVIDER_HINT = "provider must name one of the supported providers";
+    /**
+     * Static and value-free on purpose — this text reaches the 400 body (R-WP-16 "kein Zeichen nach
+     * draußen"). One wording for both doors that take a provider name, the save and the model list
+     * ({@link ModelListService}).
+     */
+    static final String PROVIDER_HINT = "provider must name one of the supported providers";
     private static final String TOKEN_WINDOW_HINT = "tokenWindow must be a positive number of tokens";
     private static final String TIMEOUT_HINT = "timeoutSeconds must be a positive number of seconds";
     private static final String SEND_THINKING_HINT = "sendThinking must be true or false";
@@ -411,7 +415,8 @@ public class FactoryConfigService {
         return value != null && !value.isBlank();
     }
 
-    private static boolean isProviderName(String value) {
+    /** Package-internal because {@link ModelListService} refuses the same names for the same reason. */
+    static boolean isProviderName(String value) {
         return Arrays.stream(AiProvider.values()).anyMatch(name -> name.name().equals(value));
     }
 }

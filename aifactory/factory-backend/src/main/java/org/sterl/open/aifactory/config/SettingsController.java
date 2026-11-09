@@ -3,6 +3,7 @@ package org.sterl.open.aifactory.config;
 import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,9 +23,11 @@ import org.sterl.open.aifactory.config.dto.SettingsUpdateRequest;
 public class SettingsController {
 
     private final FactoryConfigService settings;
+    private final ModelListService modelList;
 
-    public SettingsController(FactoryConfigService settings) {
+    public SettingsController(FactoryConfigService settings, ModelListService modelList) {
         this.settings = settings;
+        this.modelList = modelList;
     }
 
     @GetMapping
@@ -46,5 +49,15 @@ public class SettingsController {
     @PutMapping
     public SettingsDto update(@RequestBody SettingsUpdateRequest request) {
         return SettingsDto.of(settings.update(request.toUpdate()));
+    }
+
+    /**
+     * The models of the connection the page's draft describes (R-WP-50). A POST, because the endpoint of
+     * a connection belongs in a body and not in a query string an access log keeps; the key belongs in
+     * neither — the page never has it, and this answer never carries it.
+     */
+    @PostMapping("/models")
+    public List<String> models(@RequestBody ModelListRequest request) {
+        return modelList.listModels(request);
     }
 }
