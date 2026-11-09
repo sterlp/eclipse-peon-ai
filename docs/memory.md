@@ -1,43 +1,46 @@
 # Open Ends / Memory — Session-Zwischenstand
 
 > Zwischenstand, kein Protokoll: Erledigtes fliegt raus.
-> **Branch `web-factory-mvp`** (Paul hat `web-factory-goon` offenbar gemerged/neu aufgemacht),
-> HEAD `8cc13196`, gepusht. Zyklus 2026-11-05 komplett (inc-10…16, Plan archiviert
-> `overview-done-2026-11-05-10-00.md`). **Merge-Entscheidung (Squash-Default) liegt bei Paul.**
+> **Branch `web-factory-4`** (Paul, 2026-11-09). `web-factory-mvp` ist als #170 gemergt.
+> Lokal ungepusht (Push 403, Git-Account `PaulNetze`): Merge main `7c270466` + Skill-Sync-Commits.
+> Paul überträgt per `peon-plan/web-factory-4-skill-sync.patch` auf den anderen Rechner
+> (dort erst `git merge origin/main`, dann `git am`).
 
-## Zyklus 2026-11-05 — zwei Stories, beide ✅ + gepusht
+## Skill-Sync 2026-11-09 (Paul-Auftrag, kein Plan-Zyklus)
 
-- **① Phantom-Projekt-Crash („Failed to open project with plan file home", 2026-11-03):**
-  Externe Datei-Selektion resolved zu Phantom-Handle `/home`; `PlanTool.getProject()` öffnete
-  bedingungslos im Query-Pfad. Gebaut: R-PT-6 (Query öffnet nie), R-PT-7 (`exists()` vor
-  `open()`, Tool-Pfad), R-SEL-5 (Phantom-Guard als allererste Zeile in `setProject`) — jeweils
-  ✅ mit Mutanten-Belegen, Da-Dok-Review des B1-Fixes (planRead-Regression bei geschlossenen
-  Projekten) nachgezogen. **R-PT-8 (Query nennt geschlossenes Projekt per `onProblem`) ist mein
-  autonom abgeleitetes SOLL — ⏳ Rückversicherung in open-points.md.**
-- **② File-Update-Diff (C-4-Proposal, aifactory open-points):** `file-update-diff.md` (R-SD-1…3) ✅:
-  Anlegen feuert `onFileUpdate` (voller `+`-Diff, disk + eclipse, auch eclipse-Overwrite),
-  partzieller Diff statt Skip (ein Cap 500 auf die Changed-Region, `MAX_LCS_CELLS`/
-  `MAX_DIFF_LINES` Clean-Break raus), binärer Inhalt (NUL-Sniff 8 KB) bekommt kein Diff.
-  Da-Dok REJECTED → Delta: **Marker nennt die tatsächlich gezeigte Menge, nie die Cap-Zahl**
-  (`34f999d6`, `8cc13196`). aifactory chat.md R-WP-36/UC-WP-68 mitgezogen, Proposal-Block aus
-  aifactory/open-points.md raus. Homepage: geprüft, keine Aussage wird stale — ob die
-  Diff-Anzeige eine eigene Homepage-Zeile verdient, Paul-Prio.
-- **Skill-Evolution:** 1 Outcome — wiki pattern „Status flip: sweep the doc, not just the
-  marker" (Create, B1/B2-Evidenz) + Ledger-Zeile; `AGENTS-DEV.md` Lint-Regel erweitert
-  (nie partielle docRoots/testRoots — 253-Findings-Falle). Lint-Baseline Auto-Discovery: **38**.
-- **Gates final:** Core-Surefire **1480/0/0/0** · Tycho-Plugin **466/0/0/53** · aifactory
-  **221/0/0/0** · Lint 38 (= Baseline, UC-SD-1…3 + UC-PT-6/7 + UC-SEL-5 belegt).
-- **Stale-Flip:** R-SEL-4/UC-SEL-4 ❌→✅ (Tests existieren seit 2026-09-16, Jon, 🔒 in open-points).
+- Ziel (Paul): jedes Projekt entwickelt eigene Skills unter `.agents/skills/` (CRUD je Zyklus),
+  generische AGENTS*.md-Passagen wandern schrittweise in Skills. Grund-Loop läuft auch ohne Skill
+  `skill-evolution` und ohne Wiki → steht jetzt in `po-delegation.md` (Retro), R6 ❌ in
+  `core/docs/skill-evolution-loop.md` (Flip nach Pauls Bestätigung / erster Nacht-Retro).
+- `doc-method.md`: neue Regel „Wechsel auf ✅ zieht den ganzen Regelblock mit" (aus Wiki-Muster
+  Status flip, Teil 3 Disclosure bleibt im llmpeon-Wiki).
+- Wiki `.agents/skills/wiki/` überall; Muster „Rename-Zyklen: Verbraucher inventarisieren" nach
+  us4g/FORgE/MaPa. us4g committet+gepusht (`97008d6`, inkl. `AGENTS-PO.md`→`AGENTS-JON.md`).
+- FORgE: direkt auf `main` + Push; Projekt-Kopie `skill-evolution` entfällt (nutzt den globalen).
+  MaPa: direkt auf `master`, **Paul pusht** (Repo-Policy). us4g: auf `main` per Cherry-Pick + Push.
+- Global `skill-evolution` (sterlp/ai-skill-codex via `~/apm.yml`): Paul kopiert die 2 Dateien aus
+  `peon-plan/ai-skill-codex/skills/skill-evolution/` selbst ins Repo und synct.
+- Lose Enden: (1) us4g hält noch eine Projekt-Kopie `skill-evolution` (identisch zum neuen
+  globalen) — löschen, sobald der Feature-Branch `feature/stub-callback-endpoint-header` gemergt
+  ist (sonst modify/delete-Konflikt). (2) ai-skill-codex enthält `skills/wiki/` mit llmpeon-Inhalt
+  — Empfehlung an Paul: dort löschen.
+- Working Tree llmpeon: `SkillService.java` (nur Zeilenumbruch) + `.factorypath` nicht von Dev —
+  Pauls IDE, nicht committen.
+
+## Nächster Schritt
+
+- Story „Skills ohne Cache": `SkillComponent` parst beim Laden, `skillRead`/`skillList` liefern den
+  Cache; neu geschriebene/geänderte Skills sieht ein Agent erst nach Projektwechsel/`refreshAll`.
+  Paul will: list/read lesen immer von Platte (Nacht-Evolve). Rule in `core/docs/project-skills.md`
+  mit Paul klären, dann Plan.
 
 ## Offen für Paul (je eine Frage / Bestätigung)
 
-1. **⏳ R-PT-8** (gebautes Verhalten meiner Abgeleitet-Entscheidung): Query auf ein geschlossenes,
-   echtes Projekt meldet `onProblem` „Project 'X' is closed" statt still „kein Plan" — ok so,
-   oder stilles „kein Plan"? (open-points.md, Regel streichen wäre trivial).
-2. **⏳ AGENTS-JON.md-Alias** (2026-10-30) — unverändert offen (open-points.md).
-3. **Merge `web-factory-mvp`** (Squash-Default) — trägt inc-10…16.
-4. **Homepage-Zeile zur Diff-Anzeige?** (siehe oben, optional)
-5. ❓ Altbestand aus dem Reparatur-Zyklus: Edit-Tool-Falle (upstream melden?), manuelle Nachweise.
+1. **⏳ R-PT-8:** Query auf geschlossenes Projekt meldet `onProblem` statt still „kein Plan" — ok?
+2. **⏳ AGENTS-JON.md-Alias** (2026-10-30, open-points.md) — der Rename-Fall hat us4g getroffen
+   (`AGENTS-PO.md` wirkte still nicht mehr), dort jetzt umbenannt.
+3. **Homepage-Zeile zur Diff-Anzeige?** (optional)
+4. ❓ Altbestand Reparatur-Zyklus: Edit-Tool-Falle (upstream melden?), manuelle Nachweise.
 
 ## Backlog (nicht gestartet)
 
@@ -56,6 +59,8 @@
 
 ## Notizen
 
+- Agentennamen: Jon (PO), Plan, Dev, Review — Ork-Namen (Da Mek/Da Dok/Da Thinka) nur noch als
+  Synonym im Glossar, in neuem Text nie.
 - System-Prompts generisch; Scaffold-Prompts stehen auf `Scaffold` (Jon editiert System-Prompts
   selbst, Übersicht: `core/docs/system-prompts.md`).
 - Commit: EXPLIZITE Pfadliste; Pauls WIP nie (`AGENTS*.md` Root, `peon-plan/**`, `README.md`,
