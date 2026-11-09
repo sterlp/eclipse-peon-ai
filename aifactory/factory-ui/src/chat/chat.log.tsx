@@ -203,12 +203,9 @@ function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entr
     if (previous !== undefined && previous.type === 'trace' && (previous.restored === true || restored)) {
       entries[entries.length - 1] = {
         type: 'trace',
-        // the restored step stands at its row and the live entries arrived behind it, so a group the read
-        // hands back leads the merged account — the wire's order, not the order the two groups were pushed
-        items:
-          restored && previous.restored !== true
-            ? [...items, ...previous.items]
-            : [...previous.items, ...items],
+        // the widget that stood first keeps its order: the read placed the Bestand's group at its own row,
+        // so what only the wire carried follows behind it (R-WP-11, R-WP-25)
+        items: [...previous.items, ...items],
         open: previous.open ?? openItem,
         restored: true,
       }

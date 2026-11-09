@@ -1754,6 +1754,52 @@ test('aFileChangeIsLiveAndDoesNotOutliveTheReload', async () => {
   expect(agentLinesSaying(ANSWER.text)).toHaveLength(1)
 })
 
+/**
+ * What a read leaves of the wire's order inside ONE widget (R-WP-40, R-WP-11, UC-WP-72 GIVEN 2): the Bestand
+ * leads, the rest of the wire follows. A Think that streamed before the call therefore reads BEHIND the step
+ * the history hands back — arrival order across the two sources is not rebuildable without inventing an
+ * identity neither the line nor the event carries, and every reader has to read the same account (R-WP-25).
+ */
+// UC-WP-72
+// UC-WP-82
+test('aThinkStreamedBeforeTheCallStandsBehindTheStepTheHistoryHandsBack', async () => {
+  const chat = stubChat({ messages: [QUESTION] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await chat.push(event('partial', { kind: 'think', text: 'Ich prüfe das Root' }))
+  await chat.push(event('tool', { text: 'ls in the checkout' }))
+
+  chat.setMessages([
+    QUESTION,
+    { role: 'user', text: 'zähl die Dateien' },
+    { role: 'tool', text: 'pom.xml README.md', origin: 'shellRunCommand' },
+    ANSWER,
+  ])
+  await chat.push(event('done', { millis: 14 }))
+  await flush()
+
+  expect([...screen.getByTestId('chat-log').children].map(line => line.getAttribute('data-testid'))).toEqual([
+    'chat-line-user',
+    'chat-line-user',
+    'chat-timeline',
+    'chat-line-jon',
+  ])
+  const widget = screen.getByTestId('chat-timeline')
+  expect(
+    [...widget.querySelectorAll('.chat-trace-item')].map(item => item.getAttribute('data-trace')),
+    'the step the Bestand carries leads its widget, the Think that only the wire carried follows it',
+  ).toEqual(['tool', 'think'])
+  expect(widget, 'and it is the Bestand that speaks, not the wire').toHaveTextContent('pom.xml README.md')
+  expect(
+    [...widget.querySelectorAll('[data-working="true"]')],
+    'with the turn ended works nothing, neither the step nor the thought',
+  ).toEqual([])
+})
+
+
 // UC-WP-57
 test('emptySendResendsTheLastUserMessage', async () => {
   const chat = stubChat({ messages: [QUESTION] })
