@@ -36,12 +36,13 @@ export function ApiField({
 }
 
 /**
- * The other half of the same rule (R-WP-56): what carries no field the page draws goes to the screen as an
- * `Alert` with the server's own text — a 409, the git output of a failed clone, a 500.
+ * The other half of the same rule (R-WP-56): a reason the page cannot place at a field still reaches the
+ * screen, with the server's own sentence. One `Alert` per entry — the top-level `message` is only the first
+ * violation, so it is not the whole answer and a second name the page does not wrap keeps its own line (R8).
+ * `errorMessage` is left to what names no field at all: a 409, the git output of a failed clone, a 500.
  *
  * It stays silent while every named field is one the page marks itself, because then the line would only
- * repeat the field. A name the page does not wrap is why `fields` exists at all: without it such a reason
- * would disappear between the two rules (R8).
+ * repeat the field.
  */
 export function ApiFormErrors({
   error,
@@ -54,8 +55,18 @@ export function ApiFormErrors({
     return null
   }
   const named = fieldErrorsOf(error)
-  if (named.length > 0 && named.every((entry) => fields.includes(entry.field))) {
+  if (named.length === 0) {
+    return <Alert type="error" title={errorMessage(error)} />
+  }
+  const unwrapped = named.filter((entry) => !fields.includes(entry.field))
+  if (unwrapped.length === 0) {
     return null
   }
-  return <Alert type="error" title={errorMessage(error)} />
+  return (
+    <>
+      {unwrapped.map((entry) => (
+        <Alert key={entry.field} type="error" title={entry.message} />
+      ))}
+    </>
+  )
 }

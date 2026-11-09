@@ -125,10 +125,18 @@
 }
 
 /* The shared error widget (R-WP-56): its wrapper is the flex or grid item now, not the control inside it —
-   the wrapper takes the room the label leaves and the control fills the wrapper. Its own bottom margin would
-   pace a row a second time beside the gap the page already carries (D8). */
-.api-field {
+   the wrapper takes the room the label leaves and the control fills the wrapper. The basis paces its items
+   with its own bottom margin (antd/es/form/style/index.js:107-109, token marginLG at :467) and injects that
+   sheet after ours at class specificity, so the widget's item names both classes (D8). */
+.api-field.ant-form-item {
   min-width: 0;
+  margin-bottom: 0;
+}
+
+/* The inline add-project row: the basis zeroes the item gap as
+   `.ant-form-inline .ant-form-item-inline` (index.js:345-352, token inlineItemMarginBottom = 0 at :470) —
+   stated here as well, so a token change cannot bring a second gap beside the row's own `gap`. */
+.add-project.ant-form-inline .api-field.ant-form-item {
   margin-bottom: 0;
 }
 

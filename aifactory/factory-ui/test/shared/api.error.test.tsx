@@ -141,3 +141,36 @@ test('anUnwrappedFieldErrorStillShowsTheServerText', async () => {
     expect(field).not.toHaveClass('api-field-error')
   }
 })
+
+// UC-WP-93
+test('anUnwrappedFieldOfAMultiFieldAnswerStillReachesTheScreen', async () => {
+  const THINK_REASON = 'think is not offered by this provider'
+  const error = await refusal(400, {
+    status: 400,
+    error: 'Bad Request',
+    message: MAX_TOKENS_REASON,
+    fieldErrors: [
+      // the answer names two fields: one the harness wraps, one it does not
+      { field: 'maxTokens', message: MAX_TOKENS_REASON },
+      { field: 'think', message: THINK_REASON },
+    ],
+  })
+
+  render(
+    <Harness
+      error={error}
+      errors={[
+        { field: 'maxTokens', message: MAX_TOKENS_REASON },
+        { field: 'think', message: THINK_REASON },
+      ]}
+    />,
+  )
+
+  // the wrapped reason stays at its field, the unwrapped one reaches the screen — the first violation is
+  // not the whole answer, so nothing of the second one may be dropped (R8)
+  expect(screen.getAllByRole('alert')).toHaveLength(1)
+  expect(screen.getByRole('alert')).toHaveTextContent(THINK_REASON)
+  expect(screen.getByRole('alert').textContent).not.toContain(MAX_TOKENS_REASON)
+  expect(screen.getByTestId('field-error-maxTokens')).toHaveTextContent(MAX_TOKENS_REASON)
+  expect(document.querySelectorAll('.api-field-error')).toHaveLength(1)
+})
