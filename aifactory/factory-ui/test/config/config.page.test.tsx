@@ -4,24 +4,14 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { ConfigPage } from '../../src/config/config.page'
 import { content } from '../../src/shared/content'
 import { chooseOption, openChoice, shownChoice } from '../shared/choices'
-import type { Settings } from '../../src/config/config.client'
-
-const KEY = 'sk-file-secret-0123456789'
-
-/**
- * The default form's think field by its own id (R-WP-49): the label is the Dev slot's too, so a label could
- * not say which of the two fields a test means.
- */
-const DEFAULT_THINK = 'settings-think'
-
-/**
- * The model field of the default form, named by its id: the word „Model" belongs to every slot row too
- * (R-WP-23), so only the field itself says which level a test is holding.
- */
-const MODEL_FIELD = 'settings-model'
-
-/** The draft endpoint of a model list (R-WP-50) — a POST, because the connection has no place in a query. */
-const MODELS_PATH = '/api/settings/models'
+import {
+  KEY,
+  controlValues,
+  sentBodies,
+  settingsAnswer,
+  stubServer,
+  valueOf,
+} from '../shared/config.stub'
 
 beforeEach(() => {
   cleanup()
@@ -31,155 +21,6 @@ afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
-
-type Script = {
-  GET: unknown
-  PUT: unknown
-  PROVIDERS: unknown
-  AGENTS: unknown
-  MODELS: unknown
-}
-type Call = { method: string; path: string; body?: string }
-
-/**
- * The provider list as the core answers it (UC-WP-62): one provider with a URL default, one without a
- * think input. The values are stubs on purpose — which URL and which think values the core really
- * carries is pinned by `SettingsControllerTest`, the page only has to follow what the server says
- * (UC-WP-67: the same answer also builds the agent think field).
- */
-const PROVIDER_ANSWER = [
-  {
-    name: 'OPEN_AI',
-    defaultUrl: null,
-    thinkSupported: true,
-    thinkForm: 'VALUES',
-    thinkValues: ['minimal', 'low', 'medium', 'high'],
-  },
-  {
-    name: 'OLLAMA',
-    defaultUrl: 'https://ollama.example',
-    thinkSupported: true,
-    thinkForm: 'TOGGLE',
-    thinkValues: [],
-  },
-  { name: 'GOOGLE_GEMINI', defaultUrl: null, thinkSupported: false, thinkForm: 'NONE', thinkValues: [] },
-]
-
-/**
- * Mutable `fetch` stand-in: one answer per endpoint, every call recorded with its body. Honest limit,
- * same as the Projects tests — the answers are stubbed, so this view cannot go red from a backend
- * mutation; the wire contract itself is proven by `SettingsControllerTest`.
- */
-function stubServer(initial: Partial<Script>): {
-  script: Script
-  calls: Call[]
-} {
-  const server: { script: Script; calls: Call[] } = {
-    script: {
-      GET: undefined,
-      PUT: undefined,
-      PROVIDERS: PROVIDER_ANSWER,
-      // the page mounts the agent section too (R-WP-23); its own tests are in config.agents.test.tsx
-      AGENTS: [],
-      // the models of the connection the form describes (R-WP-50) — asked for, never mounted
-      MODELS: [],
-      ...initial,
-    },
-    calls: [],
-  }
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const method = (init?.method ?? 'GET').toUpperCase()
-      const path = String(input)
-      server.calls.push({
-        method,
-        path,
-        body: init?.body as string | undefined,
-      })
-      const answer = path.endsWith('/providers')
-        ? server.script.PROVIDERS
-        : path === '/api/settings/agents'
-          ? server.script.AGENTS
-          : path === '/api/settings/models'
-            ? server.script.MODELS
-            : server.script[method as keyof Script]
-      if (answer instanceof Error) {
-        return response(400, {
-          status: 400,
-          error: 'Bad Request',
-          message: answer.message,
-        })
-      }
-      if (answer === undefined) {
-        return response(404, {
-          status: 404,
-          error: 'Not Found',
-          message: 'nope',
-        })
-      }
-      return response(200, answer)
-    }),
-  )
-  return server
-}
-
-function response(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'content-type': 'application/json' },
-  })
-}
-
-/**
- * The masked answer of the factory. It carries an `apiKey` on purpose: if a server ever leaked one,
- * the view still must not print a character of it (R-WP-16 "kein Zeichen nach draußen").
- */
-function settingsAnswer(overrides: Partial<Settings> = {}): Record<string, unknown> {
-  return {
-    provider: 'OPEN_AI',
-    model: 'gpt-demo',
-    think: null,
-    url: 'https://api.example.com/v1',
-    tokenWindow: 64000,
-    timeoutSeconds: 45,
-    sendThinking: false,
-    maxTokens: null,
-    queryParams: null,
-    headerParams: null,
-    keySet: true,
-    keySource: 'FILE',
-    apiKey: KEY,
-    ...overrides,
-  }
-}
-
-/**
- * The value as it sits at the documented field — the field is the contract, not the markup. An
- * editable row shows what its control holds, a status row shows its text.
- */
-async function valueOf(label: string): Promise<string> {
-  const field = await screen.findByText(label)
-  const row = field.parentElement?.querySelector('dd')
-  // ANTD-A3 (AntD 6): a choice shows itself in the base's display, not in a `<select>`. What stands there is the
-  // catalog label — the wire value is pinned in the body by `theChoiceSendsItsWireValue`.
-  const choice = row?.querySelector('.ant-select-content')
-  if (choice) {
-    return choice.getAttribute('title') ?? choice.textContent ?? ''
-  }
-  const value = row?.querySelector('input, select')
-  if (value) {
-    return (value as HTMLInputElement).value
-  }
-  return row?.textContent ?? ''
-}
-
-/** What really sits in the form — text content cannot see the value of an input. */
-function controlValues(container: HTMLElement): string[] {
-  return Array.from(container.querySelectorAll('input, select')).map(
-    (el) => (el as HTMLInputElement).value,
-  )
-}
 
 // UC-WP-23
 test('settingsShowsMaskedConfig', async () => {
@@ -204,7 +45,8 @@ test('settingsShowsMaskedConfig', async () => {
   expect(container.textContent).not.toContain(KEY)
   expect(controlValues(container).some((value) => value.includes('sk-'))).toBe(false)
   // opening the settings reads the config, the provider defaults and the agent slots, and writes none of
-  // them — the third read is Inc 7b's: a slot's state lives in its own file, not in the config
+  // them — the third read is Inc 7b's: a slot's state lives in its own file, not in the config. These three
+  // reads are also the guard of R-WP-50: a model field must not ask a provider when the page mounts.
   expect(server.calls.map((call) => call.method)).toEqual(['GET', 'GET', 'GET'])
   expect(server.calls.map((call) => call.path).sort()).toEqual([
     '/api/settings',
@@ -296,16 +138,6 @@ test('settingsOverrideNeverWritesSharedStore', async () => {
 })
 
 /**
- * The bodies the page saved, in the order it sent them. A choice shows its catalog label on the screen and
- * its wire value in the request — the value only exists here, so this is where it has to be pinned.
- */
-function sentBodies(server: { calls: Call[] }): Record<string, unknown>[] {
-  return server
-    .calls.filter((call) => call.method === 'PUT')
-    .map((call) => JSON.parse(call.body ?? '{}') as Record<string, unknown>)
-}
-
-/**
  * UC-WP-24 over the basis' choice: the think row is the one field whose label and value differ by contract
  * (`docs/config.md`: the file holds text, the core reads a boolean). Reading the displayed label would let a
  * swapped option pass — the body is the contract.
@@ -334,7 +166,6 @@ test('theChoiceSendsItsWireValue', async () => {
     'true',
   )
 })
-
 
 // UC-WP-62
 test('changingTheProviderUpdatesTheUrl', async () => {
@@ -442,7 +273,6 @@ test('agentThinkFollowsTheProviderOfTheForm', async () => {
   // one provider answer serves both areas — a second read would be a second opinion on one question
   expect(server.calls.filter((call) => call.path === '/api/settings/providers')).toHaveLength(1)
 })
-
 
 // UC-WP-63
 test('removeKeyDeletesItAndRefreshesTheStatus', async () => {
@@ -569,331 +399,4 @@ test('showsErrorMessageWhenSettingsCannotLoad', async () => {
   render(<ConfigPage />)
 
   expect(await screen.findByRole('alert')).toHaveTextContent('config.properties')
-})
-
-/**
- * R-WP-49: the default form shows the Dev slot's think value in the form of the provider it names — the same
- * control the slot row builds, because both places show one value and neither has a store of its own. That a
- * stored level outside the offered list stays verbatim is the shared component's proof, pinned once for both
- * places in `config.agents.test.tsx` (`storedThinkStaysVerbatim`).
- */
-// UC-WP-85
-test('defaultThinkShowsTheProviderFormAndSaves', async () => {
-  const server = stubServer({
-    GET: settingsAnswer({ think: 'medium' }),
-    PUT: settingsAnswer({ think: 'high' }),
-  })
-  render(<ConfigPage />)
-  await screen.findByText(content.config.provider)
-
-  // the provider's list, not a text box — and the empty entry that sends no value stands first
-  expect(await openChoice(content.agents.thinkDefault, DEFAULT_THINK)).toEqual([
-    content.agents.inheritOption,
-    'minimal',
-    'low',
-    'medium',
-    'high',
-  ])
-  expect(shownChoice(content.agents.thinkDefault, DEFAULT_THINK)).toBe('medium')
-
-  await chooseOption(content.agents.thinkDefault, 'high', DEFAULT_THINK)
-  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
-
-  await waitFor(() => expect(sentBodies(server)).toHaveLength(1))
-  expect(sentBodies(server)[0], 'the picked level travels as the text the file reads').toHaveProperty(
-    'think',
-    'high',
-  )
-})
-
-/**
- * UC-WP-85 GIVEN 4: the level and the switch are two answers — clearing the level deletes it (UC-WP-46) and
- * leaves the switch alone, as the plugin carries both side by side.
- */
-// UC-WP-85
-test('defaultThinkClearsIndependentlyOfSendThinking', async () => {
-  const server = stubServer({
-    GET: settingsAnswer({ think: 'high', sendThinking: true }),
-    PUT: settingsAnswer({ think: null, sendThinking: true }),
-  })
-  render(<ConfigPage />)
-  await waitFor(() =>
-    expect(shownChoice(content.agents.thinkDefault, DEFAULT_THINK), 'the stored level').toBe('high'),
-  )
-
-  await chooseOption(content.agents.thinkDefault, content.agents.inheritOption, DEFAULT_THINK)
-  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
-
-  await waitFor(() => expect(sentBodies(server)).toHaveLength(1))
-  const sent = sentBodies(server)[0]
-  expect(sent, 'an emptied level is the deletion of the value').toHaveProperty('think', '')
-  expect(sent, 'the switch keeps its own answer').toHaveProperty('sendThinking', 'true')
-})
-
-/**
- * UC-WP-85 GIVEN 3: a provider without a think input gets no field, only the hint — and the missing field
- * must not become a deletion of what the file holds.
- */
-// UC-WP-85
-test('defaultThinkIsDisabledForAProviderWithoutThinking', async () => {
-  const server = stubServer({
-    GET: settingsAnswer({ think: 'high' }),
-    PUT: settingsAnswer({ think: 'high' }),
-  })
-  render(<ConfigPage />)
-  await screen.findByText(content.config.provider)
-  expect(shownChoice(content.agents.thinkDefault, DEFAULT_THINK)).toBe('high')
-
-  await chooseOption(content.config.provider, 'GOOGLE_GEMINI')
-
-  // the hint is the whole answer, in the words of the agent section — one rule, one set of words
-  expect(screen.queryByLabelText(content.agents.thinkDefault)).toBeNull()
-  expect(screen.getByTestId(DEFAULT_THINK + '-unsupported')).toHaveTextContent(
-    content.agents.thinkUnsupported,
-  )
-
-  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
-  await waitFor(() => expect(sentBodies(server)).toHaveLength(1))
-  expect(
-    sentBodies(server)[0],
-    'a field that cannot show its value must not delete it',
-  ).toHaveProperty('think', 'high')
-})
-
-/**
- * R-WP-51: the three advanced values of the base level travel as text — only text has the empty state the
- * three states need — and the answer of the server is what the fields show again.
- */
-// UC-WP-87
-test('maxTokensAndParamsTravelAsText', async () => {
-  const server = stubServer({
-    GET: settingsAnswer(),
-    PUT: settingsAnswer({ maxTokens: 4096, queryParams: 'a=b,c=d', headerParams: 'k=v' }),
-  })
-  const { container } = render(<ConfigPage />)
-  await screen.findByText(content.config.provider)
-
-  // an advanced value the file does not carry is an empty field, never the word "null"
-  expect(screen.getByLabelText(content.config.maxTokens)).toHaveValue('')
-  expect(container.textContent).not.toContain('null')
-
-  fireEvent.change(screen.getByLabelText(content.config.maxTokens), { target: { value: '4096' } })
-  fireEvent.change(screen.getByLabelText(content.config.queryParams), { target: { value: 'a=b,c=d' } })
-  fireEvent.change(screen.getByLabelText(content.config.headerParams), { target: { value: 'k=v' } })
-  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
-
-  await waitFor(() => expect(sentBodies(server)).toHaveLength(1))
-  expect(sentBodies(server)[0]).toMatchObject({
-    maxTokens: '4096',
-    queryParams: 'a=b,c=d',
-    headerParams: 'k=v',
-  })
-
-  cleanup()
-  stubServer({ GET: settingsAnswer({ maxTokens: 4096, queryParams: 'a=b,c=d', headerParams: 'k=v' }) })
-  render(<ConfigPage />)
-
-  expect(await valueOf(content.config.maxTokens)).toBe('4096')
-  expect(await valueOf(content.config.queryParams)).toBe('a=b,c=d')
-  expect(await valueOf(content.config.headerParams)).toBe('k=v')
-})
-
-/**
- * UC-WP-87 with R-WP-16: an emptied field travels empty and is therefore deleted, while a field nobody
- * touched keeps its stored text — clearing one field is never clearing the section.
- */
-// UC-WP-87
-test('anEmptyAdvancedFieldClearsTheValue', async () => {
-  const server = stubServer({
-    GET: settingsAnswer({ maxTokens: 4096, queryParams: 'a=b', headerParams: 'k=v' }),
-    PUT: settingsAnswer({ maxTokens: null, queryParams: null, headerParams: null }),
-  })
-  render(<ConfigPage />)
-  await screen.findByDisplayValue('4096')
-
-  fireEvent.change(screen.getByLabelText(content.config.maxTokens), { target: { value: '' } })
-  fireEvent.change(screen.getByLabelText(content.config.queryParams), { target: { value: '' } })
-  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
-
-  await waitFor(() => expect(sentBodies(server)).toHaveLength(1))
-  const sent = sentBodies(server)[0]
-  expect(sent, 'an emptied field says delete').toHaveProperty('maxTokens', '')
-  expect(sent, 'an emptied field says delete').toHaveProperty('queryParams', '')
-  expect(sent, 'an untouched field keeps its value').toHaveProperty('headerParams', 'k=v')
-})
-
-/**
- * UC-WP-87 GIVEN 4: a value the server refuses comes back as its message naming the field, and the page
- * keeps what was typed — no reload, nothing retyped, nothing half stored.
- */
-// UC-WP-87
-test('arejectedAdvancedValueKeepsWhatWasTyped', async () => {
-  const server = stubServer({
-    GET: settingsAnswer(),
-    PUT: new Error('maxTokens must be a whole number of tokens'),
-  })
-  render(<ConfigPage />)
-  await screen.findByText(content.config.provider)
-
-  fireEvent.change(screen.getByLabelText(content.config.maxTokens), { target: { value: 'abc' } })
-  fireEvent.change(screen.getByLabelText(content.config.queryParams), { target: { value: 'oops' } })
-  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
-
-  expect(await screen.findByRole('alert')).toHaveTextContent('maxTokens')
-  expect(screen.getByLabelText(content.config.maxTokens)).toHaveValue('abc')
-  expect(screen.getByLabelText(content.config.queryParams)).toHaveValue('oops')
-  // the refusal is the end of the exchange: the three opening reads stay three
-  expect(server.calls.filter((call) => call.method === 'GET')).toHaveLength(3)
-})
-
-/** The connections the page asked a model list for, in the order it asked. */
-function modelQueries(server: { calls: Call[] }): Record<string, unknown>[] {
-  return server.calls
-    .filter((call) => call.path === MODELS_PATH)
-    .map((call) => JSON.parse(call.body ?? '{}') as Record<string, unknown>)
-}
-
-/**
- * R-WP-50, UC-WP-86 GIVEN 1: the field offers the models of the connection the form describes. Asked when the
- * field is opened and not when the page mounts — reading the settings must not call a provider, which
- * `settingsShowsMaskedConfig` guards with its three reads. The body names the draft, and the key is not in it.
- */
-// UC-WP-86
-test('modelFieldListsServerModelsOnOpen', async () => {
-  const server = stubServer({ GET: settingsAnswer(), MODELS: ['gpt-x', 'llama-mock'] })
-  render(<ConfigPage />)
-  await screen.findByText(content.config.provider)
-
-  expect(server.calls.filter((call) => call.method === 'POST'), 'a mount asks no provider').toEqual([])
-
-  expect(await openChoice(content.config.model, MODEL_FIELD)).toEqual(['gpt-x', 'llama-mock'])
-
-  expect(modelQueries(server), 'one opening asks once, for the drafted connection').toEqual([
-    { provider: 'OPEN_AI', url: 'https://api.example.com/v1', refresh: false },
-  ])
-})
-
-/**
- * R-WP-50 "kein Anhängen": the list is the server's alone. A value the connection does not know is the
- * field's business and not the list's — an invented entry would offer a model no turn could run.
- */
-// UC-WP-86
-test('themodellistDoesNotAppendTheTypedValue', async () => {
-  stubServer({ GET: settingsAnswer({ model: 'gpt-demo' }), MODELS: ['gpt-x'] })
-  render(<ConfigPage />)
-  await screen.findByText(content.config.provider)
-
-  fireEvent.change(screen.getByLabelText(content.config.model), { target: { value: 'mine-local' } })
-
-  expect(await openChoice(content.config.model, MODEL_FIELD)).toEqual(['gpt-x'])
-})
-
-/**
- * UC-WP-86 GIVEN 4: the field takes the server's entry as soon as the typed text names one — the case is what
- * nobody controls, the id is what the provider needs. Naming nothing of a listed model rewrites nothing.
- */
-// UC-WP-86
-test('amatchingModelIsWrittenAsTheServerEntry', async () => {
-  const server = stubServer({
-    GET: settingsAnswer(),
-    PUT: settingsAnswer({ model: 'gpt-x' }),
-    MODELS: ['gpt-x'],
-  })
-  render(<ConfigPage />)
-  await screen.findByText(content.config.provider)
-  await openChoice(content.config.model, MODEL_FIELD)
-
-  fireEvent.change(screen.getByLabelText(content.config.model), { target: { value: 'GPT-X' } })
-  expect(screen.getByLabelText(content.config.model)).toHaveValue('gpt-x')
-
-  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
-  await waitFor(() => expect(sentBodies(server)).toHaveLength(1))
-  expect(sentBodies(server)[0], 'the file gets the id the provider listed').toHaveProperty(
-    'model',
-    'gpt-x',
-  )
-})
-
-/**
- * UC-WP-86 GIVEN 3: a model the list does not carry stays exactly as typed and is saved exactly so — a local
- * or renamed model is a legitimate answer, which is why the field is a text field with an offer and not a
- * selection.
- */
-// UC-WP-86
-test('atypedForeignModelStaysAndIsSaved', async () => {
-  const server = stubServer({
-    GET: settingsAnswer(),
-    PUT: settingsAnswer({ model: 'mine-local-2' }),
-    MODELS: ['gpt-x'],
-  })
-  render(<ConfigPage />)
-  await screen.findByText(content.config.provider)
-  await openChoice(content.config.model, MODEL_FIELD)
-
-  fireEvent.change(screen.getByLabelText(content.config.model), { target: { value: 'mine-local-2' } })
-  expect(screen.getByLabelText(content.config.model)).toHaveValue('mine-local-2')
-
-  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
-  await waitFor(() => expect(sentBodies(server)).toHaveLength(1))
-  expect(sentBodies(server)[0], 'a model the list does not know travels unchanged').toHaveProperty(
-    'model',
-    'mine-local-2',
-  )
-})
-
-/**
- * R-WP-50: the button beside the field is the way to ask again. The first ask of a connection goes without
- * `refresh`, the click goes with it — between the two sits the core's cache, keyed by the connection.
- */
-// UC-WP-86
-test('arefreshClickAsksTheServerAgain', async () => {
-  const server = stubServer({ GET: settingsAnswer(), MODELS: ['gpt-x'] })
-  render(<ConfigPage />)
-  await screen.findByText(content.config.provider)
-
-  await openChoice(content.config.model, MODEL_FIELD)
-  fireEvent.click(screen.getByRole('button', { name: content.config.modelRefresh }))
-
-  await waitFor(() => expect(modelQueries(server)).toHaveLength(2))
-  expect(modelQueries(server)[0], 'the opening asks plainly').toHaveProperty('refresh', false)
-  expect(modelQueries(server)[1], 'the click asks past the cache').toHaveProperty('refresh', true)
-})
-
-/**
- * UC-WP-86 GIVEN 2: a connection that answers nothing and one that answers an error leave the same screen —
- * no option, no message, nothing cleared, the field still free text. A list that cannot be had is never a
- * blocker for the one value it exists to suggest.
- */
-// UC-WP-86
-test('afailedListingLeavesAFreeTextField', async () => {
-  const server = stubServer({
-    GET: settingsAnswer(),
-    PUT: settingsAnswer(),
-    MODELS: new Error('the provider is offline'),
-  })
-  render(<ConfigPage />)
-  await screen.findByText(content.config.provider)
-
-  fireEvent.mouseDown(screen.getByLabelText(content.config.model) as Element)
-  await waitFor(() => expect(modelQueries(server)).toHaveLength(1))
-
-  expect(screen.queryAllByRole('option')).toHaveLength(0)
-  expect(screen.queryByRole('alert'), 'a failed list is nothing the page reports').toBeNull()
-
-  fireEvent.change(screen.getByLabelText(content.config.model), { target: { value: 'still-mine' } })
-  expect(screen.getByLabelText(content.config.model)).toHaveValue('still-mine')
-  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
-  await waitFor(() => expect(sentBodies(server)).toHaveLength(1))
-  expect(sentBodies(server)[0]).toHaveProperty('model', 'still-mine')
-
-  // the same silence for a connection that answers an empty list
-  cleanup()
-  const empty = stubServer({ GET: settingsAnswer(), MODELS: [] })
-  render(<ConfigPage />)
-  await screen.findByText(content.config.provider)
-  fireEvent.mouseDown(screen.getByLabelText(content.config.model) as Element)
-  await waitFor(() => expect(modelQueries(empty)).toHaveLength(1))
-
-  expect(screen.queryAllByRole('option')).toHaveLength(0)
-  expect(screen.queryByRole('alert')).toBeNull()
 })
