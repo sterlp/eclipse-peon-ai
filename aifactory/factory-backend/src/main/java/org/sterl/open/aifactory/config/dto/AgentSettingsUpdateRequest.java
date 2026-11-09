@@ -13,10 +13,10 @@ import org.sterl.open.aifactory.config.AgentSettingsUpdate;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AgentSettingsUpdateRequest(Boolean overridden, String model, String url, String think,
-        String temperature, String apiKey, Boolean removeApiKey) {
+        String temperature, String extraBody, String tools, String apiKey, Boolean removeApiKey) {
 
     public AgentSettingsUpdate toUpdate() {
         return new AgentSettingsUpdate(Boolean.TRUE.equals(overridden), model, url, think, temperature,
-                apiKey, Boolean.TRUE.equals(removeApiKey));
+                extraBody, tools, apiKey, Boolean.TRUE.equals(removeApiKey));
     }
 }

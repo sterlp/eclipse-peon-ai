@@ -78,9 +78,9 @@ class AgentSettingsTest extends FactorySpringTest {
 
         // no field a key could sit in — an added component fails whatever it is called
         assertThat(componentNamesOf(AgentSettingsDto.class)).containsExactly("id", "name", "overridden", "model",
-                "url", "think", "temperature", "keySet");
+                "url", "think", "temperature", "extraBody", "tools", "keySet");
         assertThat(componentNamesOf(AgentSettingsUpdateRequest.class)).containsExactly("overridden", "model", "url",
-                "think", "temperature", "apiKey", "removeApiKey");
+                "think", "temperature", "extraBody", "tools", "apiKey", "removeApiKey");
     }
 
     /** UC-WP-44 GIVEN 1: a file that carries no config field shows no fields, and opening the page leaves it alone. */
@@ -125,8 +125,9 @@ class AgentSettingsTest extends FactorySpringTest {
     }
 
     /**
-     * UC-WP-45: the unchecked box clears the whole slot — every config value including a key the page
-     * never shows — while the prompt body stays verbatim and the next read reports no override.
+     * UC-WP-45: the unchecked box clears the whole slot — every config value, now including the two
+     * fields of R-WP-52 — while what the page never shows (read-only, body) stays verbatim and the next
+     * read reports no override.
      */
     @Test
     // UC-WP-45
@@ -137,6 +138,7 @@ class AgentSettingsTest extends FactorySpringTest {
                 api_key: %s
                 think: high
                 tools: read, grep
+                read-only: true
                 ---
                 """.formatted(KEY) + BODY);
 
@@ -145,8 +147,8 @@ class AgentSettingsTest extends FactorySpringTest {
         assertThat(saved.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(slot(saved.getBody(), "dev")).containsEntry("overridden", false).containsEntry("keySet", false);
         String stored = text("dev");
-        assertThat(stored).doesNotContain("model", "api_key", "think", KEY, "sk-");
-        assertThat(stored).contains("tools: read, grep").contains(BODY);
+        assertThat(stored).doesNotContain("model", "api_key", "think", "tools", KEY, "sk-");
+        assertThat(stored).contains("read-only: true").contains(BODY);
     }
 
     /** R-WP-16 for a slot: the wire carries the fact that a key is set and never the key itself. */
@@ -260,7 +262,117 @@ class AgentSettingsTest extends FactorySpringTest {
     }
 
 
+    /**
+     * R-WP-52: the two new slot fields travel like the others — {@code extra_body} under the core's
+     * canonical key, and {@code tools} held by the file exactly as typed (D9: the factory stores the
+     * wording, the core alone interprets it). The prompt body stays as it is.
+     */
+    @Test
+    // R-WP-52
+    void extraBodyAndToolsAreWrittenToTheSlotBlock() {
+        ResponseEntity<String> saved = put("po",
+                "{\"overridden\":true,\"extraBody\":\"{\\\"thinking\\\":{\\\"type\\\":\\\"enabled\\\"}}\","
+                        + "\"tools\":\"!\"}");
+
+        assertThat(saved.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(slot(saved.getBody(), "po"))
+                .containsEntry("extraBody", "{\"thinking\":{\"type\":\"enabled\"}}")
+                .containsEntry("tools", "!");
+        String stored = text("po");
+        assertThat(stored).contains("extra_body: {\"thinking\":{\"type\":\"enabled\"}}").contains("tools: !");
+    }
+
+    /**
+     * R-WP-16 for the new fields: an emptied field deletes its key and nothing else — an emptied
+     * {@code tools} field means "all tools" again, not an empty filter.
+     */
+    @Test
+    // R-WP-52
+    void blankValuesClearBothKeys() {
+        write("dev", "---\nmodel: gpt-5\nextra_body: {\"a\":1}\ntools: read\n---\n" + BODY);
+
+        ResponseEntity<String> saved = put("dev", "{\"overridden\":true,\"extraBody\":\"\",\"tools\":\"\"}");
+
+        assertThat(saved.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(slot(saved.getBody(), "dev")).containsEntry("extraBody", null).containsEntry("tools", null);
+        String stored = text("dev");
+        assertThat(stored).contains("model: gpt-5").doesNotContain("extra_body", "tools:");
+    }
+
+    /**
+     * A value the core could only ignore silently (D9/A1) is refused here, where the answer can still
+     * name the field — and it names the field alone, never the value.
+     */
+    @Test
+    // R-WP-52
+    void anExtraBodyThatIsNotAJsonObjectIsRefused() {
+        ResponseEntity<String> number = put("review", "{\"overridden\":true,\"extraBody\":\"42\"}");
+        ResponseEntity<String> broken = put("review", "{\"overridden\":true,\"extraBody\":\"{\\\"a\\\"\"}");
+
+        assertThat(number.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(broken.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(number.getBody()).contains("extraBody").doesNotContain("42");
+        assertThat(broken.getBody()).contains("extraBody");
+        assertThat(HOME.resolve("agents")).doesNotExist();
+    }
+
+    /**
+     * R-WP-52: the preview reads the <b>typed</b> value and computes only — the intersection of the
+     * slot's own class filter with the named list, sorted. It writes no file.
+     */
+    @Test
+    // R-WP-52
+    void previewOfATypedAllowlistNamesTheActiveTools() {
+        ResponseEntity<String> preview = get("/api/settings/agents/po/tools?allowlist=diskReadFile,shellRunCommand");
+
+        assertThat(preview.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(values(preview.getBody(), "$")).containsExactly("diskReadFile", "shellRunCommand");
+        assertThat(HOME.resolve("agents")).doesNotExist();
+    }
+
+    /** No allowlist is every tool the agent could send — the set a project's turn would be built with. */
+    @Test
+    // R-WP-52
+    void previewWithoutAllowlistNamesEveryToolOfTheAgent() {
+        ResponseEntity<String> preview = get("/api/settings/agents/po/tools");
+
+        assertThat(preview.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(values(preview.getBody(), "$")).isSorted()
+                .contains("diskReadFile", "diskWriteFile", "shellRunCommand", "searchAgent", "compactSession");
+    }
+
+    /**
+     * The search slot is the core's sub-loop, not an agent, and brings its own restriction: no edit
+     * tools, no shell, neither itself nor the compact — the preview reads exactly that (one source).
+     */
+    @Test
+    // R-WP-52
+    void previewOfASearchSlotUsesTheSearchAgentTool() {
+        ResponseEntity<String> preview = get("/api/settings/agents/search/tools");
+
+        assertThat(preview.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(values(preview.getBody(), "$")).contains("diskReadFile")
+                .doesNotContain("diskWriteFile", "shellRunCommand", "searchAgent", "compactSession");
+    }
+
+    /**
+     * Compact has neither a field nor a preview (R-WP-52): the core runs no agent for it, so it gets
+     * the same slot answer as an unknown id.
+     */
+    @Test
+    // R-WP-52
+    void compactHasNoToolPreview() {
+        ResponseEntity<String> rejected = get("/api/settings/agents/compact/tools");
+
+        assertThat(rejected.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(rejected.getBody()).contains("agent must name one of the slots");
+    }
+
     // ------------------------------------------------------------------ wire
+
+    private ResponseEntity<String> get(String path) {
+        return http.getForEntity(url(path), String.class);
+    }
 
     private ResponseEntity<String> put(String id, String json) {
         HttpHeaders headers = new HttpHeaders();

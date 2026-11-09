@@ -1,7 +1,9 @@
 package org.sterl.open.aifactory.config;
 
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -121,7 +123,8 @@ public class FactoryConfigService {
 
     /**
      * What the core knows per provider (UC-WP-62): the base URL it falls back to and whether it can carry
-     * a think input at all, plus that input's form for the agent slots (UC-WP-67). No model default, because
+     * a think input at all, plus that input's form for the agent slots (UC-WP-67) and whether the provider
+     * accepts an {@code extra_body} (R-WP-52). No model default, because
      * the core knows none — a page that invented one would carry over a value belonging to another provider.
      *
      * <p>{@link ThinkSupport.Unknown} counts as supported: it says the form is not known <em>yet</em>,
@@ -134,7 +137,8 @@ public class FactoryConfigService {
                     ThinkSupport support = provider.thinkSupport();
                     return new ProviderDefaults(name.name(), provider.defaultBaseUrl(),
                             !(support instanceof ThinkSupport.None), ThinkForm.of(support),
-                            support instanceof ThinkSupport.Values values ? values.values() : List.of());
+                            support instanceof ThinkSupport.Values values ? values.values() : List.of(),
+                            provider.supportsExtraBody());
                 })
                 .toList();
     }
@@ -356,7 +360,7 @@ public class FactoryConfigService {
             return;
         }
         AgentConfigFile.forSlot(home, AgentModelConfig.DEV)
-                .write(new AgentConfigFile.Changes(false, null, null, null, think, null));
+                .write(new AgentConfigFile.Changes(false, null, null, null, think, null, null, null));
     }
 
     private LlmConfig pin(LlmConfig loaded) {
@@ -375,26 +379,38 @@ public class FactoryConfigService {
      * <p>The record is built the way {@link LlmConfigLoader} builds one, so the factory adds no semantics
      * of its own: the dev slot carries no model, url or key because dev <em>is</em> the base slot
      * (ADR-0062; {@code devAgentConfig()} forces the base model whatever the file says).</p>
+     *
+     * <p>{@code tools} (R-WP-52) does not live in the record — the core reads it from its own map — so a
+     * file that names tools joins that map, entry per slot, and wins over a {@code llm.agent.<id>.tools}
+     * line the same way the record wins over the property. The raw wording travels untouched; only the
+     * core interprets it (D9).</p>
      */
     private LlmConfig withAgentOverrides(LlmConfig loaded) {
         LlmConfig config = loaded;
+        Map<String, String> tools = null;
         for (AgentSlots.AgentSlot slot : AgentSlots.all()) {
             AgentConfigFile.Values values = AgentConfigFile.forSlot(home, slot.id()).read();
             if (values.overridden()) {
                 config = config.withModelConfig(slot.id(), recordFor(slot.id(), values));
             }
+            if (present(values.tools())) {
+                if (tools == null) {
+                    tools = new LinkedHashMap<>(config.getAgentTools());
+                }
+                tools.put(slot.id(), values.tools().trim());
+            }
         }
-        return config;
+        return tools == null ? config : config.toBuilder().agentTools(tools).build();
     }
 
-    /** The file's five values as the core's record — blanks unset, {@code extra_body} unused (D-13). */
+    /** The file's seven values as the core's record — blanks unset; {@code tools} is no record field. */
     private static AgentModelConfig recordFor(String id, AgentConfigFile.Values values) {
         boolean dev = AgentModelConfig.DEV.equals(id);
         return new AgentModelConfig(dev ? null : blankToNull(values.url()),
                 dev ? null : blankToNull(values.apiKey()),
                 dev ? null : blankToNull(values.model()),
                 blankToNull(values.think()),
-                null,
+                blankToNull(values.extraBody()),
                 blankToNull(values.temperature()));
     }
 

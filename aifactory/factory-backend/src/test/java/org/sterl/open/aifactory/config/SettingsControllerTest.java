@@ -308,9 +308,25 @@ class SettingsControllerTest extends FactorySpringTest {
 
         // a model default would be an invention, so there is no field that could hold one
         assertThat(componentNamesOf(ProviderDefaultsDto.class)).containsExactly("name", "defaultUrl",
-                "thinkSupported", "thinkForm", "thinkValues");
+                "thinkSupported", "thinkForm", "thinkValues", "extraBodySupported");
         assertThat(config()).doesNotExist();
     }
+
+    /**
+     * R-WP-52 over HTTP: the page may only offer the extra_body field where the core's provider accepts
+     * one, so the answer is the provider's own capability (D8) and never a factory list.
+     */
+    @Test
+    // R-WP-52
+    @SuppressWarnings("unchecked")
+    void providerAnswersWhetherExtraBodyIsSupported() {
+        String body = http.getForEntity(url("/api/settings/providers"), String.class).getBody();
+        List<String> names = (List<String>) field(body, "$[*].name");
+
+        assertThat(field(body, "$[" + names.indexOf("OPEN_AI") + "].extraBodySupported")).isEqualTo(true);
+        assertThat(field(body, "$[" + names.indexOf("OLLAMA") + "].extraBodySupported")).isEqualTo(false);
+    }
+
 
     /**
      * UC-WP-67 over HTTP: the agent slots build their think field from the base provider, so the answer

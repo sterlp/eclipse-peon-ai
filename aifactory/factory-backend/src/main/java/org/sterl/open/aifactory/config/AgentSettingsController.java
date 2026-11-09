@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import org.sterl.open.aifactory.config.dto.AgentSettingsDto;
@@ -40,5 +41,12 @@ public class AgentSettingsController {
     public AgentSettingsDto update(@PathVariable("id") String id,
             @RequestBody AgentSettingsUpdateRequest request) {
         return AgentSettingsDto.of(agents.update(id, request.toUpdate()));
+    }
+
+    /** R-WP-52: the typed allowlist is a query parameter — read-only, so no body and nothing stored. */
+    @GetMapping("/{id}/tools")
+    public List<String> previewTools(@PathVariable("id") String id,
+            @RequestParam(name = "allowlist", required = false) String allowlist) {
+        return agents.previewTools(id, allowlist);
     }
 }

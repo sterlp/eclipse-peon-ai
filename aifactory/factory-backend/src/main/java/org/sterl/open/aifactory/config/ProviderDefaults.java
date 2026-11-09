@@ -15,7 +15,10 @@ import java.util.List;
  * yes/no value stays a boolean, no second think concept is introduced (Q3). {@code thinkForm} and
  * {@code thinkValues} are the same answer without the reduction: the form the field has to take and, for
  * {@code VALUES}, the list it offers. {@code thinkValues} is empty for every other form.</p>
+ *
+ * <p>{@code extraBodySupported} is the provider's own answer (R-WP-52): without it the page would keep a
+ * field the core silently drops.</p>
  */
 public record ProviderDefaults(String name, String defaultUrl, boolean thinkSupported, ThinkForm thinkForm,
-        List<String> thinkValues) {
+        List<String> thinkValues, boolean extraBodySupported) {
 }

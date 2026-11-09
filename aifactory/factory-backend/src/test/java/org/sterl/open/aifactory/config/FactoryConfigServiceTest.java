@@ -637,7 +637,7 @@ class FactoryConfigServiceTest {
                 .isEqualTo(LlmProviders.of(AiProvider.valueOf(entry.name())).defaultBaseUrl()));
         // no model default exists, so no field could hold one
         assertThat(componentNamesOf(ProviderDefaults.class)).containsExactly("name", "defaultUrl",
-                "thinkSupported", "thinkForm", "thinkValues");
+                "thinkSupported", "thinkForm", "thinkValues", "extraBodySupported");
         // the providers whose core class has no think input are exactly the ones the page marks as such
         assertThat(defaults).filteredOn(entry -> !entry.thinkSupported())
                 .map(ProviderDefaults::name).containsExactly("GOOGLE_GEMINI", "MISTRAL");
@@ -656,6 +656,33 @@ class FactoryConfigServiceTest {
         // and reading the defaults never touches the config file
         assertThat(home.resolve(FactoryHome.CONFIG_FILE)).doesNotExist();
     }
+
+    /**
+     * R-WP-52: a slot's extra_body and its tools reach the model the core reads, both reads included —
+     * the factory only transports the words, the core interprets them (tools unvalidated, D9).
+     */
+    @Test
+    // R-WP-52
+    void extraBodyAndToolsReachTheLoadedConfig() throws Exception {
+        writeConfig("%s=OLLAMA%n%s=llama-demo%n".formatted(LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.MODEL));
+        writeSlotFile(AgentModelConfig.PO, """
+                extra_body: {"a":1}
+                tools: diskReadFile, !shell*
+                """);
+
+        for (LlmConfig loaded : List.of(service(new MockEnvironment()).load(),
+                service(new MockEnvironment()).loadForTurn())) {
+            assertThat(loaded.modelConfigFor(AgentModelConfig.PO).extraBody()).isEqualTo("{\"a\":1}");
+            assertThat(loaded.toolAllowlist(AgentModelConfig.PO)).isEqualTo("diskReadFile, !shell*");
+        }
+    }
+
+    private void writeSlotFile(String slot, String frontmatter) throws IOException {
+        Path file = AgentConfigFile.forSlot(FactoryHome.of(home), slot).file();
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, "---\n" + frontmatter + "---\n");
+    }
+
 
     private static ProviderDefaults theDefaultFor(List<ProviderDefaults> defaults, String name) {
         return defaults.stream().filter(entry -> entry.name().equals(name)).findFirst().orElseThrow();
