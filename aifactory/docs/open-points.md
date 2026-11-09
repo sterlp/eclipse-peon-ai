@@ -6,9 +6,12 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
 ## Runde 6 — Browser-Abnahme Inc 4 (2026-11-08, abends, Screenshot `17.31.29`)
 
 Gemessen (Dev, 2026-11-08): kein Stale-Build — Pauls Screenshot zeigt die **Inc-4-UI** (IDE-Lauf auf
-8080, Bundle `target/classes/static/ui` 17:09:55, jünger als jede Quelle). Die Defekte sind echt im
-Inc-4-Stand; Sider-Klappe, Blasen-Höhe, Band-Spalt, Top-Menü-„Chat", Resend und Agent-Status/Spinner
-werden im Runde-6-Delta gebaut.
+8080, Bundle `target/classes/static/ui` 17:09:55, jünger als jede Quelle). Die Defekte waren echt im
+Inc-4-Stand; **alle Runde-6-Defekte sind im Delta gebaut und reviewed** (Branch `web-factory-4`,
+Commits `cb600bd0`…`44298477`, 215 Tests/22 Dateien grün; Resend-Fix gegen den Stop-Fall
+Mutations-belegt). **Look-Abnahme am Browser steht aus** (Paul): Blasen in Zeilenhöhe, Band ohne
+Spalt, Kopf-Menü Projekte · Settings, leeres Senden wiederholt die letzte sichtbare Frage, Sider
+klappt ohne Kanten-Rest, Kachel-Spin 16 px.
 
 * **🔒 Chat liefert keine Antwort — Ursache: Pauls Core-Arbeitsstand kompilierte nicht** (2026-11-08,
   A/B-gemessen): `AsyncStreamingBridge.java` gelöscht, Referenzen standen noch in
@@ -27,30 +30,41 @@ werden im Runde-6-Delta gebaut.
   [R-WP-43/UC-WP-76](ui.md) nachgetragen.
 * **🔒 Resend neu gefasst** (Paul 2026-11-08, zwei Nachrichten: erst „der kommt aber ja eh raus" zum
   Inaktiv-Defekt nach Reload, dann BWT) — es gibt **keinen eigenen Resend-Knopf** mehr; stattdessen
-  sendet der **Send-Knopf mit leerer Eingabe** (kein laufender Turn, Chat-Nachrichten vorhanden) die
-  **letzte Nutzer-Nachricht** erneut — genau der Fall „nach Abbruch sonst passiert nichts". Der
-  Send-Knopf ist **nie deaktiviert** ([R-WP-41](chat.md) nachgezogen), leere Eingabe im laufenden
-  Turn tut nichts. Steht in [R-WP-30/UC-WP-57](chat.md) ❌ (neu gefasst), gebaut im Runde-6-Delta.
+  sendet der **Send-Knopf mit leerer Eingabe** (kein laufender Turn) die **letzte sichtbare
+  Nutzer-Zeile** erneut — bestätigt oder noch ausstehend (Pending), genau der Fall „nach Abbruch
+  sonst passiert nichts". Der Send-Knopf ist **nie deaktiviert** ([R-WP-41](chat.md) nachgezogen),
+  leere Eingabe im laufenden Turn tut nichts, Enter bei leerer Eingabe ebenfalls. Steht in
+  [R-WP-30/UC-WP-57](chat.md) ❌ (neu gefasst), gebaut im Runde-6-Delta + N1.
 * **⏳ Agent-Status „weiter defekt", Spinner fehlt** (Paul 2026-11-08, „es funktioniert wieder") —
-  gegen [R-WP-45/UC-WP-79](chat.md) prüfen (blau arbeitet · gelb kompaktiert · grün bereit, Spin),
-  Ursache suchen und im Runde-6-Delta reparieren.
-* **⏳ Fabrik-Härtung „je Turn genau ein Endereignis"** — der Runde-3/4b-Verdacht (unten) ist damit
-  **belegt**: ein `Error` im Turn-Task schweigt vollständig (kein `done`, kein `error`, keine
-  Log-Zeile, Kachel zurück auf IDLE). Fix gehört der Fabrik (`ProjectRuntime` fängt `Throwable` bzw.
-  wertet den Future aus), kein Core-Eingriff — Story nach dem Runde-6-Delta.
-* **Nebenbefund (Messung):** `runningTurn` wird nur von `done`/`error`/Stop/Send-Fehler gelöscht,
-  **nicht** vom Reconnect-Pfad (`chat.page.tsx:373-383`) — nach Send+Reload bliebt der Composer ohne
-  Endereignis für immer im Warte-Zustand; übernimmt in die Härtungs-Story oben.
+  gegen [R-WP-45/UC-WP-79](chat.md) geprüft und im Runde-6-Delta repariert (`Spin.dotSize = 16`,
+  Idle-/Fehler-Kreis 1 rem); gegen einen **echten Turn** nicht gemessen (M3 offen) — Abnahme am
+  Browser mit Paul.
+* **⏳ Sider-Rückkehr nach Fenster-Resize (M2b, gemessen 2026-11-08, nicht gebaut)** — faltet der
+  Nutzer den Sider per Griff und zieht das Fenster unter den Breakpoint und zurück, **öffnet AntD den
+  Sider wieder** (der `'responsive'`-Schreibvorgang nimmt die Nutzer-Wahl zurück; Chrome-headless-
+  Messung). Annahme wäre: nach der ersten Griff-Betätigung ignoriert die App `'responsive'`-**Auf**-
+  Writes, das Auto-Zu unter dem Breakpoint ([R-WP-44](ui.md)) bleibt. Nicht gebaut — kein Doc-SOLL,
+  kollisionsgefährdet mit der Auto-Zu-Regel; entscheidet Paul.
+* **🔒 Fabrik-Härtung „je Turn genau ein Endereignis"** — 2026-11-09 gebaut + reviewed + geflippt
+  ([R-WP-48/UC-WP-83/84](chat.md) ✅, `430343f2`/`e72c6c76`, N1 `b47126d0`/`76d3e653`); der
+  Nebenbefund `runningTurn`/Reconnect ist in UC-WP-84 aufgegangen. Übrig geblieben, unbesehen: der
+  **Erfolgs-`done` eines einreihenden Submits** (`ProjectRuntime.java:405-408`) — der Core antwortet
+  dem einreihenden Task laut JavaDoc mit `null`, es gibt keinen Befund; falls je einer auftaucht,
+  eigene Story.
 ## Runde 5 — Browser-Abnahme läuft (2026-11-08)
 
 * **🔒 Status-Indikator bei Fehler = rot** (2026-11-08, Paul: „genau rot wie im Plugin") — als
   AntD-Fehler-/Alert-Indikator, sofern es dort ein Widget gibt; Widget-vor-eigenbau gilt allgemein
   ([R-WP-46/UC-WP-81](ui.md)), ebenso „UI-Funktionen immer als wiederverwendbare Widgets bauen und
   nutzen". Steht in [R-WP-45/UC-WP-79](chat.md).
-* **⏳ A7 · Tool-Results nach dem Restore wiederherstellen** (2026-11-08, Paul: „warum machen wir das
-  nicht?") — die Results stehen in Jons History, der Verlauf zeigt sie nach Reload nicht. Vor dem Bau
-  prüfen, ob der Core-History-Bestand sie überhaupt trägt; falls nicht, ist es eine **Core-Änderung**
-  (nur mit Pauls Proposal-Approval).
+* **🔒 A7 · Tool-Results nach dem Restore wiederherstellen** (2026-11-08, Paul: „warum machen wir das
+  nicht?") — **gebaut + reviewed 2026-11-08:** der Core-History-Bestand trug Jons Tool-Calls und
+  -Results vollständig, der Verlust war fabrikeigen ([R-WP-47/UC-WP-82](chat.md) ✅, reine
+  Fabrik-Story, kein Core-Eingriff). Review-Delta: Anker zählen **Stimmen**, nie Rows, die der Read
+  verändern kann. Offen: Browser-Abnahme; das bewusst **nicht** reparierte Race „Turn verankert
+  während eines Reads" (Klick-Flanke zwischen Read und Mount, kein beobachteter Befund — falls Paul
+  einen sieht, eigene Story); nur der wortgleiche Live-Fortsetzungstext/Diff bliebe Core-Änderung —
+  nicht Teil von R-WP-47.
 
 * **🔒 A6 · Scroll entschieden (2026-11-08, Paul)** — Auto-Scroll nur am Ende (R-WP-35 ✅), nach eigener
   Eingabe immer, Zurückscrollen ans Ende bewaffnet neu, schwebender „Scroll bottom"-Knopf
@@ -64,9 +78,9 @@ Entschieden: **Rahmen nach Mockup** — dunkles Top-Menü **und** Sider ([R-WP-4
 die Fassung „Sider statt Top-Menü" vom 2026-11-06 ist zurückgenommen, [R-WP-1](ui.md)). Aktionen
 werden echte Buttons/Selects. Neu im SOLL, Rückprüfung offen:
 
-* **⏳ Top-Menü-Einträge = Projekte · Chat · Settings** (2026-11-07, Jon, abgeleitet aus der ersten
-  Version + Mockup) — [R-WP-43/UC-WP-76](ui.md). *Andersfall:* ohne „Chat" im Menü (nur Sider) oder
-  ein vierter Eintrag.
+* **🔒 Top-Menü-Einträge (2026-11-07 abgeleitet; 2026-11-08 von Paul entschieden, Runde 6):**
+  **Projekte · Settings** — „Chat" steht **nicht** im Top-Menü, der Chat ist nur über den Sider
+  erreichbar ([R-WP-43/UC-WP-76](ui.md)).
 * **⏳ Einheiten-Ordnung Chat · Paco · Files als letztes** (2026-11-07, aus dem Mockup-Kommentar
   „… die chats Jon / Paco / Files als letztes?") — [R-WP-43/UC-WP-77](ui.md). *Andersfall:* wie
   gebaut (Projekt-Klick öffnet den Chat, kein Chat-Eintrag im Sider).
@@ -103,8 +117,9 @@ werden echte Buttons/Selects. Neu im SOLL, Rückprüfung offen:
   Sider-Inkrement (Inc 4, 2026-11-08), Look-Abnahme am Browser steht aus. Der Anteil
   **Files-Slide-out** ist entschieden (2026-11-08, Paul: „der Drawer ist das richtige Element für das
   Slide-out rechts"): das Slide-out **bleibt**, als **AntD `Drawer`** von rechts — ❌-Anteil in
-  [R-WP-33](files.md), eigener Slice nach Inc 4. „Top-Menü ist richtig" (Paul 2026-11-08):
-  Projekte · Chat · Settings bleibt, [R-WP-43](ui.md) unverändert.
+  [R-WP-33](files.md), eigener Slice nach Inc 4. „Top-Menü ist richtig" (Paul 2026-11-08) galt mit
+  **Projekte · Chat · Settings** — seit Runde 6 (2026-11-08, „das muss weg") **ohne „Chat"**,
+  [R-WP-43](ui.md) nachgezogen.
 
 ## Runde 3 — AntD-Umbau der Oberfläche (Paul 2026-11-06)
 
@@ -138,7 +153,7 @@ Reihenfolge, je ein grünes Inkrement:
   den Reload), Token-Paritäts-Tests gelöscht (Design-Tests-Regel, [R-WP-39](ui.md)).
 
 * **⏳ Refocus nach dem Turn meidet das andere Feld** (2026-11-06, Ableitung zu
-  [UC-WP-74 GIVEN 4](chat.md), Rückversicherung ausstehend) — der Fokus kehrt in die Eingabe zurück,
+  [UC-WP-74 GIVEN 5](chat.md), Rückversicherung ausstehend) — der Fokus kehrt in die Eingabe zurück,
   **außer** der Nutzer tippt inzwischen in einem anderen Feld (Suche, Config). *Andersfall:* Fokus immer
   in die Eingabe = verlorene Eingabe an der anderen Stelle.
 
@@ -228,11 +243,14 @@ Defekte/Fragen, je eine Story je Punkt erst nach Klärung (❓ = präzisieren, b
 * **❓ F5 · Optik im Detail** (u. a. Config-Seite) — Totalschaden-Einschätzung von Paul; Detail-Liste
   fehlt noch. Erst sammeln, dann eigenes Look-Inkrement.
 * **⏳ F8 · Config-Umfang: alles was das Plugin hat** (2026-11-02; geschärft Paul 2026-11-08) —
-  `reasoning_effort` nicht einstellbar, Header-Einstellungen und weitere Plugin-Einstellungen fehlen;
-  Umfang mit dem Core-Bestand abgleichen, dann UCs ziehen ([config.md](config.md), [R-WP-23](config.md)).
-  Neu (Paul 2026-11-08): das **Modell-Feld ist Auswahl ODER Eingabe** (AntD `AutoComplete`-Stil — wie
-  im Eclipse-Plugin, **keine Dropdown-Only-Liste**, nicht jeder Provider hat eine Modell-Liste) —
-  MVP-Bestandteil der Config-Story.
+  Umfang abgeglichen (Belege: `peon-plan/f8-survey.md`), spezifiziert und **gebaut+reviewed
+  2026-11-09 (✅ R-WP-49–52 / UC-WP-85–88 in [config.md](config.md))** — Think (Default),
+  Modell-AutoComplete mit Server-Liste, Max Tokens/Query-/Header-Params, je Agent Extra-Body +
+  Tools-Allowlist („Extra-Body bewusst nicht" zurückgenommen). Draußen: Eclipse-Eigenes (Copilot-Login,
+  Shell-Confirmation, MCP, Voice, Ping, debugMode/showRealtime). **⏳ Rückversicherung an Paul:**
+  (1) ist dieser Zuschnitt ok? (2) Annahmen aus dem Bau: Extra-Body ohne JSON-Objekt ⇒ 400 mit
+  Feldnamen; `tools`-Wortlaut wird nie von der Fabrik interpretiert (nacktes `!` gespeichert, deutet
+  der Core).
 * **❓ F9 · „Clear" hinterlässt Tool-Zeilen mit zerstörtem Layout** — nach Clear bleiben Tool-Messages
   im Chat, Layout kaputt. Verhalten von Clear klären (was sollClear entfernen?) → Regel in
   [chat.md](chat.md).

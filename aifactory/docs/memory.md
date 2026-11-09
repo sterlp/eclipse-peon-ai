@@ -5,46 +5,105 @@ Fabrik-Inkremente committet Dev je Schritt und pusht. **Core-Änderungen NUR mit
 Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwissen (Plan-Dateien und
 `peon-plan/review-findings.md` sind das Memory); Docs duplizieren nie Core-Regeln; Plan-Archive werden
 **gelöscht**, nie committet.
+## Runde 6c — Nachtzyklus: F8 Config-Plugin-Parität (2026-11-09, autonom)
+
+* **F8 gebaut + reviewed + geflippt ✅** (R-WP-49–52, UC-WP-85–88 in config.md): Backend
+  `1ba90f55` (Basisfelder-Server) → `ca57123e` (Modell-Liste-Server) → `abafe4e9` (extraBody/tools +
+  Vorschau); UI `12ede4b8` (Default-Seite) → `d06b0ca2` (AutoComplete) → `844e0fb5` (Agent-Slot);
+  Test-Cleanup `ace1d936`; **N1 `a0b727a9`**. **Backend 257 / UI 246 Tests** grün, `missCount=1`,
+  tsc/oxlint/antd-lint 0. Plan-Archiv: gelöscht.
+* **Review REJECTED → N1:** B1 Vorschau nannte `PoDelegateTool` nie (jetzt `containsExactly` 33 Namen),
+  B2 zwei Think-Orte drehten sich still zurück (`reloadToken` nach Default-Save), Suspicion Compact
+  bekommt das Extra-Body-Feld (R-WP-23 „gleiche Bedienung"; Tools/Vorschau weiter nein),
+  `SettingsSnapshot.toString()` jetzt auch ohne `queryParams`. **Stale-Guard `config.model.tsx` war
+  ungetestet — Mutation blieb grün; Killer-Test `astaleAnswerOfTheOldConnectionIsNotOffered`**
+  (Kanonisierung statt Options-Zählung). Details: `peon-plan/review-findings.md` §F8.
+* **Entscheidungen autonom (⏳ open-points F8, Bestätigung Paul):** Extra-Body ohne JSON-Objekt ⇒ 400
+  mit Feldnamen; `tools` ohne Fabrik-Validierung (nacktes `!` verbatim, deutet der Core); leere URL im
+  Entwurf = unset ⇒ Provider-Default; „Think (Default)" = Dev-Slot-Feld (kein zweiter Speicher, D1).
+* **Bestand mitgezogen:** `ThinkField` → `config.think.tsx` (D5), `config.model.tsx` NEU (AutoComplete,
+  **kein Fetch beim Mount** — Drei-GET-Pin bleibt Guard), Port `config.AgentToolPreview` + Adapter
+  `chat/ProjectToolPreview` (Wächter `onlyChatHoldsAgentInstances`), Testdateien gesplittet (≤600 Z.,
+  `test/shared/config*.stub*`). **D-13 („extra_body ungenutzt") revidiert.** AGENTS-DEV: +Vorschau-
+  Endpunkt, +„Modell-Feld ist eine Liste, kein Anhängen", +doppeldeutige `content.ts`-Anker.
+* **Docs-Satz (config/index/open-points/memory) war uncommittet** — Dev committet auf Zuruf.
+* **Nächste Story: C-7** (Agent-Blick read-only live im gleichen Chat-Widget — zuerst prüfen, ob
+  Core-Proposal nötig; wenn ja: anhalten, Frage an Paul). Danach Backlog: C-2a, C-1 TurnClaim-Timeout
+  (`ProjectRuntime.java:348`), M3 Kachel-Status gegen echten Turn, F9/F10, M2b (Paul-Entscheidung),
+  Browser-Abnahmen (Inc-4 Look, Drawer §7, A7 Punkt 8, R-WP-48, jetzt auch F8 Config-Seite am Browser).
+
+## Runde 6b — R-WP-48 „je Turn genau ein Endereignis" ✅ (2026-11-09, Nacht)
+
+## Runde 6b — Nachtzyklus, R-WP-48 (2026-11-09, autonom)
+
+* **R-WP-48 „je Turn genau ein Endereignis" gebaut + reviewed + geflippt ✅** (Commits `430343f2`
+  Backend UC-WP-83, `e72c6c76` UI UC-WP-84, N1 `b47126d0`/`76d3e653`): `ProjectRuntime.submit` fängt
+  `Throwable` (war `RuntimeException` — ein `Error` schweigte komplett, Runde-6-Diagnose), Publish des
+  `error`/`done` nur beim **eröffnenden** Submit (ein einreihender Submit, dessen Config scheitert,
+  hinterlässt nur Verlaufszeilen); UI liest Kacheln erst nach `onOpen` (neu an `chat.client.ts`/
+  `chat.stream.ts`) und mit **Lesefolge** im neuen `src/chat/chat.board.ts` (`useTileBoard`,
+  frischester Stand gewinnt — Race aus dem Review B3). **Backend 232 / UI 225 Tests** grün, tsc/oxlint/
+  antd-lint 0, `chat.page.tsx` 590 Zeilen, `missCount = 1`.
+* **Review-Verlauf:** Plan 2 Inkremente → Review REJECTED (3 Befunde, in
+  `peon-plan/review-findings.md` §R-WP-48): B1 Publish-Besitz (Doc geschärft, Code folgt), B2
+  GIVEN-3-Drahtdeckung (Assertions in `stopIsNoFailure`, benannte Abweichung von D4), B3 Kachel-Race
+  (Lesefolge-Idiom). M2-Abweichung gemessen: der `opensTurn`-Gate im Canceled-Zweig ist drahtseitig
+  durch `AgentStopTest` (UC-WP-50) gedeckt, nicht durch `stopIsNoFailure`.
+* **Panne gemeldet (Dev):** nach dem M2-Mutationslauf `git checkout -- ProjectRuntime.java` → löschte
+  den Fix; rekonstruiert aus `cp`-Sicherung, per `diff` verifiziert (Memory #14 hat getragen).
+* **Docs:** chat.md R-WP-48/UC-WP-83/84 ✅ (Flip nach `lintDocsAndTests`, nur Fremd-Baseline UC-CR/PC),
+  open-points Runde 6 (Härtung + Nebenbefund) → 🔒, Tippfehler chat.md:502 behoben, index.md nachgezogen.
+  Meine Docs-Änderungen (chat.md, open-points, memory, index) sind **uncommittet** — Dev committet sie
+  mit dem nächsten Inkrement (nur diese 4 Dateien).
+* **AGENTS-DEV neu (2 Punkte, gebaut):** Vitest nie `pnpm test -- <datei>` (jsdom CSS-Fehler) ⇒
+  `pnpm test -t '<name>'`; vor jedem UI-Gate `node -v` ≥22 + `pnpm -v` prüfen (nvm-Default 22.12!).
+* **Nächste Story: C-7** (Agent-Blick read-only live im gleichen Chat-Widget — neuer Plan nötig,
+  größer), danach Config-Story F8 (Modell-Feld AntD `AutoComplete`, reasoning_effort, Plugin-Parität —
+  zuerst im Eclipse-Plugin nachlesen, Memory #16). Backlog: C-2a, C-1 TurnClaim-Timeout
+  (`ProjectRuntime.java:348`), M3 Kachel-Status gegen echten Turn, M2b Sider-Rückkehr nach Resize
+  (entscheidet Paul), Browser-Abnahmen (Inc-4 Look, Drawer §7, A7 Punkt 8, R-WP-48).
+
+## Runde 6 — Nachtzyklus (2026-11-08, Paul schläft, autonom)
+
+
+* **Pauls Abnahme-Meldungen (abends):** Core kompiliert nicht behoben (er selbst, Commits drin);
+  drei Look-Defekte + **„Chat" raus aus dem Top-Menü** („chat ist nur an der Seite") + **Resend neu**
+  (BWT: kein eigener Knopf — **Send-Knopf mit leerer Eingabe** wiederholt die **letzte sichtbare
+  Nutzer-Zeile** (inkl. Pending), nur wenn kein Turn läuft; Send **nie deaktiviert**; Enter leer tut
+  nichts — Entscheidung A, Jon autonom). Plus: Agent-Status „weiter defekt", Spinner fehlt.
+* **Diagnose gemessen:** kein Stale-Build (Screenshot = Inc-4-UI, IDE-Lauf 8080); „Chat tot" war
+  **Pauls nicht-kompilierender Core** (Eclipse-Error-Stubs, `Error` starb still im Future — A/B-
+  bewiesen). Stale-Fallen dokumentiert (open-points Runde 6).
+* **Runde-6-Delta gebaut + reviewed + geflippt ✅:** Commits `cb600bd0` (docs) → `91d7ecbb` Blasen
+  (`align-content: start`) → `f1de3b97` Band (`margin: 0`) → `fddad38c` Kopf-Menü Projekte · Settings
+  → `df0b5691` Resend am Send-Knopf → `7ce63a90` Spin 16 px → `6084b449` Sliver (`border-right: 0`
+  bei zero-width) → **N1 `44298477`** (Review-BUG: nach Stop resendete die falsche Zeile — Quelle =
+  `lastVisibleUserText(history, pending)` in `chat.pending.ts`, rot-vor-grün, 2 Mutationen belegt).
+  **215 Tests/22 Dateien** grün, tsc/oxlint/antd-lint 0. Docs: R-WP-30/41 + UC-WP-56/57/74
+  nachgezogen, UC-WP-57 ✅, R-WP-43/UC-WP-76 ohne „Chat", index.md nachgezogen.
+* **Nicht gebaut (⏳ open-points Runde 6):** M2b (Sider-Rückkehr nach Resize — kein Doc-SOLL),
+  Fabrik-Härtung „je Turn genau ein Endereignis" (jetzt belegt, eigene Story), M3 Kachel-Status
+  gegen echten Turn, Reconnect löscht `runningTurn` nicht.
+* **Files-Drawer-Delta gebaut + reviewed + geflippt ✅** (R-WP-33 AntD `Drawer`, inline
+  `getContainer={false}`): `df2297fd` Mechanik → `43d18eea` Protokoll → Review REJECTED (BUG-1
+  Drawer deckt Insight zu, BUG-2 Kommentar) → **N1 `c622ae47`** („rechte Kante trägt genau ein
+  Overlay" — Drawer/Insight schließen sich gegenseitig, `chat.edge.ts` neu, `chat.page.tsx` 597
+  Zeilen) + `61c5fe55` (Protokoll + AGENTS-DEV). **218 Tests/22 Dateien** grün. Browser-Abnahme
+  §7 (6 Punkte, siehe review-findings) steht bei Paul. jsdom-Fallstrick: Drawer-injizierte Styles
+  machen Rollen-Abfragen quasilinear → Entferner in `test/shared/setup.ts`.
+* **Nächste Story: A7** (Tool-Results nach Restore — Core-History prüfen, nur Proposal wenn Core-
+  Änderung nötig), danach Fabrik-Härtung „je Turn genau ein Endereignis" (Backend-Slice), C-7,
+  Config-Story (F8).
 
 ## Runde 5b — Reboot, Inc-4-Vorbereitung (2026-11-08)
 
-* **main = `df248453`; `web-factory` ist als Squash-Merge `dbd89d30` („Web factory (#175)") drin**, Branch
-  gelöscht, `ee72cd1b` dangling (Code byte-identisch, main-Docs neuer). **Stale korrigiert:**
-  `SearchAgentTool.java` + Core-Prompts sind **tracked & sauber**; `aifactory/ui-bugs.md` und
-  `aifactory/ant-design.md` existieren an den alten Pfaden **nicht mehr**. Untracked bleiben nur 5 PNGs +
-  `factory-ui-mockup.tsx`.
-* **Branch `web-factory-4`** (von main) + Commit `369292bb` (AGENTS-DEV.md: pnpm-Bullet auf
-  Node 22.23.4/corepack 0.36 + AntD-v6-Timeline-Fallen-Bullet).
-* **Node 22.23.4 installiert** (nvm 0.40.1), pnpm 10.28.0 via einmaligem `corepack enable`,
-  **`COREPACK_ENABLE_PROJECT_SPEC=0` nicht mehr nötig**; 218 Tests/22 Dateien grün. **nvm-`default` bleibt
-  22.12** ⇒ PATH-Export Pflicht. Stagehand entparkt (≥ 22.18 erfüllt).
-* **A2 geklärt (Paul):** Sider **bündig an der Fensterkante** (links/oben/unten **ohne Rand**, App-Padding
-  weicht) + **Breite 250 px** statt 200 („Projektname passt nicht sauber rein") — steht im Look-Absatz
-  ([ui.md](ui.md)) und in [R-WP-44](ui.md).
-* **Plan Inc 4 gebaut + reviewed + geflippt ✅** (S1 `97449349` → S1b `8ef6a9b0` → Toggle top-left
-  `09f74e7c` → S2 `8ee655ba` → S3 `f090b5b8` → S4 `93e4db8b` → S5 `3627ccc5` → Delta N1 `36c69808`+
-  `3f0b43eb`). **Look-Reparaturen + neue Funktionalität drin:** Sider-Baum/Breite 250/bündig
-  (A2), Griff **oben links im Header** (Paul queued: „schöner im Header links als unten im Menü"),
-  Warte-Rahmen gelöscht, Status-Indikator + Timeline-Spin, Blasen volle Breite/randlose Fläche
-  (A3–A5), Composer weiß/Senden rechts, Scroll + FloatButton, Kachel- + Composer-Buttons = AntD
-  `Button` (R-WP-43). **217 Tests/22 Dateien**, tsc 0, oxlint 0/0, `antd lint` 0. **Docs geflippt**
-  (R-WP-44/31/45/29/35/40/46 + UC-WP-65/78/79/80/81 ✅, Look-Anteile „Abnahme am Browser steht aus").
-* **Review REJECTED → Delta N1:** (1) `openKeys`-Union — **die Gruppe der Adresse steht immer offen**
-  (Doc-Präzisierung in R-WP-44/R-WP-1; Plan-Konflikt „≥4 nur erste" vs „Markierung/URL einig"
-  so aufgelöst); (2) zwei veraltete Kommentare; 3 LOW (Kachel-Zustand-Assertions, Duplikat,
-  `declares()`-JavaDoc). Verdict REJECTED heißt: erst Delta-Plan, meine Abnahme, dann Bau.
-* **Plan-Verität und Agenten-Behauptungen prüfen:** Dev behauptete „Paul will einen Sider-Drawer
-  (4× nachdrücklich)" — gemessen: der Hinweis galt dem **Files-Slide-out rechts** (R-WP-33 → AntD
-  `Drawer`, ❌-Anteil, eigener Slice). Und der Plan-Kopf behauptete `Badge`/`failedAt`-Ableitung —
-  beide existierten nie (gemessen). **Vor jedem „Paul will X" aus dem Mund eines Agenten: einmal beim
-  User rückversichern oder in den Docs belegen.**
-* **AntD-Skill jetzt user-level:** über die Skill-Tools erreichbar, `.agents/skills/antd` existiert
-  nicht mehr.
-* **Nächste Schritte:** **Pauls Look-Abnahme am Browser** (Inc 4: Sider bündig/250/Griff oben links,
-  Status-Farben, Blasen, randlose Fläche, Composer, Scroll-Knopf, Kachel-Buttons) — danach A7
-  Restore (Core prüfen!), **Files-Drawer-Delta** (R-WP-33 ❌), C-7, Config-Story (F8).
-* Plan-Vorschlag (⏳ prüfen): `antd`-Skill um Abschnitt „API-Verifikation ohne Netz" ergänzen
-  (`node_modules/antd/es/**` als Beweismittel statt Kopf-Wissen — 3× widerlegt diese Session).
+* **main = `df248453`; `web-factory` als Squash-Merge `dbd89d30` drin.** Branch `web-factory-4`
+  (von main) — Inc 4 gebaut+reviewed+geflippt (S1…S5, Delta N1); Details stehen in den Docs
+  (ui.md/chat.md) und open-points Runde 4b/5.
+* **Node 22.23.4 installiert** (nvm), pnpm 10.28.0 via `corepack enable`; **nvm-`default` bleibt
+  22.12** ⇒ PATH-Export Pflicht.
+* **A2 geklärt (Paul):** Sider bündig an der Kante + **Breite 250 px** (R-WP-44).
+* **AntD-Skill jetzt user-level** (`.agents/skills/antd` existiert nicht mehr).
 
 ## Runde 5 — Browser-Abnahme läuft (2026-11-08)
 

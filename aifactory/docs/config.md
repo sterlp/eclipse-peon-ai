@@ -48,7 +48,9 @@ Inhalt erscheint **nirgends** unmaskiert (R-WP-16) — weder in einer Antwort no
 Die globale Seite **Config** ([R-WP-1](ui.md)) zeigt **Provider, Modell, URL, Token-Fenster, Timeout,
 Think senden** und den **Key-Status** aus der Config der Factory (R-WP-9) und darf diese Werte
 **überschreiben** — die Überschreibung liegt in der Datei der Factory, der Bestand des Plugins wird
-**nie** geschrieben und nie gelesen.
+**nie** geschrieben und nie gelesen. Seit F8 dazu: **Think (Default)** (R-WP-49), das Modell als
+**AutoComplete** mit Server-Liste (R-WP-50), **Max Tokens** und **Query-/Header-Params** (R-WP-51)
+sowie je Agent **Extra-Body** und **Tools-Allowlist** (R-WP-52).
 
 **Feldliste statt Wunschkonzert:** eine Temperatur existiert im geteilten Bestand **nur je Agent**, nicht
 global — ein globales „Temp"-Feld gibt es nicht und wird im MVP nicht erfunden. Was es nicht gibt, ist
@@ -133,8 +135,8 @@ Die Config-Seite listet die **sechs Slots, die die Factory fährt** — die Agen
 Review, Search und den Config-Slot **Compact** (kein Agent, gleiche Bedienung) unter dem Default. Je Agent gibt es genau eine
 Checkbox **„überschreiben"** — reine Bedienhilfe; nur bei gesetztem Haken werden die
 Config-Felder dieses Agenten eingeblendet. Der Haken ist **kein gespeicherter Wert**: er ist gesetzt,
-sobald die Agent-Datei mindestens ein Config-Feld trägt (Modell, URL, Key, Think, Temperatur …
-— nicht id/name/description; der Provider ist kein Agent-Feld) ([Agent-Dateien](../../org.sterl.llmpeon.core/docs/builtin-agent-prompt-tracked.md), V2).
+sobald die Agent-Datei mindestens ein Config-Feld trägt (Modell, URL, Key, Think, Temperatur,
+Extra-Body, Tools … — nicht id/name/description; der Provider ist kein Agent-Feld) ([Agent-Dateien](../../org.sterl.llmpeon.core/docs/builtin-agent-prompt-tracked.md), V2).
 
 - Haken gesetzt: ein leeres Feld erbt den Default (Feld für Feld, wie R-DEF-1/2 im Plugin); Keys bleiben
   maskiert wie in R-WP-16.
@@ -176,4 +178,101 @@ Agenten; was nicht sichtbar ist, wirkt auch nicht.
   steht kein Think-Feld, nur der Hinweis; der gespeicherte Wert bleibt erhalten und wird mitgesendet.
 - GIVEN der Dev-Slot WHEN seine Felder sichtbar THEN heißt das Think-Feld `Think (Default)`, weil Devs
   Record die Basis für alle anderen ist (R-THINK-10).
+
+## F8 — Plugin-Parität der Config (2026-11-09, Nachtzyklus)
+
+Ziel der Runde: die Config kennt, was das Eclipse-Plugin einstellt — ohne Eclipse-Eigenes (Copilot-
+Login, Shell-Confirmation, MCP, Voice, Ping, debugMode/showRealtime bleiben draußen: im Web gibt es
+keine Eclipse-Präferenzen, der Web-Chat streamt immer). Belege der Delta-Bestimmung:
+`peon-plan/f8-survey.md`.
+
+### R-WP-49 — Think (Default) auf der Default-Seite ✅ (gebaut+reviewed 2026-11-09)
+
+Die Default-Seite zeigt zusätzlich **„Think (Default)"** — derselbe Wert wie das Dev-Slot-Feld
+(R-WP-23): der Think-Wert, der je Request als Thinking/`reasoning_effort` geht. Es gilt **dieselbe
+Form des Basis-Providers** wie je Agent — Toggle · Values · FreeString · None ([UC-WP-67](#uc-wp-67)),
+ein gespeicherter Wert außerhalb der Liste bleibt verbatim (ADR-0064), leeren löscht ihn aus der Datei
+(UC-WP-46). Beide Orte zeigen **einen** Wert: die Default-Seite liest und schreibt das Dev-Slot-Feld,
+die Agent-Sektion bleibt wie sie ist — es gibt keinen zweiten Speicherplatz.
+
+Unabhängig davon bleibt **„Think senden"** bestehen — es entscheidet, ob das **vorherige Thinking des
+Modells** in den nächsten Request zurückgesendet wird, nicht mit welcher Stärke gedacht wird. Auch das
+Plugin hat beide Angaben nebeneinander; das eine ersetzt das andere nicht, und ein leeres
+Think-Feld ändert den Schalter nicht.
+
+#### UC-WP-85 — defaultThinkFollowsTheProviderForm ✅
+- GIVEN die Default-Seite mit einem Basis-Provider, dessen Think-Form `VALUES` ist WHEN sie geöffnet
+  wird THEN ist „Think (Default)" eine Auswahl aus der Werte-Liste des Providers — kein Freitext.
+- GIVEN die Datei trägt einen Think-Wert außerhalb der Liste WHEN die Seite lädt THEN bietet die
+  Auswahl ihn als zusätzlichen Eintrag an, und Speichern schreibt ihn unverändert (ADR-0064).
+- GIVEN ein Provider ohne Think-Eingang WHEN die Seite lädt THEN steht kein Think-Feld, nur der
+  Hinweis; ein gespeicherter Wert bleibt erhalten und wird mitgesendet.
+- GIVEN „Think (Default)" ist leer und „Think senden" steht auf an WHEN gespeichert wird THEN gilt
+  beides unabhängig: in der Datei steht kein Think, der Schalter bleibt an.
+
+### R-WP-50 — Modell-Feld = AutoComplete mit Server-Liste ✅ (gebaut+reviewed 2026-11-09)
+
+Die Modell-Felder (Default-Seite und je Agent-Sektion) sind **AutoComplete** — Auswahl aus der
+Modell-Liste des Providers **oder freie Eingabe** (Paul 2026-11-08; nicht jeder Provider hat eine
+Liste). Die Liste liefert die Factory **serverseitig** über die Modell-Listen-Fähigkeit des Core
+(`listAiModels`), geholt für die **effektive Verbindung**: Provider und URL aus dem laufenden Entwurf,
+der Key nur serverseitig aus der Config — er reist nie zum Client (R-WP-16). Geholt wird beim Öffnen
+bzw. Provider-Wechsel und über **Refresh**; ein fehlgeschlagener oder leerer Fetch ändert nichts —
+der Freitext bleibt möglich, es gibt keinen Auto-Wechsel. **Kein Append:** die Eingabe wird nie als
+Eintrag ergänzt; entspricht der Feldtext einem Eintrag (ohne Groß-/Kleinschreibung), gewinnt der
+kanonische Eintrag des Servers. Ein gespeichertes Modell, das nicht in der Liste steht, bleibt
+unangetastet stehen.
+
+#### UC-WP-86 — modelFieldOffersListAndFreeText ✅
+- GIVEN ein Provider mit Modell-Liste WHEN das Modell-Feld bedient wird THEN bietet es die Modelle der
+  effektiven Verbindung an, und eine eigene Eingabe bleibt zulässig und speicherbar.
+- GIVEN der Listen-Fetch scheitert oder liefert leer WHEN das Feld bedient wird THEN verhält es sich
+  wie ein freies Textfeld — kein Fehlerblocker, kein Auto-Wechsel.
+- GIVEN die Datei trägt ein Modell, das nicht in der Liste steht WHEN die Liste ankommt THEN bleibt
+  der gespeicherte Wortlaut im Feld stehen.
+- GIVEN der Nutzer tippt einen Listeneintrag ohne Groß-/Kleinschreibung exakt THEN wählt das Feld den
+  kanonischen Eintrag des Servers, nicht den getippten Wortlaut.
+
+### R-WP-51 — Advanced der Default-Seite: Max Tokens, Query- und Header-Params ✅ (gebaut+reviewed 2026-11-09)
+
+Die Default-Seite bekommt **Max Tokens** (leer/gelöscht = Provider-Default), **Query-Params** und
+**Header-Params** (je CSV `k=v,k2=v2`) — Angaben, die der Core auf jede Provider-Request anwendet
+(`maxTokens`, `queryParams`, `headerParams`). Drei-Zustände wie überall ([R-WP-16](#r-wp-16)):
+fehlend lässt die Datei in Ruhe, leer löscht den Wert, ein Wert setzt ihn. Zahlen reisen als Text und
+werden serverseitig geparsed; ein unparsbarer Wert kommt als 400 mit Feldnamen zurück, und es wird
+nichts gespeichert.
+
+#### UC-WP-87 — advancedBaseFieldsSaveAndClear ✅
+- GIVEN Max Tokens `4096` WHEN gespeichert und der nächste Turn läuft THEN trägt der Request das
+  Output-Limit; WHEN das Feld geleert und gespeichert wird THEN steht in der Datei kein `maxTokens`
+  mehr und es gilt der Provider-Default.
+- GIVEN Query-Params `a=b,c=d` WHEN gespeichert THEN trägt jede Request-URL beide Parameter; geleert
+  und gespeichert sind sie aus der Datei gelöscht.
+- GIVEN Header-Params `k=v,k2=v2` WHEN gespeichert THEN trägt jede Provider-Request beide Header.
+- GIVEN ein unparsbarer Wert (z. B. Max Tokens `abc`) WHEN gespeichert wird THEN antwortet die Factory
+  mit 400 und dem Feldnamen, und die Datei ist unverändert.
+
+### R-WP-52 — Je Agent: Extra-Body und Tools-Allowlist ✅ (gebaut+reviewed 2026-11-09)
+
+Je Agent-Sektion (R-WP-23) kommen **Extra-Body** (JSON) und **Tools-Allowlist** (CSV, leer = alle
+Tools) hinzu — der Core trägt beide Felder je Agent (`extraBody`, `tools`), und die Agent-Datei der
+Factory schreibt sie ab jetzt. Das frühere „Extra-Body bewusst nicht" gilt hiermit als zurückgenommen
+(Plugin-Parität, F8). Der Override-Haken folgt der bisherigen Regel: trägt die Datei Extra-Body oder
+Tools, ist er gesetzt; Haken entfernt + Speichern löscht auch diese Werte (UC-WP-45). Der Extra-Body
+folgt der Provider-Fähigkeit wie im Plugin: bei einem Provider ohne Extra-Body-Unterstützung steht
+kein Feld, ein gespeicherter Wert bleibt erhalten und wird mitgesendet. Ein Extra-Body, der kein
+JSON-Objekt ist, wird mit 400 und Feldnamen abgelehnt — nichts wird gespeichert (der Core würde ihn
+sonst still verwerfen). Eine **Vorschau** zeigt zu
+einer Allowlist, welche der dem Core bekannten Tools damit laufen.
+
+#### UC-WP-88 — agentExtraBodyAndToolsSaveInAgentFile ✅
+- GIVEN Devs Override mit Extra-Body `{"top_p": 0.9}` WHEN gespeichert und der nächste Dev-Turn läuft
+  THEN trägt Devs Datei `extra_body` und der Request sendet ihn.
+- GIVEN Devs Tools-Allowlist `disk_read, disk_write` WHEN gespeichert THEN läuft Devs nächster Turn mit
+  genau diesen Tools; WHEN das Feld geleert und gespeichert wird THEN ist die Allowlist aus der Datei
+  gelöscht und es laufen alle Tools.
+- GIVEN der Override-Haken wird entfernt und gespeichert WHEN Devs Datei Extra-Body und Tools trug
+  THEN sind auch diese beiden Werte aus der Datei gelöscht, der Prompt-Rumpf bleibt unberührt.
+- GIVEN eine Allowlist WHEN die Vorschau angezeigt wird THEN nennt sie genau die Tools, die damit
+  laufen — nicht mehr und nicht weniger.
 

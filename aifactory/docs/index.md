@@ -68,9 +68,14 @@ MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabi
   Status-Indikator ✅ [R-WP-31/45/UC-WP-65/79](chat.md)** gebaut+reviewed 2026-11-08 (Inc 4,
   Farb-/Maß-Abnahme am Browser steht aus); **Blasen: volle Breite,
   Höhe = Text ✅ [R-WP-29](chat.md)** + **Scroll/FloatButton ✅ [R-WP-35/UC-WP-80](chat.md)** (Inc 4,
-  Look-Abnahme am Browser steht aus))
+  Look-Abnahme am Browser steht aus); **Resend am Send-Knopf ✅ [R-WP-30/UC-WP-57](chat.md)** +
+  **Send nie deaktiviert ✅ [R-WP-41/UC-WP-74](chat.md)** (Runde 6, 2026-11-08); **Werkzeug-Schritte
+  im Restore ✅ [R-WP-47/UC-WP-82](chat.md)** (A7, 2026-11-08); **je Turn genau ein Endereignis ✅
+  [R-WP-48/UC-WP-83/84](chat.md)** (Nachtzyklus, 2026-11-09))
 * [Dateien](files.md) — Schreiben nur in Projekt + TMP, Datei-Bereich lesend. ◐ (gebaut, reviewed 2026-11-01)
 * [Config](config.md) — eigene Datei der Factory, Config-Seite maskiert, „überschreiben" je Agent. ◐
+  (Plugin-Parität F8 ✅ gebaut+reviewed 2026-11-09: R-WP-49–52 — Think (Default), Modell-AutoComplete
+  mit Server-Liste, Max Tokens, Query-/Header-Params, je Agent Extra-Body + Tools-Allowlist)
 * [Nutzer](user.md) — Name statt Login, `[User Name]:` an Jon und Paco.
   ◐ (Name, Präfix, Anzeige ✅ R-WP-17/R-WP-25; Paco ❌)
 * [Paco](paco.md) — fachlicher PO je Nutzer (grillt Vision/Ziele/SOLL), Stories/Proposals in `stories|proposals/<nutzer>/`,
