@@ -257,7 +257,8 @@ eigene Gespräch dieses Agenten (Slide-out). Search ist kein Agent (Sub-Loop von
 Jons Chat; der Nutzer kann in den Chat eines Agenten wechseln und zurück. Interaktion läuft
 weiterhin nur über Jon ([R-WP-4](chat.md)): kein Eingabefeld im Blick. **Stop** im UI stoppt den
 laufenden Turn vollständig (wie bisher) — die Regel selbst und ihre Grenze (Queue-Klausel) stehen in
-[UC-WP-50](chat.md); dieser Absatz behauptet kein Queue-Verhalten. Die Einsicht liest den RAM-Stand des Agenten im Core —
+[UC-WP-50](chat.md); dieser Absatz behauptet kein Queue-Verhalten. Der Blick lebt seit C-7 **im selben Chat-Widget** und
+ist **live** ([R-WP-53](#uc-wp-90)). Die Einsicht liest den RAM-Stand des Agenten im Core —
 **kein** zweiter Speicher; nach einem Neustart ist das Team leer ([R-WP-11](chat.md)), der Blick ist
 leer. **WEIL** „warum hat Dev das gebaut?" sonst nur über die finale Antwort beantwortbar wäre
 (Paul, 2026-11-01).
@@ -270,6 +271,33 @@ leer. **WEIL** „warum hat Dev das gebaut?" sonst nur über die finale Antwort 
   Bedienelement zum Schreiben; Stop stoppt den laufenden Turn (Jon und Team) vollständig.
 - GIVEN ein Neustart WHEN der Blick geöffnet wird THEN ist er leer (R-WP-11) — kein zweiter
   Speicher und kein Mitschnitt im Jon-Chat.
+
+### R-WP-53 — Der Blick lebt im selben Chat-Widget (live) ✅ (C-7, Paul 2026-11-08: „Agenten-Blick = anderes Widget"; gebaut + reviewed 2026-11-09 — Review REJECTED, N1 `984d9e06` mit Kachel-Wechsel-Remount und Reconnect nach fehlgeschlagenem Re-Read; Abnahme am Browser steht aus)
+
+Der Blick ([R-WP-26](#uc-wp-49)) zeigt das Gespräch des Mitglieds **im selben Widget** wie der
+Haupt-Chat — dieselbe Log-Pipeline (Markdown mit Streaming [R-WP-28], Werkzeug-Zeilen als
+Timeline-Einträge [R-WP-40]), nicht eine eigene Markup-Welt. Weiterhin **read-only**: kein Composer,
+kein Senden, kein Stop im Blick — Interaktion läuft nur über Jon ([R-WP-4](chat.md), Stop am
+Haupt-Chat, UC-WP-50). Gespeist wird der Blick aus **zwei Quellen, nur für diesen Agenten**: dem
+RAM-Snapshot seines Gesprächs (R-WP-26) und einem **Live-Stream seiner Zeilen** — der Blick wächst,
+während das Mitglied arbeitet, ohne Reload und ohne etwas anderes neu zu laden. Search bleibt ohne
+Blick (R-WP-26); nach einem Neustart bleibt der Blick leer (R-WP-11).
+
+#### UC-WP-89 — theAgentViewRendersInTheSharedChatWidget ✅
+- GIVEN der Blick auf ein Mitglied ist offen WHEN er gezeichnet wird THEN nutzt er dieselbe
+  Darstellung wie der Haupt-Chat — Markdown, Werkzeug-Zeilen als Timeline-Einträge — und trägt kein
+  Eingabe- oder Bedienelement zum Schreiben.
+- GIVEN ein Mitglied ohne Gesprächsstand WHEN der Blick geöffnet wird THEN zeigt er nur den
+  Hinweis-Head (read-only), keine erfundenen Zeilen.
+- GIVEN ein Neustart WHEN der Blick geöffnet wird THEN ist er leer (R-WP-11).
+
+#### UC-WP-90 — theAgentViewGrowsWhileTheMemberWorks ✅
+- GIVEN ein laufender Turn WHEN das Mitglied (Plan, Dev oder Review) arbeitet THEN wächst der offene
+  Blick **live** — Zwischenschritte und Werkzeug-Zeilen erscheinen ohne Reload.
+- GIVEN der Blick ist geschlossen WHEN das Mitglied arbeitet THEN bleibt der Jon-Chat unverändert bei
+  seinen Delegations-Zeilen und der finalen Antwort (UC-WP-40).
+- GIVEN der Nutzer öffnet den Blick WHEN er geöffnet wird THEN wird nur das Gespräch dieses Agenten
+  geladen (Snapshot plus Stream) — Jons Verlauf und die Kacheln werden nicht neu geladen.
 
 ### R-WP-28 — Markdown der Antworten: GFM, Zeilenumbrüche, Code mit react-shiki ✅ (Paul 2026-11-02; Schärfung 2026-11-06)
 
@@ -499,7 +527,7 @@ Jons **eigene** Werkzeug-Nutzung überlebt den Reload: Call und Result stehen be
 Core-History-Bestand (`<agent>-history.jsonl`) — die Fabrik hält dafür **keinen** zweiten Speicher
 ([R-WP-11](chat.md) bleibt, sie liest nur den Bestand). Der Restore bildet sie auf die
 **Timeline** ([R-WP-40](chat.md)) ab: je Werkzeug ein Schritt mit **Werkzeugname** und einem
-**Auszug des Results** (so `AgentTranscript` es zeigt:gekürzt, kein Wortlaut-Heilen) — Delegationen
+ **Auszug des Results** (so `AgentTranscript` es zeigt — gekürzt, kein Wortlaut-Heilen) — Delegationen
 ([R-WP-40](chat.md)) nennen ihr **Mitglied**; ihr Auszug ist die **Mitglieds-Antwort**, die als
 eigene Zeile auf sie folgt. **Nicht** wiederhergestellt: der Live-Fortsetzungstext
 und der Diff ([R-WP-36/UC-WP-68](chat.md)), Jons **Think** (kein Eintrag, R-WP-40) und
@@ -579,22 +607,26 @@ dass sein Turn gescheitert ist). Zwei Fehlschläge sind **zwei** Fehlerzeilen �
 - GIVEN ein gescheiterter Turn WHEN die Seite neu geladen wird THEN sind Nachricht und Fehlerzeile
   weiterhin im Verlauf (derselbe Bestand wie vor dem Reload).
 
-### R-WP-48 — Je Turn genau ein Endereignis auf dem Draht ❌ (Verdacht 2026-11-06, **belegt 2026-11-08** — Runde-6-Diagnose: ein `Error` im Turn-Task schweigt vollständig, keine Log-Zeile, Kachel zurück auf IDLE, Warteschleife stand; Nachtzyklus 2026-11-08)
+### R-WP-48 — Je Turn genau ein Endereignis auf dem Draht ✅ (Verdacht 2026-11-06, **belegt 2026-11-08** — Runde-6-Diagnose: ein `Error` im Turn-Task schweigt vollständig, keine Log-Zeile, Kachel zurück auf IDLE, Warteschleife stand; Nachtzyklus 2026-11-08; gebaut + reviewed 2026-11-09 — Review REJECTED, N1 `b47126d0`/`76d3e653` mit Besitz-Regel des `error`-Ereignisses und Kachel-Lesefolge; Abnahme am Browser steht aus)
 
 Jeder Turn, der einen Turn **eröffnet**, endet auf dem Draht mit **genau einem** Endereignis:
 `done` (normal oder nach Stop) oder `error` — **auch** wenn im Turn-Task ein `Error` (oder sonst
 ein `Throwable`) entkommt, der die `RuntimeException`-Zweige passiert: er zählt als gescheiterter
 Turn ([R-WP-34](chat.md) — Verlaufszeile + `error`). Ein Submit, das nur **einreiht** (der Turn
-läuft bereits), sendet **kein** Endereignis — der besitzende Turn endet für beide. Die Garantie
-liegt beim **finally-Pfad der Fabrik** (`ProjectRuntime`), kein Core-Eingriff.
+läuft bereits), sendet **kein** `done` — und sein eigenes Scheitern (z. B. eine abgelehnte Config)
+bleibt eine **Verlaufszeile ohne eigenes Endereignis**: das `error` gehört dem eröffneten Turn, ein
+Fremdes dürfte die Live-Sicht des laufenden Turns nicht abreißen; die Zeile zeigt der nächste
+Refresh nach dessen `done`. Einreihen selbst ist kein Ende — der besitzende Turn endet für beide.
+Die Garantie liegt beim **finally-Pfad der Fabrik** (`ProjectRuntime`), kein Core-Eingriff.
 
 Dazu die Browser-Seite: der Warte-Zustand („busy", [R-WP-31](chat.md)/[R-WP-45](chat.md)) wird
 **nie** aus einem Schnappschuss abgeleitet, der **vor** dem Verbinden aufgenommen wurde — nach
-jedem (Re)Connect wird der Kachel-Stand **frisch gelesen**, sobald die Verbindung steht. Sonst
-bleibt ein Turn, der zwischen Kachel-Read und Stream-Abonnement endete, für immer als „arbeitet"
-stehen.
+jedem (Re)Connect wird der Kachel-Stand **frisch gelesen**, sobald die Verbindung steht — und ein
+Read, der **vor** einem `agents`-Endschnappschuss begann, überschreibt ihn nicht (der frischeste
+Stand gewinnt, wie beim Verlauf über seine Lesefolge). Sonst bleibt ein Turn, der zwischen
+Kachel-Read und Stream-Abonnement endete, für immer als „arbeitet" stehen.
 
-#### UC-WP-83 — everyOpenedTurnEndsOnTheWireExactlyOnce ❌
+#### UC-WP-83 — everyOpenedTurnEndsOnTheWireExactlyOnce ✅ (gebaut + reviewed 2026-11-09, Inkrement 1 + N1 `430343f2`/`b47126d0`)
 - GIVEN ein Turn-Task, in dem ein `Error` entkommt (kein `RuntimeException`-Zweig) WHEN der Task
   durchläuft THEN **genau ein** `error`-Ereignis mit Verlaufszeile nach [R-WP-34](chat.md), danach
   der `agents`-Endschnappschuss und der Turn-Claim ist frei.
@@ -603,14 +635,18 @@ stehen.
 - GIVEN ein Turn wird gestoppt WHEN der Task durchläuft THEN **genau ein** `done`, kein `error`
   (Bestand, [UC-WP-50](chat.md)).
 - GIVEN ein einreiender Submit (Turn läuft bereits) WHEN der Task durchläuft THEN sendet **er**
-  kein Endereignis; der besitzende Turn sendet seines.
+  kein Endereignis; scheitert er (z. B. abgelehnte Config), stehen seine Verlaufszeilen im Verlauf,
+  **ohne** eigenes `error` auf dem Draht — der besitzende Turn sendet seines.
 
-#### UC-WP-84 — theWaitStateIsDerivedFromAFreshReadAfterConnect ❌
+#### UC-WP-84 — theWaitStateIsDerivedFromAFreshReadAfterConnect ✅ (gebaut + reviewed 2026-11-09, Inkrement 2 + N1 `e72c6c76`/`76d3e653` — Kachel-Lesefolge in `chat.board.ts`)
 - GIVEN ein Turn endet **zwischen** Kachel-Read und Stream-Verbindung WHEN die Seite (neu) verbindet
   THEN wird der Kachel-Stand nach dem Verbinden frisch gelesen und die Kachel-Reihe zeigt **bereit** —
   kein Warte-Zustand aus dem alten Schnappschuss.
 - GIVEN der Stream fällt während eines laufenden Turns weg WHEN der Reconnect durchläuft THEN wird
   der Kachel-Stand ebenfalls frisch gelesen (derselbe Beweis wie beim ersten Verbinden).
+- GIVEN eine Kachel-Lesung beginnt, bevor der `agents`-Endschnappschuss eintrifft WHEN ihre Antwort
+  **nach** dem Schnappschuss ankommt THEN überschreibt sie ihn **nicht** — der frischeste Stand
+  gewinnt, die Kachel zeigt bereit.
 
 
 ### R-WP-35 — Der Chat scrollt, die Eingabe steht unten ✅ (Runde 2, Inc 3; Scroll-Verhalten geschärft Paul 2026-11-08 — Schärfungen + FloatButton gebaut + reviewed 2026-11-08, Inkrement 4, UC-WP-80 ✅; die **Look-Anteile** — volle Bildschirmbreite, weißer Composer, Senden rechts — nehmen wir am Browser ab)

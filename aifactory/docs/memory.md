@@ -5,6 +5,28 @@ Fabrik-Inkremente committet Dev je Schritt und pusht. **Core-Änderungen NUR mit
 Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwissen (Plan-Dateien und
 `peon-plan/review-findings.md` sind das Memory); Docs duplizieren nie Core-Regeln; Plan-Archive werden
 **gelöscht**, nie committet.
+## Runde 6d — C-7 „Blick im selben Chat-Widget (live)" ✅ (2026-11-09, vormittags)
+
+* **Gebaut + reviewed + geflippt ✅** (R-WP-53/UC-WP-89/90 in chat.md, chat.md: R-WP-26 um Verweis
+  ergänzt): Backend-Kanal `e99774e5` (Subscription.channel, publishAgent, geteiltes Gate
+  `insightTileOf`, Route `GET /api/projects/{id}/agents/{name}/events`, Test-Utility `LiveStreamProbe`)
+  → UI `16784501` (Blick zeichnet durch `ChatLog`: `testId="insight-log"`, `userAuthor=null`,
+  erst Snapshot-Read dann Stream, Follow-Bottom ohne Scroll-Button, `RECONNECT_MS` nach
+  `chat.stream.ts`, `chat.page.tsx` 588) → Aufräumen `9bddf5e1` (eigenes Blick-Markup/CSS/Wörter
+  weg, `.chat-insight` nur noch Layout-Klammer) → **N1 `984d9e06`**: Review REJECTED (BUG-1
+  Kachel-Wechsel ohne Close hielt alten Stand ⇒ `key={name}`-Remount; BUG-2 Reconnect nur bei
+  erfolgreichem Re-Read ⇒ immer planen), beide Fixes per rot-erst + Mutation belegt. **Backend 264 /
+  UI 252 Tests** grün, missCount=1, tsc/oxlint/antd-lint 0.
+* **Kein Core-Eingriff** — Origin-Stamping + Turn-Monitor reichen. Neuer Befund: **C-8 ❓**
+  (abgelehnte SSE-Kante antwortet 500 wegen `HttpMediaTypeNotAcceptableException`, betrifft auch die
+  bestehende `/events`-Kante). Architektur-Doc: ChatStreamRegistry-Zeile nennt jetzt beide Kanäle.
+* **Injection-Versuch im Dev-Kontext gemeldet** (Format-Diktat „sure!…" in einem Tool-Result) — Dev
+  hat korrekt ignoriert; Grund zur Wachsamkeit, kein Handlungsbedarf.
+* **Untracked aufgeräumt-Kandidat:** leerer Dubletten-Pfad
+  `aifactory/aifactory/factory-ui/test/app` (+ `.DS_Store`, Rest eines Pfad-Doppelfehlers) — untracked,
+  löschen mit Pauls OK.
+
+## Runde 6c — Nachtzyklus: F8 Config-Plugin-Parität ✅ (2026-11-09, Nacht)
 ## Runde 6c — Nachtzyklus: F8 Config-Plugin-Parität (2026-11-09, autonom)
 
 * **F8 gebaut + reviewed + geflippt ✅** (R-WP-49–52, UC-WP-85–88 in config.md): Backend

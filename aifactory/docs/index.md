@@ -71,7 +71,8 @@ MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabi
   Look-Abnahme am Browser steht aus); **Resend am Send-Knopf ✅ [R-WP-30/UC-WP-57](chat.md)** +
   **Send nie deaktiviert ✅ [R-WP-41/UC-WP-74](chat.md)** (Runde 6, 2026-11-08); **Werkzeug-Schritte
   im Restore ✅ [R-WP-47/UC-WP-82](chat.md)** (A7, 2026-11-08); **je Turn genau ein Endereignis ✅
-  [R-WP-48/UC-WP-83/84](chat.md)** (Nachtzyklus, 2026-11-09))
+  [R-WP-48/UC-WP-83/84](chat.md)** (Nachtzyklus, 2026-11-09); **Blick im selben Chat-Widget, live ✅
+  [R-WP-53/UC-WP-89/90](chat.md)** (C-7, 2026-11-09))
 * [Dateien](files.md) — Schreiben nur in Projekt + TMP, Datei-Bereich lesend. ◐ (gebaut, reviewed 2026-11-01)
 * [Config](config.md) — eigene Datei der Factory, Config-Seite maskiert, „überschreiben" je Agent. ◐
   (Plugin-Parität F8 ✅ gebaut+reviewed 2026-11-09: R-WP-49–52 — Think (Default), Modell-AutoComplete

@@ -268,10 +268,19 @@ Defekte/Fragen, je eine Story je Punkt erst nach Klärung (❓ = präzisieren, b
   Fehlermeldung sichtbar; Regel in [chat.md](chat.md) fehlt (wie Compact live erscheint).
   *(b) „nach Reload ohne Markdown" ist erledigt (2026-11-06, Inkrement 2): Markdown zeichnet jetzt
   überall dasselbe Renderer-Pfad, auch im Verlauf — [R-WP-28/UC-WP-73](chat.md).*
-* **❓ C-7 · Agent-Chat ist ein anderes Widget** — der aufgeklappte Blick auf ein Team-Mitglied nutzt
+* **🔒 C-7 · Agent-Chat ist ein anderes Widget** — der aufgeklappte Blick auf ein Team-Mitglied nutzte
   ein eigenes Chat-Widget: anderes Look&Feel, aktualisiert nicht während der Agent arbeitet, zieht
-  alle Daten erneut (= Totalschaden). SOLL: dasselbe Chat-Widget wie der Haupt-Chat, an den
+  alle Daten erneut (= Totalschaden). SOLL war: dasselbe Chat-Widget wie der Haupt-Chat, an den
   Agent-Stream gehängt, **read-only** (keine Eingabe). Im Umfeld von [R-WP-26](chat.md).
+  **2026-11-09 spezifiziert, gebaut + reviewed (✅ R-WP-53/UC-WP-89/90 in [chat.md](chat.md));**
+  Review REJECTED → N1 `984d9e06` (Kachel-Wechsel remountet den Blick, Reconnect nach fehlgeschlagenem
+  Re-Read); keine Core-Änderung nötig (Origin-Stamping + Turn-Monitor reichen). Offen nur die
+  Browser-Abnahme (Höhe/Follow im Slide-out, Kachel-Wechsel ohne Close).
+* **❓ C-8 · Abgelehnte SSE-Kante antwortet 500 statt 400/404** (2026-11-09, C-7-Bau): mit
+  `Accept: text/event-stream` (so fragt die UI an, `chat.stream.ts`) kann der gemeinsame
+  `ApiExceptionHandler` sein JSON nicht verhandeln ⇒ `HttpMediaTypeNotAcceptableException` quält
+  jeden Gate-Fehler in einen 500 — betrifft die **bestehende** `/events`-Kante genauso. Fix (Fehler-
+  Handler: Negotiation der ursprünglichen Status-Codes) ist klein, aber eigenes Inkrement.
 
 
 
