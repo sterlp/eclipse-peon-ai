@@ -121,12 +121,6 @@ export const content = {
   insight: {
     title: (name: string): string => `Insight into ${name}`,
     readOnly: 'read-only',
-    kind: {
-      user: 'Input',
-      agent: 'Answer',
-      tool: 'Tool',
-    },
-    empty: 'No conversation — this agent has none in this run.',
     truncated: 'Older lines fall away — the edge returns only the last ones.',
   },
 

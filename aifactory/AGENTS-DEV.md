@@ -114,6 +114,10 @@
   user/agent = **Klasse**, Draht = `data-testid`). Verlaufszeilen nie mit `toContain` (Autor-Label hängt an
   der `li`) → `[data-testid="chat-line-user"] .chat-text` als exakte Liste. Trenner zählt allein
   `test/shared/log.parts.ts` → `separatorsOf(log)`; ein `<hr>` gehört in die `<li>`, nie dazwischen.
+- **Der Blick auf ein Mitglied hat keine eigene Zeichenschicht** (R-WP-53, `docs/chat.md`): `chat.insight.tsx`
+  zeichnet ausschließlich über `ChatLog` (`testId="insight-log"`, `userAuthor={null}`, `openTurn={null}`) und
+  subscribiert erst **nach** dem Snapshot-Read; eigenes Blick-Markup, eigene Blick-Wörter und ein Scroll-Button
+  dort sind verboten. Sein Strom endet nie ein Turn — kein Indikator darf Arbeit behaupten.
 - **Modellierte Draht-Form braucht die erzeugende Core-Regel** (Datei:Zeile am Test), sonst prüft der Test
   eine Form, die der Core nie liefert (`docs/adr/003`).
 - **Modell-Feld ist eine Liste, kein Anhängen** (R-WP-50): `ModelField` zeigt ausschließlich Server-Ids als

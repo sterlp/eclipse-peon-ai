@@ -3,6 +3,8 @@
 SOLL: `aifactory/docs/chat.md` R-WP-26 (`:252-264`, ✅), UC-WP-49 (`:266-273`, ✅), **R-WP-53 (`:275-284`, ❌), UC-WP-89 (`:286-292`, ❌), UC-WP-90 (`:294-300`, ❌)**.
 Status laut `docs/open-points.md`: C-7 „spezifiziert und in Arbeit". **Kein Core-Eingriff** (`llmpeon-core` wird nicht angefasst).
 
+**Stand 2026-11-09: alle drei Inkremente gebaut** — Ink 1 `e99774e5`, Ink 2 `16784501`, Ink 3 im selben Commit-Zyklus dieses Plans. Die ❌/✅ der Doks dreht der Dok-Besitzer.
+
 ---
 
 ## 0. Rahmen und Spielregeln (gelten für alle Inkremente)
@@ -253,6 +255,8 @@ sequenceDiagram
 
 ### Inkrement 3 — Aufräumen: CSS und Wörter des alten Blicks (R-WP-53, Refactoring)
 
+**✅ FERTIG (2026-11-09):** `.chat-insight-list/-line/-kind` und `content.insight.kind`/`insight.empty` sind weg (Grep über `src`, `test`, `docs`: keine Verbraucher mehr). Neu ist **eine** Layout-Klammer: `.chat-insight { display: flex; flex-direction: column }` — die Grundregeln von `.chat-log` bleiben unangetastet, denn `flex: 1; min-height: 0; overflow-y: auto` stehen schon dort, und nur so bekommt der Log im Slide-out eine Höhe, an der er folgen kann (R-WP-35). `AGENTS-DEV.md` erhielt den Eintrag „Der Blick hat keine eigene Zeichenschicht". `tsc -b` 0, `oxlint` 0/0, Suite **250/250**, `antd lint ./src` = „No issues found". **Keine Testdatei geändert** (Diff zeigt nur `styles.css`, `content.ts`, `AGENTS-DEV.md`); die `declarations('.chat-log')`-/`block('.chat-log')`-Wächter lesen weiterhin die erste Regel bei `styles.css:320`. Kein eigenes CSS-Testbild: Höhe und Folge-Verhalten sind Look und in jsdom nicht messbar (AGENTS-DEV) — Abnahme am Browser steht aus.
+
 **Reines Aufräumen, keine neue Funktionalität (daher kein Use-Case-Test nötig; Abdeckung liegt bei Inkrement 2).**
 
 - `factory-ui/src/styles.css` — `.chat-insight-list` (`:1019`), `.chat-insight-line` (`:1027`), `.chat-insight-kind` (`:1041`) und `.chat-insight-text` löschen; `.chat-insight` (`:979`), `-head` (`:990`), `-agent` (`:998`), `-readonly` (`:1004`), Kopf-Button (`:1009`), `-error` (`:1047`) bleiben. Neu **nur** die Layout-Klammer, die der Log im Slide-out braucht (z. B. `.chat-insight .chat-log { min-height: 0; flex: 1; }`) — als verschachtelter Selektor, damit `declarations('.chat-log')` in `chat.page.test.tsx:566,677-684` und `chat.markdown.test.tsx:120-121` unverändert die Grundregeln sehen.
@@ -273,7 +277,7 @@ sequenceDiagram
 - **A5 — `ChatLog`-Signatur wächst um zwei optionale Props** (`testId`, `userAuthor`). Bestandsaufrufer bleiben gültig; Defaults verhalten sich exakt wie heute.
 - **A6 — Der `done`-Marker bestellt den Agenten-Kanal nicht** (Inkrement 1, umgesetzt statt „Dev-Draht = partial, partial, done"): `done` gehört per §4-Tabelle auf den Jon-Kanal, also wird der Mitglieder-Draht in `SseTurnMonitorTest` über seine eigene Zeilenzahl bestellt (Deadline; Ordnung je Verbindung). Der Jon-Draht bleibt über `endTheTurn()` bestellt. Kein geändertes Verhalten, nur ein anderer Endzustands-Anker im Test.
 - **A7 — Gate-Ablehnung wird über die JSON-Verhandlung gemessen** (Inkrement 1, `theMemberStreamRefusesWhatIsNoInsight`): mit `Accept: text/event-stream` (das die UI tatsächlich schickt, `chat.stream.ts:19`) antwortet **jede** abgelehnte SSE-Kante 500 statt 400/404, weil der gemeinsame `ApiExceptionHandler` sein JSON nicht verhandeln kann (`HttpMediaTypeNotAcceptableException`). Der Test prüft die Gate-Codes über den verhandelbaren Pfad und beweist zusätzlich, dass die neue Kante gegen die bestehende `/events`-Kante **gleich** antwortet. Behebung gehört nicht zu C-7 — Jon entscheidet.
-- **A8 — Marker und Doc-Lint (Inkrement 2):** Die drei Nachfolger-Tests der umbenannten Blick-Tests tragen **zusätzlich** `// UC-WP-49` (sie beweisen weiterhin: genau ein Read, seine Zeilen, kein Schreibbedienelement, erneuter Read bei anderer Kachel) — sonst fiele das bereits ✅ UC-WP-49 im Doc-Lint auf „erledigt, unbelegt". Der Marker `// R-WP-53` in `chat.log.test.tsx` erscheint im Doc-Lint als `VERWAIST`: die Regel-Überschrift der Dok schreibt `RWP-53` (ohne Bindestrich) und trägt kein `idPrefix`, der Testmarker heißt wie im ganzen Projekt `R-WP-53` — dieselbe Klasse wie die sechs vorhandenen Marker `R-WP-29`, `R-WP-38`, `R-WP-11`, kein erfundener Bezeichner (`docs/chat.md:275` = `### RWP-53`).
+- **A8 — Marker und Doc-Lint (Inkrement 2):** Die drei Nachfolger-Tests der umbenannten Blick-Tests tragen **zusätzlich** `// UC-WP-49` (sie beweisen weiterhin: genau ein Read, seine Zeilen, kein Schreibbedienelement, erneuter Read bei anderer Kachel) — sonst fiele das bereits ✅ UC-WP-49 im Doc-Lint auf „erledigt, unbelegt". Der Marker `// R-WP-53` in `chat.log.test.tsx` folgt dem Hausstil der UI-Tests (`R-WP-29`, `R-WP-38`, `R-WP-11`), die Dok-Überschrift schreibt jedoch `RWP-53` ohne Bindestrich: unter dem empfohlenen `idPattern` (`UC-WP-\d+|RWP-\d+`) bleibt er ungeprüft gemessen (kein Befund), nur unter einem Muster mit Bindestrich erschiene er als `VERWAIST` — dann für alle diese Marker gleich, kein erfundener Bezeichner (`docs/chat.md:275` = `### RWP-53`). **Doc-Lint-Stand nach Ink 2/3** (empfohlenes Muster, `factory-ui/test` komplett): 22 Findings, **keines** aus C-7; UC-WP-89/90 sind belegt, UC-WP-49 bleibt belegt.
 
 ---
 

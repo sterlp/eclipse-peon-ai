@@ -973,9 +973,9 @@ button {
   overflow-wrap: anywhere;
 }
 
-/* Read-only look into one agent's conversation (R-WP-26): the same right edge as the file drawer and never
-   the same moment — the edge carries one overlay (R-WP-33, UC-WP-60 G3) — so its number, listed over
-   `.chat-workspace`, counts against the tab alone. */
+/* Read-only look into one agent's conversation (R-WP-26), drawn by the chat's own log (R-WP-53): the same
+   right edge as the file drawer and never the same moment — the edge carries one overlay (R-WP-33, UC-WP-60
+   G3) — so its number, listed over `.chat-workspace`, counts against the tab alone. */
 .chat-insight {
   position: fixed;
   inset: 0 0 0 auto;
@@ -986,6 +986,11 @@ button {
   background: var(--surface);
   border-left: 1px solid var(--border);
   box-shadow: var(--shadow);
+  /* The log is the look's line layer (R-WP-53) and keeps its own sheet untouched; the slide-over is only the
+     frame, so it columns its parts and hands the remaining height to the log — which is what lets a new line
+     follow to its end here too (R-WP-35). */
+  display: flex;
+  flex-direction: column;
 
   .chat-insight-head {
     display: flex;
@@ -1014,34 +1019,6 @@ button {
     background: none;
     color: var(--text-h);
     cursor: pointer;
-  }
-
-  .chat-insight-list {
-    list-style: none;
-    margin: 0 0 0.75rem;
-    padding: 0;
-    display: grid;
-    gap: 0.4rem;
-  }
-
-  .chat-insight-line {
-    border: 1px solid var(--border);
-    border-radius: 0.4rem;
-    padding: 0.4rem 0.55rem;
-    font-family: var(--mono);
-    font-size: 0.78rem;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-
-    &.agent {
-      background: var(--code-bg);
-    }
-  }
-
-  .chat-insight-kind {
-    display: block;
-    font-size: 0.7rem;
-    color: var(--text);
   }
 
   .chat-insight-error {
