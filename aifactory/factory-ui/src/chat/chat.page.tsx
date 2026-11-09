@@ -36,10 +36,10 @@ import { ChatWaiting } from './chat.waiting'
 import { openChatStream, RECONNECT_MS } from './chat.stream'
 import { ApiRequestError, errorMessage } from '../shared/api.client'
 import { content } from '../shared/content'
-import type { Project } from '../shared/dto'
+import type { ProjectDto } from '../shared/server-api'
 
 interface Props {
-  project: Project | null
+  project: ProjectDto | null
   /**
    * Anything the shell wants beside the chat — today the file area of `project`. It is drawn outside the
    * chat region and this component knows nothing about it: `chat` keeps not importing `project`, so no word

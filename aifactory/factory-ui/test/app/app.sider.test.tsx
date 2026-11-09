@@ -7,7 +7,7 @@ import { chatKeyOf, filesKeyOf } from '../../src/app/app.paths'
 import { content } from '../../src/shared/content'
 import { answerMediaQueries, belowTheBreakpoint } from '../shared/media'
 import { project } from '../shared/fixtures'
-import type { Project } from '../../src/shared/dto'
+import type { ProjectDto } from '../../src/shared/server-api'
 
 /**
  * The tree of the frame (R-WP-44), without a router: one group per project comes in as props, the two
@@ -68,12 +68,12 @@ function handles(): Element[] {
 }
 
 interface Tree {
-  projects: Project[]
+  projects: ProjectDto[]
   activeKey: string | null
   collapsed: boolean
   onCollapse: (collapsed: boolean) => void
-  onOpen: (p: Project) => void
-  onFiles: (p: Project) => void
+  onOpen: (p: ProjectDto) => void
+  onFiles: (p: ProjectDto) => void
 }
 
 function tree(props: Partial<Tree> = {}): ReactElement {

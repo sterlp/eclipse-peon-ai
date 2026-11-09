@@ -1,7 +1,7 @@
 import { vi } from 'vitest'
 import { screen } from '@testing-library/react'
 
-import type { Settings } from '../../src/config/config.client'
+import type { SettingsDto } from '../../src/shared/server-api'
 
 /** The key a leaked view would repeat — every masked read names it from here. */
 export const KEY = 'sk-file-secret-0123456789'
@@ -121,7 +121,7 @@ function response(status: number, body: unknown): Response {
  * The masked answer of the factory. It carries an `apiKey` on purpose: if a server ever leaked one,
  * the view still must not print a character of it (R-WP-16 "kein Zeichen nach draußen").
  */
-export function settingsAnswer(overrides: Partial<Settings> = {}): Record<string, unknown> {
+export function settingsAnswer(overrides: Partial<SettingsDto> = {}): Record<string, unknown> {
   return {
     provider: 'OPEN_AI',
     model: 'gpt-demo',

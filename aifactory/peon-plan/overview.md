@@ -520,18 +520,32 @@ Tests; zusätzlich A17 explizit gepinnt und ein Leer-/Fehlbody-Fall für `gitUrl
   `ProjectControllerTest` — `credentialUrlRejectedAndNothingStored:203` und
   `nonHttpsUrlRejectedNothingStored:219` bekommen `fieldErrors[0].field == "gitUrl"`.
 
-### Inc 4 — Generierte API-Typen (R-WP-54, UC-WP-91)
+### Inc 4 — Generierte API-Typen (R-WP-54, UC-WP-91) — ✅ FERTIG (2026-11-09)
+
+Gebaut wie gelistet. `shared/server-api.ts` (108 Zeilen) ist erzeugt und committet; das §4.4-Risiko ist
+eingetreten und gelöst: ohne `excludeClasses` erschien `KeyIntentRequest` als **leeres** Interface mit zwei
+`extends`-Zeilen, jetzt ausgeschlossen (D17). Gates: Backend **274 Tests grün**, `missCount = 1`
+(hitCount 1597), 45,2 s — unverändert gegen Inc 3; UI `npx tsc -b` grün, `npx oxlint` **0/0** (94 Dateien),
+`pnpm test` **252 Tests / 27 Dateien grün**, `pnpm build` grün. Doc-Lint: keine neuen Findings, **UC-WP-91
+bleibt UNBELEGT** — §6 sieht dafür bewusst keinen Suite-Test vor, Nachweis ist M1/M2 (§9). Abweichungen
+D17, D18, D19. R4 abgeglichen: die generierten Unions sind wort- und Reihenfolge-gleich mit den
+handgeschriebenen — `KeySource = "FILE" | "ENV" | "NONE"`, `ThinkForm = "TOGGLE" | "VALUES" | "FREE" | "NONE" |
+"UNKNOWN"` ⇒ kein Nachziehbedarf.
 
 - `factory-backend/pom.xml` nach §4.4; `server-api.ts` erzeugen und committen.
 - `@Nullable` an den in §4.4 genannten Drahtfeldern (nur Annotation + Import, keine Verhaltensänderung).
 - `shared/api.client.ts:2-6` löschen und `import type { ApiError, ApiFieldError } from './server-api'`
-  setzen; `fieldErrorsOf()` kommt hierhin **erst in Inc 5** (sonst ungenutzt).
+  setzen; `fieldErrorsOf()` kommt hierhin **erst in Inc 5** (sonst ungenutzt). Gebaut: nur `ApiError`
+  importiert — ein ungenutzter Typ-Import wäre ein oxlint-Finding (D19); `ApiFieldError` kommt mit
+  `fieldErrorsOf()` in Inc 5.
 - `config/config.client.ts`: `KeySource` (`:4`), `Settings` (`:11-25`), `Provider` (`:36-44`),
   `ThinkForm` (`:50`), `ModelQuery` (`:81-87`), `ConfigPatch`/`SettingsPatch` (`:108-135`) durch
   Importe aus `server-api` ersetzen; `ThinkInput`/`thinkInputOf`/`trimBody` bleiben handgeschrieben
   (Hilfstypen, Doku `api-errors.md:25-26`). Namen der generierten Typen: `SettingsDto`,
   `ProviderDefaultsDto`, `SettingsUpdateRequest`, `ModelListRequest` — die Client-Funktionen behalten
-  ihre Namen (`getSettings` usw.), nur die Typ-Namen folgen Java (benannte Abweichung D3).
+  ihre Namen (`getSettings` usw.), nur die Typ-Namen folgen Java (benannte Abweichung D3). Gebaut:
+  `ConfigPatch` ist weg, `trimBody` ist auf die beiden Request-Typen typisiert; `AgentPatch` bleibt als
+  abgeleiteter Typ (`AgentSettingsUpdateRequest & { overridden: boolean }`) — D18.
 - `config/config.agents.client.ts:9-21,29-36` und `shared/dto.ts` (löschen; `Project`/`ProjectWork` →
   `ProjectDto`, `ProjectWorkDto`) ebenso; Aufrufer in `app/`, `project/`, `chat/` anpassen —
   **Typ-Importe**, kein Verhalten, `chat.page.tsx` bleibt inhaltlich unangetastet (nur Import-Zeile,
@@ -734,13 +748,45 @@ bewusst kein „Die Datei existiert"-Test (AGENTS.md: trivial/implanationsgekopp
   weggelassen) ⇒ `fieldErrorsOf()` in Inc 5 muss `null` wie `[]` behandeln, und die Java-Felder bleiben wie
   in §4.4 geplant `@Nullable` (TS: `fieldErrors?: ApiFieldError[] | null`).
 
+- **D17 — Generator: `project.dto.*` eingegrenzt, `KeyIntentRequest` ausgeschlossen** (Risikoeintrag §4.4,
+  in Inc 4 gemessen): das Muster `project.dto.*` zog auch `ProjectFileDto`/`ProjectDirectoryDto`/
+  `ProjectEntryDto`/`ProjectFileRoot` in die Datei — Typen, die die UI **nicht** binden darf, weil das
+  Datei-Gebiet `kind` auf ein Literal und `root` auf die Kleinschreib-Namen von `ProjectFileRoot.wireName()`
+  einengt (`files.client.ts:4-39`), und weil `ProjectFileDto.text` dort nicht-nullbar gestanden wäre, obwohl
+  der Server für eine binäre Datei `null` liefert. Muster jetzt: die drei Formen, die die UI wirklich bindet
+  (`AddProjectRequest`, `ProjectDto`, `ProjectWorkDto`). Dazu `excludeClasses` für
+  `config.KeyIntentRequest`: ohne ihn erschien die Schnittstelle als **leeres** `interface KeyIntentRequest`
+  mit zwei `extends`-Zeilen — Validator-Detail (D14), kein Drahttyp. Die Feldnamen beider Update-Bodies
+  bleiben vollständig in ihren eigenen Interfaces (gemessen: `apiKey` und `removeApiKey` stehen je Request).
+- **D18 — `ConfigPatch` gestrichen, `AgentPatch` bleibt als abgeleiteter Typ.** `ConfigPatch` war die
+  Schnittmenge beider Level und hätte vier Feldnamen ein zweites Mal geschrieben; `trimBody` steht jetzt auf
+  `SettingsUpdateRequest | AgentSettingsUpdateRequest` — gleiche Wirkung: ein Feld, das der Server nicht
+  kennt, bleibt ein Build-Fehler. `AgentPatch` = `AgentSettingsUpdateRequest & { overridden: boolean }`: der
+  Draht liest ein fehlendes Flag als „überschreibt nicht", die Seite muss es bei jedem Speichern sagen
+  (UC-WP-45) — die Schnittmenge hält das compileit, ohne ein Feld zu wiederholen. `ModelQuery` →
+  `ModelListRequest` wie geplant.
+- **D19 — `api.client.ts` importiert nur `ApiError`** (der Plan nannte `ApiError, ApiFieldError`): ein
+  ungenutzter Typ-Import ist ein oxlint-Finding; `ApiFieldError` kommt mit `fieldErrorsOf()` in Inc 5.
+
 ## 9. Messaufträge (Ergebnis nach `peon-plan/api-error-notes.md`)
 
 - **M1 — UC-WP-91 G1**: in `SettingsUpdateRequest` ein Feld provisorisch umbenennen (`maxTokens` →
   `maxTokensX`), `mvn -o -pl factory-backend process-classes`, `npx tsc -b` → **rot**, dann Rückgängig.
   Beweis: ein Java-Feldumbruch bricht den UI-Bau statt stumm nichts zu ändern.
+  **Ergebnis (2026-11-09, gemessen):** `maxTokens` → `maxTokensX` in `SettingsUpdateRequest`,
+  `mvn -o clean process-classes -pl factory-backend` ⇒ `server-api.ts` trägt `maxTokensX?: string | null`
+  (`SettingsDto.maxTokens` bleibt) ⇒ `npx tsc -b` **rot**:
+  `src/config/config.page.tsx(76,5): error TS2561: Object literal may only specify known properties, but
+  'maxTokens' does not exist in type 'SettingsUpdateRequest'. Did you mean to write 'maxTokensX'?`
+  Zurückgesetzt (Kopier-Rückweg, nicht `git checkout` — die Datei trug ungeänderte Inc-4-Annotationen),
+  neu erzeugt: Datei wieder bytegleich (md5 `d5af29a7cf18b3751507103531593781`), `tsc -b` wieder grün.
 - **M2 — UC-WP-91 G2**: `server-api.ts` von Hand ändern, `mvn -o -pl factory-backend process-classes` →
   Änderung weg; `git diff --stat` danach leer.
+  **Ergebnis (2026-11-09, gemessen):** `server-api.ts` um zwei Zeilen von Hand erweitert (110 Zeilen),
+  `mvn -o clean process-classes -pl factory-backend` ⇒ „Writing declarations to …/factory-ui/src/shared/
+  server-api.ts", BUILD SUCCESS, Datei wieder 108 Zeilen und md5-identisch mit dem Stand vor dem Eingriff
+  (`d5af29a7cf18b3751507103531593781`) — die Datei ist Build-Produkt, kein Hand-Weg. (Vor dem ersten Commit
+  zeigt `git diff` sie naturgemäß noch als untracked; der Beleg ist die Prüfsumme.)
 - **M3 — R-WP-55 „Spring default error view"**: A3 messen, den konkreten Body (Feldnamen, Status,
   `problem+json`?) protokollieren; Ergebnis als ⏳-Formulierung für `docs/open-points.md` (D6).
   **Ergebnis (2026-11-09, gemessen):** `GET /api/nothing-is-mapped-here` mit `Accept: application/json` →

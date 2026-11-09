@@ -3,18 +3,9 @@ import { Alert, Button, Card, Input, Select } from 'antd'
 
 import { errorMessage } from '../shared/api.client'
 import { content } from '../shared/content'
+import type { KeySource, ProviderDefaultsDto, SettingsDto, SettingsUpdateRequest } from '../shared/server-api'
 import { Agents } from './config.agents'
-import {
-  getSettings,
-  listModels,
-  listProviders,
-  thinkInputOf,
-  updateSettings,
-  type KeySource,
-  type Provider,
-  type Settings,
-  type SettingsPatch,
-} from './config.client'
+import { getSettings, listModels, listProviders, thinkInputOf, updateSettings } from './config.client'
 import { ModelField } from './config.model'
 import { ThinkControl } from './config.think'
 
@@ -51,7 +42,7 @@ interface Draft {
   headerParams: string
 }
 
-function draftOf(settings: Settings): Draft {
+function draftOf(settings: SettingsDto): Draft {
   return {
     provider: settings.provider,
     model: settings.model ?? '',
@@ -71,7 +62,7 @@ function draftOf(settings: Settings): Draft {
 }
 
 /** Every field travels, cleared ones as empty text — that is how a deletion reaches the file. */
-function patchOf(draft: Draft, removeKey: boolean): SettingsPatch {
+function patchOf(draft: Draft, removeKey: boolean): SettingsUpdateRequest {
   return {
     provider: draft.provider,
     model: draft.model,
@@ -96,9 +87,9 @@ function patchOf(draft: Draft, removeKey: boolean): SettingsPatch {
  * fields that depend on it at once — and it can remove a key (UC-WP-63).
  */
 export function ConfigPage() {
-  const [settings, setSettings] = useState<Settings | null>(null)
+  const [settings, setSettings] = useState<SettingsDto | null>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
-  const [providers, setProviders] = useState<Provider[]>([])
+  const [providers, setProviders] = useState<ProviderDefaultsDto[]>([])
   const [removeKey, setRemoveKey] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)

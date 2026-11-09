@@ -1,5 +1,7 @@
 package org.sterl.open.aifactory.config.dto;
 
+import org.springframework.lang.Nullable;
+
 import org.sterl.open.aifactory.config.KeySource;
 import org.sterl.open.aifactory.config.SettingsSnapshot;
 
@@ -10,8 +12,9 @@ import org.sterl.open.aifactory.config.SettingsSnapshot;
  *
  * <p>The field order is the form's order, so the page reads top to bottom (R-WP-49, R-WP-51).</p>
  */
-public record SettingsDto(String provider, String model, String think, String url, int tokenWindow,
-        long timeoutSeconds, boolean sendThinking, Integer maxTokens, String queryParams, String headerParams,
+public record SettingsDto(String provider, @Nullable String model, @Nullable String think,
+        @Nullable String url, int tokenWindow, long timeoutSeconds, boolean sendThinking,
+        @Nullable Integer maxTokens, @Nullable String queryParams, @Nullable String headerParams,
         boolean keySet, KeySource keySource) {
 
     public static SettingsDto of(SettingsSnapshot snapshot) {

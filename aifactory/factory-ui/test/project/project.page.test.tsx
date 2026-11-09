@@ -13,7 +13,7 @@ import { ProjectPage } from '../../src/project/project.page'
 import { listProjects } from '../../src/project/project.client'
 import { project } from '../shared/fixtures'
 import { content } from '../../src/shared/content'
-import type { Project } from '../../src/shared/dto'
+import type { ProjectDto } from '../../src/shared/server-api'
 
 beforeEach(() => {
   cleanup()
@@ -109,8 +109,8 @@ function response(status: number, body: unknown): Response {
  * The frame in miniature: it owns the list (D1) exactly as `useProjectList` does, only without the tree —
  * so a test of this page reads nothing at mount and the row appears through `onReload` alone.
  */
-function Host({ initial = [] }: { initial?: Project[] }) {
-  const [projects, setProjects] = useState<Project[]>(initial)
+function Host({ initial = [] }: { initial?: ProjectDto[] }) {
+  const [projects, setProjects] = useState<ProjectDto[]>(initial)
   return (
     <ProjectPage
       projects={projects}

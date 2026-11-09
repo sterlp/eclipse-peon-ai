@@ -19,7 +19,7 @@ import { content } from '../shared/content'
 import { useProjectList } from '../project/project.list'
 import { writeLastProject } from '../shared/last.project'
 import { readUserName } from '../shared/user.name'
-import type { Project } from '../shared/dto'
+import type { ProjectDto } from '../shared/server-api'
 import '../styles.css'
 
 /**
@@ -50,7 +50,7 @@ export default function AppShell() {
   // beside a controlled value (measured in `layout/Sider.js`)
   const [collapsed, setCollapsed] = useState(false)
 
-  function openProject(project: Project): void {
+  function openProject(project: ProjectDto): void {
     const segment = projectSegment(project)
     // the address is the answer, but `/chat` on its own needs to know what this browser opened (UC-WP-51)
     writeLastProject(segment)
@@ -61,7 +61,7 @@ export default function AppShell() {
    * The second handle to the same place: the file area is an address of its own (R-WP-38), and `/chat` on
    * its own still answers with the chat — the area is a chosen address, not a place to return to.
    */
-  function openFiles(project: Project): void {
+  function openFiles(project: ProjectDto): void {
     const segment = projectSegment(project)
     writeLastProject(segment)
     navigate(chatFilesPath(segment))

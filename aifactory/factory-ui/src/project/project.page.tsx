@@ -5,23 +5,23 @@ import { addProject, removeProject } from './project.client'
 import { openProjectStatusStream } from './project.status.client'
 import { errorMessage } from '../shared/api.client'
 import { content } from '../shared/content'
-import type { Project, ProjectWork } from '../shared/dto'
+import type { ProjectDto, ProjectWorkDto } from '../shared/server-api'
 
 /** The same pause the conversation uses: long enough not to hammer, short enough to be noticed. */
 const RECONNECT_MS = 500
 
 interface Props {
   /** The registry as the frame read it — this page owns no copy of it (D1, R-WP-38). */
-  projects: Project[]
+  projects: ProjectDto[]
   /** Why the tree beside this page is empty, when the registry could not be read. */
   listError?: string | null
-  onOpen: (project: Project) => void
+  onOpen: (project: ProjectDto) => void
   /** Asks the frame to read the registry again: what this page added or removed has to show in the tree. */
   onReload: () => Promise<void>
 }
 
 export function ProjectPage({ projects, listError, onOpen, onReload }: Props) {
-  const [work, setWork] = useState<Record<string, ProjectWork>>({})
+  const [work, setWork] = useState<Record<string, ProjectWorkDto>>({})
   const [gitUrl, setGitUrl] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -90,7 +90,7 @@ export function ProjectPage({ projects, listError, onOpen, onReload }: Props) {
     }
   }
 
-  async function remove(project: Project) {
+  async function remove(project: ProjectDto) {
     setMessage(null)
     try {
       await removeProject(project.id)

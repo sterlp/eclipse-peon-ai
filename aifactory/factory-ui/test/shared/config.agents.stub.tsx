@@ -3,14 +3,14 @@ import { render, screen } from '@testing-library/react'
 
 import { Agents } from '../../src/config/config.agents'
 import { content } from '../../src/shared/content'
-import type { AgentSettings } from '../../src/config/config.agents.client'
+import type { AgentSettingsDto } from '../../src/shared/server-api'
 import { listModels, type ThinkInput } from '../../src/config/config.client'
 
 /** The key a leaked slot view would repeat — every key test names it from here. */
 export const KEY = 'sk-agent-secret-0123456789'
 
 /** A slot as the file answers it — nothing overridden unless a test says otherwise. */
-export function agent(overrides: Partial<AgentSettings> = {}): AgentSettings {
+export function agent(overrides: Partial<AgentSettingsDto> = {}): AgentSettingsDto {
   return {
     id: 'dev',
     name: 'Dev',
@@ -34,8 +34,8 @@ export type Call = { method: string; path: string; body?: string }
  * red from a backend mutation; the file itself is proven by `AgentConfigFileTest`.
  */
 export function stubServer(initial: {
-  slots: AgentSettings[]
-  saved?: AgentSettings
+  slots: AgentSettingsDto[]
+  saved?: AgentSettingsDto
   /** set to make every PUT answer as the server refuses it — the 400 path of R-WP-16 */
   rejectWith?: string
   /** the answer of the model list of a drafted connection (R-WP-50) — asked, never mounted */

@@ -2,6 +2,8 @@ package org.sterl.open.aifactory.config.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import org.springframework.lang.Nullable;
+
 import org.sterl.open.aifactory.config.KeyIntentRequest;
 import org.sterl.open.aifactory.config.SettingsUpdate;
 import org.sterl.open.aifactory.config.WireBooleanText;
@@ -17,6 +19,8 @@ import org.sterl.open.aifactory.config.WireValidationHints;
  * or a boolean has no empty state, which is why token window, timeout, think and max tokens arrive as
  * text and are parsed by the internal facade behind {@link SettingsUpdate} rather than by the mapper.
  * The page is the only client and ships in this artifact, so it is the contract this shape is built for.
+ * Every field is {@code @Nullable} because absent means <em>keep</em> — and {@code server-api.ts} reads
+ * exactly that annotation as its optional marker (R-WP-54), so removing one makes a UI field required.
  *
  * <p>This is the only type of the component that may carry a key; it is translated at the external
  * facade and never travels further in.</p>
@@ -32,16 +36,17 @@ import org.sterl.open.aifactory.config.WireValidationHints;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @WireKeyIntent
-public record SettingsUpdateRequest(@WireProviderName String provider, String model, String url,
-        String apiKey,
-        @WireIntegerText(max = Integer.MAX_VALUE) String tokenWindow,
-        @WireIntegerText(max = Long.MAX_VALUE, message = WireValidationHints.TIMEOUT_HINT) String timeoutSeconds,
-        @WireBooleanText String sendThinking, String think,
+public record SettingsUpdateRequest(@WireProviderName @Nullable String provider, @Nullable String model,
+        @Nullable String url, @Nullable String apiKey,
+        @WireIntegerText(max = Integer.MAX_VALUE) @Nullable String tokenWindow,
+        @WireIntegerText(max = Long.MAX_VALUE,
+                message = WireValidationHints.TIMEOUT_HINT) @Nullable String timeoutSeconds,
+        @WireBooleanText @Nullable String sendThinking, @Nullable String think,
         @WireIntegerText(min = 0, max = Integer.MAX_VALUE,
-                message = WireValidationHints.MAX_TOKENS_HINT) String maxTokens,
-        @WireParamListText(message = WireValidationHints.QUERY_PARAMS_HINT) String queryParams,
-        @WireParamListText(message = WireValidationHints.HEADER_PARAMS_HINT) String headerParams,
-        Boolean removeApiKey) implements KeyIntentRequest {
+                message = WireValidationHints.MAX_TOKENS_HINT) @Nullable String maxTokens,
+        @WireParamListText(message = WireValidationHints.QUERY_PARAMS_HINT) @Nullable String queryParams,
+        @WireParamListText(message = WireValidationHints.HEADER_PARAMS_HINT) @Nullable String headerParams,
+        @Nullable Boolean removeApiKey) implements KeyIntentRequest {
 
     /** A wrapper on the wire, a fact inside: an absent flag is the same as {@code false}. */
     public SettingsUpdate toUpdate() {

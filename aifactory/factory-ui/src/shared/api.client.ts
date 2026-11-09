@@ -1,9 +1,4 @@
-/** The single error body of the factory API (`ApiError` on the server side). */
-export interface ApiError {
-  status: number
-  error: string
-  message: string
-}
+import type { ApiError } from './server-api'
 
 /**
  * Thin fetch wrapper — a non-2xx answer always throws with the server's `message`, because that is

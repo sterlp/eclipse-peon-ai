@@ -2,6 +2,8 @@ package org.sterl.open.aifactory.config;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import org.springframework.lang.Nullable;
+
 /**
  * Which connection to list models for (R-WP-50): the page's draft of it — provider and base URL for the
  * default level, the slot and that slot's own URL for an agent, plus {@code refresh} for the refresh
@@ -21,8 +23,10 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * <p>The provider carries the same rule as the save (R-WP-55): a name the core does not have is refused
  * here, where the answer can still name the field, and never answered with an empty list that looks
  * like a provider without models.</p>
+ *
+ * <p>Every field is {@code @Nullable} — that is what {@code server-api.ts} reads as optional (R-WP-54).</p>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record ModelListRequest(@WireProviderName String provider, String url, String agent,
-        String agentUrl, Boolean refresh) {
+public record ModelListRequest(@WireProviderName @Nullable String provider, @Nullable String url,
+        @Nullable String agent, @Nullable String agentUrl, @Nullable Boolean refresh) {
 }

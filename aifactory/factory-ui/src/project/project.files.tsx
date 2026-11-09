@@ -16,7 +16,7 @@ import { errorMessage } from '../shared/api.client'
 import { CodeView } from '../shared/code'
 import { languageOf } from '../shared/code.language'
 import { content } from '../shared/content'
-import type { Project } from '../shared/dto'
+import type { ProjectDto } from '../shared/server-api'
 
 interface Props {
   /**
@@ -25,7 +25,7 @@ interface Props {
    * caller keys this component per project (`key={project.id}`): unkeyed, the second project would open
    * inside the tree of the one before it.
    */
-  project: Project
+  project: ProjectDto
   /** Whether the address names this area (`chat/:project/files`). Read by the route, never kept here. */
   open: boolean
   /** The one toggle there is: tab and the drawer's own close both go through it, and its owner navigates. */
@@ -271,7 +271,7 @@ export function ProjectFiles({ project, open, onToggle }: Props) {
  * upload or create, because the edge behind it has no such method. It is born with the address that names
  * it and dies with the one that does not, so its own state never has to be reset.
  */
-function FilesArea({ project }: { project: Project }) {
+function FilesArea({ project }: { project: ProjectDto }) {
   const [shownRoot, setShownRoot] = useState<FileRoot>('checkout')
   const [branches, setBranches] = useState<Record<string, Branch>>({})
   const [expanded, setExpanded] = useState<string[]>([])

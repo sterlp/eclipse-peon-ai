@@ -5,7 +5,7 @@ import { FolderOpenOutlined } from '@ant-design/icons'
 import { content } from '../shared/content'
 import { entry, type NavGroup } from './app.menu'
 import { chatKeyOf, filesKeyOf, projectKeyOf, projectSegment } from './app.paths'
-import type { Project } from '../shared/dto'
+import type { ProjectDto } from '../shared/server-api'
 
 /**
  * Below this width the sider steps out of the chat's way (R-WP-38): the width of the tree plus the chat's own
@@ -18,26 +18,26 @@ export const SIDER_BREAKPOINT = 'lg'
 const ALL_GROUPS_OPEN_BELOW = 4
 
 interface Props {
-  projects: Project[]
+  projects: ProjectDto[]
   /** `navKeyOfPathname(pathname)` — what the frame read from the address. */
   activeKey: string | null
   /** Folded away? The frame owns the answer, the band's handle and the breakpoint both write it (R-WP-44). */
   collapsed: boolean
   onCollapse: (collapsed: boolean) => void
-  onOpen: (project: Project) => void
+  onOpen: (project: ProjectDto) => void
   /** The second handle of one address change: the file area of the project the address names. */
-  onFiles: (project: Project) => void
+  onFiles: (project: ProjectDto) => void
 }
 
-const groupKeyOf = (project: Project): string => projectKeyOf(projectSegment(project))
-const chatKeyFor = (project: Project): string => chatKeyOf(projectSegment(project))
-const filesKeyFor = (project: Project): string => filesKeyOf(projectSegment(project))
+const groupKeyOf = (project: ProjectDto): string => projectKeyOf(projectSegment(project))
+const chatKeyFor = (project: ProjectDto): string => chatKeyOf(projectSegment(project))
+const filesKeyFor = (project: ProjectDto): string => filesKeyOf(projectSegment(project))
 
 /**
  * The group the address names, `null` when it names no unit of the tree. The one reading of "which group
  * stands under the mark" — the preset and the union of the effective keys both ask it (R-WP-1).
  */
-function namedGroupOf(projects: Project[], activeKey: string | null): string | null {
+function namedGroupOf(projects: ProjectDto[], activeKey: string | null): string | null {
   const named = projects.find(project => chatKeyFor(project) === activeKey || filesKeyFor(project) === activeKey)
   return named === undefined ? null : groupKeyOf(named)
 }
@@ -47,7 +47,7 @@ function namedGroupOf(projects: Project[], activeKey: string | null): string | n
  * first one only from {@link ALL_GROUPS_OPEN_BELOW} on (R-WP-44) — plus the group the address names, because
  * a mark inside a closed group would answer the URL while showing nothing (R-WP-1).
  */
-function openGroupsOf(projects: Project[], activeKey: string | null): string[] {
+function openGroupsOf(projects: ProjectDto[], activeKey: string | null): string[] {
   const keys = projects
     .slice(0, projects.length < ALL_GROUPS_OPEN_BELOW ? projects.length : 1)
     .map(groupKeyOf)

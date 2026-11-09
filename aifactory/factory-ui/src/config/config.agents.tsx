@@ -3,13 +3,8 @@ import { Alert, Button, Card, Checkbox, Input, Tag } from 'antd'
 
 import { errorMessage } from '../shared/api.client'
 import { content } from '../shared/content'
-import {
-  listAgents,
-  previewTools,
-  updateAgent,
-  type AgentPatch,
-  type AgentSettings,
-} from './config.agents.client'
+import type { AgentSettingsDto } from '../shared/server-api'
+import { listAgents, previewTools, updateAgent, type AgentPatch } from './config.agents.client'
 import type { ThinkInput } from './config.client'
 import { ModelField } from './config.model'
 import { ThinkField } from './config.think'
@@ -37,7 +32,7 @@ interface Draft {
   apiKey: string
 }
 
-function draftOf(slot: AgentSettings): Draft {
+function draftOf(slot: AgentSettingsDto): Draft {
   return {
     overridden: slot.overridden,
     model: slot.model ?? '',
@@ -121,7 +116,7 @@ export function Agents({
       default side changes a slot draft's source (R-WP-49). */
   reloadToken: number
 }) {
-  const [slots, setSlots] = useState<AgentSettings[]>([])
+  const [slots, setSlots] = useState<AgentSettingsDto[]>([])
   const [drafts, setDrafts] = useState<Record<string, Draft>>({})
   // the removal of a key is queued per slot: the slot's own save carries it (R-WP-16, UC-WP-63)
   const [removeKey, setRemoveKey] = useState<Record<string, boolean>>({})

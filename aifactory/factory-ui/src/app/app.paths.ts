@@ -1,4 +1,4 @@
-import type { Project } from '../shared/dto'
+import type { ProjectDto } from '../shared/server-api'
 
 /** The address of the project list. */
 export const projectsPath = '/projects'
@@ -35,7 +35,7 @@ export function chatFilesPath(segment: string): string {
  * a name is always a legal path segment. The sider's keys, the navigation and what this browser remembers as
  * its last project all read it here — the alternative is three places that have to agree about one string.
  */
-export function projectSegment(project: Project): string {
+export function projectSegment(project: ProjectDto): string {
   return project.name
 }
 
@@ -45,7 +45,7 @@ export function projectSegment(project: Project): string {
  * accepted cost of a single, readable address. `null` is the same reading: a project the registry does not
  * hold, which is where the address leads to the list rather than to a fourth page (R-WP-1).
  */
-export function projectOfSegment(projects: Project[], segment: string): Project | null {
+export function projectOfSegment(projects: ProjectDto[], segment: string): ProjectDto | null {
   return projects.find(entry => projectSegment(entry) === segment) ?? null
 }
 
