@@ -37,10 +37,6 @@ import org.sterl.open.aifactory.project.ProjectStatusStream;
 import org.sterl.open.aifactory.project.ProjectWork;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.Content;
-import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
@@ -76,7 +72,7 @@ final class ProjectRuntime {
     private final ProjectStatusStream status;
     private final ExecutorService turns;
     private final SseTurnMonitor monitor;
-    private final AgentNames names;
+    private final ConversationRestore restore;
 
     /**
      * Who holds this project right now — a turn or one tile action, decided in one place so the two can
@@ -146,7 +142,8 @@ final class ProjectRuntime {
         this.jon.setStaticContext(List.of(ContextItem.of(UserName.promptLine())));
         // keyed by the core's tool names, filled with the names this factory built, so the product names
         // a member in exactly one place (D1) and a history line needs no second record of its author
-        this.names = authorTable(plan.getName(), dev.getName(), review.getName());
+        AgentNames authors = authorTable(plan.getName(), dev.getName(), review.getName());
+        this.restore = new ConversationRestore(authors, jon.getName());
         this.monitor = new SseTurnMonitor(projectId, streams, this::tiles, this::sawOrigin);
         // the delegation events of the wire (R-WP-40, UC-WP-72): hung on the tool the moment the monitor
         // exists to answer them — the tool itself stays registered where it was, before the agent was built
@@ -504,60 +501,11 @@ final class ProjectRuntime {
     }
 
     /**
-     * The chat as the memory has it: user text, Jon's answers, the final answer of a team member, and the
-     * failure line of a turn that did not run — everything else skipped, so a system prompt, a tool call,
-     * an ordinary tool result and an empty message are not chat lines (D4). A queued input keeps the core's
-     * {@code [Queued Message]} marker, it is reality and not the factory's to hide (Q6).
-     *
-     * <p>Every line states its author (R-WP-4, UC-WP-39): Jon by name, the member by name, the typed
-     * input by the name his message carries (R-WP-25). So the team's answer is read back out of the one
-     * history file the core already keeps — no second store, and nothing read out of a text that is not
-     * the factory's own: the single thing parsed here is the prefix this component wrote in front of a
-     * send, by {@link UserName}, at the two positions that one writes it at (D-6-3). The failure line is
-     * the one line that names no one — nothing in the team spoke it (R-WP-34).</p>
+     * The conversation as the core's memory has it — {@link ConversationRestore} holds the one rule of
+     * which message becomes which line, and of why no second store is involved (R-WP-11, R-WP-4).
      */
     List<ChatLine> history() {
-        List<ChatLine> lines = new ArrayList<>();
-        for (ChatMessage message : jon.getMemory().getCopy()) {
-            if (message instanceof UserMessage typed) {
-                UserName.Parsed sender = UserName.parse(textOf(typed));
-                if (!sender.text().isBlank()) {
-                    lines.add(ChatLine.user(sender.text(), sender.name()));
-                }
-            } else if (message instanceof ToolExecutionResultMessage result) {
-                ChatLine memberAnswer = finalTeamAnswerOf(result);
-                if (memberAnswer != null) {
-                    lines.add(memberAnswer);
-                }
-            } else if (message instanceof AiMessage answer && TurnFailure.isFailure(answer.text())) {
-                // ahead of the Jon-branch: a failure is an AiMessage as well, and it is not his answer
-                lines.add(ChatLine.error(TurnFailure.reason(answer.text())));
-            } else if (message instanceof AiMessage answer && !answer.hasToolExecutionRequests()
-                    && answer.text() != null && !answer.text().isBlank()) {
-                lines.add(ChatLine.jon(answer.text(), jon.getName()));
-            }
-        }
-        return List.copyOf(lines);
-    }
-
-    /**
-     * The final answer a member handed Jon: the result of the tool that is its delegation, told apart
-     * from an ordinary tool result by its <b>tool name</b> alone. Two delegations in one answer of Jon's
-     * are two result messages, each carrying its own tool name — which is why reading them back needs
-     * neither the tool-call id nor a place to remember an order (ADR-0078 Decision 6).
-     *
-     * <p>The text is the result <b>verbatim</b>, statistics line included: it is the same text the model
-     * reads, and shortening it would be the factory's guess about what matters. That includes a failed
-     * tool — a failure is a line with an author like any other (UC-WP-40), so nothing here filters by
-     * text. A tool this table does not know stays no line, and neither does a result that is not one
-     * text ({@code text()} would throw on it).</p>
-     */
-    private ChatLine finalTeamAnswerOf(ToolExecutionResultMessage result) {
-        String author = names.authorOf(result.toolName());
-        if (author == null || !result.hasSingleText()) {
-            return null;
-        }
-        return ChatLine.jon(result.text(), author);
+        return restore.linesOf(jon.getMemory().getCopy());
     }
 
     /** Jon himself — reachable without a rebuild for the team view and {@code clear()} of Inc 5. */
@@ -571,19 +519,5 @@ final class ProjectRuntime {
      */
     ConfiguredChatModel model() {
         return model;
-    }
-
-    /** Only the text parts of a user message, joined as the core joins them; image parts are no chat line. */
-    private static String textOf(UserMessage user) {
-        StringBuilder text = new StringBuilder();
-        for (Content content : user.contents()) {
-            if (content instanceof TextContent txt && !txt.text().isBlank()) {
-                if (!text.isEmpty()) {
-                    text.append(System.lineSeparator());
-                }
-                text.append(txt.text());
-            }
-        }
-        return text.toString();
     }
 }
