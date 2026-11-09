@@ -808,3 +808,20 @@ Kommentar-Korrekturen dieses Deltas: `app.routes.tsx` (Zeile + JavaDoc-Ende), `c
 nicht gibt ⇒ Verweis auf die Liste). **Browser-Abnahme §7 (6 Punkte) steht weiterhin bei Jon** — dieser Build
 hat kein Browser-Werkzeug; neu daran: Insight→Tab, Tab zu (kein Insight-Rückkehrer), `/files`→Kachel,
 **Zurück/Weiter** über `/files`-Adressen (nie zwei Overlays), Tab über dem Insight erreichbar (3 > 1).
+
+
+## R-WP-48 — je Turn genau ein Endereignis (Review 2026-11-09, Scope `430343f2` + `e72c6c76`) — Verdict **REJECTED** → N1
+
+Grün gefahren: Backend 232, UI 224. Drei Befunde, alle von Review; Docs von Jon geschärft (R-WP-48/UC-WP-83/84), Delta-Plan folgt.
+
+**B1 (Verhalten, Docs↔Code): UC-WP-83 GIVEN 4 war falsch gefasst/gebaut.** `fail()` (`ProjectRuntime.java:459-462`) publiziert `ChatEvent.Failed` **unbedingt** — auch für einen einreihenden Submit, dessen eigene Config-Lesung scheitert: ein `error` geht auf den Draht, während der besitzende Turn läuft; `chat.page.tsx:352-363` behandelt jedes `error` als Turn-Ende und reißt die Live-Sicht des laufenden Turns weg (für `RuntimeException` pre-existing, für `Error` neu durch den `Throwable`-Catch). Beleg: `aQueuedSubmitThatFailsOwnsNothingOfTheRunningTurn` (`TurnFailureTest.java:213-256`) wartet auf die `ROLE_ERROR`-Zeile, die nur `fail()` schreibt. **Jons Entscheidung (2026-11-09, autonom):** das `error`-Ereignis gehört dem eröffneten Turn — scheitert ein einreihender Submit, bleiben die Verlaufszeilen, aber **kein** Endereignis geht auf den Draht (Publish nur bei `ranTurn`); Doc entsprechend geschärft.
+
+**B2 (fehlender Test): UC-WP-83 GIVEN 3 „genau ein `done`" ist auf dem Draht ungedeckt.** `stopIsNoFailure` prüft nur den Verlauf; D4s Begründung („gleicher Zweig") trägt für GIVEN 2, nicht für den CANCELED-Zweig (`:431-432`). Delta: Draht-Assertion in `stopIsNoFailure` nachtragen (benannte Abweichung von D4 — der Schluss war falsch, nicht die Regel).
+
+**B3 (Race): der Roster-Read aus `onOpen` hat keine Lesefolge.** Eine `/agents`-Antwort (WORKING) kann nach dem `agents`-Endschnappschuss (IDLE) eintreffen und ihn überschreiben → Kachel für immer „arbeitet". Der Verlauf hat den Schutz (`readSeq`/`appliedRead`, `chat.page.tsx:171-173`), die Kacheln nicht; der Plan verwies denselben Grund als Verwerfungsgrund für den Doppel-Read. **Jons Entscheidung:** Lesefolge-Idiom auf die Kacheln legen (frischester Stand gewinnt); Doc-Satz in R-WP-48 nachgezogen, UC-WP-84 um GIVEN 3 ergänzt.
+
+**Abweichung (Jons, nicht Devs):** `e72c6c76` committet `docs/chat.md` (+35/−2) mit fremden Flips (R-WP-47/UC-WP-82 ✅ aus der A7-Runde), weil Jon Dev die Datei ausdrücklich mitgab, während der Plan „kein `docs/**`" sagte. Dokumentiert, nicht rückgängig.
+
+**Instruction gap:** `AGENTS-DEV.md` braucht die nvm-/PATH-Zeile für `pnpm`/Node ≥22 (hier fehlte `pnpm`, node war v18) — im Delta nachziehen.
+
+**Hinweis:** Findings stehen zunächst in `overview.md` (nur Plan-Tools schreiben dort) — Übertrag hierher vor dem nächsten Plan-Schreibvorgang.

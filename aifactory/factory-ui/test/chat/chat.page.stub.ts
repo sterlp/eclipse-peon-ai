@@ -26,6 +26,12 @@ export interface Chat {
    * racing is what C-5 is about.
    */
   deferNextHistoryRead(answersWith?: ChatMessage[]): { resolve(): void }
+  /**
+   * Holds the answer of the next `GET …/agents` back until the test resolves it — the roster read that is
+   * still on the wire while the stream already carries a newer snapshot (UC-WP-84 GIVEN 3). `answersWith`
+   * answers exactly that read. Resolve it before the test ends: an unanswered read leaves a promise open.
+   */
+  deferNextAgentsRead(answersWith?: AgentTile[]): { resolve(): void }
   /** Every `POST …/agents` answers this instead of 202 — the refusal a running turn produces. */
   refuseActions(status: number, message: string): void
   /** Every `POST …/messages` answers this instead of 202 — the send that never landed. */
@@ -97,6 +103,9 @@ export function stubChat(
   let heldReads: { wait: Promise<void>; answersWith?: ChatMessage[] }[] = []
   // the stream answers the test holds back: no answer means no subscription, which is what R-WP-48 reads
   let heldOpens: { wait: Promise<void> }[] = []
+  // the roster reads the test holds open, in the order they were asked for — a read on the wire is the race
+  // UC-WP-84 GIVEN 3 is about: the snapshot can overtake it
+  let heldAgentReads: { wait: Promise<void>; answersWith?: AgentTile[] }[] = []
 
   vi.stubGlobal(
     'fetch',
@@ -132,7 +141,14 @@ export function stubChat(
         return new Response(null, { status: 202 })
       }
       if (path.endsWith('/agents')) {
-        return json(200, state.agents)
+        const [held, ...rest] = heldAgentReads
+        heldAgentReads = rest
+        if (held === undefined) {
+          return json(200, state.agents)
+        }
+        // answered when the test lets it go and with the roster it was promised: the whole point of a held
+        // read is that the board has moved on by the time it answers
+        return held.wait.then(() => json(200, held.answersWith ?? state.agents))
       }
       if (path.endsWith('/messages/stop')) {
         if (state.stopAnswer !== undefined) {
@@ -195,6 +211,18 @@ export function stubChat(
         settle = done
       })
       heldReads = [...heldReads, { wait, answersWith }]
+      return {
+        resolve: () => {
+          settle?.()
+        },
+      }
+    },
+    deferNextAgentsRead: answersWith => {
+      let settle: (() => void) | undefined
+      const wait = new Promise<void>(done => {
+        settle = done
+      })
+      heldAgentReads = [...heldAgentReads, { wait, answersWith }]
       return {
         resolve: () => {
           settle?.()

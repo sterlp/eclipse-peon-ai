@@ -127,6 +127,30 @@ test('theReconnectReadsTheRosterFresh', async () => {
   expect(chat.countOf('/agents', 'GET'), 'the reconnect read the roster again').toBe(rosterReads + 1)
 })
 
+// UC-WP-84
+test('aStaleRosterAnswerNeverOverwritesTheEndSnapshot', async () => {
+  // the read went out while the turn still worked; the stream's end snapshot overtakes it on the wire, so the
+  // answer that arrives last is the older stand and has to lose (UC-WP-84 GIVEN 3)
+  const chat = stubChat({ messages: [QUESTION] })
+  chat.setAgents([tile('Jon', 'WORKING')])
+  const held = chat.deferNextAgentsRead()
+
+  render(<ChatPage project={project()} />)
+  await flush()
+  expect(chat.countOf('/agents', 'GET')).toBe(1)
+
+  await chat.push(event('agents', { tiles: [tile('Jon', 'IDLE')] }))
+  expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.IDLE)
+
+  held.resolve()
+  await flush()
+  expect(
+    screen.getByTestId('tile-state-Jon'),
+    'the read that began before the snapshot lost',
+  ).toHaveTextContent(content.tiles.state.IDLE)
+  expect(chat.countOf('/agents', 'GET'), 'no second read chased the lost answer').toBe(1)
+})
+
 // UC-WP-7
 test('aLaterTurnKeepsStreamingWhileAnEarlierReadInFlight', async () => {
   const chat = stubChat({ messages: [QUESTION] })

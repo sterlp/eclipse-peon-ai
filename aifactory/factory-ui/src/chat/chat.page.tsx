@@ -10,7 +10,8 @@ import {
   type ChatMessage,
   type ChatStreamEvent,
 } from './chat.client'
-import { agentAction, listAgents, type AgentAction, type AgentTile } from './chat.agents.client'
+import { agentAction, type AgentAction } from './chat.agents.client'
+import { useTileBoard } from './chat.board'
 import { ChatComposer } from './chat.composer'
 import { useEdgeInsight } from './chat.edge'
 import { ChatInsight } from './chat.insight'
@@ -81,10 +82,10 @@ const RECONNECT_MS = 500
  * mid-turn does not move the answer that is still streaming, and the trace of a finished turn keeps its
  * place while the answer gives way to the history that carries it (R-WP-28, UC-WP-54).
  *
- * The team's tiles ({@link ChatTiles}) follow the same rule in their own family: read on mount, replaced
- * by every `agents` snapshot, never merged — and re-read after an action, because 202 only said
- * <em>taken</em>. This component holds the state of both, and it knows no agent name: a tile says what it
- * offers (D-14).
+ * The team's tiles ({@link ChatTiles}) follow the same rule in their own family, kept by {@link useTileBoard}:
+ * read once the stream stands, replaced whole by every `agents` snapshot — which stand of the roster is the
+ * fresher one is the board's question, not this view's — and re-read after an action, because 202 only said
+ * <em>taken</em>. This view knows no agent name: a tile says what it offers (D-14).
  *
  * A tile offering TRANSCRIPT opens {@link ChatInsight} (UC-WP-49), held by {@link useEdgeInsight}. It shares
  * the right edge with the {@link files} slot and never stands with it: the edge carries exactly one overlay,
@@ -116,7 +117,6 @@ export function ChatPage({
   onCloseFiles = () => undefined,
 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [tiles, setTiles] = useState<AgentTile[]>([])
   const [outgoing, setOutgoing] = useState<PendingLine[]>([])
   const [live, setLive] = useState<LiveItem[]>([])
   const [draft, setDraft] = useState('')
@@ -179,6 +179,8 @@ export function ChatPage({
   const log = useRef<HTMLUListElement>(null)
   const { following, onLogScroll, followNow, followIfFollowing } = useFollowBottom(log)
   const projectId = project?.id ?? null
+  const showBoardFailure = useCallback((message: string) => setError(message), [])
+  const { tiles, refreshTiles, applySnapshot } = useTileBoard(projectId, showBoardFailure)
 
   useEffect(() => {
     followIfFollowing()
@@ -263,16 +265,6 @@ export function ChatPage({
       .then(loaded => applyHistory(loaded, mark, read))
       .catch(reason => setError(errorMessage(reason)))
   }, [applyHistory, projectId])
-
-  /** Read, never kept, and only while a stream stands — before it, a WORKING is a wait nobody will end (R-WP-48). */
-  const refreshTiles = useCallback((): Promise<void> => {
-    if (projectId === null) {
-      return Promise.resolve()
-    }
-    return listAgents(projectId)
-      .then(setTiles)
-      .catch(reason => setError(errorMessage(reason)))
-  }, [projectId])
 
   const applyEvent = useCallback(
     (event: ChatStreamEvent) => {
@@ -363,12 +355,13 @@ export function ChatPage({
           break
         }
         case 'agents':
-          // replace, never merge — a snapshot that accumulated would become a second history (R-WP-7)
-          setTiles(event.tiles)
+          // replace, never merge — a snapshot that accumulated would become a second history (R-WP-7); as the
+          // freshest stand it retires every roster read that began before it (UC-WP-84 GIVEN 3)
+          applySnapshot(event.tiles)
           break
       }
     },
-    [beginTurn, projectId, refresh, refreshTiles, writeLive, writeTurn],
+    [applySnapshot, beginTurn, projectId, refresh, refreshTiles, writeLive, writeTurn],
   )
 
   useEffect(() => {
