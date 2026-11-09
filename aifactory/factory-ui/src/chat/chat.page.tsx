@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 
 import {
+  isTraceLine,
   listMessages,
   sendMessage,
   senderName,
@@ -131,11 +132,12 @@ export function ChatPage({
   /** The project whose turn the user asked to end, so its `done` must not read over his lines (D-16). */
   const stoppedTurn = useRef<string | null>(null)
   /**
-   * The rows the history carries — the coordinates every live line anchors in. A ref because the event
-   * handler has to read the count <em>now</em>: the state of a render is one render behind, and an anchor
-   * that is one render behind is an anchor that names the wrong place (D-B, UC-WP-54).
+   * What the last read holds, in the two units that read it: `lines` indexes a pending line's own position
+   * (chat.pending.ts), `voices` is what a live anchor counts — a step of the trace is a line the read may add
+   * at any place, so counting it would move every surviving entry of the turn above it (R-WP-47, A7-N1). A
+   * ref because the handler reads the count <em>now</em>: a render's state is one render behind (D-B).
    */
-  const historyRows = useRef(0)
+  const historyCount = useRef({ lines: 0, voices: 0 })
   /**
    * The own inputs the history does not carry yet, each remembering how many history lines stood when it
    * was sent — the position its own line cannot precede, which is what confirms it (R-WP-37). Their count
@@ -182,12 +184,10 @@ export function ChatPage({
     followIfFollowing()
   }, [messages, live, outgoing, followIfFollowing])
 
-  /**
-   * One write place per list: the ref and the state of a fact change together and nowhere else. The screen
-   * reads the state, the event handler reads the ref, so the two can never disagree about a row count (D-B).
-   */
+  /** One write place per list: the ref and the state of a fact change together and nowhere else — the screen
+   *  reads the state, the handler the ref, so the two never disagree about a count (D-B). */
   const writeHistory = useCallback((loaded: ChatMessage[]) => {
-    historyRows.current = loaded.length
+    historyCount.current = { lines: loaded.length, voices: loaded.filter(line => !isTraceLine(line)).length }
     setMessages(loaded)
   }, [])
 
@@ -207,17 +207,17 @@ export function ChatPage({
   }, [])
 
   /**
-   * The open turn, opened by the first live line that needs it and frozen from then on. Its anchor is frozen
-   * <em>including</em> the own pending lines, because the history read turns exactly those into history lines
-   * at the same indices — so the same number names the same place before and after the read, which is what
-   * keeps one answer one block (D-A, UC-WP-54). Its identity is what a working step belongs to: a step of
-   * this turn can work, a step of one that ended cannot (R-WP-40, UC-WP-72 GIVEN 2).
+   * The open turn, opened by the first live line that needs it and frozen from then on. Its anchor counts
+   * <em>voices</em> — the history lines a read cannot move, plus the own pending lines, which that read
+   * turns into exactly those voices at the same indices — so the same number names the same place before
+   * and after the read, which is what keeps one answer one block (D-A, UC-WP-54, R-WP-47). Its identity is
+   * what a working step belongs to: a step of this turn can work, one of a finished turn cannot.
    */
   const beginTurn = useCallback(() => {
     if (turn.current !== null) {
       return turn.current
     }
-    const started = { anchor: historyRows.current + pendingLines.current.length, id: ++turnSeq.current }
+    const started = { anchor: historyCount.current.voices + pendingLines.current.length, id: ++turnSeq.current }
     writeTurn(started)
     return started
   }, [writeTurn])
@@ -446,7 +446,7 @@ export function ChatPage({
     // normalised exactly as the wire carries it, or the history would never confirm it (R-WP-37, D-H)
     writePending([
       ...pendingLines.current,
-      { text, afterHistory: historyRows.current, origin: senderName(user) },
+      { text, afterHistory: historyCount.current.lines, origin: senderName(user) },
     ])
     setError(null)
     // the send is what opens the turn, so the flag follows the intent and not the answer (D-13): 202 only

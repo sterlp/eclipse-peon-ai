@@ -1,7 +1,7 @@
 import type { Ref } from 'react'
 
 
-import type { ChatMessage } from './chat.client'
+import { isTraceLine, type ChatMessage } from './chat.client'
 import { ChatDiff } from './chat.diff'
 import { ChatMarkdown } from './chat.markdown'
 import { ChatTraceTimeline } from './chat.timeline'
@@ -22,7 +22,7 @@ interface Props {
    *  their sender and position in it, not by their text (a queued input carries the core's marker;
    *  R-WP-37). */
   outgoing: PendingLine[]
-  /** The live lines of the running turn, each anchored at the rows that already stood when it arrived. */
+  /** The live lines of the running turn, each anchored at the number of voices that stood when it arrived. */
   live: LiveItem[]
   /** The identity of the turn this view holds open, or none: the only thing that may paint a working step,
    *  and it names WHICH turn — a step of a turn that ended never works for the next one (R-WP-40, UC-WP-72). */
@@ -103,8 +103,8 @@ export function ChatLog({ messages, outgoing, live, openTurn = null, logRef, onS
       author: authorOf(message),
       text: message.text,
       // the step the memory handed back (R-WP-47): its name is the Bestand's and it joins the timeline
-      // of its place instead of speaking as a row of its own
-      trace: message.role === 'tool',
+      // of its place instead of speaking as a row of its own — and it never counts in an anchor
+      trace: isTraceLine(message),
     })),
     ...outgoing.map((line): Row => ({
       voice: 'user',
@@ -178,13 +178,13 @@ export function ChatLog({ messages, outgoing, live, openTurn = null, logRef, onS
 
 /**
  * The rows and the live items in the order the screen shows them: a run of live items is placed after the
- * number of rows its turn was anchored at, and inside the run the arrival order holds. The anchor counts
- * what stood at that moment — the history plus the inputs that were still pending then — so it names the
- * same place before and after the read that confirms those inputs, and a run pointing past the rows that
- * stand today falls to the end (D-A, UC-WP-54). The steps, Think sections and delegations of one run become
- * ONE timeline, a diff block stands beside it as a block of its own (R-WP-36, R-WP-40). A step the history
- * handed back is a row like any other and groups by the same rule (R-WP-47): consecutive steps are one
- * widget, and the live entries beside them join it instead of drawing a second account of one place.
+ * number of **voices** its turn was anchored at, and inside the run the arrival order holds. The anchor
+ * counts voices — the lines that speak (`user`, `jon`, `error`) plus the inputs pending then — and never a
+ * step of the trace, because a read hands such a step back at any place and would otherwise let a surviving
+ * entry lift itself over the account of its own turn (D-A, UC-WP-54, R-WP-47). A run pointing past the
+ * voices that stand today falls to the end. The steps, Think sections and delegations of one run become ONE
+ * timeline, a diff block stands beside it as a block of its own (R-WP-36, R-WP-40): the steps the history
+ * handed back lead that widget, the wire's rest follows behind them.
  */
 function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entry[] {
   const entries: Entry[] = []
@@ -217,23 +217,35 @@ function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entr
     entries.push({ type: 'trace', items, open: openItem, restored })
   }
 
-  const pushRows = (until: number) => {
-    while (shown < Math.min(until, rows.length)) {
+  // the steps the Bestand handed back, drawn where they stand: consecutive trace rows are ONE widget, and a
+  // voice, a failure or the anchor of a live run ends the group (R-WP-40)
+  const pushTraceAtPlace = () => {
+    const steps: TraceItem[] = []
+    while (shown < rows.length && rows[shown].trace) {
+      steps.push(restoredStep(rows[shown]))
+      shown += 1
+    }
+    pushTrace(steps, null, true)
+  }
+
+  // an anchor names a number of VOICES (chat.page.tsx historyCount), so a step the read inserted above this
+  // place cannot lift the run over the account of its own turn (R-WP-40, R-WP-47, A7-N1)
+  const pushRows = (untilVoices: number) => {
+    let voices = 0
+    while (shown < rows.length && voices < untilVoices) {
       const row = rows[shown]
-      if (!row.trace) {
-        entries.push({ type: 'row', row })
-        shown += 1
+      if (row.trace) {
+        pushTraceAtPlace()
         continue
       }
-      // R-WP-40 for the restored trace: steps that stand in a row are ONE widget at the place of the
-      // first, and a voice, a failure or the anchor of a live run ends the group. Each step still counts
-      // as one row, so the anchor of a live run keeps naming the same place before and after the read.
-      const steps: TraceItem[] = []
-      while (shown < Math.min(until, rows.length) && rows[shown].trace) {
-        steps.push(restoredStep(rows[shown]))
-        shown += 1
-      }
-      pushTrace(steps, null, true)
+      entries.push({ type: 'row', row })
+      voices += 1
+      shown += 1
+    }
+    // the steps standing exactly here are the Bestand's account of this place: they lead the entries that
+    // streamed live, so a diff of this turn reads behind the step that produced it (R-WP-40, A7-N1 BUG-1)
+    if (shown < rows.length && rows[shown].trace) {
+      pushTraceAtPlace()
     }
   }
 

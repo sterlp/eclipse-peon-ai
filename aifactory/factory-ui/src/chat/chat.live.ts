@@ -2,15 +2,14 @@
  * The live lines of the running turn (D-7): one list instead of the old streaming text plus a separate
  * tool list, because the order in which the two arrive IS the conversation.
  *
- * An item carries its anchor: the number of rows the log showed when its <em>turn</em> reported its first
- * line — one number for every item of one turn, not one per item. The anchor is a count and not a text, so
- * it survives the history read that `done` triggers: the finished line lands in the log, the tool lines of
- * that turn stay where they happened, and an input the user queues mid-turn cannot move the answer that is
- * still streaming (UC-WP-54).
+ * An item carries its anchor: the number of <em>voices</em> the log held when its turn reported its first
+ * line — one number for every item of one turn, not one per item. A count of voices and never of steps, so
+ * it survives the history read that `done` triggers: that read may hand a step back at any place, and a step
+ * counted here would let a surviving entry lift itself over its own turn's account (UC-WP-54, R-WP-47).
  */
 export type LiveItem =
-  /** `afterLines` — the anchor of the item's turn: rows of the log (history plus the own, unconfirmed
-   *  inputs) that stood when that turn reported its first line. Same number for every item of one turn. */
+  /** `afterLines` — the anchor of the item's turn: the VOICES (history lines plus the own, unconfirmed
+   *  inputs) that stood when that turn reported its first line; a step of the trace is not one. */
   | { kind: 'text' | 'error'; text: string; afterLines: number }
   /** One step of the turn's tool activity. `origin` is the wire's stamp of the agent that worked and `at`
    *  the moment this browser received it — both per item, so the cap of a long run keeps the times of what

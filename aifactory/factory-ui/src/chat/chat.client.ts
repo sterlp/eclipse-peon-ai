@@ -22,6 +22,12 @@ export interface ChatMessage {
   origin?: string | null
 }
 
+/** A step of the trace: a line of the log and never a voice. It is the one line a history read may hand back
+ *  at any place, so an anchor never counts it (R-WP-47); the log draws it in the timeline of its place. */
+export function isTraceLine(line: ChatMessage): boolean {
+  return line.role === 'tool'
+}
+
 /**
  * A live event of the running turn (§3.3.3): `partial` is a <em>delta</em>, `tool` one tool or problem
  * line, `done` closes one <em>turn</em> — an input that queued up behind a running one is closed by that

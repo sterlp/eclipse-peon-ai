@@ -1733,6 +1733,12 @@ test('aFileChangeIsLiveAndDoesNotOutliveTheReload', async () => {
   ])
   await chat.push(event('done', { millis: 9 }))
   await flush()
+  // the order of the place: the read hands the step back as a line, and the block of the same turn reads
+  // BEHIND it — the diff ends the group that lay before it (R-WP-40, UC-WP-54)
+  expect(
+    [...screen.getByTestId('chat-log').children].map(line => line.getAttribute('data-testid')),
+    'the diff-Block stands under the timeline of its own turn, not above it',
+  ).toEqual(['chat-line-user', 'chat-timeline', 'chat-diff', 'chat-line-jon'])
   expect(screen.getByTestId('chat-diff')).toHaveTextContent('+b')
   const step = screen.getByTestId('chat-timeline')
   expect(step).toHaveTextContent('write src/App.java')
