@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Card, Checkbox, Input, Tag } from 'antd'
+import { Alert, Button, Card, Checkbox, Form, Input, Tag } from 'antd'
 
-import { errorMessage } from '../shared/api.client'
+import { errorMessage, fieldErrorsOf } from '../shared/api.client'
+import { ApiField, ApiFormErrors } from '../shared/api.error'
 import { content } from '../shared/content'
 import type { AgentSettingsDto } from '../shared/server-api'
 import { listAgents, previewTools, updateAgent, type AgentPatch } from './config.agents.client'
@@ -14,6 +15,13 @@ const DEV_SLOT = 'dev'
 
 /** The slot that runs no project tools — so it has neither the allowlist field nor its preview (D6). */
 const COMPACT_SLOT = 'compact'
+
+/**
+ * The slot fields this section wraps with `ApiField` — the ones the server answers with a rule of its own
+ * (`Wire*` constraints, R-WP-55). A name the answer carries besides these still reaches the screen as a
+ * line, so a rule added on the server cannot be lost between the two display paths (R8).
+ */
+const SLOT_ERROR_FIELDS = ['temperature', 'extraBody', 'apiKey']
 
 /**
  * One slot as its row holds it: text everywhere, so empty is one state across the four fields and it
@@ -125,6 +133,8 @@ export function Agents({
   const [previewBusy, setPreviewBusy] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [saving, setSaving] = useState<string | null>(null)
+  // one refusal per slot, under the slot's own id: a card answers its own save and keeps its own reason
+  const [saveErrors, setSaveErrors] = useState<Record<string, unknown>>({})
 
   useEffect(() => {
     // a read of the files; a slot that never overrode anything has no file, and reading creates none.
@@ -161,6 +171,7 @@ export function Agents({
     }
     setSaving(id)
     setMessage(null)
+    setSaveErrors((current) => ({ ...current, [id]: null }))
     try {
       // the answer is the slot's file, read again: the checkbox and the key status come from it, so a
       // save that stored nothing cannot show a value the file refused (same rule as the default level)
@@ -170,7 +181,7 @@ export function Agents({
       setRemoveKey((current) => ({ ...current, [id]: false }))
     } catch (error) {
       // what was typed stays on the screen: the message names the field to fix, never a value
-      setMessage(errorMessage(error))
+      setSaveErrors((current) => ({ ...current, [id]: error }))
     } finally {
       setSaving(null)
     }
@@ -203,8 +214,14 @@ export function Agents({
     <section className="config-agents" aria-label={content.agents.title}>
       <h2>{content.agents.title}</h2>
       {message && <Alert type="error" title={message} />}
+      {/* a refusal whose field no card draws speaks here, with the server's own text — a card that marks its
+          own field says nothing twice (R-WP-56) */}
+      {Object.entries(saveErrors).map(([slot, error]) => (
+        <ApiFormErrors key={slot} error={error} fields={SLOT_ERROR_FIELDS} />
+      ))}
       {slots.map((slot) => {
         const draft = drafts[slot.id]
+        const errors = fieldErrorsOf(saveErrors[slot.id])
         return (
           <Card
             size="small"
@@ -218,7 +235,9 @@ export function Agents({
                 {content.agents.override}
               </Checkbox>
               {draft.overridden && (
-                <div className="config-agents-fields">
+                /* the field block of one slot, without a submit of its own: saving stays the card's click, so
+                   an enter in a field cannot write a file (D7) */
+                <Form className="config-agents-fields">
                   {/* R-WP-50: the same field the default level has — a slot lists the models of the
                       connection its turn will use, which is the base one unless this field drafts another. */}
                   <div className="config-agents-field">
@@ -246,13 +265,15 @@ export function Agents({
                     think={think}
                     onChange={edit(slot.id, 'think')}
                   />
-                  <Field
-                    id={'agent-' + slot.id + '-temperature'}
-                    label={content.agents.temperature}
-                    value={draft.temperature}
-                    numeric
-                    onChange={edit(slot.id, 'temperature')}
-                  />
+                  <ApiField field="temperature" errors={errors}>
+                    <Field
+                      id={'agent-' + slot.id + '-temperature'}
+                      label={content.agents.temperature}
+                      value={draft.temperature}
+                      numeric
+                      onChange={edit(slot.id, 'temperature')}
+                    />
+                  </ApiField>
                   {/*
                     R-WP-52: the provider's body, only where a provider can carry it — and with the
                     capability gone the draft still carries the stored value into the save (D8), because
@@ -265,12 +286,14 @@ export function Agents({
                       <label htmlFor={'agent-' + slot.id + '-extra-body'}>
                         {content.agents.extraBody}
                       </label>
-                      <Input.TextArea
-                        id={'agent-' + slot.id + '-extra-body'}
-                        rows={2}
-                        value={draft.extraBody}
-                        onChange={(event) => edit(slot.id, 'extraBody')(event.target.value)}
-                      />
+                      <ApiField field="extraBody" errors={errors}>
+                        <Input.TextArea
+                          id={'agent-' + slot.id + '-extra-body'}
+                          rows={2}
+                          value={draft.extraBody}
+                          onChange={(event) => edit(slot.id, 'extraBody')(event.target.value)}
+                        />
+                      </ApiField>
                     </div>
                   )}
                   {slot.id !== COMPACT_SLOT && (
@@ -319,14 +342,16 @@ export function Agents({
                   )}
                   <div className="config-agents-key">
                     <label htmlFor={'agent-' + slot.id + '-key'}>{content.config.key}</label>
-                    <Input
-                      id={'agent-' + slot.id + '-key'}
-                      type="password"
-                      autoComplete="off"
-                      placeholder={content.config.unchanged}
-                      value={draft.apiKey}
-                      onChange={(event) => edit(slot.id, 'apiKey')(event.target.value)}
-                    />
+                    <ApiField field="apiKey" errors={errors}>
+                      <Input
+                        id={'agent-' + slot.id + '-key'}
+                        type="password"
+                        autoComplete="off"
+                        placeholder={content.config.unchanged}
+                        value={draft.apiKey}
+                        onChange={(event) => edit(slot.id, 'apiKey')(event.target.value)}
+                      />
+                    </ApiField>
                     <span className={slot.keySet ? 'key-set' : 'key-missing'}>
                       {slot.keySet ? content.config.keySet : content.config.keyMissing}
                     </span>
@@ -345,7 +370,7 @@ export function Agents({
                     )}
                   </div>
                   <p className="hint">{content.agents.inherits}</p>
-                </div>
+                </Form>
               )}
               <Button
                 type="primary"

@@ -3,6 +3,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 
 import { content } from '../../src/shared/content'
 import { chooseOption, openChoice, shownChoice } from '../shared/choices'
+import { refused } from '../shared/refusal'
 import {
   agent,
   BASE,
@@ -351,4 +352,91 @@ test('agentModelFieldAsksForItsOwnConnection', async () => {
   // saved nothing of its own on the way
   expect((within(slot).getByLabelText(content.agents.model) as HTMLInputElement).value).toBe('')
   expect(server.calls.filter((call) => call.method === 'PUT')).toEqual([])
+})
+
+// UC-WP-93
+test('aRejectedSlotSaveMarksOnlyThatSlotsFieldAndItsOwnCard', async () => {
+  const REASON = 'temperature must be a number'
+  const server = stubServer({
+    slots: [
+      agent({ overridden: true, temperature: 'heiß' }),
+      agent({ id: 'po', name: 'Jon', overridden: true, temperature: '0.2' }),
+    ],
+    refusals: {
+      dev: refused({
+        status: 400,
+        error: 'Bad Request',
+        message: REASON,
+        fieldErrors: [{ field: 'temperature', message: REASON }],
+      }),
+    },
+  })
+
+  renderAgents()
+
+  const dev = await waitFor(() => row('dev'))
+  fireEvent.click(within(dev).getByRole('button', { name: content.agents.save }))
+
+  // the same widget as the two other server forms, inside the card that caused the refusal
+  const help = await within(dev).findByTestId('field-error-temperature')
+  expect(help).toHaveTextContent(REASON)
+  const temperature = within(dev).getByLabelText(content.agents.temperature)
+  expect(help.closest('.api-field')).toBe(temperature.closest('.api-field'))
+  expect(temperature.closest('.api-field')).toHaveClass('api-field-error')
+  expect(temperature).toHaveValue('heiß')
+
+  // the neighbour card holds nothing of it, and the section repeats no field (UC-WP-93 GIVEN 3)
+  const other = row('po')
+  expect(within(other).queryAllByTestId(/^field-error-/)).toEqual([])
+  expect(other.querySelector('.api-field-error')).toBeNull()
+  expect(screen.queryAllByRole('alert')).toEqual([])
+
+  // saving stays a click of the card's own button (D7): the section's form has no submit of its own, so the
+  // enter the viewer makes in a field cannot write a file
+  expect(within(dev).getByRole('button', { name: content.agents.save })).not.toHaveAttribute(
+    'type',
+    'submit',
+  )
+  fireEvent.keyPress(temperature, { key: 'Enter', code: 'Enter', keyCode: 13, charCode: 13 })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(server.calls.filter((call) => call.method === 'PUT')).toHaveLength(1)
+})
+
+// UC-WP-93
+test('eachSlotKeepsItsOwnFieldError', async () => {
+  const TEMPERATURE = 'temperature must be a number'
+  const BODY = 'extraBody must be a JSON object'
+  stubServer({
+    slots: [agent({ overridden: true }), agent({ id: 'po', name: 'Jon', overridden: true })],
+    refusals: {
+      dev: refused({
+        status: 400,
+        error: 'Bad Request',
+        message: TEMPERATURE,
+        fieldErrors: [{ field: 'temperature', message: TEMPERATURE }],
+      }),
+      po: refused({
+        status: 400,
+        error: 'Bad Request',
+        message: BODY,
+        fieldErrors: [{ field: 'extraBody', message: BODY }],
+      }),
+    },
+  })
+
+  renderAgents()
+
+  const dev = await waitFor(() => row('dev'))
+  fireEvent.click(within(dev).getByRole('button', { name: content.agents.save }))
+  await within(dev).findByTestId('field-error-temperature')
+
+  const other = row('po')
+  fireEvent.click(within(other).getByRole('button', { name: content.agents.save }))
+  await within(other).findByTestId('field-error-extraBody')
+
+  // neither refusal overwrites the other: each card holds its own answer
+  expect(within(dev).getByTestId('field-error-temperature')).toHaveTextContent(TEMPERATURE)
+  expect(within(other).getByTestId('field-error-extraBody')).toHaveTextContent(BODY)
+  expect(within(dev).queryAllByTestId(/^field-error-/)).toHaveLength(1)
+  expect(within(other).queryAllByTestId(/^field-error-/)).toHaveLength(1)
 })

@@ -12,6 +12,7 @@ import { useState } from 'react'
 import { ProjectPage } from '../../src/project/project.page'
 import { listProjects } from '../../src/project/project.client'
 import { project } from '../shared/fixtures'
+import { refused, Refused } from '../shared/refusal'
 import { content } from '../../src/shared/content'
 import type { ProjectDto } from '../../src/shared/server-api'
 
@@ -83,6 +84,9 @@ function stubServer(initial: Partial<Script>): Server {
         )
       }
       const answer = server.script[method as keyof Script]
+      if (answer instanceof Refused) {
+        return response(answer.status, answer.body)
+      }
       if (answer instanceof Error) {
         return response(400, { status: 400, error: 'Bad Request', message: answer.message })
       }
@@ -266,4 +270,59 @@ test('theListShowsWorkingAndQueued', async () => {
   expect(row.textContent).not.toContain(content.projects.working)
   // a work state is a picture of the runtime and never a reason to read the registry again (R-WP-24)
   expect(server.calls.filter(call => call.path === '/api/projects')).toHaveLength(reads)
+})
+
+// UC-WP-93
+test('aRejectedGitUrlMarksTheUrlFieldThroughTheSharedWidget', async () => {
+  const REASON = 'git urls must not carry credentials — public https repositories only'
+  const TYPED = 'https://user:token@git.example.com/acme/demo.git'
+  stubServer({
+    GET: [],
+    POST: refused({
+      status: 400,
+      error: 'Bad Request',
+      message: REASON,
+      fieldErrors: [{ field: 'gitUrl', message: REASON }],
+    }),
+  })
+  render(<Host />)
+  await screen.findByText(content.projects.empty)
+
+  fireEvent.change(screen.getByLabelText(content.projects.gitUrl), { target: { value: TYPED } })
+  fireEvent.click(screen.getByRole('button', { name: content.projects.add }))
+
+  // the same widget the config page uses: the reason stands at the field, in its wrapper, and nothing the
+  // viewer typed is lost (UC-WP-93 GIVEN 1)
+  const help = await screen.findByTestId('field-error-gitUrl')
+  expect(help).toHaveTextContent(REASON)
+  const field = screen.getByLabelText(content.projects.gitUrl).closest('.api-field')
+  expect(field).not.toBeNull()
+  expect(help.closest('.api-field')).toBe(field)
+  expect(field).toHaveClass('api-field-error')
+  expect(screen.getByLabelText(content.projects.gitUrl)).toHaveValue(TYPED)
+  // and the section says it once: a line repeating the field would be the second display path
+  expect(screen.queryByRole('alert')).toBeNull()
+})
+
+// UC-WP-93
+test('theAddFormIsOneAntdFormAndItsSubmitSaves', async () => {
+  const added = project()
+  const server = stubServer({ GET: [] })
+  const { container } = render(<Host />)
+  await screen.findByText(content.projects.empty)
+
+  // the native envelope was replaced, not nested (E2): one `form`, and it is the basis' own
+  const forms = container.querySelectorAll('form')
+  expect(forms).toHaveLength(1)
+  expect(forms[0]).toHaveClass('add-project', 'ant-form')
+
+  server.script = { GET: [added], POST: added, DELETE: undefined }
+  fireEvent.change(screen.getByLabelText(content.projects.gitUrl), {
+    target: { value: 'https://git.example.com/acme/demo.git' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: content.projects.add }))
+
+  expect(await screen.findByText('demo')).toBeInTheDocument()
+  // the submit chain of the `Form` carries it — there is no second path pressing the save
+  expect(server.calls.filter(call => call.method === 'POST')).toHaveLength(1)
 })

@@ -111,7 +111,9 @@
   padding-block-end: 2rem;
 }
 
-.add-project {
+/* `.ant-form` arrives with the basis' own sheet at runtime and carries the same specificity as a class of
+   ours, so the envelope of a form names both (D8). */
+.add-project.ant-form {
   display: flex;
   gap: 0.5rem;
 
@@ -120,6 +122,25 @@
     flex: 1;
     min-width: 0;
   }
+}
+
+/* The shared error widget (R-WP-56): its wrapper is the flex or grid item now, not the control inside it —
+   the wrapper takes the room the label leaves and the control fills the wrapper. Its own bottom margin would
+   pace a row a second time beside the gap the page already carries (D8). */
+.api-field {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.settings dd .api-field {
+  flex: 1 1 12rem;
+}
+
+.api-field input,
+.api-field textarea,
+.api-field .ant-select {
+  width: 100%;
+  min-width: 0;
 }
 
 /* The plain buttons of the chat and of the file area (R-WP-29: their own compact language). A Button of
@@ -1042,7 +1063,7 @@ button {
   max-width: 34rem;
 }
 
-.settings-form {
+.settings-form.ant-form {
   display: grid;
   justify-items: start;
   gap: 0.5rem;

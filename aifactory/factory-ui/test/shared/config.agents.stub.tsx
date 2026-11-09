@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 
 import { Agents } from '../../src/config/config.agents'
 import { content } from '../../src/shared/content'
+import { Refused } from './refusal'
 import type { AgentSettingsDto } from '../../src/shared/server-api'
 import { listModels, type ThinkInput } from '../../src/config/config.client'
 
@@ -38,6 +39,11 @@ export function stubServer(initial: {
   saved?: AgentSettingsDto
   /** set to make every PUT answer as the server refuses it — the 400 path of R-WP-16 */
   rejectWith?: string
+  /**
+   * One slot's own refusal, written the way the server writes it (`fieldErrors` included, R-WP-55), keyed by
+   * slot id: a refusal that names a field belongs to the card that caused it (UC-WP-93).
+   */
+  refusals?: Record<string, Refused>
   /** the answer of the model list of a drafted connection (R-WP-50) — asked, never mounted */
   models?: string[]
   /** the agent's whole tool set (R-WP-52) — an asked allowlist answers its intersection, none the whole set */
@@ -72,6 +78,10 @@ export function stubServer(initial: {
       if (method === 'PUT') {
         if (initial.rejectWith) {
           return response(400, { status: 400, error: 'Bad Request', message: initial.rejectWith })
+        }
+        const refusal = initial.refusals?.[path.split('/api/settings/agents/')[1]]
+        if (refusal !== undefined) {
+          return response(refusal.status, refusal.body)
         }
         return response(200, initial.saved ?? initial.slots[0])
       }

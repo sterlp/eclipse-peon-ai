@@ -552,7 +552,17 @@ handgeschriebenen — `KeySource = "FILE" | "ENV" | "NONE"`, `ThinkForm = "TOGGL
   falls nötig: sonst `chat`-Typen in Inc 5 nachziehen).
 - Green: `npx tsc -b`, `npx oxlint`, `pnpm test` (Suite, nicht Datei), Backend-Suite unverändert.
 
-### Inc 5 — Standard-Error-Widget auf AntD `Form` (R-WP-56, UC-WP-93) + Aufräumen
+### Inc 5 — Standard-Error-Widget auf AntD `Form` (R-WP-56, UC-WP-93) + Aufräumen — ✅ FERTIG (2026-11-09)
+
+Gebaut wie gelistet, 5.1 → 5.5, jeder Schritt rot-vor-grün. Gates: UI `npx tsc -b` grün, `npx oxlint` **0/0**
+(98 Dateien), `npx antd lint ./src` **0 findings** (55 Dateien), `pnpm test` **267 Tests / 29 Dateien grün**
+(Inc 4: 252), `pnpm build` grün; Backend unverändert (nur `factory-ui`, `AGENTS-DEV.md`, `peon-plan`
+angefasst) ⇒ Suite nicht erneut gefahren. **UC-WP-93 ist jetzt belegt** (A19–A28d), Doc-Lint keine neuen
+Findings außer UC-WP-91 (bewusst ohne Suite-Test, Nachweis M1/M2). Abweichungen D20–D23. AntD-CLI-Gate
+adaptiert: die installierte CLI kennt `--keyword`/`--project` **nicht** — gefahren: `antd info Form`,
+`antd doc Form` (validateStatus/help gelesen), `antd lint ./src`, `antd usage ./src -f Form`.
+Text-Vorschläge (Skill-Schärfung, ⏳-Absätze, M1/M2) stehen in `peon-plan/api-error-notes.md`;
+`AGENTS-DEV.md` erhielt „Draht und Typen" (a)+(b) und die `Form`-Zeile in *Factory-UI*.
 
 Bindung entschieden (E2, Jon): echte AntD `Form`-Hüllen. Fünf kleine Schritte, **jeder** für sich grün;
 jeder Schritt schreibt zuerst den **roten** Test und lässt ihn laufen, bevor Code entsteht.
@@ -767,6 +777,31 @@ bewusst kein „Die Datei existiert"-Test (AGENTS.md: trivial/implanationsgekopp
   `ModelListRequest` wie geplant.
 - **D19 — `api.client.ts` importiert nur `ApiError`** (der Plan nannte `ApiError, ApiFieldError`): ein
   ungenutzter Typ-Import ist ein oxlint-Finding; `ApiFieldError` kommt mit `fieldErrorsOf()` in Inc 5.
+
+- **D20 — zwei A28-Tests lesen `ant-form`** (§7 verweist `.ant-*`-Reads sonst nach
+  `test/shared/api.error.test.tsx`): dass die native Hülle **ersetzt** ist (E2), ist ausschließlich an der
+  Basis-Klasse des `form`-Elements messbar — eine eigene Klasse bewiese nur die Umbenennung. Die
+  Fehler-Markierung bleibt in den Seiten-Tests bei `data-testid=field-error-<feld>`, den eigenen Klassen
+  `api-field`/`api-field-error` und `within(...)`; die `.ant-form-item-has-error`-Assertion steht weiterhin
+  nur in der Widget-Datei.
+- **D21 — drei Bestands-Tests der Config-Seite lesen die PUT-Kette nach `waitFor`**
+  (`settingsOverrideNeverWritesSharedStore`, `removeKeyDeletesItAndRefreshesTheStatus`,
+  `theUnchangedHintIsGoneFromVisibleFields`): die Submit-Kette des `Form` (`validateFields` → `onFinish`)
+  antwortet einen Microtask später als der alte native `onSubmit`, also ist das Call-Log im Klick-Tick noch
+  leer. Keine Assertion gelockert — dieselben Körper-Assertions, und `toHaveLength(1)` sagt jetzt zusätzlich,
+  dass genau **ein** Submit läuft. Grund steht einmal in `AGENTS-DEV.md` (*Factory-UI*).
+- **D22 — die Agenten-Sektion behält ihren Lade-`Alert`** (der Plan ließ die Zeile `:210` komplett zu
+  `ApiFormErrors` werden): der Read-Fehler ist kein Formularfeld-Fehler, und die Config-Seite hält ihren
+  Ladefehler genauso (Plan §4.5 „Ladefehler bleibt"). Neuer Zustand `saveErrors: Record<string, unknown>` je
+  Slot ⇒ `ApiField` in der Karte, `ApiFormErrors` je Slot außerhalb, kein zweiter Anzeige-Pfad für
+  Server-**Formular**-Fehler. Beweise: `aRefusedSaveSaysWhyAndKeepsWhatWasTyped` (wortgleicher Alert,
+  unverändert grün) und `eachSlotKeepsItsOwnFieldError`.
+- **D23 — CSS: eine `.api-field`-Regel statt drei kontext-spezifischer** (der Plan nannte
+  `.settings dd .api-field`, `.config-agents-fields .api-field`, `.add-project .api-field`): die Klasse gehört
+  allein dem Widget, also genügt `.api-field { min-width: 0; margin-bottom: 0 }` +
+  `.api-field input/textarea/.ant-select { width: 100% }`; nur die Flex-Zeile `.settings dd .api-field` bleibt
+  kontextbezogen (`flex: 1 1 12rem` wie das Steuer vorher selbst). `.settings-form` → `.settings-form.ant-form`,
+  `.add-project` → `.add-project.ant-form` wie geplant (D8). Look und Höhen: Browser-Abnahme Jon (R1).
 
 ## 9. Messaufträge (Ergebnis nach `peon-plan/api-error-notes.md`)
 

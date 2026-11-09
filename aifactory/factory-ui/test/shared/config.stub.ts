@@ -1,6 +1,7 @@
 import { vi } from 'vitest'
 import { screen } from '@testing-library/react'
 
+import { Refused } from './refusal'
 import type { SettingsDto } from '../../src/shared/server-api'
 
 /** The key a leaked view would repeat — every masked read names it from here. */
@@ -90,6 +91,9 @@ export function stubServer(initial: Partial<Script>): {
           : path === '/api/settings/models'
             ? server.script.MODELS
             : server.script[method as keyof Script]
+      if (answer instanceof Refused) {
+        return response(answer.status, answer.body)
+      }
       if (answer instanceof Error) {
         return response(400, {
           status: 400,

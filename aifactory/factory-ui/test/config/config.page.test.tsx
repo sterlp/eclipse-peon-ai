@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { ConfigPage } from '../../src/config/config.page'
 import { content } from '../../src/shared/content'
 import { chooseOption, openChoice, shownChoice } from '../shared/choices'
+import { refused } from '../shared/refusal'
 import {
   KEY,
   controlValues,
@@ -104,6 +105,9 @@ test('settingsOverrideNeverWritesSharedStore', async () => {
   })
   fireEvent.click(screen.getByRole('button', { name: content.config.save }))
 
+  // the submit chain of the `Form` carries the save and answers one microtask later — read the body once it
+  // is on the wire, and read that it is on the wire exactly once
+  await waitFor(() => expect(sentBodies(server)).toHaveLength(1))
   const put = server.calls.find((call) => call.method === 'PUT')
   expect(put?.path).toBe('/api/settings')
   const sent = JSON.parse(put?.body ?? '{}') as Record<string, unknown>
@@ -341,8 +345,9 @@ test('removeKeyDeletesItAndRefreshesTheStatus', async () => {
 
   fireEvent.click(screen.getByRole('button', { name: content.config.save }))
 
-  const put = server.calls.find((call) => call.method === 'PUT')
-  const sent = JSON.parse(put?.body ?? '{}') as Record<string, unknown>
+  // the submit chain of the `Form` answers one microtask later — once, which is what this counts
+  await waitFor(() => expect(sentBodies(server)).toHaveLength(1))
+  const sent = sentBodies(server)[0]
   expect(sent).toHaveProperty('removeApiKey', true)
   // the key field itself stays out of the body: the removal is said by its own flag, never by a blank
   expect(Object.keys(sent)).not.toContain('apiKey')
@@ -436,8 +441,9 @@ test('theUnchangedHintIsGoneFromVisibleFields', async () => {
   })
   fireEvent.click(screen.getByRole('button', { name: content.config.save }))
 
-  const put = server.calls.find((call) => call.method === 'PUT')
-  const sent = JSON.parse(put?.body ?? '{}') as Record<string, unknown>
+  // the submit chain of the `Form` answers one microtask later — once, which is what this counts
+  await waitFor(() => expect(sentBodies(server)).toHaveLength(1))
+  const sent = sentBodies(server)[0]
   expect(sent).toHaveProperty('model', '')
   expect(Object.keys(sent)).not.toContain('apiKey')
 })
@@ -447,4 +453,89 @@ test('showsErrorMessageWhenSettingsCannotLoad', async () => {
   render(<ConfigPage />)
 
   expect(await screen.findByRole('alert')).toHaveTextContent('config.properties')
+})
+
+// UC-WP-93
+test('aRejectedSaveMarksTheMaxTokensFieldAndKeepsTheTypedValue', async () => {
+  const REASON = 'maxTokens must be a whole number of tokens, or 0 for the provider default'
+  const server = stubServer({
+    GET: settingsAnswer(),
+    PUT: refused({
+      status: 400,
+      error: 'Bad Request',
+      message: REASON,
+      fieldErrors: [{ field: 'maxTokens', message: REASON }],
+    }),
+  })
+  render(<ConfigPage />)
+  await screen.findByDisplayValue('gpt-demo')
+
+  fireEvent.change(screen.getByLabelText(content.config.maxTokens), { target: { value: 'abc' } })
+  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
+
+  // the server's sentence stands at the field it named, and only there (UC-WP-93 GIVEN 1)
+  const help = await screen.findByTestId('field-error-maxTokens')
+  expect(help).toHaveTextContent(REASON)
+  const field = screen.getByLabelText(content.config.maxTokens).closest('.api-field')
+  expect(field).not.toBeNull()
+  expect(help.closest('.api-field')).toBe(field)
+  expect(field).toHaveClass('api-field-error')
+  expect(field?.closest('dd')).not.toBeNull()
+  // what the viewer typed stays — the reason says which field to fix, it does not throw the answer away
+  expect(screen.getByLabelText(content.config.maxTokens)).toHaveValue('abc')
+  expect(screen.queryAllByTestId(/^field-error-/)).toHaveLength(1)
+  expect(screen.queryByRole('alert')).toBeNull()
+  expect(server.calls.filter((call) => call.method === 'PUT')).toHaveLength(1)
+})
+
+// UC-WP-93
+test('aConflictWithoutFieldStillShowsTheAlert', async () => {
+  stubServer({
+    GET: settingsAnswer(),
+    PUT: refused({ status: 409, error: 'Conflict', message: 'a turn is running on this project' }),
+  })
+  render(<ConfigPage />)
+  await screen.findByDisplayValue('gpt-demo')
+
+  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('a turn is running on this project')
+  expect(screen.queryAllByTestId(/^field-error-/)).toEqual([])
+})
+
+// UC-WP-93
+test('anUnwrappedFieldErrorStillReachesTheScreen', async () => {
+  const REASON = 'think is not offered by this provider'
+  stubServer({
+    GET: settingsAnswer(),
+    PUT: refused({
+      status: 400,
+      error: 'Bad Request',
+      message: REASON,
+      fieldErrors: [{ field: 'think', message: REASON }],
+    }),
+  })
+  render(<ConfigPage />)
+  await screen.findByDisplayValue('gpt-demo')
+
+  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
+
+  // the page wraps no `think` field — a name it does not draw must still be readable, never lost between
+  // the two display paths (R8)
+  expect(await screen.findByRole('alert')).toHaveTextContent(REASON)
+  expect(screen.queryAllByTestId(/^field-error-/)).toEqual([])
+  expect(screen.getByLabelText(content.config.model)).toHaveValue('gpt-demo')
+})
+
+// UC-WP-93
+test('theSettingsFormIsOneAntdForm', async () => {
+  stubServer({ GET: settingsAnswer() })
+  const { container } = render(<ConfigPage />)
+  await screen.findByDisplayValue('gpt-demo')
+
+  // the native envelope was replaced, not nested (E2), and the fields stayed where their ids say
+  const forms = container.querySelectorAll('form')
+  expect(forms).toHaveLength(1)
+  expect(forms[0]).toHaveClass('settings-form', 'ant-form')
+  expect(forms[0].contains(document.getElementById('settings-provider'))).toBe(true)
 })

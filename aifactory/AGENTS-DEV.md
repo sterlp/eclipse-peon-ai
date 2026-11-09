@@ -26,6 +26,18 @@
   braucht VPN; `~/.peon` vor/nach vergleichen.
 - „Das war schon vorher so" ist eine Behauptung: erst **bisecten** (`git stash`, Baseline bauen, einspielen).
 
+## Draht und Typen
+
+- **`factory-ui/src/shared/server-api.ts` ist Build-Produkt** (`typescript-generator`, Phase
+  `process-classes` in `factory-backend/pom.xml`): nie von Hand edited, aber committet (Eclipse führt `pnpm`
+  nie aus). `mvn -o -pl factory-backend process-classes` erzeugt sie neu — ein Java-Feldumbruch bricht
+  deshalb `npx tsc -b` statt still den Draht zu ändern.
+- **Wire-Regeln sitzen als Bean-Validation-Constraints an den Request-DTOs** (`@Valid` am Endpoint,
+  `config/Wire*`, `project/HttpsGitUrl`); die Services prüfen dieselbe Regel **nicht** nach — ein zweiter
+  Wortlaut ist der nächste Wartungsfehler. Antwort: `ApiError.fieldErrors[{field,message}]`, `null` = „kein
+  Feld". Constraints auf Record-Komponenten nur `@Target(FIELD)`: mit PARAMETER/METHOD meldet dieselbe
+  Regel Feld, Accessor **und** Konstruktor (drei Antworten auf einen falschen Wert).
+
 ## Backend-Tests
 
 - **`/tmp` ≠ `java.io.tmpdir` auf macOS** (`/tmp → /private/tmp`, JVM-Temp unter `/var/folders/…/T`):
@@ -102,6 +114,12 @@
   `Could not parse CSS stylesheet` über die Dateigrenze, der Test läuft gar nicht): einzelne Fälle mit
   `pnpm test -t '<test-name>'` filtern (fährt die Suite), Gleiches für `npm test`.
 
+- **AntD 6 `Form` ersetzt die native Hülle** (kein `component={false}`; das `<form>` kommt aus
+  `@rc-component/form`, `Form.Item` ohne `Form` als Vorfahr loggt je Mount). Server-Fehler zeichnet
+  `shared/api.error.tsx` (`ApiField` = `Form.Item` ohne `name`, `ApiFormErrors` = Alert ohne Feldbezug); die
+  Submit-Kette des `Form` antwortet **einen Microtask später** als `onSubmit` — ein Test, der den Body
+  synchron aus dem Call-Log liest, wird rot. `Form.Item`-Klassen: `className` an der Wurzel, fremde Props am
+  `…-row`; der Status erreicht das `Input` nur als Klasse (kein `aria-invalid`).
 - **Routing macht Navigation async** → `findBy*`. Quellen-Scan nur über `import.meta.glob` mit `?raw`
   (`node:fs`/`process` sind in `src`+`test` nicht typisiert). **Kein Mount-Beweis über
   Schwesterrouten:** gleiche Komponente an derselben Stelle behält React Router die Instanz — „bleibt

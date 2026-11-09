@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Card, Input, Select } from 'antd'
+import { Alert, Button, Card, Form, Input, Select } from 'antd'
 
-import { errorMessage } from '../shared/api.client'
+import { errorMessage, fieldErrorsOf } from '../shared/api.client'
+import { ApiField, ApiFormErrors } from '../shared/api.error'
 import { content } from '../shared/content'
 import type { KeySource, ProviderDefaultsDto, SettingsDto, SettingsUpdateRequest } from '../shared/server-api'
 import { Agents } from './config.agents'
@@ -22,6 +23,22 @@ const NO = 'no'
 /** The same decision on the wire: the file holds text, the core reads it back as a boolean. */
 const TRUE = 'true'
 const FALSE = 'false'
+
+/**
+ * The fields this form wraps with `ApiField` — exactly the ones the server answers with a rule of its own
+ * (`Wire*` constraints, R-WP-55). A name the answer carries besides these still reaches the screen as a
+ * line, so a rule added on the server cannot be lost between the two display paths (R8).
+ */
+const SETTINGS_ERROR_FIELDS = [
+  'provider',
+  'tokenWindow',
+  'timeoutSeconds',
+  'sendThinking',
+  'maxTokens',
+  'queryParams',
+  'headerParams',
+  'apiKey',
+]
 
 /**
  * The form holds every editable value as text, so "empty" is one concept across text and number fields —
@@ -92,7 +109,7 @@ export function ConfigPage() {
   const [providers, setProviders] = useState<ProviderDefaultsDto[]>([])
   const [removeKey, setRemoveKey] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
-  const [saveMessage, setSaveMessage] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<unknown>(null)
   const [busy, setBusy] = useState(false)
   // R-WP-49: the dev slot's file holds the default think value — after a save the section reads again
   const [agentsReload, setAgentsReload] = useState(0)
@@ -141,13 +158,12 @@ export function ConfigPage() {
     )
   }
 
-  async function save(event: React.FormEvent) {
-    event.preventDefault()
+  async function save() {
     if (busy || draft === null) {
       return
     }
     setBusy(true)
-    setSaveMessage(null)
+    setSaveError(null)
     try {
       // the answer is the stored state, read back masked — the form is refilled from it, not from the
       // input, which is also what makes the key status fresh after every save (UC-WP-63)
@@ -160,7 +176,7 @@ export function ConfigPage() {
       setAgentsReload((current) => current + 1)
     } catch (error) {
       // the typed values stay: the message names the field to fix, nothing the user wrote is lost
-      setSaveMessage(errorMessage(error))
+      setSaveError(error)
     } finally {
       setBusy(false)
     }
@@ -197,33 +213,33 @@ export function ConfigPage() {
     draft !== null && !offered.includes(draft.provider) ? [draft.provider, ...offered] : offered
   ).map((name) => ({ value: name, label: name }))
 
+  // the fields the last refusal named — read off the error, never kept beside it as a second state
+  const errors = fieldErrorsOf(saveError)
+
   return (
     <section className="view" aria-label={content.config.title}>
       <h1>{content.config.title}</h1>
       {message && <Alert type="error" title={message} />}
       {settings && draft && (
         <Card size="small" className="settings-card">
-          <form className="settings-form" onSubmit={(event) => void save(event)}>
+          <Form className="settings-form" onFinish={() => void save()}>
+            {/* what carries no field this form draws speaks here, with the server's own text (R-WP-56) */}
+            <ApiFormErrors error={saveError} fields={SETTINGS_ERROR_FIELDS} />
             <dl className="settings">
               <div>
                 <dt>{content.config.provider}</dt>
                 <dd>
-                  <Select
-                    id="settings-provider"
-                    aria-label={content.config.provider}
-                    value={draft.provider}
-                    onChange={editProvider}
-                    options={providerOptions}
-                  />
+                  <ApiField field="provider" errors={errors}>
+                    <Select
+                      id="settings-provider"
+                      aria-label={content.config.provider}
+                      value={draft.provider}
+                      onChange={editProvider}
+                      options={providerOptions}
+                    />
+                  </ApiField>
                 </dd>
               </div>
-              {saveMessage && (
-                <Alert
-                  type="error"
-                  // the rejected field is named by the server's answer; a value never comes back
-                  title={saveMessage}
-                />
-              )}
               <div>
                 <dt>{content.config.model}</dt>
                 <dd>
@@ -279,40 +295,46 @@ export function ConfigPage() {
               <div>
                 <dt>{content.config.tokenWindow}</dt>
                 <dd>
-                  <Input
-                    inputMode="numeric"
-                    aria-label={content.config.tokenWindow}
-                    value={draft.tokenWindow}
-                    onChange={(event) => edit('tokenWindow')(event.target.value)}
-                  />
+                  <ApiField field="tokenWindow" errors={errors}>
+                    <Input
+                      inputMode="numeric"
+                      aria-label={content.config.tokenWindow}
+                      value={draft.tokenWindow}
+                      onChange={(event) => edit('tokenWindow')(event.target.value)}
+                    />
+                  </ApiField>
                 </dd>
               </div>
               <div>
                 <dt>{content.config.timeout}</dt>
                 <dd>
-                  <Input
-                    inputMode="numeric"
-                    aria-label={content.config.timeout}
-                    value={draft.timeoutSeconds}
-                    onChange={(event) => edit('timeoutSeconds')(event.target.value)}
-                  />
+                  <ApiField field="timeoutSeconds" errors={errors}>
+                    <Input
+                      inputMode="numeric"
+                      aria-label={content.config.timeout}
+                      value={draft.timeoutSeconds}
+                      onChange={(event) => edit('timeoutSeconds')(event.target.value)}
+                    />
+                  </ApiField>
                   <span className="hint">{content.common.seconds}</span>
                 </dd>
               </div>
               <div>
                 <dt>{content.config.sendThinking}</dt>
                 <dd>
-                  <Select
-                    id="settings-send-thinking"
-                    aria-label={content.config.sendThinking}
-                    value={draft.sendThinking}
-                    onChange={edit('sendThinking')}
-                    disabled={thinkUnsupported}
-                    options={[
-                      { value: YES, label: content.config.yes },
-                      { value: NO, label: content.config.no },
-                    ]}
-                  />
+                  <ApiField field="sendThinking" errors={errors}>
+                    <Select
+                      id="settings-send-thinking"
+                      aria-label={content.config.sendThinking}
+                      value={draft.sendThinking}
+                      onChange={edit('sendThinking')}
+                      disabled={thinkUnsupported}
+                      options={[
+                        { value: YES, label: content.config.yes },
+                        { value: NO, label: content.config.no },
+                      ]}
+                    />
+                  </ApiField>
                   {thinkUnsupported && (
                     <span className="hint">{content.config.thinkUnsupported}</span>
                   )}
@@ -325,47 +347,55 @@ export function ConfigPage() {
               <div>
                 <dt>{content.config.maxTokens}</dt>
                 <dd>
-                  <Input
-                    inputMode="numeric"
-                    aria-label={content.config.maxTokens}
-                    value={draft.maxTokens}
-                    onChange={(event) => edit('maxTokens')(event.target.value)}
-                  />
+                  <ApiField field="maxTokens" errors={errors}>
+                    <Input
+                      inputMode="numeric"
+                      aria-label={content.config.maxTokens}
+                      value={draft.maxTokens}
+                      onChange={(event) => edit('maxTokens')(event.target.value)}
+                    />
+                  </ApiField>
                 </dd>
               </div>
               <div>
                 <dt>{content.config.queryParams}</dt>
                 <dd>
-                  <Input
-                    aria-label={content.config.queryParams}
-                    placeholder={content.config.paramsPlaceholder}
-                    value={draft.queryParams}
-                    onChange={(event) => edit('queryParams')(event.target.value)}
-                  />
+                  <ApiField field="queryParams" errors={errors}>
+                    <Input
+                      aria-label={content.config.queryParams}
+                      placeholder={content.config.paramsPlaceholder}
+                      value={draft.queryParams}
+                      onChange={(event) => edit('queryParams')(event.target.value)}
+                    />
+                  </ApiField>
                 </dd>
               </div>
               <div>
                 <dt>{content.config.headerParams}</dt>
                 <dd>
-                  <Input
-                    aria-label={content.config.headerParams}
-                    placeholder={content.config.paramsPlaceholder}
-                    value={draft.headerParams}
-                    onChange={(event) => edit('headerParams')(event.target.value)}
-                  />
+                  <ApiField field="headerParams" errors={errors}>
+                    <Input
+                      aria-label={content.config.headerParams}
+                      placeholder={content.config.paramsPlaceholder}
+                      value={draft.headerParams}
+                      onChange={(event) => edit('headerParams')(event.target.value)}
+                    />
+                  </ApiField>
                 </dd>
               </div>
               <div>
                 <dt>{content.config.key}</dt>
                 <dd>
-                  <Input
-                    type="password"
-                    aria-label={content.config.key}
-                    autoComplete="off"
-                    placeholder={content.config.unchanged}
-                    value={draft.apiKey}
-                    onChange={(event) => edit('apiKey')(event.target.value)}
-                  />
+                  <ApiField field="apiKey" errors={errors}>
+                    <Input
+                      type="password"
+                      aria-label={content.config.key}
+                      autoComplete="off"
+                      placeholder={content.config.unchanged}
+                      value={draft.apiKey}
+                      onChange={(event) => edit('apiKey')(event.target.value)}
+                    />
+                  </ApiField>
                   <span className={settings.keySet ? 'key-set' : 'key-missing'}>
                     {settings.keySet ? content.config.keySet : content.config.keyMissing}
                   </span>
@@ -385,7 +415,7 @@ export function ConfigPage() {
             <Button type="primary" htmlType="submit" disabled={busy}>
               {busy ? content.config.saving : content.config.save}
             </Button>
-          </form>
+          </Form>
         </Card>
       )}
       {/* R-WP-23: the agent overrides below the default — their own read, their own save per slot. The
