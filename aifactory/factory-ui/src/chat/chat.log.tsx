@@ -27,6 +27,14 @@ interface Props {
   /** The identity of the turn this view holds open, or none: the only thing that may paint a working step,
    *  and it names WHICH turn — a step of a turn that ended never works for the next one (R-WP-40, UC-WP-72). */
   openTurn?: number | null
+  /** The handle of this log on the wire. The conversation's own log keeps `chat-log`; the look into one
+   *  member names itself `insight-log`, so a page holding two logs still addresses each one of them
+   *  (R-WP-53). */
+  testId?: string
+  /** Who wrote a `user` line the history names no author for. The shared conversation answers with the doc's
+   *  role label; a look into one member answers with nobody — the task he was given was typed in no widget of
+   *  his, and a label here would be invented (R-WP-4). */
+  userAuthor?: string | null
   /** The scroll area of the chat, handed to the page: it keeps the end of the log in view (R-WP-35). */
   logRef?: Ref<HTMLUListElement>
   /** The page learns from this where the user reads (R-WP-35, UC-WP-66). */
@@ -88,6 +96,9 @@ type Entry =
  * A user's line always names its author — the person the server named, or the role label of the doc —
  * because the chat is shared and every viewer has to read the same thing (R-WP-25, UC-WP-48). An agent's
  * line stays nameless when the server named none: no "System", no "Peon", no invented agent (R-WP-4).
+ * The label of a nameless user line is the view's to lend and not the log's to invent: the shared
+ * conversation lends the reader his role, the look into one member lends nobody, because the task that
+ * member was given was typed into no widget of his (R-WP-53).
  * A thinking delta is no speech either — it is an entry of the trace, a link of the account of what the
  * turn did, and it names no author because the wire stamps none on a thought (R-WP-40).
  *
@@ -95,12 +106,21 @@ type Entry =
  * stamped on it — never one the log invented (R-WP-37, R-WP-40). A diff block is of the same family — a fact
  * about the project's files, seen by everybody watching (R-WP-36).
  */
-export function ChatLog({ messages, outgoing, live, openTurn = null, logRef, onScroll }: Props) {
+export function ChatLog({
+  messages,
+  outgoing,
+  live,
+  openTurn = null,
+  testId = 'chat-log',
+  userAuthor = content.chat.you,
+  logRef,
+  onScroll,
+}: Props) {
   const rows: Row[] = [
     ...messages.map((message): Row => ({
       voice: voiceOf(message),
       handle: `chat-line-${message.role}`,
-      author: authorOf(message),
+      author: authorOf(message, userAuthor),
       text: message.text,
       // the step the memory handed back (R-WP-47): its name is the Bestand's and it joins the timeline
       // of its place instead of speaking as a row of its own — and it never counts in an anchor
@@ -111,7 +131,7 @@ export function ChatLog({ messages, outgoing, live, openTurn = null, logRef, onS
       handle: 'chat-line-user',
       // the sender stamped at send time — the same value the history will hand back as `origin`, so the
       // line does not jump when it is confirmed (R-WP-37, UC-WP-48)
-      author: line.origin ?? content.chat.you,
+      author: line.origin ?? userAuthor,
       text: line.text,
       trace: false,
     })),
@@ -122,7 +142,7 @@ export function ChatLog({ messages, outgoing, live, openTurn = null, logRef, onS
   return (
     <ul
       className="chat-log"
-      data-testid="chat-log"
+      data-testid={testId}
       aria-label={content.chat.history}
       ref={logRef}
       onScroll={onScroll}
@@ -300,13 +320,13 @@ function voiceOf(message: ChatMessage): Row['voice'] {
   return message.role === 'error' ? 'error' : 'agent'
 }
 
-/** A user's author is the person the server named, or the doc's role label; an agent's is only ever what the server named. */
-function authorOf(message: ChatMessage): string | null {
+/** A user's author is the person the server named, or the label the view lends a nameless one; an agent's is only ever what the server named. */
+function authorOf(message: ChatMessage, userAuthor: string | null): string | null {
   if (message.role === 'error') {
     // no author, and none to fall back to: the model was never reached, so nobody spoke (R-WP-4, R-WP-34)
     return null
   }
-  return message.role === 'user' ? (message.origin ?? content.chat.you) : (message.origin ?? null)
+  return message.role === 'user' ? (message.origin ?? userAuthor) : (message.origin ?? null)
 }
 
 /** The voice of one line, above its text — drawn only where one exists, because an invented label would be a lie. */

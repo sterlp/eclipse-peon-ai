@@ -45,7 +45,11 @@ const PROVIDERS = [{ name: 'OPEN_AI', defaultUrl: null, thinkSupported: true }]
  */
 const AGENTS: unknown[] = []
 
-let stream: ReadableStreamDefaultController<Uint8Array> | undefined
+/**
+ * Every stream a stubbed view opened. The chat opens one and the look into a member opens another (R-WP-53),
+ * so the tear-down has to close all of them and not whichever one answered last.
+ */
+let streams: ReadableStreamDefaultController<Uint8Array>[] = []
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -64,6 +68,7 @@ function json(status: number, body: unknown): Response {
  * capability. Such a test then reads an **empty** transcript: the panel itself is the claim, never its lines.
  */
 export function stubAppServer(projects: unknown[] = [project()], roster: AgentTile[] = [DEV]): void {
+  streams = []
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL) => {
@@ -72,7 +77,7 @@ export function stubAppServer(projects: unknown[] = [project()], roster: AgentTi
         return new Response(
           new ReadableStream<Uint8Array>({
             start(opened) {
-              stream = opened
+              streams = [...streams, opened]
             },
           }),
           { status: 200, headers: { 'content-type': 'text/event-stream' } },
@@ -103,9 +108,16 @@ export function stubAppServer(projects: unknown[] = [project()], roster: AgentTi
 
 /** The open stream of a mounted view would otherwise leave a pending reader behind (see chat.page.test). */
 export async function closeAppStream(): Promise<void> {
+  const open = streams
+  streams = []
   await act(async () => {
-    stream?.close()
-    stream = undefined
+    for (const controller of open) {
+      try {
+        controller.close()
+      } catch {
+        // the view closed its own wire already — closing it once more says nothing about it
+      }
+    }
     await new Promise((resolve) => setTimeout(resolve, 0))
   })
 }

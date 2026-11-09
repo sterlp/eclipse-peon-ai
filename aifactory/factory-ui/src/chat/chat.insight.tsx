@@ -1,6 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { readTranscript, type AgentTranscript } from './chat.agents.client'
+import { readTranscript } from './chat.agents.client'
+import { isTraceLine, type ChatMessage, type ChatStreamEvent } from './chat.client'
+import { ChatLog } from './chat.log'
+import { appendLiveText, appendLiveThink, appendLiveTool, type LiveItem } from './chat.live'
+import { useFollowBottom } from './chat.scroll'
+import { openChatStream, RECONNECT_MS } from './chat.stream'
 import { errorMessage } from '../shared/api.client'
 import { content } from '../shared/content'
 
@@ -13,40 +18,155 @@ interface Props {
 }
 
 /**
- * The insight into one agent's own conversation (R-WP-26, UC-WP-49): a slide-over beside the chat that
- * shows what exactly this agent's memory holds — the task it was given, its own tool lines, its answer.
- * What is drawn is what the edge sends: no input, no send, no fourth page, because the edge is none of
- * those (UC-WP-40 stays sharp — Jon's chat stays free of a member's internals).
+ * The look into one member's own conversation (R-WP-26, R-WP-53, UC-WP-89): the slide-over beside the chat,
+ * drawn by the chat's own {@link ChatLog} and growing while the member works. It is the same widget and not a
+ * second markup world — Markdown answers, one timeline of his steps, the same follow-bottom rule — and it
+ * stays read-only: no composer, no send, no stop, and no scroll-to-bottom button either, because the only
+ * control of the look closes it (UC-WP-49).
  *
- * The reads belong to the component and hang on project and name: another tile reads again, and after a
- * restart the insight is empty, because a member's memory is RAM and nothing else (R-WP-11). It is an
- * area of the chat view and no fourth tab (R-WP-1), and it knows only the name its tile carries — the
- * tile's capability set decides whether it can be opened at all (D-14).
+ * His wire carries his lines and nothing else — think, answer, tool (R-WP-53). It carries no turn end, so
+ * `openTurn` stays null and no indicator claims work that the wire cannot end; it carries no diff, no roster,
+ * no delegation, no failure, because those stay on Jon's channel — which is why opening the look reloads
+ * neither the history nor the tiles (UC-WP-90).
+ *
+ * One rule covers the opening and every reconnect, the chat's own rule D-E: <em>read, then subscribe</em>.
+ * The anchor of every live line is the number of voices the snapshot held, frozen while the look stands — so
+ * nothing is drawn twice and nothing is read a second time while the look is open. A dropped wire heals the
+ * way it opened: re-read, then re-subscribe.
+ *
+ * What the read refuses stays one line of text where the conversation would stand — no dialog, no retry
+ * (R-WP-26), and no second request for a name the runtime refuses (R-WP-53). A task line names nobody: the
+ * member was given that task, nobody typed it into this widget (R-WP-4). It is a region of the chat view and
+ * no fourth tab (R-WP-1); only a tile offering TRANSCRIPT opens it (D-14).
  */
 export function ChatInsight({ projectId, name, onClose }: Props) {
-  const [transcript, setTranscript] = useState<AgentTranscript | null>(null)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [live, setLive] = useState<LiveItem[]>([])
+  const [truncated, setTruncated] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [snapshot, setSnapshot] = useState(false)
+  /**
+   * The anchor every live line of this look shares: the VOICES the snapshot held — a step of his trace is not
+   * one, because a read hands such a step back at any place (D-A). Frozen for the life of the look, which is
+   * what lets a live line be placed without a second read (UC-WP-90).
+   */
+  const afterLines = useRef(0)
+  /** The live lines as they stand, beside their state: a stream event continues the list that is really
+   *  there, and the state of a render is one render behind it (D-B). */
+  const liveItems = useRef<LiveItem[]>([])
+  const log = useRef<HTMLUListElement>(null)
+  const { onLogScroll, followIfFollowing } = useFollowBottom(log)
 
-  useEffect(() => {
-    let mounted = true
-    readTranscript(projectId, name)
+  const writeLive = useCallback((items: LiveItem[]) => {
+    liveItems.current = items
+    setLive(items)
+  }, [])
+
+  /**
+   * The snapshot in the log's own model: his answer names itself with the core's name the read resolved, his
+   * step joins the timeline of its place, his task carries no author. Resolves true when the conversation is
+   * on the screen — which is the only state a subscription may anchor on.
+   */
+  const readSnapshot = useCallback((): Promise<boolean> => {
+    return readTranscript(projectId, name)
       .then(loaded => {
-        if (mounted) {
-          setTranscript(loaded)
-          setError(null)
-        }
+        const lines = loaded.lines.map((line): ChatMessage => {
+          if (line.kind === 'agent') {
+            return { role: 'jon', text: line.text, origin: loaded.name }
+          }
+          return line.kind === 'tool'
+            ? { role: 'tool', text: line.text }
+            : { role: 'user', text: line.text }
+        })
+        afterLines.current = lines.filter(line => !isTraceLine(line)).length
+        setMessages(lines)
+        setTruncated(loaded.truncated)
+        setSnapshot(true)
+        setError(null)
+        return true
       })
       // a refused name is one line of text where the conversation would stand — no dialog, no retry
       .catch(reason => {
-        if (mounted) {
-          setTranscript(null)
-          setError(errorMessage(reason))
-        }
+        setError(errorMessage(reason))
+        return false
       })
+  }, [name, projectId])
+
+  const applyEvent = useCallback(
+    (event: ChatStreamEvent) => {
+      // `diff`, `agents`, `delegation`, `done` and `error` never reach this wire (R-WP-53): the server keeps
+      // them on Jon's channel, so no branch here would ever be taken
+      const anchor = afterLines.current
+      switch (event.kind) {
+        case 'partial':
+          if (event.thinking) {
+            // a Think delta is an entry of his trace and never a voice of his own conversation (R-WP-40);
+            // its clock is the moment this browser received it, as it is on Jon's wire
+            writeLive(appendLiveThink(liveItems.current, event.text, anchor, Date.now(), null))
+            break
+          }
+          writeLive(appendLiveText(liveItems.current, event.text, anchor))
+          break
+        case 'tool':
+          // the stamp of the step is the wire's own; the turn it belongs to is unknown here, so no step of
+          // this look ever claims to be the one being worked on (R-WP-40)
+          writeLive(
+            appendLiveTool(liveItems.current, event.text, anchor, event.origin ?? null, Date.now(), null),
+          )
+          break
+      }
+    },
+    [writeLive],
+  )
+
+  useEffect(() => {
+    let mounted = true
+    const controller = new AbortController()
+    let reconnect: ReturnType<typeof setTimeout> | undefined
+
+    const connect = () => {
+      void openChatStream(
+        projectId,
+        {
+          onEvent: applyEvent,
+          onEnd: retry => {
+            if (!mounted || !retry) {
+              return
+            }
+            // a dropped wire loses the live lines and nothing else (R-WP-11): his snapshot is read again —
+            // the stream brings nothing back — and only a read that answered is followed by a subscription
+            writeLive([])
+            void readSnapshot().then(read => {
+              if (mounted && read) {
+                reconnect = setTimeout(connect, RECONNECT_MS)
+              }
+            })
+          },
+        },
+        controller.signal,
+        name,
+      )
+    }
+
+    // the stream opens only once the snapshot has been read: a line anchored before it would be drawn above
+    // the whole conversation, and an anchor the read never gave would need a second read to be found (D-E)
+    void readSnapshot().then(read => {
+      if (mounted && read) {
+        connect()
+      }
+    })
     return () => {
       mounted = false
+      controller.abort()
+      if (reconnect !== undefined) {
+        clearTimeout(reconnect)
+      }
     }
-  }, [projectId, name])
+  }, [applyEvent, name, projectId, readSnapshot, writeLive])
+
+  useEffect(() => {
+    followIfFollowing()
+  }, [live, messages, followIfFollowing])
 
   return (
     <aside className="chat-insight" aria-label={content.insight.title(name)} data-testid="insight-panel">
@@ -64,29 +184,22 @@ export function ChatInsight({ projectId, name, onClose }: Props) {
           {error}
         </p>
       )}
-      {transcript === null && error === null && <p className="hint">{content.common.loading}</p>}
-      {transcript !== null && (
+      {!snapshot && error === null && <p className="hint">{content.common.loading}</p>}
+      {snapshot && (
         <>
-          {transcript.lines.length === 0 ? (
-            <p className="empty-state" data-testid="insight-empty">
-              {content.insight.empty}
-            </p>
-          ) : (
-            <ul className="chat-insight-list" data-testid="insight-list">
-              {transcript.lines.map((line, index) => (
-                <li
-                  key={index}
-                  className={`chat-insight-line ${line.kind}`}
-                  data-kind={line.kind}
-                  data-testid="insight-line"
-                >
-                  <span className="chat-insight-kind">{content.insight.kind[line.kind]}</span>
-                  <span className="chat-insight-text">{line.text}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {transcript.truncated && (
+          <ChatLog
+            messages={messages}
+            outgoing={[]}
+            live={live}
+            // this wire says nothing about a turn ending, so no step may paint itself as working (R-WP-53)
+            openTurn={null}
+            testId="insight-log"
+            // his task arrived as an order and not as input of this widget: the log names nobody for it
+            userAuthor={null}
+            logRef={log}
+            onScroll={onLogScroll}
+          />
+          {truncated && (
             <p className="hint" data-testid="insight-truncated">
               {content.insight.truncated}
             </p>

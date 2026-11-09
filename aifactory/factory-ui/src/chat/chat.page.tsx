@@ -33,7 +33,7 @@ import { useFollowBottom } from './chat.scroll'
 import { ScrollBottomButton } from './chat.scroll.bottom'
 import { ChatTiles } from './chat.tiles'
 import { ChatWaiting } from './chat.waiting'
-import { openChatStream } from './chat.stream'
+import { openChatStream, RECONNECT_MS } from './chat.stream'
 import { ApiRequestError, errorMessage } from '../shared/api.client'
 import { content } from '../shared/content'
 import type { Project } from '../shared/dto'
@@ -60,9 +60,6 @@ interface Props {
    */
   user?: string | null
 }
-
-/** How long the view waits before it asks again — long enough not to hammer a restarting server. */
-const RECONNECT_MS = 500
 
 /**
  * The chat of one project (R-WP-4, R-WP-5): the history is the only truth for finished text, the

@@ -193,3 +193,34 @@ test('onlyAnswersAreMarkdown', () => {
   expect(answer.querySelector('del')?.textContent).toBe('alt')
   expect(answer.textContent, 'the markers are gone from an answer').not.toContain('**')
 })
+
+/**
+ * The look into one member draws through this log (R-WP-53), so the log answers to the name of the widget it
+ * stands in, and a `user` line the history leaves unnamed stays unnamed where no author may be lent. Both are
+ * the caller's choice and neither needs a test of its own, so one test asks both.
+ */
+// R-WP-53
+test('theLogTakesAnotherTestIdAndNoUserAuthor', () => {
+  render(
+    <ChatLog
+      messages={[
+        { role: 'user', text: 'baue die Kachel' },
+        { role: 'jon', text: 'sie steht', origin: 'Dev' },
+      ]}
+      outgoing={[]}
+      live={[]}
+      testId="insight-log"
+      userAuthor={null}
+    />,
+  )
+
+  expect(screen.queryByTestId('chat-log'), 'one page, two logs, two handles').toBeNull()
+  const log = screen.getByTestId('insight-log')
+  expect(log).toHaveClass('chat-log')
+  expect(
+    screen.getByTestId('chat-line-user').querySelector('[data-testid="chat-line-author"]'),
+    'a task nobody typed into this widget names no author',
+  ).toBeNull()
+  // the member's name on his own answer is the line's and not a label this view lends
+  expect(log.textContent).toContain('Dev')
+})
