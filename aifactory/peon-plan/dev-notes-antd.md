@@ -1302,3 +1302,31 @@ Drei Punkte, **kein Verhalten** — zwei Nachweislücken und ein Kommentar mit w
 
 
 
+## Inkrement A7 — Werkzeug-Schritte im Restore (2026-11-09, R-WP-47 / UC-WP-82)
+
+- **Ein restaurierter Schritt ist eine Zeile des Bestands, keine live-only Zeile** — das ist der ganze Umbau,
+  und das ist der Satz, der acht UI-Pinnen bewegt hat: (a) ein **Clear** nimmt die Spur mit (vorher: sie
+  blieb), (b) nach dem Read trägt **kein** Schritt ein `title` (UC-WP-72 G5 — der Bestand kennt keinen
+  Moment; die Ankunfts-Uhr gilt nur, solange der Schritt live ist), (c) nach dem Reconnect bleibt die **Spur
+  stehen**, der **Diff** nicht (UC-WP-68 bleibt). Die Kappung `MAX_TOOL_LINES` gilt für eine restaurierte
+  Gruppe genauso — gleiches Widget, kein zweiter Pfad.
+- **Misch-Gruppe: restaurierte Schritte führen, live-Items folgen** (gemessen). `entriesOf` schiebt erst die
+  Rows bis zum Anker, dann den Live-Run; der Read liefert die Schritt-Zeile **vor** der live gesehenen
+  Position. Anhängen (`[...previous.items, ...items]`) gab `think` vor `step` — verkehrt.
+  `pushTrace` kehrt darum für eine restaurierte Gruppe um.
+- **`liveLinesAfterHistory` lässt nur noch live eintreffende Schritte durch** (`index >= mark`): was vor dem
+  Read da war, liefert der Read jetzt selbst. Der einzige Fall, in dem ein live gesehener Schritt einen Read
+  überlebt, ist also ein Schritt **hinter** dem Mark — vorher war jeder Schritt ein Immer-Bleiber.
+- **Backend-Messwerte, die der Plan offen ließ:** ein **gestoppter** Turn hinterlässt den Schritt **mit
+  Auszug** (das Result ist vor dem Stopp schon im Bestand), nicht nur als Ankunft. Die Schreib-Ablehnung
+  (`WritePinningTest`) und der `!`-Block (`ChatQueueTest`) stehen **im Auszug** des Schritts — der Kern legt
+  gequeueuerte Texte aufs Werkzeug-Ergebnis (`ToolService`), also verbannen die Tests sie aus dem
+  **Gespräch** (`filteredOn(role != "tool")`), nicht aus dem Verlauf.
+- **Zahlen:** Backend 227 → **231** Tests (4 neue, keiner gelöscht), UI 218 → **221** (2 neu in
+  `chat.log.test.tsx`, 1 neu in `chat.page.test.tsx`, `aReloadedLogInventsNoTimes` um einen restaurierten
+  Schritt erweitert). `ProjectRuntime.java` 589 → **523**, `ConversationRestore.java` **153**,
+  `chat.log.tsx` **310** — alle unter 600.
+- **Kein zweites Maß, kein zweiter Speicher, kein neues CSS-Wort:** der Auszug kommt aus `AgentTranscript.cut`
+  (jetzt paketprivat, geteiltes Maß mit dem Insight), non-Text-Payload ⇒ **leerer** Auszug (das `[no text]`
+  gehört in die Insight-Zeile, nicht in den Chat).
+
