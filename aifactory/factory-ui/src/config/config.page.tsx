@@ -6,6 +6,7 @@ import { content } from '../shared/content'
 import { Agents } from './config.agents'
 import {
   getSettings,
+  listModels,
   listProviders,
   thinkInputOf,
   updateSettings,
@@ -14,6 +15,7 @@ import {
   type Settings,
   type SettingsPatch,
 } from './config.client'
+import { ModelField } from './config.model'
 import { ThinkControl } from './config.think'
 
 const SOURCE_LABEL: Record<KeySource, string> = {
@@ -175,6 +177,24 @@ export function ConfigPage() {
   // one provider answer builds both think fields on this page — the form's own and the slots' (UC-WP-67)
   const thinkInput = thinkInputOf(chosen)
 
+  /**
+   * The model list of one slot (R-WP-50): the slot's own fields are the section's, the connection is the
+   * form's — until the config has arrived there is no connection to name, and a list that cannot be named is
+   * the empty answer the field already knows how to stay silent about (UC-WP-86 GIVEN 2).
+   */
+  function loadSlotModels(slotId: string, slotUrl: string, force: boolean): Promise<string[]> {
+    if (draft === null) {
+      return Promise.resolve([])
+    }
+    return listModels({
+      provider: draft.provider,
+      url: draft.url,
+      agent: slotId,
+      agentUrl: slotUrl,
+      refresh: force,
+    })
+  }
+
   // a stored provider the core list does not offer still has to show what the file holds
   const offered = providers.map((entry) => entry.name)
   const providerOptions = (
@@ -211,10 +231,21 @@ export function ConfigPage() {
               <div>
                 <dt>{content.config.model}</dt>
                 <dd>
-                  <Input
-                    aria-label={content.config.model}
+                  {/* R-WP-50: the field lists the models of the connection this form describes — of the
+                      draft, not of the file, because that is the connection the next save will build. */}
+                  <ModelField
+                    id="settings-model"
+                    label={content.config.model}
                     value={draft.model}
-                    onChange={(event) => edit('model')(event.target.value)}
+                    identity={draft.provider + ' ' + draft.url}
+                    load={(force) =>
+                      listModels({
+                        provider: draft.provider,
+                        url: draft.url,
+                        refresh: force,
+                      })
+                    }
+                    onChange={edit('model')}
                   />
                 </dd>
               </div>
@@ -363,8 +394,14 @@ export function ConfigPage() {
       )}
       {/* R-WP-23: the agent overrides below the default — their own read, their own save per slot. The
           think field is built from the provider the form names (UC-WP-67), so the section reads the
-          answer of this page rather than asking the server the same question a second time. */}
-      <Agents think={thinkInput} />
+          answer of this page rather than asking the server the same question a second time. The model
+          lists of the slots are asked the same way (R-WP-50): a slot has no connection of its own, so
+          the page names provider and base URL and the section adds only the slot and its drafted URL. */}
+      <Agents
+        think={thinkInput}
+        connection={draft === null ? '' : draft.provider + ' ' + draft.url}
+        loadModels={loadSlotModels}
+      />
     </section>
   )
 }

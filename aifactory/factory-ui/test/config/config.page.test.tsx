@@ -14,6 +14,15 @@ const KEY = 'sk-file-secret-0123456789'
  */
 const DEFAULT_THINK = 'settings-think'
 
+/**
+ * The model field of the default form, named by its id: the word „Model" belongs to every slot row too
+ * (R-WP-23), so only the field itself says which level a test is holding.
+ */
+const MODEL_FIELD = 'settings-model'
+
+/** The draft endpoint of a model list (R-WP-50) — a POST, because the connection has no place in a query. */
+const MODELS_PATH = '/api/settings/models'
+
 beforeEach(() => {
   cleanup()
 })
@@ -23,7 +32,13 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-type Script = { GET: unknown; PUT: unknown; PROVIDERS: unknown; AGENTS: unknown }
+type Script = {
+  GET: unknown
+  PUT: unknown
+  PROVIDERS: unknown
+  AGENTS: unknown
+  MODELS: unknown
+}
 type Call = { method: string; path: string; body?: string }
 
 /**
@@ -66,6 +81,8 @@ function stubServer(initial: Partial<Script>): {
       PROVIDERS: PROVIDER_ANSWER,
       // the page mounts the agent section too (R-WP-23); its own tests are in config.agents.test.tsx
       AGENTS: [],
+      // the models of the connection the form describes (R-WP-50) — asked for, never mounted
+      MODELS: [],
       ...initial,
     },
     calls: [],
@@ -84,7 +101,9 @@ function stubServer(initial: Partial<Script>): {
         ? server.script.PROVIDERS
         : path === '/api/settings/agents'
           ? server.script.AGENTS
-          : server.script[method as keyof Script]
+          : path === '/api/settings/models'
+            ? server.script.MODELS
+            : server.script[method as keyof Script]
       if (answer instanceof Error) {
         return response(400, {
           status: 400,
@@ -725,4 +744,156 @@ test('arejectedAdvancedValueKeepsWhatWasTyped', async () => {
   expect(screen.getByLabelText(content.config.queryParams)).toHaveValue('oops')
   // the refusal is the end of the exchange: the three opening reads stay three
   expect(server.calls.filter((call) => call.method === 'GET')).toHaveLength(3)
+})
+
+/** The connections the page asked a model list for, in the order it asked. */
+function modelQueries(server: { calls: Call[] }): Record<string, unknown>[] {
+  return server.calls
+    .filter((call) => call.path === MODELS_PATH)
+    .map((call) => JSON.parse(call.body ?? '{}') as Record<string, unknown>)
+}
+
+/**
+ * R-WP-50, UC-WP-86 GIVEN 1: the field offers the models of the connection the form describes. Asked when the
+ * field is opened and not when the page mounts — reading the settings must not call a provider, which
+ * `settingsShowsMaskedConfig` guards with its three reads. The body names the draft, and the key is not in it.
+ */
+// UC-WP-86
+test('modelFieldListsServerModelsOnOpen', async () => {
+  const server = stubServer({ GET: settingsAnswer(), MODELS: ['gpt-x', 'llama-mock'] })
+  render(<ConfigPage />)
+  await screen.findByText(content.config.provider)
+
+  expect(server.calls.filter((call) => call.method === 'POST'), 'a mount asks no provider').toEqual([])
+
+  expect(await openChoice(content.config.model, MODEL_FIELD)).toEqual(['gpt-x', 'llama-mock'])
+
+  expect(modelQueries(server), 'one opening asks once, for the drafted connection').toEqual([
+    { provider: 'OPEN_AI', url: 'https://api.example.com/v1', refresh: false },
+  ])
+})
+
+/**
+ * R-WP-50 "kein Anhängen": the list is the server's alone. A value the connection does not know is the
+ * field's business and not the list's — an invented entry would offer a model no turn could run.
+ */
+// UC-WP-86
+test('themodellistDoesNotAppendTheTypedValue', async () => {
+  stubServer({ GET: settingsAnswer({ model: 'gpt-demo' }), MODELS: ['gpt-x'] })
+  render(<ConfigPage />)
+  await screen.findByText(content.config.provider)
+
+  fireEvent.change(screen.getByLabelText(content.config.model), { target: { value: 'mine-local' } })
+
+  expect(await openChoice(content.config.model, MODEL_FIELD)).toEqual(['gpt-x'])
+})
+
+/**
+ * UC-WP-86 GIVEN 4: the field takes the server's entry as soon as the typed text names one — the case is what
+ * nobody controls, the id is what the provider needs. Naming nothing of a listed model rewrites nothing.
+ */
+// UC-WP-86
+test('amatchingModelIsWrittenAsTheServerEntry', async () => {
+  const server = stubServer({
+    GET: settingsAnswer(),
+    PUT: settingsAnswer({ model: 'gpt-x' }),
+    MODELS: ['gpt-x'],
+  })
+  render(<ConfigPage />)
+  await screen.findByText(content.config.provider)
+  await openChoice(content.config.model, MODEL_FIELD)
+
+  fireEvent.change(screen.getByLabelText(content.config.model), { target: { value: 'GPT-X' } })
+  expect(screen.getByLabelText(content.config.model)).toHaveValue('gpt-x')
+
+  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
+  await waitFor(() => expect(sentBodies(server)).toHaveLength(1))
+  expect(sentBodies(server)[0], 'the file gets the id the provider listed').toHaveProperty(
+    'model',
+    'gpt-x',
+  )
+})
+
+/**
+ * UC-WP-86 GIVEN 3: a model the list does not carry stays exactly as typed and is saved exactly so — a local
+ * or renamed model is a legitimate answer, which is why the field is a text field with an offer and not a
+ * selection.
+ */
+// UC-WP-86
+test('atypedForeignModelStaysAndIsSaved', async () => {
+  const server = stubServer({
+    GET: settingsAnswer(),
+    PUT: settingsAnswer({ model: 'mine-local-2' }),
+    MODELS: ['gpt-x'],
+  })
+  render(<ConfigPage />)
+  await screen.findByText(content.config.provider)
+  await openChoice(content.config.model, MODEL_FIELD)
+
+  fireEvent.change(screen.getByLabelText(content.config.model), { target: { value: 'mine-local-2' } })
+  expect(screen.getByLabelText(content.config.model)).toHaveValue('mine-local-2')
+
+  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
+  await waitFor(() => expect(sentBodies(server)).toHaveLength(1))
+  expect(sentBodies(server)[0], 'a model the list does not know travels unchanged').toHaveProperty(
+    'model',
+    'mine-local-2',
+  )
+})
+
+/**
+ * R-WP-50: the button beside the field is the way to ask again. The first ask of a connection goes without
+ * `refresh`, the click goes with it — between the two sits the core's cache, keyed by the connection.
+ */
+// UC-WP-86
+test('arefreshClickAsksTheServerAgain', async () => {
+  const server = stubServer({ GET: settingsAnswer(), MODELS: ['gpt-x'] })
+  render(<ConfigPage />)
+  await screen.findByText(content.config.provider)
+
+  await openChoice(content.config.model, MODEL_FIELD)
+  fireEvent.click(screen.getByRole('button', { name: content.config.modelRefresh }))
+
+  await waitFor(() => expect(modelQueries(server)).toHaveLength(2))
+  expect(modelQueries(server)[0], 'the opening asks plainly').toHaveProperty('refresh', false)
+  expect(modelQueries(server)[1], 'the click asks past the cache').toHaveProperty('refresh', true)
+})
+
+/**
+ * UC-WP-86 GIVEN 2: a connection that answers nothing and one that answers an error leave the same screen —
+ * no option, no message, nothing cleared, the field still free text. A list that cannot be had is never a
+ * blocker for the one value it exists to suggest.
+ */
+// UC-WP-86
+test('afailedListingLeavesAFreeTextField', async () => {
+  const server = stubServer({
+    GET: settingsAnswer(),
+    PUT: settingsAnswer(),
+    MODELS: new Error('the provider is offline'),
+  })
+  render(<ConfigPage />)
+  await screen.findByText(content.config.provider)
+
+  fireEvent.mouseDown(screen.getByLabelText(content.config.model) as Element)
+  await waitFor(() => expect(modelQueries(server)).toHaveLength(1))
+
+  expect(screen.queryAllByRole('option')).toHaveLength(0)
+  expect(screen.queryByRole('alert'), 'a failed list is nothing the page reports').toBeNull()
+
+  fireEvent.change(screen.getByLabelText(content.config.model), { target: { value: 'still-mine' } })
+  expect(screen.getByLabelText(content.config.model)).toHaveValue('still-mine')
+  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
+  await waitFor(() => expect(sentBodies(server)).toHaveLength(1))
+  expect(sentBodies(server)[0]).toHaveProperty('model', 'still-mine')
+
+  // the same silence for a connection that answers an empty list
+  cleanup()
+  const empty = stubServer({ GET: settingsAnswer(), MODELS: [] })
+  render(<ConfigPage />)
+  await screen.findByText(content.config.provider)
+  fireEvent.mouseDown(screen.getByLabelText(content.config.model) as Element)
+  await waitFor(() => expect(modelQueries(empty)).toHaveLength(1))
+
+  expect(screen.queryAllByRole('option')).toHaveLength(0)
+  expect(screen.queryByRole('alert')).toBeNull()
 })

@@ -154,6 +154,8 @@ export const content = {
     title: 'Settings',
     provider: 'Provider',
     model: 'Model',
+    /** R-WP-50: the one word of the button that asks the connection again — the plugin's button says the same. */
+    modelRefresh: 'Refresh',
     url: 'URL',
     tokenWindow: 'Token window',
     timeout: 'Timeout',

@@ -5,7 +5,7 @@ import { Agents } from '../../src/config/config.agents'
 import { content } from '../../src/shared/content'
 import { chooseOption, openChoice, shownChoice } from '../shared/choices'
 import type { AgentSettings } from '../../src/config/config.agents.client'
-import type { ThinkInput } from '../../src/config/config.client'
+import { listModels, type ThinkInput } from '../../src/config/config.client'
 
 const KEY = 'sk-agent-secret-0123456789'
 
@@ -45,6 +45,8 @@ function stubServer(initial: {
   saved?: AgentSettings
   /** set to make every PUT answer as the server refuses it — the 400 path of R-WP-16 */
   rejectWith?: string
+  /** the answer of the model list of a drafted connection (R-WP-50) — asked, never mounted */
+  models?: string[]
 }): {
   calls: Call[]
   body: (method: string) => Record<string, unknown>
@@ -54,7 +56,11 @@ function stubServer(initial: {
     'fetch',
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const method = (init?.method ?? 'GET').toUpperCase()
-      calls.push({ method, path: String(input), body: init?.body as string | undefined })
+      const path = String(input)
+      calls.push({ method, path, body: init?.body as string | undefined })
+      if (path.endsWith('/api/settings/models')) {
+        return response(200, initial.models ?? [])
+      }
       if (method === 'PUT') {
         if (initial.rejectWith) {
           return response(400, { status: 400, error: 'Bad Request', message: initial.rejectWith })
@@ -100,11 +106,23 @@ const FIELDS = [
 ]
 
 /**
- * The section with the think form of the chosen base provider (UC-WP-67). The default is the core's honest
- * `UNKNOWN` — a text field, which is what every test here that is not about the form always saw.
+ * The section with the think form of the chosen base provider (UC-WP-67) and the model loader of the page
+ * (R-WP-50): a slot has no provider of its own, so the base the default form holds is what the page hands
+ * down. The think default is the core's honest `UNKNOWN` — a text field, which is what every test here that
+ * is not about the form always saw.
  */
+const BASE = { provider: 'OPEN_AI', url: 'https://api.example.com/v1' }
+
 function renderAgents(think: ThinkInput = { form: 'UNKNOWN', values: [] }) {
-  return render(<Agents think={think} />)
+  return render(
+    <Agents
+      think={think}
+      connection={BASE.provider + ' ' + BASE.url}
+      loadModels={(slotId, slotUrl, force) =>
+        listModels({ ...BASE, agent: slotId, agentUrl: slotUrl, refresh: force })
+      }
+    />,
+  )
 }
 
 // UC-WP-44
@@ -397,4 +415,49 @@ test('devThinkIsLabeledAsTheDefault', async () => {
   const jon = within(row('po'))
   expect(jon.getByLabelText(content.agents.think)).toBeTruthy()
   expect(jon.queryByLabelText(content.agents.thinkDefault)).toBeNull()
+})
+
+/** The connections a section asked model lists for, in the order it asked (R-WP-50). */
+function modelQueries(server: { calls: Call[] }): Record<string, unknown>[] {
+  return server.calls
+    .filter((call) => call.path === '/api/settings/models')
+    .map((call) => JSON.parse(call.body ?? '{}') as Record<string, unknown>)
+}
+
+/**
+ * UC-WP-86 for a slot: the field asks for the slot's own connection. The section hands the slot and its
+ * drafted URL to the loader the page owns, and that is what the wire carries. A slot without a URL of its own
+ * says so by being empty — its own rule (R-WP-23) — and is resolved where the base is known, not here, so the
+ * base travels either way and a key travels never (R-WP-16).
+ */
+// UC-WP-86
+test('agentModelFieldAsksForItsOwnConnection', async () => {
+  const server = stubServer({
+    slots: [
+      agent({ id: 'po', name: 'Jon', overridden: true, url: 'http://slot.example/v1' }),
+      agent({ id: 'plan', name: 'Plan', overridden: true }),
+    ],
+    models: ['gpt-slot'],
+  })
+
+  renderAgents()
+
+  const slot = await waitFor(() => row('po'))
+  expect(await openChoice(content.agents.model, 'agent-po-model')).toEqual(['gpt-slot'])
+  expect(await openChoice(content.agents.model, 'agent-plan-model')).toEqual(['gpt-slot'])
+
+  expect(modelQueries(server)[0]).toEqual({
+    provider: 'OPEN_AI',
+    url: BASE.url,
+    agent: 'po',
+    agentUrl: 'http://slot.example/v1',
+    refresh: false,
+  })
+  expect(modelQueries(server)[1], 'an empty slot URL travels empty').toHaveProperty('agentUrl', '')
+  expect(JSON.stringify(modelQueries(server))).not.toContain('apiKey')
+
+  // a list is an offer and never an answer: the slot's field still holds what it held, and the section
+  // saved nothing of its own on the way
+  expect((within(slot).getByLabelText(content.agents.model) as HTMLInputElement).value).toBe('')
+  expect(server.calls.filter((call) => call.method === 'PUT')).toEqual([])
 })

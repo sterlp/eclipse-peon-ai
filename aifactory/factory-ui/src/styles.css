@@ -1123,6 +1123,16 @@ button {
   min-width: 0;
 }
 
+/* The model row (R-WP-50): field and its refresh share one line and wrap as one. Both levels of the page
+   build it, so the field keeps the one measure and the button never sits in a label column. */
+.config-model-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
 /* The key status is the status line of its row — the mono measure of the chat's tile metadata. */
 .key-set {
   color: var(--agent);

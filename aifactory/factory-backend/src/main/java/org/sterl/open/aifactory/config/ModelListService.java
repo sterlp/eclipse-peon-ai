@@ -13,6 +13,7 @@ import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.ModelListCache;
 import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.provider.LlmProviders;
+import org.sterl.llmpeon.shared.StringUtil;
 
 /**
  * The models of one connection (R-WP-50) — listed by the core's provider and cached in the core's cache,
@@ -21,7 +22,9 @@ import org.sterl.llmpeon.provider.LlmProviders;
  * <p>The connection is the one the draft describes: draft provider and draft base URL stand in for the
  * stored values, and a slot keeps its precedence over the base — resolved by the core's
  * {@link LlmConfig#effectiveConnectionFor(AgentModelConfig)}, which is the same path a turn takes, so
- * the page lists the models of the connection its saved values will build. The key is the one value no
+ * the page lists the models of the connection its saved values will build. An empty URL field is read as
+     * <em>unset</em> and not as "unchanged" for the same reason: the list predicts a save, and a save of an
+     * empty field deletes it (R-WP-16). The key is the one value no
  * draft carries: read from the config here, never sent, never answered — which is what lets the page
  * list a connection it cannot read.</p>
  *
@@ -56,9 +59,17 @@ public class ModelListService {
         LlmConfig stored = config.load();
         LlmConfig drafted = stored.toBuilder()
                 .providerType(providerOf(request.provider(), stored.getProviderType()))
-                .url(present(request.url()) ? request.url().trim() : stored.getUrl())
+                .url(draftedUrl(request.url(), stored.getUrl()))
                 .build();
         return drafted.effectiveConnectionFor(slotRecord(drafted, request.agent(), request.agentUrl()));
+    }
+
+    /**
+     * The three states of R-WP-16 on a field that describes a connection: absent says nothing and leaves the
+     * stored URL, empty says <em>unset</em> — which is what saving an empty URL does — and a value drafts it.
+     */
+    private static String draftedUrl(String draft, String stored) {
+        return draft == null ? stored : StringUtil.stripToNull(draft);
     }
 
     /** The slot's own record, with the draft URL in front of it; no slot named is the base connection. */
@@ -67,12 +78,12 @@ public class ModelListService {
             return AgentModelConfig.empty();
         }
         AgentModelConfig slot = drafted.modelConfigFor(agentId.trim());
-        if (!present(draftUrl)) {
+        if (draftUrl == null) {
             return slot;
         }
-        String url = draftUrl.trim();
-        return new AgentModelConfig(url, slot.apiKey(), slot.model(), slot.think(), slot.extraBody(),
-                slot.temperature());
+        // an empty field is the slot's own "I say nothing" (R-WP-23), which the core resolves to the base
+        return new AgentModelConfig(StringUtil.stripToNull(draftUrl), slot.apiKey(), slot.model(),
+                slot.think(), slot.extraBody(), slot.temperature());
     }
 
     /** An empty field names nothing, so the stored provider lists; a name the core lacks is the request's fault. */

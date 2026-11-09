@@ -10,6 +10,7 @@ import {
   type AgentSettings,
 } from './config.agents.client'
 import type { ThinkInput } from './config.client'
+import { ModelField } from './config.model'
 import { ThinkField } from './config.think'
 
 /** The slot whose record carries the base think value of every other agent (R-THINK-10). */
@@ -86,9 +87,19 @@ function Field(props: {
  * unchecked box clears the slot — both are the file's states, so the page holds no opinion about them.
  * The think field takes the form of the base provider, which the page owns and hands in (`think`): the
  * slots have no provider of their own, so a second read of the provider list would only be a second
- * answer to one question.
+ * answer to one question. The model lists follow the same rule (`connection`, `loadModels`): a slot's
+ * connection is the base one plus whatever its own URL field drafts, so only the page can name it.
  */
-export function Agents({ think }: { think: ThinkInput }) {
+export function Agents({
+  think,
+  connection,
+  loadModels,
+}: {
+  think: ThinkInput
+  /** The base connection the slots inherit from: provider and base URL as the form holds them (R-WP-50). */
+  connection: string
+  loadModels: (slotId: string, slotUrl: string, force: boolean) => Promise<string[]>
+}) {
   const [slots, setSlots] = useState<AgentSettings[]>([])
   const [drafts, setDrafts] = useState<Record<string, Draft>>({})
   // the removal of a key is queued per slot: the slot's own save carries it (R-WP-16, UC-WP-63)
@@ -170,12 +181,19 @@ export function Agents({ think }: { think: ThinkInput }) {
               </Checkbox>
               {draft.overridden && (
                 <div className="config-agents-fields">
-                  <Field
-                    id={'agent-' + slot.id + '-model'}
-                    label={content.agents.model}
-                    value={draft.model}
-                    onChange={edit(slot.id, 'model')}
-                  />
+                  {/* R-WP-50: the same field the default level has — a slot lists the models of the
+                      connection its turn will use, which is the base one unless this field drafts another. */}
+                  <div className="config-agents-field">
+                    <label htmlFor={'agent-' + slot.id + '-model'}>{content.agents.model}</label>
+                    <ModelField
+                      id={'agent-' + slot.id + '-model'}
+                      label={content.agents.model}
+                      value={draft.model}
+                      identity={connection + ' ' + draft.url}
+                      load={(force) => loadModels(slot.id, draft.url, force)}
+                      onChange={edit(slot.id, 'model')}
+                    />
+                  </div>
                   <Field
                     id={'agent-' + slot.id + '-url'}
                     label={content.agents.url}

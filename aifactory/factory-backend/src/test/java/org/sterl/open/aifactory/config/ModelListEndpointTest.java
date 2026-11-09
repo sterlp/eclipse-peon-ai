@@ -215,6 +215,40 @@ class ModelListEndpointTest extends FactorySpringTest {
         // the offer of a key changed no byte — this is a read, and its fields are no write
         assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.API_KEY, null)).isEqualTo(KEY);
     }
+    /**
+     * R-WP-16 applied to the draft of a connection: the URL field <em>is</em> the draft, so an empty one is
+     * <em>unset</em> and not "leave the stored one alone" — the list has to predict the connection that a
+     * save would build, and saving an empty URL deletes it. An absent field still says nothing. A slot whose
+     * own URL field is empty says something else by its own rule (R-WP-23: empty inherits), and there the
+     * base connection is the honest answer.
+     */
+    @Test
+    // UC-WP-86
+    void anEmptyUrlFieldListsTheConnectionAnEmptyFieldWouldSave() {
+        writeConfig("""
+                %s=OPEN_AI
+                %s=gpt-demo
+                %s=%s
+                """.formatted(LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.MODEL, LlmConfigKeys.URL,
+                        models.getUrl()));
+        models.setModelIds(List.of("gpt-x"));
+
+        // the field is absent: nothing drafted, so the stored connection is the one to list
+        assertThat(post("{}").getBody()).isEqualTo("[\"gpt-x\"]");
+
+        // the field is empty: that is unset, and this provider has no endpoint of its own — asking the
+        // stored URL here would have answered with the list of the call above
+        assertThat(post("{\"provider\":\"OPEN_AI\",\"url\":\"\"}").getBody()).isEqualTo("[]");
+
+        // an empty slot URL is the slot's "I say nothing of my own": the base connection answers
+        assertThat(post("""
+                {"agent":"%s","agentUrl":""}""".formatted(AgentModelConfig.PO)).getBody())
+                        .isEqualTo("[\"gpt-x\"]");
+
+        // listing a draft writes nothing: the file still holds the URL the empty field did not touch
+        assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.URL, null)).isEqualTo(models.getUrl());
+    }
+
 
     /**
      * The one case that is refused instead of answered with nothing: a provider name the core does not

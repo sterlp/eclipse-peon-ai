@@ -72,6 +72,34 @@ export async function listProviders(): Promise<Provider[]> {
 }
 
 /**
+ * The connection a model list is asked for (R-WP-50): the draft's provider, URL and slot — and never a key.
+ * A field the form holds empty travels empty, because the server reads that as unset: the list is meant to
+ * predict the connection a save would build.
+ */
+export interface ModelQuery {
+  provider?: string
+  url?: string
+  agent?: string
+  agentUrl?: string
+  refresh?: boolean
+}
+
+/**
+ * The models of one connection (UC-WP-86). A POST although it only reads: the endpoint and the slot belong in
+ * a body and not in a query string or an access log, and the key belongs in neither — the server reads it from
+ * the config. A connection that cannot answer is answered as an empty list, so the caller has nothing to
+ * report and the model field simply stays a text field.
+ */
+export async function listModels(query: ModelQuery): Promise<string[]> {
+  const ids = await request<string[]>('/api/settings/models', {
+    method: 'POST',
+    body: JSON.stringify(query),
+  })
+  // no body and an empty list are the same answer for the field
+  return ids ?? []
+}
+
+/**
  * The field names both config levels may send. `trimBody` is typed on this rather than on `object`: a
  * field the server does not know must fail the build, not travel as a typo that silently changes nothing.
  */
