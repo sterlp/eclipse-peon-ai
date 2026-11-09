@@ -2,6 +2,10 @@
 - UI elements are small, composable units with a single clear responsibility — like well-designed
   Java classes. Split when a unit has more than one reason to change, not by line count alone.
   Avoid both monoliths and premature fragmentation. (read component-architecture for more details)
+- **Vorgeladene Felder sind keine Log-Inhalte**: Header-/Query-Params und Extra-Body reisen als Klartext
+  ins Read-Modell (das Feld ist vorbefüllt), aber kein Log, kein 400-Hint und kein `toString()` darf sie
+  wiederholen — ein Hint nennt nur das Feld; wie der Kern den Key behandelt der Kern `headerParams`
+  (`LlmConfig` `@ToString(exclude=…)`), und `SettingsSnapshot` tut das Gleiche.
 
 ## Build
 

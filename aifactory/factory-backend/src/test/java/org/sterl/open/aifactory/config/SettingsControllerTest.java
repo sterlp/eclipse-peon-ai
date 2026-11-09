@@ -28,11 +28,13 @@ import org.springframework.web.client.RestTemplate;
 
 import com.jayway.jsonpath.JsonPath;
 
+import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.FileLlmConfigStore;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.provider.LlmProviders;
 import org.sterl.open.aifactory.FactorySpringTest;
+import org.sterl.open.aifactory.config.agent.AgentConfigFile;
 import org.sterl.open.aifactory.config.dto.ProviderDefaultsDto;
 import org.sterl.open.aifactory.config.dto.SettingsDto;
 import org.sterl.open.aifactory.config.dto.SettingsUpdateRequest;
@@ -83,9 +85,15 @@ class SettingsControllerTest extends FactorySpringTest {
                 %s=64000
                 %s=45
                 %s=false
+                %s=4096
+                %s=api-version=2,tag=factory
+                %s=X-Trace=abc
+                %s=high
                 """.formatted(LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.MODEL, LlmConfigKeys.URL,
                         LlmConfigKeys.API_KEY, KEY, LlmConfigKeys.TOKEN_WINDOW, LlmConfigKeys.TIMEOUT,
-                        LlmConfigKeys.SEND_THINKING_ENABLED));
+                        LlmConfigKeys.SEND_THINKING_ENABLED, LlmConfigKeys.MAX_TOKENS,
+                        LlmConfigKeys.QUERY_PARAMS, LlmConfigKeys.HEADER_PARAMS,
+                        LlmConfigKeys.agentKey(AgentModelConfig.DEV, LlmConfigKeys.AGENT_FIELD_THINK)));
 
         ResponseEntity<String> response = http.getForEntity(url("/api/settings"), String.class);
         String body = response.getBody();
@@ -102,13 +110,20 @@ class SettingsControllerTest extends FactorySpringTest {
         assertThat(field(body, "$.sendThinking")).isEqualTo(false);
         assertThat(field(body, "$.keySet")).isEqualTo(true);
         assertThat(field(body, "$.keySource")).isEqualTo("FILE");
+        // R-WP-49: the base think is the dev slot's value, and here no dev file exists — the stored
+        // config answers it. R-WP-51: the advanced fields travel as what they are.
+        assertThat(field(body, "$.think")).isEqualTo("high");
+        assertThat(field(body, "$.maxTokens")).isEqualTo(4096);
+        assertThat(field(body, "$.queryParams")).isEqualTo("api-version=2,tag=factory");
+        assertThat(field(body, "$.headerParams")).isEqualTo("X-Trace=abc");
 
         // the wire itself, not a parsed copy: no part of the key, not even its shape
         assertThat(body).doesNotContain(KEY, KEY.substring(0, 6), KEY.substring(KEY.length() - 6), "sk-");
 
         // no field a key could sit in — added components fail whatever they are called
-        assertThat(componentNamesOf(SettingsDto.class)).containsExactly("provider", "model", "url", "tokenWindow",
-                "timeoutSeconds", "sendThinking", "keySet", "keySource");
+        assertThat(componentNamesOf(SettingsDto.class)).containsExactly("provider", "model", "think", "url",
+                "tokenWindow", "timeoutSeconds", "sendThinking", "maxTokens", "queryParams", "headerParams",
+                "keySet", "keySource");
     }
 
     @Test
@@ -191,8 +206,9 @@ class SettingsControllerTest extends FactorySpringTest {
         assertThat(field(body, "$.tokenWindow")).isEqualTo(40000);
         // a save answers masked, exactly like a read: no field, no character
         assertThat(body).doesNotContain(KEY, KEY.substring(0, 6), KEY.substring(KEY.length() - 6), "sk-");
-        assertThat(componentNamesOf(SettingsDto.class)).containsExactly("provider", "model", "url", "tokenWindow",
-                "timeoutSeconds", "sendThinking", "keySet", "keySource");
+        assertThat(componentNamesOf(SettingsDto.class)).containsExactly("provider", "model", "think", "url",
+                "tokenWindow", "timeoutSeconds", "sendThinking", "maxTokens", "queryParams", "headerParams",
+                "keySet", "keySource");
 
         FileLlmConfigStore stored = new FileLlmConfigStore(config());
         assertThat(stored.get(LlmConfigKeys.MODEL, null)).isEqualTo("put-model");
@@ -236,7 +252,8 @@ class SettingsControllerTest extends FactorySpringTest {
 
         // the request model has no component for the two pinned values either
         assertThat(componentNamesOf(SettingsUpdateRequest.class)).containsExactly("provider", "model", "url",
-                "apiKey", "tokenWindow", "timeoutSeconds", "sendThinking", "removeApiKey");
+                "apiKey", "tokenWindow", "timeoutSeconds", "sendThinking", "think", "maxTokens", "queryParams",
+                "headerParams", "removeApiKey");
 
         // and the home still holds exactly the one file — no temp file survived the atomic move
         assertThat(fileNames()).isEqualTo(filesBefore);
@@ -396,6 +413,38 @@ class SettingsControllerTest extends FactorySpringTest {
         assertThat(field(body, "$.sendThinking")).isEqualTo(true);
     }
 
+    /**
+     * R-WP-49 and R-WP-51 over HTTP. The two stores must stay apart: "Think (Default)" is the dev slot's
+     * field, so it lands in that slot's file — a properties key of its own would be a second store the
+     * agent section cannot see. The advanced fields are plain config values and answer verbatim.
+     */
+    @Test
+    // UC-WP-87
+    void thinkAndTheAdvancedFieldsLandWhereTheCoreReadsThem() throws IOException {
+        ResponseEntity<String> saved = put("{\"think\":\"high\",\"maxTokens\":\"4096\","
+                + "\"queryParams\":\"api-version=2,tag=factory\",\"headerParams\":\"X-Trace=abc\"}");
+        String body = saved.getBody();
+
+        assertThat(saved.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(field(body, "$.think")).isEqualTo("high");
+        assertThat(field(body, "$.maxTokens")).isEqualTo(4096);
+        assertThat(field(body, "$.queryParams")).isEqualTo("api-version=2,tag=factory");
+        assertThat(field(body, "$.headerParams")).isEqualTo("X-Trace=abc");
+
+        FileLlmConfigStore stored = new FileLlmConfigStore(config());
+        assertThat(stored.get(LlmConfigKeys.MAX_TOKENS, null)).isEqualTo("4096");
+        assertThat(stored.get(LlmConfigKeys.QUERY_PARAMS, null)).isEqualTo("api-version=2,tag=factory");
+        assertThat(stored.get(LlmConfigKeys.HEADER_PARAMS, null)).isEqualTo("X-Trace=abc");
+        // one store for think: the slot's file, never a properties key beside it
+        assertThat(stored.get(LlmConfigKeys.agentKey(AgentModelConfig.DEV, LlmConfigKeys.AGENT_FIELD_THINK), null))
+                .isNull();
+        assertThat(Files.readString(devSlotFile())).contains("think: high");
+
+        // cleared, the key is out of the file and the answer says what applies without it (R-WP-16)
+        assertThat(field(put("{\"think\":\"\"}").getBody(), "$.think")).isNull();
+        assertThat(Files.readString(devSlotFile())).doesNotContain("think");
+    }
+
     /** The raw wire is the point: the body is sent exactly as written here, unknown fields included. */
     private ResponseEntity<String> put(String json) {
         HttpHeaders headers = new HttpHeaders();
@@ -444,6 +493,11 @@ class SettingsControllerTest extends FactorySpringTest {
 
     private static Path config() {
         return HOME.resolve(FactoryHome.CONFIG_FILE);
+    }
+
+    /** The dev slot's own file — the store R-WP-49 gives the base think field. */
+    private static Path devSlotFile() {
+        return AgentConfigFile.forSlot(FactoryHome.of(HOME), AgentModelConfig.DEV).file();
     }
 
     private static void writeConfig(String content) {

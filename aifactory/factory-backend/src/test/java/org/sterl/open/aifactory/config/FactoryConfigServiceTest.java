@@ -21,12 +21,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.env.MockEnvironment;
 
+import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.FileLlmConfigStore;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.ai.LlmConfigStore;
 import org.sterl.llmpeon.provider.LlmProviders;
+import org.sterl.open.aifactory.config.agent.AgentConfigFile;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
@@ -113,8 +115,9 @@ class FactoryConfigServiceTest {
         assertThat(snapshot.keySource()).isEqualTo(KeySource.FILE);
 
         // masking by type: no component a key could sit in — whatever a later one is called
-        assertThat(componentNamesOf(SettingsSnapshot.class)).containsExactly("provider", "model", "url",
-                "tokenWindow", "timeoutSeconds", "sendThinking", "keySet", "keySource");
+        assertThat(componentNamesOf(SettingsSnapshot.class)).containsExactly("provider", "model", "think", "url",
+                "tokenWindow", "timeoutSeconds", "sendThinking", "maxTokens", "queryParams", "headerParams",
+                "keySet", "keySource");
 
         assertThat(snapshot.toString()).doesNotContain(KEY, KEY.substring(0, 6), KEY.substring(KEY.length() - 6));
     }
@@ -223,7 +226,7 @@ class FactoryConfigServiceTest {
         Map<Path, byte[]> before = treeBytes();
 
         SettingsSnapshot saved = service().update(new SettingsUpdate(null, "new-model", "https://new.example",
-                WRITTEN_KEY, null, null, null, false));
+                WRITTEN_KEY, null, null, null, null, null, null, null, false));
 
         // the answer of a save is the stored state, masked — never the submitted body
         assertThat(saved.model()).isEqualTo("new-model");
@@ -255,12 +258,14 @@ class FactoryConfigServiceTest {
         // field for which blank still means unchanged (R-WP-16); a cleared visible field deletes, which is
         // what aClearedFieldIsRemovedFromTheFile proves.
         byte[] storedBytes = Files.readAllBytes(config());
-        service().update(new SettingsUpdate(null, null, null, "   ", null, null, null, false));
+        service().update(new SettingsUpdate(null, null, null, "   ", null, null, null,
+                null, null, null, null, false));
         assertThat(Files.readAllBytes(config())).containsExactly(storedBytes);
         assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.API_KEY, null)).isEqualTo(WRITTEN_KEY);
 
         // submitting the value that is already stored is a no-op on disk as well
-        service().update(new SettingsUpdate(null, "new-model", null, null, null, null, null, false));
+        service().update(new SettingsUpdate(null, "new-model", null, null, null, null, null,
+                null, null, null, null, false));
         assertThat(Files.readAllBytes(config())).containsExactly(storedBytes);
         assertThat(differingPaths(before, treeBytes())).containsExactly(config());
     }
@@ -269,7 +274,7 @@ class FactoryConfigServiceTest {
     void updateCannotPinTheConfigDirOrTheDiskTools() {
         // every field the write model can carry, including the two keys the factory pins for itself
         service().update(new SettingsUpdate("OLLAMA", "some-model", "https://example", "sk-some-key",
-                "4000", "60", "false", false));
+                "4000", "60", "false", null, null, null, null, false));
 
         FileLlmConfigStore stored = new FileLlmConfigStore(config());
         assertThat(stored.get(LlmConfigKeys.MODEL, null)).isEqualTo("some-model");
@@ -286,18 +291,22 @@ class FactoryConfigServiceTest {
         writeConfig("%s=old-model%n".formatted(LlmConfigKeys.MODEL));
         byte[] untouched = Files.readAllBytes(config());
 
-        assertThatThrownBy(() -> service().update(new SettingsUpdate(null, null, null, null, "0", null, null, false)))
+        assertThatThrownBy(() -> service().update(
+                new SettingsUpdate(null, null, null, null, "0", null, null, null, null, null, null, false)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("tokenWindow");
-        assertThatThrownBy(() -> service().update(new SettingsUpdate(null, null, null, null, null, "-1", null, false)))
+        assertThatThrownBy(() -> service().update(
+                new SettingsUpdate(null, null, null, null, null, "-1", null, null, null, null, null, false)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("timeoutSeconds");
         // text on the wire means text the core can read back — garbage is refused, never stored
-        assertThatThrownBy(() -> service().update(new SettingsUpdate(null, null, null, null, "many", null, null, false)))
+        assertThatThrownBy(() -> service().update(
+                new SettingsUpdate(null, null, null, null, "many", null, null, null, null, null, null, false)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("tokenWindow")
                 .hasMessageNotContaining("many");
-        assertThatThrownBy(() -> service().update(new SettingsUpdate(null, null, null, null, null, null, "maybe", false)))
+        assertThatThrownBy(() -> service().update(
+                new SettingsUpdate(null, null, null, null, null, null, "maybe", null, null, null, null, false)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("sendThinking")
                 .hasMessageNotContaining("maybe");
@@ -313,7 +322,7 @@ class FactoryConfigServiceTest {
 
         // AiProvider.parse would have answered 200 and stored OLLAMA — garbage accepted, typo invisible
         assertThatThrownBy(() -> service().update(new SettingsUpdate("NOPE", null, null, WRITTEN_KEY,
-                null, null, null, false)))
+                null, null, null, null, null, null, null, false)))
                         .isInstanceOf(IllegalArgumentException.class)
                         .hasMessageContaining("provider")
                         .hasMessageNotContaining(WRITTEN_KEY)
@@ -353,7 +362,8 @@ class FactoryConfigServiceTest {
                 """.formatted(LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.MODEL, LlmConfigKeys.API_KEY, KEY));
 
         SettingsSnapshot saved = service(new MockEnvironment())
-                .update(new SettingsUpdate(null, null, null, null, null, null, null, true));
+                .update(new SettingsUpdate(null, null, null, null, null, null, null,
+                        null, null, null, null, true));
 
         assertThat(saved.keySet()).isFalse();
         assertThat(saved.keySource()).isEqualTo(KeySource.NONE);
@@ -371,7 +381,8 @@ class FactoryConfigServiceTest {
 
         // removing what is already gone is a no-op — the page may ask again without touching the bytes
         byte[] removed = Files.readAllBytes(config());
-        service(new MockEnvironment()).update(new SettingsUpdate(null, null, null, null, null, null, null, true));
+        service(new MockEnvironment()).update(new SettingsUpdate(null, null, null, null, null, null, null,
+                null, null, null, null, true));
         assertThat(Files.readAllBytes(config())).containsExactly(removed);
     }
 
@@ -382,7 +393,7 @@ class FactoryConfigServiceTest {
         writeConfig("%s=%s%n".formatted(LlmConfigKeys.API_KEY, KEY));
         byte[] untouched = Files.readAllBytes(config());
 
-        service().update(new SettingsUpdate(null, null, null, "", null, null, null, false));
+        service().update(new SettingsUpdate(null, null, null, "", null, null, null, null, null, null, null, false));
 
         assertThat(Files.readAllBytes(config())).containsExactly(untouched);
         assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.API_KEY, null)).isEqualTo(KEY);
@@ -400,7 +411,8 @@ class FactoryConfigServiceTest {
         byte[] untouched = Files.readAllBytes(config());
 
         assertThatThrownBy(() -> service().update(
-                new SettingsUpdate(null, null, null, WRITTEN_KEY, null, null, null, true)))
+                new SettingsUpdate(null, null, null, WRITTEN_KEY, null, null, null,
+                        null, null, null, null, true)))
                         .isInstanceOf(IllegalArgumentException.class)
                         .hasMessageContaining("apiKey")
                         .hasMessageNotContaining(WRITTEN_KEY);
@@ -427,7 +439,7 @@ class FactoryConfigServiceTest {
                         LlmConfigKeys.TOKEN_WINDOW, LlmConfigKeys.TIMEOUT, LlmConfigKeys.SEND_THINKING_ENABLED));
 
         SettingsSnapshot saved = service(new MockEnvironment()).update(new SettingsUpdate(
-                "OPEN_AI", "", "", null, "64000", null, "", false));
+                "OPEN_AI", "", "", null, "64000", null, "", null, null, null, null, false));
 
         FileLlmConfigStore stored = new FileLlmConfigStore(config());
         assertThat(stored.get(LlmConfigKeys.MODEL, null)).isNull();
@@ -445,6 +457,169 @@ class FactoryConfigServiceTest {
         assertThat(saved.sendThinking()).isTrue();
         assertThat(saved.tokenWindow()).isEqualTo(64_000);
         assertThat(saved.timeoutSeconds()).isEqualTo(45);
+    }
+
+    /**
+     * R-WP-49: "Think (Default)" <b>is</b> the dev slot's field — the slot's file is its store and its
+     * value is what a turn sends. A properties entry of its own would be a second store, so a save
+     * through the default level must leave that entry exactly as it was.
+     */
+    @Test
+    // R-WP-49
+    void theDefaultThinkIsTheDevSlotField() throws IOException {
+        writeConfig("%s=OLLAMA%n%s=llama-demo%n%s=low%n".formatted(LlmConfigKeys.PROVIDER_TYPE,
+                LlmConfigKeys.MODEL, devThinkKey()));
+        writeDevSlotFile("think: high\n");
+
+        assertThat(service().snapshot().think()).isEqualTo("high");
+
+        service().update(new SettingsUpdate(null, null, null, null, null, null, null,
+                "off", null, null, null, false));
+
+        assertThat(Files.readString(devSlotFile())).contains("think: off");
+        assertThat(service().snapshot().think()).isEqualTo("off");
+        assertThat(new FileLlmConfigStore(config()).get(devThinkKey(), null)).isEqualTo("low");
+    }
+
+    /**
+     * R-WP-49 with R-WP-16: clearing the field deletes the key from the slot's file, and afterwards what
+     * applies without it applies again — the stored dev think, and with nothing stored anywhere, no think.
+     */
+    @Test
+    // R-WP-49
+    void clearingTheDefaultThinkFallsBackToTheStoredConfig() throws IOException {
+        writeConfig("%s=OLLAMA%n%s=llama-demo%n%s=medium%n".formatted(LlmConfigKeys.PROVIDER_TYPE,
+                LlmConfigKeys.MODEL, devThinkKey()));
+        writeDevSlotFile("think: high\n");
+
+        SettingsSnapshot cleared = service().update(new SettingsUpdate(null, null, null, null, null, null, null,
+                "", null, null, null, false));
+
+        assertThat(Files.readString(devSlotFile())).doesNotContain("think");
+        assertThat(cleared.think()).isEqualTo("medium");
+
+        deleteConfig();
+        assertThat(service(new MockEnvironment()).snapshot().think()).isNull();
+    }
+
+    @Test
+    // UC-WP-87
+    void maxTokensIsStoredAsANumberAndAnswersAsANumber() {
+        SettingsSnapshot saved = service().update(new SettingsUpdate(null, null, null, null, null, null, null,
+                null, "4096", null, null, false));
+
+        assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.MAX_TOKENS, null)).isEqualTo("4096");
+        assertThat(saved.maxTokens()).isEqualTo(4096);
+        // what the next turn builds with carries the same number, so the answer is not a wire-only promise
+        assertThat(service().load().getMaxTokens()).isEqualTo(4096);
+    }
+
+    /** A4: 0 is the core's "the provider decides" ({@code LlmConfig.maxTokens}) — a stored zero would be a value. */
+    @Test
+    // UC-WP-87
+    void zeroAndBlankMaxTokensRemoveTheKey() {
+        writeConfig("%s=4096%n".formatted(LlmConfigKeys.MAX_TOKENS));
+
+        for (String cleared : List.of("0", "", "   ")) {
+            SettingsSnapshot saved = service().update(new SettingsUpdate(null, null, null, null, null, null, null,
+                    null, cleared, null, null, false));
+
+            assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.MAX_TOKENS, null)).isNull();
+            assertThat(saved.maxTokens()).isNull();
+        }
+    }
+
+    @Test
+    // UC-WP-87
+    void queryAndHeaderParamsTravelAsText() {
+        SettingsSnapshot saved = service().update(new SettingsUpdate(null, null, null, null, null, null, null,
+                null, null, "api-version=2,tag=factory", "X-Tenant=a b", false));
+
+        FileLlmConfigStore stored = new FileLlmConfigStore(config());
+        assertThat(stored.get(LlmConfigKeys.QUERY_PARAMS, null)).isEqualTo("api-version=2,tag=factory");
+        assertThat(stored.get(LlmConfigKeys.HEADER_PARAMS, null)).isEqualTo("X-Tenant=a b");
+        // answered as the word that was stored, not re-rendered out of the core's map
+        assertThat(saved.queryParams()).isEqualTo("api-version=2,tag=factory");
+        assertThat(saved.headerParams()).isEqualTo("X-Tenant=a b");
+        assertThat(service().load().getHeaderParams()).containsEntry("X-Tenant", "a b");
+
+        SettingsSnapshot cleared = service().update(new SettingsUpdate(null, null, null, null, null, null, null,
+                null, null, "", "", false));
+
+        assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.QUERY_PARAMS, null)).isNull();
+        assertThat(cleared.queryParams()).isNull();
+        assertThat(cleared.headerParams()).isNull();
+    }
+
+    @Test
+    // UC-WP-87
+    void aNonNumericMaxTokensIsRefusedAndNamesTheField() throws IOException {
+        writeConfig("%s=OLLAMA%n%s=4096%n".formatted(LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.MAX_TOKENS));
+        Map<Path, byte[]> before = treeBytes();
+
+        for (String rejected : List.of("abc", "-1", "4.5", "99999999999999")) {
+            assertThatThrownBy(() -> service().update(new SettingsUpdate(null, null, null, null, null, null, null,
+                    null, rejected, null, null, false)))
+                            .isInstanceOf(IllegalArgumentException.class)
+                            .hasMessageContaining("maxTokens")
+                            .hasMessageNotContaining(rejected);
+        }
+
+        // refused before the first write — the stored number is still the one the file had
+        assertThat(differingPaths(before, treeBytes())).isEmpty();
+        assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.MAX_TOKENS, null)).isEqualTo("4096");
+    }
+
+    /**
+     * The core turns a segment without {@code =} into a variable named after the whole segment with an
+     * empty value — nobody means that, so R-WP-51's "unparsbar ⇒ nichts speichern" answers it. A blank
+     * segment stays legal, because that one the core reads as nothing at all.
+     */
+    @Test
+    // UC-WP-87
+    void aParamSegmentWithoutEqualsIsRefusedAndNamesTheField() throws IOException {
+        writeConfig("%s=OLLAMA%n%s=a=b%n".formatted(LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.QUERY_PARAMS));
+        Map<Path, byte[]> before = treeBytes();
+
+        assertThatThrownBy(() -> service().update(new SettingsUpdate(null, null, null, null, null, null, null,
+                null, null, "oops", null, false)))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("queryParams")
+                        .hasMessageNotContaining("oops");
+        assertThatThrownBy(() -> service().update(new SettingsUpdate(null, null, null, null, null, null, null,
+                null, null, null, "a=b,cdef", false)))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("headerParams")
+                        .hasMessageNotContaining("cdef");
+
+        assertThat(differingPaths(before, treeBytes())).isEmpty();
+
+        service().update(new SettingsUpdate(null, null, null, null, null, null, null,
+                null, null, "a=b,", null, false));
+        assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.QUERY_PARAMS, null)).isEqualTo("a=b,");
+    }
+
+    /**
+     * A7: the header field is prefilled, so its value does belong to the read model — but it is an
+     * outbound request value, so neither a rendered record nor a refusal may repeat it.
+     */
+    @Test
+    // UC-WP-87
+    void headerParamsNeverAppearInALogOrInAHint() {
+        String sent = "Authorization=Bearer sk-header-secret-0123456789";
+
+        SettingsSnapshot stored = service().update(new SettingsUpdate(null, null, null, null, null, null, null,
+                null, null, null, sent, false));
+
+        assertThat(stored.headerParams()).isEqualTo(sent);
+        assertThat(stored.toString()).doesNotContain(sent, "sk-header-secret", "Bearer");
+
+        assertThatThrownBy(() -> service().update(new SettingsUpdate(null, null, null, null, null, null, null,
+                null, null, null, sent + ",oops", false)))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("headerParams")
+                        .hasMessageNotContaining("Bearer")
+                        .hasMessageNotContaining("sk-header-secret");
     }
 
     /**
@@ -591,6 +766,22 @@ class FactoryConfigServiceTest {
 
     private Path config() {
         return home.resolve(FactoryHome.CONFIG_FILE);
+    }
+
+    /** The key the core would read a dev think from — R-WP-49 forbids the factory to write it. */
+    private static String devThinkKey() {
+        return LlmConfigKeys.agentKey(AgentModelConfig.DEV, LlmConfigKeys.AGENT_FIELD_THINK);
+    }
+
+    /** The dev slot's own file, as {@link FactoryConfigService} writes it. */
+    private Path devSlotFile() {
+        return AgentConfigFile.forSlot(FactoryHome.of(home), AgentModelConfig.DEV).file();
+    }
+
+    private void writeDevSlotFile(String frontmatter) throws IOException {
+        Path file = devSlotFile();
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, "---\n" + frontmatter + "---\n");
     }
 
     /** Every file below the home with its bytes — so a stray temp file or a second target cannot hide. */

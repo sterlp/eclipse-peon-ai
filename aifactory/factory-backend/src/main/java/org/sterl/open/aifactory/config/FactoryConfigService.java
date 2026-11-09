@@ -40,6 +40,11 @@ public class FactoryConfigService {
     private static final String TOKEN_WINDOW_HINT = "tokenWindow must be a positive number of tokens";
     private static final String TIMEOUT_HINT = "timeoutSeconds must be a positive number of seconds";
     private static final String SEND_THINKING_HINT = "sendThinking must be true or false";
+    /** 0 is a legal answer here and means "the provider decides" — unlike the two fields above (R-WP-51). */
+    private static final String MAX_TOKENS_HINT = "maxTokens must be a whole number of tokens, or 0 for the "
+            + "provider default";
+    private static final String QUERY_PARAMS_HINT = "queryParams must be comma separated key=value pairs";
+    private static final String HEADER_PARAMS_HINT = "headerParams must be comma separated key=value pairs";
     /**
      * Both at once is no answer at all: the write order would silently delete the key the same request
      * just set, so the request is refused instead of guessed. The agent level reads the same rule
@@ -132,13 +137,26 @@ public class FactoryConfigService {
 
     /**
      * The masked read model: the one place that ever sees {@link LlmConfig#getApiKey()}.
+     *
+     * <p>{@code think} is the dev slot's record read <em>after</em> {@link #pin(LlmConfig)}, so the
+     * default page and the agent section answer the very value a turn sends (R-WP-49). The two param
+     * fields answer as the text the file carries: the core keeps them as a map, and re-rendering that
+     * map would give one field a second spelling.</p>
      */
     public SettingsSnapshot snapshot() {
         EnvFallbackLlmConfigStore connector = store();
         LlmConfig config = pin(LlmConfigLoader.load(connector));
-        return new SettingsSnapshot(config.getProviderType().name(), config.getModel(), config.getUrl(),
+        return new SettingsSnapshot(config.getProviderType().name(), config.getModel(),
+                config.modelConfigFor(AgentModelConfig.DEV).think(), config.getUrl(),
                 config.getAutoCompactAfter(), config.getTimeout().getSeconds(), config.isSendThinkingEnabled(),
+                providerDefaultOrNumber(config.getMaxTokens()), connector.get(LlmConfigKeys.QUERY_PARAMS, null),
+                connector.get(LlmConfigKeys.HEADER_PARAMS, null),
                 present(config.getApiKey()), connector.apiKeySource());
+    }
+
+    /** The core's 0 is "the provider decides" (R-WP-51), which an empty field shows — not a typed zero. */
+    private static Integer providerDefaultOrNumber(int maxTokens) {
+        return maxTokens == 0 ? null : maxTokens;
     }
 
     /**
@@ -169,6 +187,10 @@ public class FactoryConfigService {
             apply(connector, LlmConfigKeys.TOKEN_WINDOW, update.tokenWindow());
             apply(connector, LlmConfigKeys.TIMEOUT, update.timeoutSeconds());
             apply(connector, LlmConfigKeys.SEND_THINKING_ENABLED, normalizedBoolean(update.sendThinking()));
+            apply(connector, LlmConfigKeys.MAX_TOKENS, providerDefaultMeansGone(update.maxTokens()));
+            apply(connector, LlmConfigKeys.QUERY_PARAMS, update.queryParams());
+            apply(connector, LlmConfigKeys.HEADER_PARAMS, update.headerParams());
+            applyDefaultThink(update.think());
             return snapshot();
         } finally {
             writeLock.unlock();
@@ -197,6 +219,46 @@ public class FactoryConfigService {
         }
         if (present(update.sendThinking()) && !isBoolean(update.sendThinking().trim())) {
             throw new IllegalArgumentException(SEND_THINKING_HINT);
+        }
+        if (present(update.maxTokens())) {
+            requireTokenCount(update.maxTokens(), MAX_TOKENS_HINT);
+        }
+        if (present(update.queryParams())) {
+            requireParamList(update.queryParams(), QUERY_PARAMS_HINT);
+        }
+        if (present(update.headerParams())) {
+            requireParamList(update.headerParams(), HEADER_PARAMS_HINT);
+        }
+    }
+
+    /**
+     * {@code LlmConfigLoader.parseInt} turns garbage into 0, which is the core's "provider default" — so
+     * a value it cannot read has to be refused here, where an answer can still name the field. 0 itself
+     * is legal and stores as the key being gone; the range is the one the core parses back.
+     */
+    private static void requireTokenCount(String value, String hint) {
+        long number;
+        try {
+            number = Long.parseLong(value.trim());
+        } catch (NumberFormatException notANumber) {
+            throw new IllegalArgumentException(hint);
+        }
+        if (number < 0 || number > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException(hint);
+        }
+    }
+
+    /**
+     * One segment without {@code =} would reach the core as a header or query variable named after
+     * itself with an empty value ({@code parseCsvMap}) — that is never what was typed, so R-WP-51's
+     * "unparsbar ⇒ nichts speichern" answers it. Blank segments are the core's own tolerance (a trailing
+     * comma stays a trailing comma), so they stay legal.
+     */
+    private static void requireParamList(String value, String hint) {
+        for (String segment : value.split(",")) {
+            if (!segment.isBlank() && !segment.contains("=")) {
+                throw new IllegalArgumentException(hint);
+            }
         }
     }
 
@@ -272,6 +334,25 @@ public class FactoryConfigService {
     /** Stored the way the core reads it, so a saved {@code TRUE} does not stay in the file as {@code TRUE}. */
     private static String normalizedBoolean(String value) {
         return present(value) ? Boolean.toString(Boolean.parseBoolean(value.trim())) : value;
+    }
+
+    /** Max tokens 0 says "the provider decides" (R-WP-51), which is the key being absent, not a stored zero. */
+    private static String providerDefaultMeansGone(String value) {
+        return present(value) && "0".equals(value.trim()) ? "" : value;
+    }
+
+    /**
+     * "Think (Default)" <b>is</b> the dev slot's field (R-WP-49): the core has no base think key, so a
+     * properties entry would be a second store the agent section could not see. The write therefore goes
+     * through the slot's own file and its lock, both under {@link #writeLock}. The file lock is released
+     * again before {@link #snapshot()} reads the value back, so the two locks are never nested.
+     */
+    private void applyDefaultThink(String think) {
+        if (think == null) {
+            return;
+        }
+        AgentConfigFile.forSlot(home, AgentModelConfig.DEV)
+                .write(new AgentConfigFile.Changes(false, null, null, null, think, null));
     }
 
     private LlmConfig pin(LlmConfig loaded) {
