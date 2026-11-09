@@ -170,8 +170,9 @@ bleibt. Auf einem **frischen Node** kommen die Projekte aus dem Config-Repo
 Gespräch — es gibt keine Chat-Auswahl und kein zweites Gespräch neben dem einen. Nach dem Neustart
 zeigt der Chat die **Texte von Nutzer und Jon**, die **finalen Antworten des Teams** (Ergebnisse
 der Delegations-Werkzeuge, R-WP-4) und die **Fehlerzeile eines gescheiterten Turns**
-([R-WP-34](chat.md)) aus dem History-Bestand; alle übrigen Werkzeug- und Statuszeilen
-sind live-only — die Factory führt dafür **keinen** zweiten Speicher. Nach dem Neustart
+([R-WP-34](chat.md)) aus dem History-Bestand; **Jons eigene Werkzeug-Schritte** erscheinen
+ebenfalls aus dem Bestand — als Timeline ([R-WP-47](chat.md)). Übrige Statuszeilen sind
+live-only — die Factory führt dafür **keinen** zweiten Speicher. Nach dem Neustart
 ist Jons Gespräch wieder da; **sein Team beginnt leer** (RAM-only-Parität zum Plugin, globales
 ADR-0024) — ⏳ Rückversicherung in [Open Points](open-points.md).
 
@@ -441,8 +442,8 @@ passiert nichts. **Während eines laufenden Turns bleibt
 die Eingabe benutzbar und der Send-Knopf aktiv** — eine weitere Eingabe geht in die Queue
 ([R-WP-10](chat.md)); die Referenz-App sperrt ihr Feld im Stream, weil sie keine Queue kennt, und
 genau deshalb folgen wir ihr hier **nicht** ([AF-ADR-003](adr/003-reference-ui-is-a-donor-not-a-source.md)).
-Ist der Turn vorbei, **kehrt der Fokus in die Eingabe zurück** (Refocus beim Übergang von deaktiviert
-zu aktiviert) — der Nutzer tippt weiter, ohne zu klicken. Tastatur bleibt, wie sie ist
+Ist der Turn vorbei, **kehrt der Fokus in die Eingabe zurück** — der Nutzer tippt weiter, ohne zu
+klicken. Tastatur bleibt, wie sie ist
 ([R-WP-30](chat.md)). Sichtbare Texte kommen aus dem String-Catalog ([R-WP-27](ui.md)).
 
 #### UC-WP-74 — inputGrowsAndRefocuses ✅ (GIVEN 1 seit 2026-11-08 neu: Send nie deaktiviert)
@@ -463,12 +464,13 @@ Im Eingabefeld (Textarea) **sendet Enter**; **Shift+Enter** setzt eine neue Zeil
 Bewegung, die der Nutzer aus jedem Chat-Tool mitbringt (Paul 2026-11-06, nach Blick auf die
 Referenz-App). **`Shift+Enter` UND `Ctrl/Cmd+Enter` setzen eine neue Zeile** (Paul 2026-11-06: am Mac
 ist `Cmd` das `Ctrl`) — die neue Zeile hat damit zwei Wege, das Senden nur einen. Der
-Send-Knopf bleibt die klickbare Alternative und ist bei leerer Eingabe deaktiviert
-([R-WP-41](chat.md)). **Mehrzeilige Eingaben bleiben möglich** — über Shift+Enter, und ein Text mit
+Send-Knopf bleibt die klickbare Alternative und ist **nie deaktiviert** ([R-WP-41](chat.md)).
+**Mehrzeilige Eingaben bleiben möglich** — über Shift+Enter, und ein Text mit
 eingebetteten Umbrüchen wird so gesendet, wie er dasteht. **Resend ist der Send-Knopf selbst**
 (Paul 2026-11-08, BWT): drückt der Nutzer **Senden mit leerer Eingabe**, während **kein Turn läuft**,
-aber Chat-Nachrichten existieren, geht die **letzte Nutzer-Nachricht erneut an das LLM** — etwa nach
-einem Abbruch, sonst „passiert einfach nichts"; sie läuft wie eine frische Eingabe in die Queue
+aber Chat-Nachrichten existieren, geht die **letzte sichtbare Nutzer-Zeile erneut an das LLM** —
+bestätigt oder noch ausstehend (Pending), damit genau Pauls Fall „nach einem Abbruch nochmal senden"
+funktioniert; sonst „passiert einfach nichts". Sie läuft wie eine frische Eingabe in die Queue
 ([R-WP-10](chat.md)) und erscheint als neue Nutzer-Zeile. **Läuft ein Turn, tut der Knopf bei leerer
 Eingabe nichts**, und es gibt **keinen eigenen „Resend"-Knopf** (2026-11-08: „der kommt aber ja eh
 raus" — die frühere Knopf-Fassung von UC-WP-57 ist damit ersetzt).
@@ -481,14 +483,38 @@ raus" — die frühere Knopf-Fassung von UC-WP-57 ist damit ersetzt).
 - GIVEN ein Text mit zwei per Shift+Enter gesetzten Zeilen WHEN der Nutzer Enter drückt THEN kommen
   beide Zeilen **gemeinsam und in der Reihenfolge** in einem Turn an.
 
-#### UC-WP-57 — resendLastMessageOnEmptySend ❌ (neu gefasst 2026-11-08, Paul BWT — der eigene Resend-Knopf entfällt, das Resend lebt am Send-Knopf)
-- GIVEN der Agent arbeitet **nicht** und der Chat hat Nachrichten WHEN der Nutzer **Senden mit
-  leerer Eingabe** drückt THEN geht die **letzte Nutzer-Nachricht** erneut an das LLM — sie
-  erscheint als neue Nutzer-Zeile und der Turn startet.
+#### UC-WP-57 — resendLastMessageOnEmptySend ✅ (neu gefasst 2026-11-08, Paul BWT — der eigene Resend-Knopf entfällt, das Resend lebt am Send-Knopf; gebaut 2026-11-08, Runde-6-Delta + N1, Mutations-belegt — Look-/Verhaltens-Abnahme am Browser steht aus)
+- GIVEN der Agent arbeitet **nicht** und der Chat hat eine Nutzer-Zeile WHEN der Nutzer **Senden mit
+  leerer Eingabe** drückt THEN geht die **letzte sichtbare Nutzer-Zeile** erneut an das LLM —
+  bestätigt oder noch ausstehend (Pending; der Stop-Fall: die gestoppte Eingabe ist sichtbar und
+  wird wiederholt). Sie erscheint als neue Nutzer-Zeile und der Turn startet.
 - GIVEN ein Turn läuft WHEN der Nutzer bei leerer Eingabe Senden drückt THEN passiert **nichts** —
   keine Leerzeile, keine Queue-Eingabe.
-- GIVEN der Chat hat keine Nachrichten WHEN der Nutzer bei leerer Eingabe Senden drückt THEN
+- GIVEN der Chat hat keine Nutzer-Zeile WHEN der Nutzer bei leerer Eingabe Senden drückt THEN
   passiert nichts.
+
+### R-WP-47 — Der Restore zeigt Jons Werkzeug-Schritte ❌ (Paul 2026-11-08, Runde 5: „warum machen wir das nicht?" — A7; Annahme als ⏳ in [open-points](open-points.md) zurückversichert)
+
+Jons **eigene** Werkzeug-Nutzung überlebt den Reload: Call und Result stehen bereits vollständig im
+Core-History-Bestand (`<agent>-history.jsonl`) — die Fabrik hält dafür **keinen** zweiten Speicher
+([R-WP-11](chat.md) bleibt, sie liest nur den Bestand). Der Restore bildet sie auf die
+**Timeline** ([R-WP-40](chat.md)) ab: je Werkzeug ein Schritt mit **Werkzeugname** und einem
+**Auszug des Results** (so `AgentTranscript` es zeigt:gekürzt, kein Wortlaut-Heilen) — Delegationen
+([R-WP-40](chat.md)) nennen ihr **Mitglied**; ihr Auszug ist die **Mitglieds-Antwort**, die als
+eigene Zeile auf sie folgt. **Nicht** wiederhergestellt: der Live-Fortsetzungstext
+und der Diff ([R-WP-36/UC-WP-68](chat.md)), Jons **Think** (kein Eintrag, R-WP-40) und
+Mitglieder-**Innen**-Schritte (liegen in deren RAM-Memory, [R-WP-4](chat.md), ADR-0024). Die
+Mitglieds-**Antwort** überlebt als Delegations-Ergebnis weiter (UC-WP-40 GIVEN 3 bleibt).
+
+#### UC-WP-82 — restoredHistoryShowsToolSteps ❌
+- GIVEN Jons History enthält Werkzeug-Calls und -Results (Disk, Shell, Web, Delegation) WHEN der
+  Nutzer nach einem Reload denselben Chat öffnet THEN zeigt die Timeline je Werkzeug einen Schritt
+  mit Name und Result-Auszug, Delegationen mit ihrem Mitglied — in der Reihenfolge des Bestands.
+- GIVEN der Bestand enthält einen Tool-Call ohne Result (Turn lief noch) WHEN der Restore liest
+  THEN zeigt der Schritt trotzdem seine Ankunft (Name, ohne Result-Auszug) — kein verschluckter
+  Schritt.
+- GIVEN der Bestand enthält nur eine User-Zeile WHEN der Restore liest THEN ändert sich nichts
+  (keine leere Timeline, kein Platzhalter).
 
 ### R-WP-31 — Warte-Indikator während des Turns ✅ (Paul 2026-11-02; **Warte-Rahmen seit 2026-11-08 zurückgenommen** — Paul, Abnahme: „einfach löschen"; gebaut + reviewed 2026-11-08, Inkrement 4, UC-WP-65 ✅)
 
