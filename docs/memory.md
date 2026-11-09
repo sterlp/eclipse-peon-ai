@@ -20,19 +20,19 @@
   MaPa: direkt auf `master`, **Paul pusht** (Repo-Policy). us4g: auf `main` per Cherry-Pick + Push.
 - Global `skill-evolution` (sterlp/ai-skill-codex via `~/apm.yml`): Paul kopiert die 2 Dateien aus
   `peon-plan/ai-skill-codex/skills/skill-evolution/` selbst ins Repo und synct.
-- Lose Enden: (1) us4g hält noch eine Projekt-Kopie `skill-evolution` (identisch zum neuen
-  globalen) — löschen, sobald der Feature-Branch `feature/stub-callback-endpoint-header` gemergt
-  ist (sonst modify/delete-Konflikt). (2) ai-skill-codex enthält `skills/wiki/` mit llmpeon-Inhalt
-  — Empfehlung an Paul: dort löschen.
+- us4g: Projekt-Kopie `skill-evolution` gelöscht (`6fe9a44` auf main, gepusht) — nutzt den globalen.
+- Lose Ende: ai-skill-codex enthält `skills/wiki/` mit llmpeon-Inhalt — Empfehlung an Paul: löschen.
 - Working Tree llmpeon: `SkillService.java` (nur Zeilenumbruch) + `.factorypath` nicht von Dev —
   Pauls IDE, nicht committen.
 
-## Nächster Schritt
+## R18 Skill-Aktualität ✅ (2026-11-09) — nur als Patch geliefert
 
-- Story „Skills ohne Cache": `SkillComponent` parst beim Laden, `skillRead`/`skillList` liefern den
-  Cache; neu geschriebene/geänderte Skills sieht ein Agent erst nach Projektwechsel/`refreshAll`.
-  Paul will: list/read lesen immer von Platte (Nacht-Evolve). Rule in `core/docs/project-skills.md`
-  mit Paul klären, dann Plan.
+- **Hotfix bewusst nur am `SkillTool`** (Paul): UI (Statuszeile/Autocomplete) bleibt stale bis zum
+  nächsten Neuladen. Soll die UI aktuell werden → Entscheidung in den Service, neuer Zyklus.
+- **Kein Commit/Push** (Paul): `peon-plan/web-factory-4-skill-refresh.patch` (`git diff`, auf dem
+  anderen Rechner NACH dem Skill-Sync-Patch per `git apply --3way`), enthält auch Docs + memory.md.
+- Backlog-Kandidat (Review P1/P2, Bestand): `SkillComponent`-Writer unkoordiniert (Projektwechsel/
+  Scaffold vs. Tool-Reload), `AbstractTool`-Request/Monitor nicht threadlokal bei geteilten Tools.
 
 ## Offen für Paul (je eine Frage / Bestätigung)
 
@@ -53,7 +53,7 @@
   Fehlerklassen, Header-State-Leak, Auto-Compact bei Context-Overflow, `org.sterl.llmpeon.test`
   Surefire-Basis. Neu: Warnungs-Aufräum-Zyklus (5 `@SuppressWarnings`-Dateien) · „Kein `throw`
   ohne Message" · ApiRetry-Null-Byte-IOException-Verdacht (❓ open-points).
-- Klein: `MutableClock` 7× → Fixture · `AbstractAgent.asyncCall` ohne Aufrufer · Lint-Baseline
+- Klein: `MutableClock` 8× → Fixture · `AbstractAgent.asyncCall` ohne Aufrufer · Lint-Baseline
   Core · historische `*-plan.md` löschen? · `StringUtil.oneLine`-Konsolidierung ·
   `effectiveUrl`-Schnitt · Ork-/Peon-Altbestand ~35 SOLL-Docs (Massen-Rename braucht Paul).
 

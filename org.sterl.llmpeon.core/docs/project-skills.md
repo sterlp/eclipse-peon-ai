@@ -4,6 +4,8 @@
 den geteilten User-Skills nutzen — Namenskollision gewinnt die engste Variante (R17). User-Roots
 seit 2026-10-23: `~/.agents/skills` (neuer Default, APM-Kompatibilität, empfohlen) und
 `~/.peon/skills` (deprecated, gelesen und schreibbar — Support, nicht empfohlen).
+Technische Heimat: `org.sterl.llmpeon.skill` + `org.sterl.llmpeon.tool.tools.SkillTool` (llmpeon-core);
+[Architektur](project-skills-architektur.md).
 Technische Basis: [ADR-0042](../../docs/adr/0042-project-skill-slot.md) (ein Service, Slots),
 [ADR-0043](../../docs/adr/0043-scaffold-write-validator.md) (Scaffold-Write-Scoping).
 
@@ -167,6 +169,41 @@ Technische Basis: [ADR-0042](../../docs/adr/0042-project-skill-slot.md) (ein Ser
   po-Tool-Liste (gleiche Instanz wie alle Sklaven — reine Wiring-Lücke, kein Filter).
   - GIVEN Jon WHEN seine Tools aufgebaut sind THEN `skillRead`/`skillList` sind verfügbar
 
+### Aktualität für Agenten (2026-11-09, Paul)
+
+- **R18 ✅ done (2026-11-09)** Agenten sehen Skill-Änderungen auf der Platte ohne Projektwechsel oder Reload — auch
+  die, die ein Agent gerade selbst geschrieben hat (Skill-Evolution in der Retro/Nacht). Das
+  Skill-Tool lädt dafür alle Skill-Roots neu (wie R3):
+  1. bei **jedem** `skillList` — die Tool-Beschreibung sagt das, damit ein Agent nach einer
+     Skill-Änderung bewusst `skillList` ruft (kein eigenes Refresh-Tool);
+  2. bei `skillRead`/`skillReadFile`, wenn die **Ruhezeit** seit dem letzten erfolgreichen
+     Neuladen abgelaufen ist (Alter ≥ Ruhezeit; Default 10 min, nur per Konstruktor einstellbar,
+     0 = immer neu laden);
+  3. bei `skillRead`/`skillReadFile` mit **unbekanntem Namen** — einmal neu laden (sofern dieser
+     Aufruf nicht schon neu geladen hat), erneut suchen, erst danach „not found" (kein False
+     Negative für einen gerade angelegten Skill).
+  Innerhalb der Ruhezeit darf `skillRead` einen veralteten Body liefern (bewusste Abwägung).
+  Scheitert das Neuladen, gilt R5a (letzter Stand bleibt) und die Tool-Ausgabe nennt den Fehler —
+  das Tool verschweigt nie, dass es einen alten Stand zeigt. Ein gescheitertes Neuladen zählt nicht
+  als Neuladen: der nächste Aufruf versucht es erneut.
+  Statuszeile und Slash-Autocomplete (R9) gehören nicht zur Regel — sie zeigen den Stand des
+  letzten Neuladens.
+  - GIVEN Skills geladen WHEN danach Skill `fresh` auf die Platte geschrieben wird und ein Agent
+    `skillList` ruft THEN `fresh` ist gelistet
+  - GIVEN Ruhezeit 0 und Skill `foo` gelesen WHEN der Body von `foo` auf der Platte geändert wird
+    und `skillRead("foo")` erneut läuft THEN kommt der neue Body
+  - GIVEN Ruhezeit 10 min und Skill `foo` gerade gelesen WHEN der Body auf der Platte geändert wird
+    und `skillRead("foo")` erneut läuft THEN kommt der bisherige Body (Ruhezeit greift)
+  - GIVEN Ruhezeit 10 min und Skills gerade geladen WHEN Skill `late` auf die Platte geschrieben
+    wird und `skillRead("late")` bzw. `skillReadFile("late", …)` läuft THEN wird `late` gefunden,
+    kein „not found"
+  - GIVEN Skills geladen WHEN das Neuladen bei `skillList` scheitert (Root nicht lesbar) THEN
+    listet das Tool den letzten Stand und die Ausgabe nennt den Ladefehler
+  - GIVEN ein Neuladen ist gescheitert WHEN danach — innerhalb der Ruhezeit seit dem letzten Erfolg
+    — `skillRead` bzw. `skillReadFile` für einen bekannten Skill läuft THEN wird erneut geladen und
+    die Ausgabe nennt den Ladefehler wieder — auch wenn `skillReadFile` danach am Lesen der Datei
+    scheitert
+
 ## Out of Scope
 
 - **Scaffold als Jon-Sub-Agent** (Jon delegiert Skill-Erstellung/-Edit an Scaffold) — User:
@@ -192,6 +229,7 @@ Technische Basis: [ADR-0042](../../docs/adr/0042-project-skill-slot.md) (ein Ser
 | R2a (Plugin) | `setProject_replacesProjectSlotOnly` (Name historisch, „Slot" = alte Begriffswelt) |
 | R2c (Plugin) | `pinnedProject_keepsSkillComponent_untilSetProject` |
 | R17 | `SkillServiceTest.threeRoots_precedenceProjectOverAgentsOverPeon` · `agentsRootWinsOverPeonRoot` · `peonOnlySkillVisibleAsConfig` · `agentsRootMissingLoadsEmpty` · `customConfigDirKeepsAllThreeRoots` · `AiScaffoldAgentTest.scaffoldWriteIntoUserAgentsRootWinsOverPeonOriginal` (Migration) · `AiScaffoldAgentTest.writeValidatorAllowsUserAgentsRoot` · `PeonAiServiceTest.scaffoldWriteValidator_acceptsHomeUserAgentsRoot` (Composition-Root-Wiring, Mutation `roots.add(agentsSkillsDir)`) · Prompt-Guard `AiScaffoldAgentTest.systemPromptRecommendsAgentsUserRoot` |
+| R18 | `SkillToolTest.skillListReloadsSkillsFromDisk` · `skillReadReloadsWhenQuietPeriodIsZero` · `skillReadKeepsOldBodyWithinQuietPeriod` (Grenze ≥) · `unknownNameTriggersOneReloadBeforeNotFound` · `skillListShowsLastStateAndNamesReloadFailure` · `failedReloadIsRetriedAndNamedAgainOnNextRead` |
 
 ## Skill-relativer Lesepfad (SkillPromptFile) — ✅ done (2026-09-11, core-cleanup)
 
