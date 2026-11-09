@@ -352,9 +352,10 @@ final class ProjectRuntime {
      * event, the {@code finally} owns the counter, the end snapshot and the claim.</p>
      *
      * <p>A task of a queued input therefore also <b>owns nothing</b>: it frees no project, resets no cancel
-     * flag and ends no turn — its {@code call()} answers {@code null} precisely because another turn is
-     * running, and a task that cleared the project there would hand out a turn the project still has
-     * (UC-WP-50: the stop of that turn must still be accepted).</p>
+     * flag, ends no turn and sends no ending event of its own — its failure stays a line of the
+     * conversation (R-WP-48, UC-WP-83 GIVEN 4). Its {@code call()} answers {@code null} precisely because
+     * another turn is running, and a task that cleared the project there would hand out a turn the project
+     * still has (UC-WP-50: the stop of that turn must still be accepted).</p>
      */
     void submit(String text, String user) {
         var urgent = urgentTextOf(text, jon.isWorking());
@@ -414,12 +415,12 @@ final class ProjectRuntime {
                 LOG.error("turn of project {} never got the project back from a claimed action", projectId,
                         neverReleased);
                 fail(message, "the project is still held by an action — this turn ended, "
-                        + "the server log names the reason");
+                        + "the server log names the reason", opensTurn);
             } catch (TurnNotConfiguredException notConfigured) {
                 // the turn never started, the input was real: both lines belong to the conversation (R-WP-34)
                 ranTurn = opensTurn;
                 failedAgent = jon.getName();
-                fail(message, notConfigured.getMessage());
+                fail(message, notConfigured.getMessage(), opensTurn);
             } catch (Throwable failure) {
                 // nothing passes this catch: an opened turn owes exactly one ending event, an Error
                 // included (R-WP-48) — before it the tile fell IDLE while every browser waited for nothing
@@ -428,13 +429,17 @@ final class ProjectRuntime {
                     // the user ended this turn himself: done, no error, no failed tile — and the lines he
                     // already saw stay, because nothing here is re-read (UC-WP-50, D-16). A stop is no
                     // failure, so the memory gains no line of its own (R-WP-34)
-                    streams.publish(projectId,
-                            new ChatEvent.Done(Duration.ofNanos(System.nanoTime() - startedAt).toMillis()));
+                    if (opensTurn) {
+                        // the stop ends the turn this submit opened; a queued task that cancels inside the
+                        // running turn tells no end of its own (R-WP-48, UC-WP-50)
+                        streams.publish(projectId,
+                                new ChatEvent.Done(Duration.ofNanos(System.nanoTime() - startedAt).toMillis()));
+                    }
                 } else {
                     // both halves of the end: the log for the server, the history line for every reader
                     failedAgent = jon.getName();
                     LOG.error("chat turn of project {} failed", projectId, failure);
-                    fail(message, "the turn failed — the server log names the reason");
+                    fail(message, "the turn failed — the server log names the reason", opensTurn);
                 }
             } finally {
                 // the number of this submit is the last thing it owes: with the last one the row goes
@@ -453,12 +458,16 @@ final class ProjectRuntime {
     }
 
     /**
-     * The one way a turn says it failed: the two lines go into the memory <b>before</b> the event, because a
+     * The one way a submit says it failed: both lines go into the memory <b>before</b> the event, because a
      * browser answers the event by reading the history — by then the failure has to be in it (R-WP-34).
+     * The event itself belongs to the submit that <b>opened</b> the turn: one that only queued tells the
+     * conversation and never the live view of the turn still running (R-WP-48, UC-WP-83 GIVEN 4).
      */
-    private void fail(String message, String reason) {
+    private void fail(String message, String reason, boolean ownsTheEnd) {
         recordFailure(message, reason);
-        streams.publish(projectId, new ChatEvent.Failed(reason));
+        if (ownsTheEnd) {
+            streams.publish(projectId, new ChatEvent.Failed(reason));
+        }
     }
 
     /**

@@ -53,6 +53,9 @@
 
 ## Factory-UI
 
+- **Vor jedem UI-Gate `node -v` (≥ 22) und `pnpm -v` prüfen**: ein frischer nvm-Node bringt keine pnpm-Shims →
+  `corepack enable` auf genau diesem Node, PATH-Zeile siehe *Build*. Fehlt beides, bricht das Gate als
+  Werkzeug-Crash (`Cannot run program "pnpm"`) vor der ersten Testaussage — das ist kein Testfehler.
 - **Doc-Lint-Baseline ist nicht 0** (❌-UCs kommender Inkremente): findings-frei = **keine neuen** Findings
   und die eigenen UCs von der Liste genommen.
 - **AntD-v6-Timeline (Inc 3)**: `Steps` erzwingt `min-height:48px` + `padding-bottom:12px` — Geometrie nur

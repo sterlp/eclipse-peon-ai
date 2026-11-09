@@ -209,7 +209,7 @@ class TurnFailureTest {
 
     @Test
     @Timeout(60)
-    // UC-WP-14, UC-WP-50
+    // UC-WP-14, UC-WP-50, UC-WP-83
     void aQueuedSubmitThatFailsOwnsNothingOfTheRunningTurn() {
         MockLlmServer model = new MockLlmServer(0);
         model.start();
@@ -239,6 +239,15 @@ class TurnFailureTest {
                     .anyMatch(line -> ChatLine.ROLE_ERROR.equals(line.role())),
                     20_000, "the waited submit reported its own failure");
 
+            // its number left the row, so everything this submit could send has been sent — the wire is
+            // readable here without racing its failure branch
+            awaitUntil(() -> runtime.workState().queued() == 0, 20_000,
+                    "the waited submit gave its number back to the row");
+            assertThat(wire.countOf("error"))
+                    .as("a submit that only queued tells the conversation, never the live view of the turn"
+                            + " that is still running (UC-WP-83 GIVEN 4)")
+                    .isZero();
+
             assertThatCode(runtime::stop)
                     .as("the turn that is running is still the turn this project has — a submit that "
                             + "only waited may not end it, and its end belongs to its own task alone")
@@ -250,6 +259,14 @@ class TurnFailureTest {
             // the waited submit has told its own failure, so the tool may end and take the turn with it
             TurnGate.release(checkout);
             awaitUntil(() -> !runtime.jon().isWorking(), 30_000, "the running turn ended on that stop");
+            awaitUntil(() -> wire.countOf("done") >= 1, 20_000, "the turn that was opened told its own end");
+
+            assertThat(wire.countOf("done"))
+                    .as("one turn, one ending event — the waited submit sent none of its own (UC-WP-83)")
+                    .isEqualTo(1);
+            assertThat(wire.countOf("error"))
+                    .as("and the failure it told stays a line of the conversation")
+                    .isZero();
         } finally {
             model.stop();
         }
@@ -258,7 +275,7 @@ class TurnFailureTest {
 
     @Test
     @Timeout(60)
-    // UC-WP-64
+    // UC-WP-64, UC-WP-83
     void stopIsNoFailure() {
         MockLlmServer model = new MockLlmServer(0);
         model.start();
@@ -278,6 +295,16 @@ class TurnFailureTest {
             // the stop is given while the tool still runs; only its end lets the turn leave the loop
             TurnGate.release(checkout);
             awaitUntil(() -> !runtime.jon().isWorking(), 30_000, "the turn ended on the stop");
+            // waits for whichever end arrives, so the two pins below are the ones deciding which it was
+            awaitUntil(() -> wire.countOf("done") + wire.countOf("error") >= 1, 20_000,
+                    "an end came on the wire");
+
+            assertThat(wire.countOf("done"))
+                    .as("a stopped turn ends on the wire exactly once (UC-WP-83 GIVEN 3)")
+                    .isEqualTo(1);
+            assertThat(wire.countOf("error"))
+                    .as("and his own end crosses the wire under no other name")
+                    .isZero();
 
             assertThat(runtime.history())
                     .as("his own end is not a failure — no line of it enters the conversation")
