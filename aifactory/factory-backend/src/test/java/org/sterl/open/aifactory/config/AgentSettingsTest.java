@@ -180,27 +180,32 @@ class AgentSettingsTest extends FactorySpringTest {
 
         assertThat(rejected.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(rejected.getBody()).contains("agent").doesNotContain("paco");
+        // a slot id is a path segment and never a form field: the refusal names no field (UC-WP-92)
+        assertThat(fieldsOf(rejected.getBody())).isEmpty();
         assertThat(HOME.resolve("agents")).doesNotExist();
     }
 
     /** R-WP-16's one-intent rule, same as the default level: setting and removing in one request is a 400. */
     @Test
-    // R-WP-16
+    // R-WP-16, UC-WP-92
     void anAgentKeyCannotBeSetAndRemovedAtOnce() {
         ResponseEntity<String> rejected = put("review",
                 "{\"overridden\":true,\"apiKey\":\"%s\",\"removeApiKey\":true}".formatted(KEY));
 
         assertThat(rejected.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(fieldsOf(rejected.getBody())).containsExactly("apiKey");
         assertThat(rejected.getBody()).doesNotContain(KEY, "sk-");
         assertThat(HOME.resolve("agents")).doesNotExist();
     }
 
     /** The core reads a temperature as a number and only warns when it cannot — so the edge refuses. */
     @Test
+    // UC-WP-92
     void aTemperatureThatIsNotANumberIsRefused() {
         ResponseEntity<String> rejected = put("plan", "{\"overridden\":true,\"temperature\":\"hot\"}");
 
         assertThat(rejected.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(fieldsOf(rejected.getBody())).containsExactly("temperature");
         assertThat(rejected.getBody()).contains("temperature").doesNotContain("hot");
         assertThat(HOME.resolve("agents")).doesNotExist();
     }
@@ -304,13 +309,15 @@ class AgentSettingsTest extends FactorySpringTest {
      * name the field — and it names the field alone, never the value.
      */
     @Test
-    // R-WP-52
+    // R-WP-52, UC-WP-92
     void anExtraBodyThatIsNotAJsonObjectIsRefused() {
         ResponseEntity<String> number = put("review", "{\"overridden\":true,\"extraBody\":\"42\"}");
         ResponseEntity<String> broken = put("review", "{\"overridden\":true,\"extraBody\":\"{\\\"a\\\"\"}");
 
         assertThat(number.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(broken.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(fieldsOf(number.getBody())).containsExactly("extraBody");
+        assertThat(fieldsOf(broken.getBody())).containsExactly("extraBody");
         assertThat(number.getBody()).contains("extraBody").doesNotContain("42");
         assertThat(broken.getBody()).contains("extraBody");
         assertThat(HOME.resolve("agents")).doesNotExist();
@@ -409,6 +416,14 @@ class AgentSettingsTest extends FactorySpringTest {
     @SuppressWarnings("unchecked")
     private static List<Object> values(String body, String path) {
         return (List<Object>) field(body, path);
+    }
+
+    /**
+     * The fields a refusal names (UC-WP-92). An {@code ApiError} body without field errors carries
+     * {@code "fieldErrors":null}, so null and an empty list mean the same thing here: no field.
+     */
+    private static List<Object> fieldsOf(String body) {
+        return field(body, "$.fieldErrors") == null ? List.of() : values(body, "$.fieldErrors[*].field");
     }
 
     /** One slot of the list, by its id — the order is asserted once, not relied on everywhere. */

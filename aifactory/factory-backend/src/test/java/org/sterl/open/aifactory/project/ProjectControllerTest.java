@@ -207,6 +207,7 @@ class ProjectControllerTest extends FactorySpringTest {
 
             assertThat(refused.statusCode()).isEqualTo(400);
             assertThat(refused.body()).contains("credentials").doesNotContain("user").doesNotContain("token");
+            assertThat(fields(refused)).containsExactly("gitUrl");
         }
 
         assertThat(fakeGit.cloneTargets).isEmpty();
@@ -224,11 +225,30 @@ class ProjectControllerTest extends FactorySpringTest {
 
             assertThat(refused.statusCode()).as("url %s", url).isEqualTo(400);
             assertThat(text(refused, "$.message")).contains("https");
+            assertThat(fields(refused)).containsExactly("gitUrl");
         }
 
         assertThat(fakeGit.cloneTargets).isEmpty();
         assertThat(HOME.resolve(FactoryHome.PROJECTS_FILE)).doesNotExist();
         assertThat(rows(get("/api/projects"))).isEmpty();
+    }
+
+    @Test
+    // UC-WP-92
+    void anEmptyUrlNamesItsFieldButAMissingBodyNamesNothing() throws Exception {
+        HttpResponse<String> refused = post("/api/projects", "{\"gitUrl\":\"   \"}");
+
+        assertThat(refused.statusCode()).isEqualTo(400);
+        assertThat(text(refused, "$.message")).contains("gitUrl");
+        assertThat(fields(refused)).containsExactly("gitUrl");
+
+        // a body that is absent altogether names no field — the registry still refuses it, as its own line
+        HttpResponse<String> missing = post("/api/projects", "");
+        assertThat(missing.statusCode()).isEqualTo(400);
+        assertThat(fields(missing)).isEmpty();
+
+        assertThat(fakeGit.cloneTargets).isEmpty();
+        assertThat(HOME.resolve(FactoryHome.PROJECTS_FILE)).doesNotExist();
     }
 
     @Test
@@ -308,6 +328,15 @@ class ProjectControllerTest extends FactorySpringTest {
     /** A numeric field of the answer — {@code $.status} of the {@code ApiError} body. */
     private static int number(HttpResponse<String> answer, String jsonPath) {
         return ((Number) JsonPath.read(answer.body(), jsonPath)).intValue();
+    }
+
+    /**
+     * The fields the answer names as wrong (UC-WP-92). A refusal without field errors answers
+     * {@code "fieldErrors":null} — null and an empty list both mean: no field is named.
+     */
+    private static List<String> fields(HttpResponse<String> answer) {
+        Object named = JsonPath.read(answer.body(), "$.fieldErrors");
+        return named == null ? List.of() : JsonPath.read(answer.body(), "$.fieldErrors[*].field");
     }
 
     /** The list body as rows: the {@code [} is the proof that the answer is an array, not an object. */

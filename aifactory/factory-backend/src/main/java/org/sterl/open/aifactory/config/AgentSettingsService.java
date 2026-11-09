@@ -1,10 +1,6 @@
 package org.sterl.open.aifactory.config;
 
-import java.io.IOException;
 import java.util.List;
-import java.util.Map;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.stereotype.Service;
 
@@ -15,8 +11,12 @@ import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
  * The agent section of the config page (R-WP-23): one slot's file is its whole storage, so this service
- * only reads, validates and writes through {@link AgentConfigFile} — no second state, nothing cached, a
+ * only reads and writes through {@link AgentConfigFile} — no second state, nothing cached, a
  * save is visible to the next read and the next turn without a restart (D-11).
+ *
+ * <p>What a field of a save may hold is a rule of the request shape, checked before this service is
+ * entered (R-WP-55) — a second check of the same sentence here would only be a second place to keep it
+ * in step.</p>
  *
  * <p>The wire never carries a key: a slot answers with {@code keySet} only, exactly like the default
  * level (R-WP-16), and the key keeps the default level's exception — an empty field means unchanged,
@@ -27,11 +27,6 @@ public class AgentSettingsService {
 
     /** Names the field, never the submitted value — a slot id is user input too (R-WP-16). */
     private static final String SLOT_HINT = "agent must name one of the slots the factory runs";
-    private static final String TEMPERATURE_HINT = "temperature must be a number";
-    private static final String EXTRA_BODY_HINT = "extraBody must be a JSON object";
-
-    /** Reads the submitted body the way the core selects it — an object or nothing, see {@link #isJsonObject}. */
-    private static final ObjectMapper BODY_JSON = new ObjectMapper();
 
     private final FactoryHome home;
     private final AgentToolPreview toolPreview;
@@ -57,7 +52,6 @@ public class AgentSettingsService {
         if (!AgentSlots.knows(id)) {
             throw new IllegalArgumentException(SLOT_HINT);
         }
-        validate(update);
         AgentConfigFile file = AgentConfigFile.forSlot(home, id);
         if (!update.overridden()) {
             file.write(AgentConfigFile.Changes.clearing());
@@ -100,47 +94,6 @@ public class AgentSettingsService {
             return "";
         }
         return present(update.apiKey()) ? update.apiKey() : null;
-    }
-
-    /**
-     * Before any write, and value-free in its messages. A temperature the core cannot read would be
-     * stored happily and ignored silently at turn time ({@code AgentTemperature} only warns), so the
-     * number is checked here where a 400 can still name the field. The same holds for a body the core
-     * does not select: {@code ExtraBody} drops anything that is not an object without a trace (A1).
-     */
-    private static void validate(AgentSettingsUpdate update) {
-        if (update.removeApiKey() && present(update.apiKey())) {
-            throw new IllegalArgumentException(WireValidationHints.KEY_INTENT_HINT);
-        }
-        if (present(update.temperature()) && !isNumber(update.temperature())) {
-            throw new IllegalArgumentException(TEMPERATURE_HINT);
-        }
-        if (present(update.extraBody()) && !isJsonObject(update.extraBody())) {
-            throw new IllegalArgumentException(EXTRA_BODY_HINT);
-        }
-    }
-
-    /**
-     * The core's own selection ({@code ExtraBody} keeps an object, ignores the rest) — but parsed here
-     * instead of through the core, because the core logs the value it discards and a submitted body must
-     * never be repeated (A7). {@code tools} is deliberately not checked: the factory stores the wording,
-     * the core interprets it (D9).
-     */
-    private static boolean isJsonObject(String value) {
-        try {
-            return BODY_JSON.readValue(value, Object.class) instanceof Map;
-        } catch (IOException | IllegalArgumentException malformed) {
-            return false;
-        }
-    }
-
-    private static boolean isNumber(String value) {
-        try {
-            Double.parseDouble(value.trim());
-            return true;
-        } catch (NumberFormatException notANumber) {
-            return false;
-        }
     }
 
     private static boolean present(String value) {

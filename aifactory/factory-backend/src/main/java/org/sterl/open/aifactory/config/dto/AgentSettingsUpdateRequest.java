@@ -3,6 +3,10 @@ package org.sterl.open.aifactory.config.dto;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import org.sterl.open.aifactory.config.AgentSettingsUpdate;
+import org.sterl.open.aifactory.config.KeyIntentRequest;
+import org.sterl.open.aifactory.config.WireJsonObjectText;
+import org.sterl.open.aifactory.config.WireKeyIntent;
+import org.sterl.open.aifactory.config.WireNumberText;
 
 /**
  * Inbound shape of one slot save. Every field is text, so R-WP-16's three states stay apart on the wire:
@@ -10,10 +14,18 @@ import org.sterl.open.aifactory.config.AgentSettingsUpdate;
  * — it has no inherit state, and an absent flag means "not overriding", the same reading as
  * {@code removeApiKey} on the default level. Unknown properties are ignored, so a hand-crafted body can
  * reach neither the agent's other frontmatter keys nor another slot.
+ *
+ * <p>What a field may hold is a rule of this shape (R-WP-55), and it is the same rule the default level
+ * states: the key intent is one constraint on both bodies, {@code temperature} must be a number and
+ * {@code extraBody} a JSON object — both are refused here, where the answer can name the field, and never
+ * stored for the core to ignore silently. {@code tools} carries no rule on purpose: the factory keeps the
+ * wording as typed and the core alone interprets it (R-WP-52).</p>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
+@WireKeyIntent
 public record AgentSettingsUpdateRequest(Boolean overridden, String model, String url, String think,
-        String temperature, String extraBody, String tools, String apiKey, Boolean removeApiKey) {
+        @WireNumberText String temperature, @WireJsonObjectText String extraBody, String tools, String apiKey,
+        Boolean removeApiKey) implements KeyIntentRequest {
 
     public AgentSettingsUpdate toUpdate() {
         return new AgentSettingsUpdate(Boolean.TRUE.equals(overridden), model, url, think, temperature,

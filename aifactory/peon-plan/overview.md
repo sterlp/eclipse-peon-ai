@@ -381,6 +381,15 @@ Reihenfolge-Acceptance (Inc 4): Datei wird committet; `mvn -o -pl factory-backen
 erzeugt sie neu; ein von-Hand-Änderungsversuch verschwindet im nächsten Maven-Lauf (UC-WP-91 G2,
 Nachweis §9).
 
+**Generator-Risiko seit Inc 3 (D14-Folge, in Inc 4 zu prüfen):** inzwischen implementieren **beide**
+Update-Bodies (`SettingsUpdateRequest`, `AgentSettingsUpdateRequest`) die Schnittstelle
+`KeyIntentRequest`, damit die Key-Regel eine Regel bleibt. Ein Generator zieht aufgenommene Klassen
+typischerweise mit ihren Supertypen hoch — `server-api.ts` soll dadurch **kein** `KeyIntentRequest`
+bekommen (die Schnittstelle ist ein Implementations-Detail des Validators, kein Drahttyp). Dann das
+Muster bzw. die ausgeschlossenen Klassen eingrenzen (Parameter-Namen in Inc 4 an `generate-mojo.html`
+nachschlagen, nicht erraten), statt die Schnittstelle aufzugeben. Nachweis: generierte Datei nach Inc 4
+lesen; `npx tsc -b` muss unverändert grün bleiben.
+
 ### 4.5 Widget und Formular-Hüllen (Inc 5)
 
 ```tsx
@@ -493,7 +502,11 @@ sichert R6 (leer ⇒ „gelöscht", nie Feldfehler) über die HTTP-Kante. Suite:
   `SettingsControllerTest:263` bleibt grün (E3: `message` = erste Violation) und bekommt die
   `fieldErrors`-Assertion.
 
-### Inc 3 — Agenten- und Projekt-Ebene
+### Inc 3 — Agenten- und Projekt-Ebene (R-WP-55, UC-WP-92) — ✅ FERTIG (2026-11-09)
+
+Gebaut wie gelistet. Suite: **274 Tests grün**, `missCount = 1` (hitCount 1597), 45 s — ein Kontext, keine
+Verlangsamung gegen Inc 2 (273 / 45 s). A14–A18 sitzen als `fieldErrors`-Assertions in den bestehenden
+Tests; zusätzlich A17 explizit gepinnt und ein Leer-/Fehlbody-Fall für `gitUrl` (D15, D16).
 
 - Neu: `config/WireNumberText`, `config/WireJsonObjectText`; Annotationen an
   `config/dto/AgentSettingsUpdateRequest.java:15-16`; `@Valid` an der Agent-Kante;
@@ -708,9 +721,18 @@ bewusst kein „Die Datei existiert"-Test (AGENTS.md: trivial/implanationsgekopp
   umgezogene Test behält seinen Namen.
 - **D14 — neue Schnittstelle `config/KeyIntentRequest`** (stand nicht in der Datei-Liste von §5 Inc 2):
   `@WireKeyIntent` ist **eine** Regel für beide Update-Bodies (Config jetzt, Agent in Inc 3) — ohne die
-  gemeinsame Schnittstelle bräuchte der Validator `Object` + Reflection oder eine Kopie pro Level.
-  Folge für Inc 4 prüfen: der Generator könnte die Schnittstelle nach `server-api.ts` ziehen; dann im
-  Generator-Muster eingrenzen, statt die Schnittstelle aufzugeben.
+  gemeinsame Schnittstelle bräuchte der Validator `Object` + Reflection oder eine Kopie pro Level. Seit
+  Inc 3 trägt sie **auch** der Agent-Body — das Generator-Risiko für Inc 4 steht jetzt in §4.4.
+- **D15 — `anUnknownSlotIsRefusedAndNothingIsWritten` ist verstärkt, nicht unangetastet**: der Plan ließ
+  den Test unverändert (E6), die §6-Zeile A17 verlangt aber „400 **ohne** `fieldErrors`". Eine Assertion
+  mehr, keine weniger: ein Pfad-Platzhalter meldet kein Feld. Gleiches gilt für die drei Agent-Tests, die
+  jetzt zusätzlich ihr Feld nennen (Namen und bisherigen Assertions unverändert).
+- **D16 — ein neuer Fall mehr, und eine Messung für Inc 4/5**: `ProjectControllerTest.anEmptyUrlNamesItsFieldButAMissingBodyNamesNothing`
+  steht nicht im Plan, sichert aber die in §4.3 getroffene Trennung — `{"gitUrl":"   "}` ⇒ 400 **mit**
+  `fieldErrors[gitUrl]`, ein **fehlender** Body ⇒ 400 über die Service-Zeile, **ohne** Feld. Gemessen dabei:
+  ein `ApiError`-Body ohne Feldfehler antwortet `"fieldErrors":null` (null wird serialisiert, nicht
+  weggelassen) ⇒ `fieldErrorsOf()` in Inc 5 muss `null` wie `[]` behandeln, und die Java-Felder bleiben wie
+  in §4.4 geplant `@Nullable` (TS: `fieldErrors?: ApiFieldError[] | null`).
 
 ## 9. Messaufträge (Ergebnis nach `peon-plan/api-error-notes.md`)
 

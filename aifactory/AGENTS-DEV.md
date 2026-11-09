@@ -153,6 +153,11 @@ Ein Code im Testkommentar verweist auf diese Stelle; die Begründung steht am Te
   `diskEditFile` mit kurzem Anker. `*InsertLines` scheitern an einer Datei, die mit Leerzeile endet. **Löschen** heißt bei `*EditFile` `newString: ""` —
   ein `"\\n"` als Ersatz lässt die geleerte Zeile stehen (16× gemessen; Rückweg nur
   `git checkout -- <file>`, und das nur bei einer vorher unveränderten Datei).
+- **Erfolgsmeldung eines `*EditFile` ist kein Beleg**: Echo und Fehlerdump beschreiben den **Vor**-Zustand,
+  und schon einmal war ein früherer Edit derselben Datei still weg (gemessen 2026-11-09). Also nach jedem
+  Edit an einer in derselben Sitzung bereits editierten Datei die Region mit `diskReadFile`/`git diff`
+  gegenprüfen (Maven-Bau als zweite Wahrheit) — ein `not found` des Tools ist der gute Fall: er nennt den
+  echten Inhalt.
 - **Nie eine Quelldatei aus dem Kontext neu schreiben** (`*WriteFile` ohne Vorher-Lesen): der Kopf wird
   erfunden. Kleine `*EditFile`-Schritte oder erst komplett lesen; dann `git diff <file>` gegen die geplanten
   Änderungen — `git checkout -- <file>` ist kein Rückweg für fremde Handänderungen.

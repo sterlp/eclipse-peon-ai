@@ -30,10 +30,13 @@ public final class WireValidationHints {
     public static final String HEADER_PARAMS_HINT = "headerParams must be comma separated key=value pairs";
     /**
      * Both at once is no answer at all: the write order would silently delete the key the same request
-     * just set, so the request is refused instead of guessed. The agent level states the same rule
-     * ({@code AgentSettingsService}) — one sentence, one source.
+     * just set, so the request is refused instead of guessed. Both update bodies state it with one
+     * constraint ({@link WireKeyIntent}) — one sentence, one source.
      */
     public static final String KEY_INTENT_HINT = "apiKey and removeApiKey are two answers — send one";
+    /** The two slot fields the core reads silently — refused on the wire, where a field can be named. */
+    public static final String TEMPERATURE_HINT = "temperature must be a number";
+    public static final String EXTRA_BODY_HINT = "extraBody must be a JSON object";
 
     private WireValidationHints() {
 
