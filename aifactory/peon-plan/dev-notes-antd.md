@@ -1330,3 +1330,40 @@ Drei Punkte, **kein Verhalten** — zwei Nachweislücken und ein Kommentar mit w
   (jetzt paketprivat, geteiltes Maß mit dem Insight), non-Text-Payload ⇒ **leerer** Auszug (das `[no text]`
   gehört in die Insight-Zeile, nicht in den Chat).
 
+
+
+## A7-N1 — Der Anker zählt Stimmen (Delta auf A7, 2026-11-09)
+
+Review REJECTED (1 BUG, 3 LOWs) → vier Commits, **kein Backend-Eingriff**, kein Core-Write, kein CSS.
+
+- **BUG-1 (Anker-Maß).** Ein Live-Eintrag wurde beim `done`-Read über die Schritte **seines eigenen Turns**
+  gehoben (`user · diff · timeline · answer` statt `user · timeline · diff · answer`). Ursache: der Anker wurde
+  in **Zeilen** eingefroren (`historyRows + pendingLines`), der Read setzt restaurierte `tool`-Rows aber
+  **mitten** in die Liste ⇒ dieselbe Zahl nennt jetzt eine frühere Stelle. Fix: **ein Zählmaß** — der Anker
+  zählt Stimmen (`user`/`jon`/`error` plus eigene Pending-Zeilen), nie Schritte. Eine Definition, beide Enden:
+  `isTraceLine(line)` in `chat.client.ts` benutzt von `chat.log.tsx` (`Row.trace`) **und** `chat.page.tsx`.
+- **Zwei Einheiten, ein Fakt.** `historyRows` → `historyCount { lines, voices }`: `lines` bleibt der Index für
+  `PendingLine.afterHistory` (R-WP-37), `voices` ist das Ankermaß. Ein zweiter Ref wäre über die 600er-Grenze
+  gegangen (`chat.page.tsx` gemessen 597/600) — darum Tausch statt Ergänzung, JavaDoc umgeschrieben.
+- **Der Read-Übersetzer steht an einer Stelle:** `pushRows` läuft bis `until` **Stimmen** und schiebt die
+  Trace-Gruppe, die an genau dieser Stelle steht, **vor** dem Live-Lauf (R-WP-40: der Diff-Block beendet die
+  Gruppe, die vor ihm liegt).
+- **LOW-1 (Ordnung im Widget).** Messung statt Ratens: der Sonderzweig „restored führt" in `pushTrace` war
+  **tot** (Entfernung ließ die Suite bei 221 grün) ⇒ jetzt immer `[...previous.items, ...items]` — **der
+  Bestand führt, was nur der Draht trug, folgt** (R-WP-11/R-WP-25, R-WP-47). Guard gegen Merge zweier
+  Live-Läufe bleibt. Der Think-Fall ist neu gepinnt:
+  `aThinkStreamedBeforeTheCallStandsBehindTheStepTheHistoryHandsBack`.
+- **LOW-2 (Doc).** R-WP-47 in `docs/chat.md` von Jon formuliert, von uns nur committet.
+- **LOW-3 (erfundener Wert).** `TimelineEntry = Omit<ToolItem|ThinkItem|DelegationItem,'afterLines'>` —
+  restaurierte Schritte tragen keinen Anker mehr (`tsc -b` 0, Identität von `open` unverändert, kein Fallback
+  nötig). Typ ⇒ kein Test.
+- **Zahlen:** UI 221 → **222** (`tsc -b` 0, `oxlint` 0/0, `antd lint` 0 Findings, `vite build` ok),
+  **Backend Suite nicht gefahren** (231 aus A7, keine Datei geändert). Größen: `chat.page.tsx` **597**
+  (JavaDoc-Kürzung hielt Nettonull), `chat.log.tsx` **319**, `chat.live.ts` **295**, `chat.client.ts` **111**,
+  `chat.timeline.tsx` **148**.
+- **Abweichung, benannt:** `streamingUpdatesChatWithoutReload` galt im Plan als „grün ohne Änderung" — die
+  Behauptung „beide Worte in **einem** Widget" gilt nur mit der gewählten Ordnung (Bestand führt); Assertions
+  unverändert, Kommentar begründet jetzt die Begründung.
+- **Werkzeug-Notiz:** `npm test -- test/chat/<datei>.test.tsx` bricht in diesem Projekt mit
+  `Could not parse CSS stylesheet` (jsdom-Einzel Datei-Lauf) — einzelne Fälle über `npm test -- -t '<name>'`
+  filtern, nie über den Dateipfad.
