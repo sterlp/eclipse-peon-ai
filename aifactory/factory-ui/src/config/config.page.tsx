@@ -14,6 +14,7 @@ import {
   type Settings,
   type SettingsPatch,
 } from './config.client'
+import { ThinkControl } from './config.think'
 
 const SOURCE_LABEL: Record<KeySource, string> = {
   FILE: content.config.source.FILE,
@@ -37,23 +38,33 @@ const FALSE = 'false'
 interface Draft {
   provider: string
   model: string
+  think: string
   url: string
   apiKey: string
   tokenWindow: string
   timeoutSeconds: string
   sendThinking: string
+  maxTokens: string
+  queryParams: string
+  headerParams: string
 }
 
 function draftOf(settings: Settings): Draft {
   return {
     provider: settings.provider,
     model: settings.model ?? '',
+    // R-WP-49: the Dev slot's think value, shown at the base level — one value, no second store
+    think: settings.think ?? '',
     url: settings.url ?? '',
     // write-only: a stored key never comes back over the wire, so the field always starts empty
     apiKey: '',
     tokenWindow: String(settings.tokenWindow),
     timeoutSeconds: String(settings.timeoutSeconds),
     sendThinking: settings.sendThinking ? YES : NO,
+    // an unset advanced value is an empty field: "unset" and 0 are two different answers (R-WP-51)
+    maxTokens: String(settings.maxTokens ?? ''),
+    queryParams: settings.queryParams ?? '',
+    headerParams: settings.headerParams ?? '',
   }
 }
 
@@ -68,12 +79,17 @@ function patchOf(draft: Draft, removeKey: boolean): SettingsPatch {
     tokenWindow: draft.tokenWindow,
     timeoutSeconds: draft.timeoutSeconds,
     sendThinking: draft.sendThinking === YES ? TRUE : FALSE,
+    think: draft.think,
+    maxTokens: draft.maxTokens,
+    queryParams: draft.queryParams,
+    headerParams: draft.headerParams,
     ...(removeKey ? { removeApiKey: true } : {}),
   }
 }
 
 /**
- * The factory's config (R-WP-16): the six values, the key <em>status</em> and where a value came from.
+ * The factory's config (R-WP-16): the values of the base level, the key <em>status</em> and where a value
+ * came from.
  * The form behaves like the provider dialog of the plugin (UC-WP-62) — a provider change updates the
  * fields that depend on it at once — and it can remove a key (UC-WP-63).
  */
@@ -156,6 +172,8 @@ export function ConfigPage() {
   const chosen = draft ? providers.find((entry) => entry.name === draft.provider) : undefined
   // Q3: the think value stays a boolean; a provider that cannot carry it says so and gets no field to try
   const thinkUnsupported = chosen !== undefined && !chosen.thinkSupported
+  // one provider answer builds both think fields on this page — the form's own and the slots' (UC-WP-67)
+  const thinkInput = thinkInputOf(chosen)
 
   // a stored provider the core list does not offer still has to show what the file holds
   const offered = providers.map((entry) => entry.name)
@@ -197,6 +215,22 @@ export function ConfigPage() {
                     aria-label={content.config.model}
                     value={draft.model}
                     onChange={(event) => edit('model')(event.target.value)}
+                  />
+                </dd>
+              </div>
+              {/*
+                R-WP-49: the Dev slot's think value at the base level — the same field, read and written
+                through the slot's file, so neither place holds a copy. The words are the section's (D5).
+              */}
+              <div>
+                <dt>{content.agents.thinkDefault}</dt>
+                <dd>
+                  <ThinkControl
+                    id="settings-think"
+                    label={content.agents.thinkDefault}
+                    think={thinkInput}
+                    value={draft.think}
+                    onChange={edit('think')}
                   />
                 </dd>
               </div>
@@ -257,6 +291,43 @@ export function ConfigPage() {
                   )}
                 </dd>
               </div>
+              {/*
+                R-WP-51: the advanced trio of the base level. Text again — empty is a value of its own here
+                (it deletes), and the server is the one that parses and refuses by field name.
+              */}
+              <div>
+                <dt>{content.config.maxTokens}</dt>
+                <dd>
+                  <Input
+                    inputMode="numeric"
+                    aria-label={content.config.maxTokens}
+                    value={draft.maxTokens}
+                    onChange={(event) => edit('maxTokens')(event.target.value)}
+                  />
+                </dd>
+              </div>
+              <div>
+                <dt>{content.config.queryParams}</dt>
+                <dd>
+                  <Input
+                    aria-label={content.config.queryParams}
+                    placeholder={content.config.paramsPlaceholder}
+                    value={draft.queryParams}
+                    onChange={(event) => edit('queryParams')(event.target.value)}
+                  />
+                </dd>
+              </div>
+              <div>
+                <dt>{content.config.headerParams}</dt>
+                <dd>
+                  <Input
+                    aria-label={content.config.headerParams}
+                    placeholder={content.config.paramsPlaceholder}
+                    value={draft.headerParams}
+                    onChange={(event) => edit('headerParams')(event.target.value)}
+                  />
+                </dd>
+              </div>
               <div>
                 <dt>{content.config.key}</dt>
                 <dd>
@@ -293,7 +364,7 @@ export function ConfigPage() {
       {/* R-WP-23: the agent overrides below the default — their own read, their own save per slot. The
           think field is built from the provider the form names (UC-WP-67), so the section reads the
           answer of this page rather than asking the server the same question a second time. */}
-      <Agents think={thinkInputOf(chosen)} />
+      <Agents think={thinkInput} />
     </section>
   )
 }

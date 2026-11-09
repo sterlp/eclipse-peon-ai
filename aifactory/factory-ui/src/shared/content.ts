@@ -160,6 +160,15 @@ export const content = {
     sendThinking: 'Send thinking',
     yes: 'Yes',
     no: 'No',
+    /**
+     * R-WP-51: the advanced trio of the base level. The labels are the field names the server's refusal
+     * repeats, so the message and the row on the screen name the same thing.
+     */
+    maxTokens: 'Max Tokens',
+    queryParams: 'Query Params',
+    headerParams: 'Header Params',
+    /** The shape of both CSV fields — one rule, one sentence (R-WP-51). */
+    paramsPlaceholder: 'k=v, k2=v2',
     key: 'Key',
     keySet: 'set',
     keyMissing: 'not set',

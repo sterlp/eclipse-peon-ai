@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Card, Checkbox, Input, Select } from 'antd'
+import { Alert, Button, Card, Checkbox, Input } from 'antd'
 
 import { errorMessage } from '../shared/api.client'
 import { content } from '../shared/content'
@@ -10,12 +10,10 @@ import {
   type AgentSettings,
 } from './config.agents.client'
 import type { ThinkInput } from './config.client'
+import { ThinkField } from './config.think'
 
 /** The slot whose record carries the base think value of every other agent (R-THINK-10). */
 const DEV_SLOT = 'dev'
-
-/** The two answers of a toggle form; the third state of `ThinkValueSupport.toggleItems()` is empty. */
-const TOGGLE_ITEMS = ['true', 'false']
 
 /**
  * One slot as its row holds it: text everywhere, so empty is one state across the four fields and it
@@ -80,59 +78,6 @@ function Field(props: {
       />
     </div>
   )
-}
-
-/**
- * The think field of a slot: the form of the **base provider**, never a free text box by choice
- * (R-WP-23, UC-WP-67) — the same four forms the plugin's think field takes. A stored value outside the
- * offered list stays on the screen and travels back unchanged (ADR-0064): the form narrows what can be
- * picked, it decides nothing about what the file already holds. `NONE` shows no control and still sends
- * the stored value, so a provider without think input does not delete a value it cannot show.
- */
-function ThinkField(props: {
-  id: string
-  label: string
-  value: string
-  think: ThinkInput
-  onChange: (value: string) => void
-}) {
-  const { form, values } = props.think
-
-  if (form === 'NONE') {
-    return (
-      <div className="config-agents-field">
-        {/* no control, so no label target: the hint is the whole answer of a slot here */}
-        <label>{props.label}</label>
-        <span className="hint" data-testid={props.id + '-unsupported'}>
-          {content.agents.thinkUnsupported}
-        </span>
-      </div>
-    )
-  }
-
-  if (form === 'VALUES' || form === 'TOGGLE') {
-    const offered = (form === 'TOGGLE' ? TOGGLE_ITEMS : values).filter((item) => item !== '')
-    // a stored value the list does not carry is offered as itself — never replaced (ADR-0064)
-    const choices =
-      props.value !== '' && !offered.includes(props.value) ? [props.value, ...offered] : offered
-    return (
-      <div className="config-agents-field">
-        <label htmlFor={props.id}>{props.label}</label>
-        <Select
-          id={props.id}
-          value={props.value}
-          onChange={props.onChange}
-          options={[
-            { value: '', label: content.agents.inheritOption },
-            ...choices.map((item) => ({ value: item, label: item })),
-          ]}
-        />
-      </div>
-    )
-  }
-
-  // FREE and the core's UNKNOWN are one thing on the screen: the text the provider passes on
-  return <Field id={props.id} label={props.label} value={props.value} onChange={props.onChange} />
 }
 
 /**

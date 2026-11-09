@@ -4,16 +4,22 @@ import { request } from '../shared/api.client'
 export type KeySource = 'FILE' | 'ENV' | 'NONE'
 
 /**
- * The masked config as the server delivers it: the six documented fields plus the key
- * <em>status</em> — there is no field carrying a key, so the UI cannot display one by accident.
+ * The masked config as the server delivers it: the documented fields plus the key <em>status</em> — there is
+ * no field carrying a key, so the UI cannot display one by accident. `think` is the Dev slot's value read at
+ * the base level (R-WP-49), not a copy of it.
  */
 export interface Settings {
   provider: string
   model: string | null
+  think: string | null
   url: string | null
   tokenWindow: number
   timeoutSeconds: number
   sendThinking: boolean
+  /** R-WP-51: the advanced trio. `maxTokens` answers as a number and is sent as text — only text can say "empty". */
+  maxTokens: number | null
+  queryParams: string | null
+  headerParams: string | null
   keySet: boolean
   keySource: KeySource
 }
@@ -90,6 +96,12 @@ export interface SettingsPatch extends ConfigPatch {
   tokenWindow?: string
   timeoutSeconds?: string
   sendThinking?: string
+  /** R-WP-49: text like every other field — empty deletes the Dev slot's think value from its file. */
+  think?: string
+  /** R-WP-51: `maxTokens` is text for the same reason; the server parses it and refuses garbage by name. */
+  maxTokens?: string
+  queryParams?: string
+  headerParams?: string
 }
 
 export async function updateSettings(patch: SettingsPatch): Promise<Settings> {
