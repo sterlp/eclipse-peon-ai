@@ -50,8 +50,9 @@ public class ChatController {
     }
 
     /**
-     * The conversation as the core's memory has it — the single truth, no live line in it (D4). Three
-     * roles cross here: {@code user}, {@code jon} and the {@code error} line of a failed turn (R-WP-34).
+     * The conversation as the core's memory has it — the single truth, no live line in it (D4). Four
+     * roles cross here: {@code user}, {@code jon}, the {@code error} line of a failed turn (R-WP-34) and
+     * the {@code tool} step of Jon's own work (R-WP-47).
      */
     @GetMapping("/api/projects/{id}/messages")
     public List<ChatMessageDto> messages(@PathVariable("id") String projectId) {

@@ -251,8 +251,21 @@ class TurnFailureTest {
                     .as("his own end is not a failure — no line of it enters the conversation")
                     .noneMatch(line -> ChatLine.ROLE_ERROR.equals(line.role()));
             assertThat(runtime.history())
-                    .as("what he typed stays, and the answer he canceled is never asked for again")
-                    .containsExactly(ChatLine.user(SLOW_INPUT, "Paul"));
+                    .as("what he typed stays, and the answer he canceled is never asked for again — the"
+                            + " step of the tool he stopped stays with it: the memory holds his call and"
+                            + " its result (R-WP-47)")
+                    .extracting(ChatLine::role)
+                    .containsExactly(ChatLine.ROLE_USER, ChatLine.ROLE_TOOL);
+            assertThat(runtime.history().get(0))
+                    .as("what he typed is the first line, unchanged")
+                    .isEqualTo(ChatLine.user(SLOW_INPUT, "Paul"));
+            assertThat(runtime.history().get(1))
+                    .as("gemessen: the shell ran to its end before the stop released the turn, so the"
+                            + " step carries its excerpt and not only its arrival")
+                    .satisfies(step -> {
+                        assertThat(step.origin()).isEqualTo("shellRunCommand");
+                        assertThat(step.text()).isNotBlank();
+                    });
         } finally {
             model.stop();
         }

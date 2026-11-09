@@ -396,7 +396,10 @@ class ChatQueueTest extends FactorySpringTest {
                 .containsOnlyOnce("[User Anna]");
 
         assertThat(messages(project.id()))
-                .as("die Prio wird nie in die Memory geschrieben (R8.7) — keine Nutzerzeile damit")
+                .as("die Prio wird nie in die Memory geschrieben (R8.7) — keine Nutzerzeile damit; dass"
+                        + " der Core ihren Block auf das Werkzeug-Ergebnis legt, steht seit R-WP-47 als"
+                        + " Auszug seines Schritts im Verlauf und ist dort Bestand")
+                .filteredOn(message -> !"tool".equals(message.role()))
                 .extracting(ChatMessageDto::text)
                 .noneMatch(text -> text.contains("bitte abbrechen"));
     }

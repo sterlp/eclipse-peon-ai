@@ -127,10 +127,12 @@ class DelegatedAnswerRestartTest {
     void everyLineCarriesItsAuthor() throws IOException {
         assertThat(historyBeforeRestart)
                 .as("vor dem Neustart trägt jede Zeile ihren Urheber: die Team-Antwort nennt Dev, "
-                        + "Jons eigene Antwort nennt Jon, die getippte Eingabe niemanden")
+                        + "Jons eigene Antwort nennt Jon, die getippte Eingabe niemanden — und sein "
+                        + "Schritt nennt das Mitglied, nicht sein Werkzeug (R-WP-47)")
                 .extracting(ChatMessageDto::role, ChatMessageDto::origin)
                 .containsExactly(
                         tuple("user", null),
+                        tuple("tool", "Dev"),
                         tuple("jon", "Dev"),
                         tuple("jon", AiPoAgent.NAME));
         assertThat(historyBeforeRestart.get(0).origin())
@@ -163,7 +165,9 @@ class DelegatedAnswerRestartTest {
     void onlyFinalAnswersFromTheTeam() {
         List<ChatMessageDto> historyAfterRestart = messages(afterRestart);
 
-        assertThat(historyAfterRestart.stream().filter(line -> "Dev".equals(line.origin())).toList())
+        assertThat(historyAfterRestart.stream()
+                .filter(line -> "jon".equals(line.role()) && "Dev".equals(line.origin()))
+                .toList())
                 .as("GIVEN 3: die Antwort des Mitglieds steht immer noch im Verlauf — genau einmal, ihr"
                         + " Werkzeug-Ergebnis wörtlich, derselbe Name")
                 .singleElement()
@@ -172,8 +176,9 @@ class DelegatedAnswerRestartTest {
                         .contains("Dev done."));
         assertThat(historyAfterRestart)
                 .as("keine Zwischenzeile des Mitglieds ist darin — gespeichert wurde nur, was Jon als"
-                        + " Ergebnis seines Werkzeuges zurückbekam")
-                .hasSize(3);
+                        + " Ergebnis seines Werkzeuges zurückbekam; die vierte Zeile ist sein eigener"
+                        + " Schritt zu Dev, nicht eine Zeile des Mitglieds")
+                .hasSize(4);
         assertThat(historyAfterRestart.stream().map(ChatMessageDto::text).toList())
                 .as("und die Zeile ist das Ergebnis, nicht eine gekürzte Fassung: die Statistik-Zeile,"
                         + " die zusätzlich ins Modell geht, gehört zum Werkzeug-Ergebnis")

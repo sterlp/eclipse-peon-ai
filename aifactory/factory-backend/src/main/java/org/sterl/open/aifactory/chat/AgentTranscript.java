@@ -83,8 +83,12 @@ final class AgentTranscript {
         return new TranscriptLineDto(kind, cut(text));
     }
 
-    /** Cut to {@link #MAX_LINE_CHARS} with a marker — the reader learns about the cut, never guesses it. */
-    private static String cut(String text) {
+    /**
+     * Cut to {@link #MAX_LINE_CHARS} with a marker — the reader learns about the cut, never guesses it.
+     * The one cutter of an excerpt: the insight and a restored step of the conversation (R-WP-47) share
+     * this measure, so the two never disagree about how much of a tool's answer one line holds.
+     */
+    static String cut(String text) {
         return text.length() <= MAX_LINE_CHARS ? text : text.substring(0, MAX_LINE_CHARS) + CUT_MARKER;
     }
 

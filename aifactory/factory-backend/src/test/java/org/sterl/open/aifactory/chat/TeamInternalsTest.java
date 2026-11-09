@@ -202,10 +202,13 @@ class TeamInternalsTest extends FactorySpringTest {
 
         assertThat(messages(project.id()))
                 .as("the history names each member its own — read off the tool that produced the result,"
-                        + " with no book over which delegation was which (UC-WP-39)")
+                        + " with no book over which delegation was which (UC-WP-39); the two steps of Jon"
+                        + " stand where he asked, and no inner line of a member is among them")
                 .extracting(ChatMessageDto::role, ChatMessageDto::origin)
                 .containsExactly(
                         tuple("user", null),
+                        tuple("tool", "Plan"),
+                        tuple("tool", "Dev"),
                         tuple("jon", "Plan"),
                         tuple("jon", "Dev"),
                         tuple("jon", AiPoAgent.NAME));
