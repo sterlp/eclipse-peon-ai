@@ -40,7 +40,7 @@ generische Passagen aus AGENTS*.md wandern schrittweise dorthin.
   Management-Summary für den User nach jedem Zyklus.
   - GIVEN ein Zyklus endet WHEN Jon das Summary schreibt THEN enthält es bei Skill-Änderungen
     den kurzen Abschnitt; ohne Änderungen entfällt er
-- **R6 ❌** Der Grund-Loop (je Zyklus genau ein Skill-Ergebnis; Quellen: Skill-Vorschläge und
+- **R6 ✅ done (2026-11-09, gebaut mit `88b81a8c`)** Der Grund-Loop (je Zyklus genau ein Skill-Ergebnis; Quellen: Skill-Vorschläge und
   -Probleme der Agenten sowie generische AGENTS*.md-Passagen, die schrittweise in Projekt-Skills
   unter `.agents/skills` wandern) steht im Built-in-Prompt `po-delegation.md` (Retro). Er läuft
   damit in jedem Projekt, auch ohne den Skill `skill-evolution` und ohne Wiki (Paul, 2026-11-09).
