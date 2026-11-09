@@ -65,7 +65,27 @@ public class ChatStreamRegistry {
 
     /** The seam of {@link ChatStreamRegistryTest}: a subscriber whose write blocks or fails on purpose. */
     SseEmitter subscribe(String projectId, SseEmitter emitter) {
-        Subscription subscription = new Subscription(emitter);
+        return subscribe(projectId, emitter, null);
+    }
+
+    /**
+     * The live view of <b>one member's own conversation</b> (R-WP-53): a second wire next to the project's,
+     * carrying his lines and nothing of the conversation. A channel is a name and nothing else — this
+     * registry knows no tile and no gate, so who may be watched stays decided in
+     * {@link ProjectRuntime#subscribeAgent(String)}.
+     */
+    public SseEmitter subscribeAgent(String projectId, String agentName) {
+        return subscribeAgent(projectId, agentName, new SseEmitter(0L));
+    }
+
+    /** The seam of the channel tests: a member's subscriber whose write blocks or fails on purpose. */
+    SseEmitter subscribeAgent(String projectId, String agentName, SseEmitter emitter) {
+        return subscribe(projectId, emitter, agentName);
+    }
+
+    /** {@code channel == null} is the project's conversation, any other value is one member's insight. */
+    private SseEmitter subscribe(String projectId, SseEmitter emitter, String channel) {
+        Subscription subscription = new Subscription(emitter, channel);
         subscribers.computeIfAbsent(projectId, key -> new CopyOnWriteArrayList<>()).add(subscription);
         emitter.onCompletion(() -> remove(projectId, subscription));
         emitter.onTimeout(() -> remove(projectId, subscription));
@@ -75,12 +95,17 @@ public class ChatStreamRegistry {
     }
 
     /**
-     * Hands the event to every subscriber of one project and returns. Never serialized, never blocking:
-     * ordering is kept per connection by that connection's own delivery thread, so two turns of two
-     * projects cannot interleave on one wire and a slow reader cannot hold the turn (UC-WP-41).
+     * Hands the event to every subscriber of one project's <b>conversation</b> and returns. Never
+     * serialized, never blocking: ordering is kept per connection by that connection's own delivery
+     * thread, so two turns of two projects cannot interleave on one wire and a slow reader cannot hold the
+     * turn (UC-WP-41). A member's insight is never addressed here — his lines would land in Jon's chat
+     * (UC-WP-40), see {@link #publishAgent(String, String, ChatEvent)}.
      */
     public void publish(String projectId, ChatEvent event) {
         for (Subscription subscription : subscribers.getOrDefault(projectId, List.of())) {
+            if (subscription.channel != null) {
+                continue;
+            }
             if (!subscription.offer(event)) {
                 // a live line may be lost — the history stays the truth; the turn and the others are unaffected
                 LOG.debug("chat listener of project {} is not reading — live line dropped", projectId);
@@ -88,8 +113,41 @@ public class ChatStreamRegistry {
         }
     }
 
+    /**
+     * One member's live line to his own insight (R-WP-53). The name is matched, never defaulted: a line of
+     * Dev reaching Plan's wire would show one member another member's conversation, so a channel only ever
+     * carries events published under exactly its own name.
+     */
+    public void publishAgent(String projectId, String agentName, ChatEvent event) {
+        if (agentName == null) {
+            return;
+        }
+        for (Subscription subscription : subscribers.getOrDefault(projectId, List.of())) {
+            if (!agentName.equals(subscription.channel)) {
+                continue;
+            }
+            if (!subscription.offer(event)) {
+                LOG.debug("insight listener of {} in project {} is not reading — live line dropped",
+                        agentName, projectId);
+            }
+        }
+    }
+
     public int listenerCount(String projectId) {
         return subscribers.getOrDefault(projectId, List.of()).size();
+    }
+
+    /**
+     * The listeners of one project <b>on one wire</b>: {@code channel == null} is the conversation, a name
+     * is that member's insight. {@link #listenerCount(String)} counts every subscription of the project,
+     * whichever wire it sits on.
+     */
+    public int listenerCount(String projectId, String channel) {
+        return (int) subscribers.getOrDefault(projectId, List.of()).stream()
+                .filter(subscription -> channel == null
+                        ? subscription.channel == null
+                        : channel.equals(subscription.channel))
+                .count();
     }
 
     /** The seam of the cleanup rule: a project nobody listens to any more is not in the map at all. */
@@ -214,15 +272,21 @@ public class ChatStreamRegistry {
         return json.writeValueAsString(fields);
     }
 
-    /** One subscriber: his emitter and his own bounded outbox — the border that keeps a slow reader to himself. */
+    /**
+     * One subscriber: his emitter, his wire and his own bounded outbox — the border that keeps a slow
+     * reader to himself. {@code channel == null} is the project's conversation, any other value is one
+     * member's insight, and a subscription never changes its wire (R-WP-53).
+     */
     private static final class Subscription {
 
         private final SseEmitter emitter;
+        private final String channel;
         private final BlockingQueue<Object> outbox = new ArrayBlockingQueue<>(OUTBOX_LIMIT);
         private volatile boolean closed;
 
-        Subscription(SseEmitter emitter) {
+        Subscription(SseEmitter emitter, String channel) {
             this.emitter = emitter;
+            this.channel = channel;
         }
 
         boolean offer(ChatEvent event) {

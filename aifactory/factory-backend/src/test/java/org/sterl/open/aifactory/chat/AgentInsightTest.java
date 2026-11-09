@@ -76,6 +76,10 @@ class AgentInsightTest extends FactorySpringTest {
     @Autowired
     private ProjectRuntimeRegistry runtimes;
 
+    /** The channel registry itself: a refusal has to leave no subscription behind, and that is provable here. */
+    @Autowired
+    private ChatStreamRegistry streams;
+
     @LocalServerPort
     private int port;
 
@@ -236,6 +240,89 @@ class AgentInsightTest extends FactorySpringTest {
 
     @Test
     @Timeout(60)
+    // UC-WP-90
+    void theMemberStreamCarriesHisOwnLiveLines() throws IOException {
+        writeFactoryConfig("c7-live-channel");
+        String projectId = createProject("c7-live");
+        ProjectRuntime runtime = runtimes.runtime(projectId);
+
+        // both wires are open before the turn starts, so every line of the member met a listener
+        try (LiveStreamProbe jon = new LiveStreamProbe(conversationUrl(projectId));
+                LiveStreamProbe dev = new LiveStreamProbe(agentStreamUrl(projectId, AiDevAgent.NAME))) {
+            scriptOneDelegation();
+            send(projectId, "frag Dev nach einer Frucht");
+
+            // his own answer is the end of his work, and Jon's done is the end of the turn: both are end
+            // states, so nothing here waits on a pause
+            dev.awaitUntil("the member's own answer arrived on his own wire",
+                    () -> dev.answerText().contains(MEMBER_ANSWER));
+            jon.awaitEvent("done", 1, "Jon's turn ended");
+
+            assertThat(dev.countOf("partial"))
+                    .as("his thinking and his answer grow his own view while he works (R-WP-53)")
+                    .isPositive();
+            assertThat(dev.toolTexts())
+                    .as("his own step reaches his own wire — the step Jon's chat deliberately hides")
+                    .anySatisfy(text -> assertThat(text).contains(MEMBER_MARKER));
+            assertThat(dev.toolOrigins())
+                    .as("and it carries his name, because the core stamped it and the factory hands stamps on")
+                    .contains(AiDevAgent.NAME);
+
+            assertThat(jon.answerText())
+                    .as("Jon's own answer is untouched by the second listener")
+                    .isEqualTo(JON_ANSWER);
+            assertThat(jon.wireText())
+                    .as("UC-WP-40 holds while a member is watched — none of his internal work crosses over")
+                    .doesNotContain(MEMBER_MARKER)
+                    .doesNotContain(MEMBER_ANSWER);
+            assertThat(dev.eventNames())
+                    .as("a member's channel is his lines and nothing else: no tiles (UC-WP-90), no turn end,"
+                            + " no diff — the conversation keeps all three")
+                    .containsOnly("partial", "tool");
+        }
+
+        assertThat(memoryText(member(runtime, AiDevAgent.NAME)))
+                .as("the live wire and the insight read the same memory — the channel added no second source")
+                .contains(MEMBER_ANSWER);
+    }
+
+    @Test
+    @Timeout(60)
+    // UC-WP-90
+    void theMemberStreamRefusesWhatIsNoInsight() {
+        String projectId = createProject("c7-refuses");
+
+        // the gate is what refuses here, and it is the gate of the read — asked over the edge that lets the
+        // advice answer in words, which is the edge of every other refusal of this application
+        assertThat(status(HttpMethod.GET, agentStreamUrl(projectId, AiPoAgent.NAME)))
+                .as("Jon's conversation IS the chat — a live view of it would be a second one")
+                .isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(status(HttpMethod.GET, agentStreamUrl(projectId, "Search")))
+                .as("the search sub-loop owns no memory between its calls")
+                .isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(status(HttpMethod.GET, agentStreamUrl(projectId, "Fantom")))
+                .as("and a name that is no tile of this project never opens anything")
+                .isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(status(HttpMethod.GET, agentStreamUrl("does-not-exist", AiDevAgent.NAME)))
+                .as("an unknown project stays a 404 — the live edge adds no second project space")
+                .isEqualTo(HttpStatus.NOT_FOUND.value());
+
+        // an event-stream Accept is what the browser sends; how a refusal is then written is the shared
+        // advice's business, not this route's — so the new edge and the one before it have to answer alike
+        assertThat(streamStatus(agentStreamUrl("does-not-exist", AiDevAgent.NAME)))
+                .as("the new live edge refuses an unknown project exactly as the conversation edge does")
+                .isEqualTo(streamStatus(conversationUrl("does-not-exist")));
+
+        assertThat(streams.listenerCount(projectId))
+                .as("no refusal created an emitter: the gate stands in front of the channel (E8)")
+                .isZero();
+        assertThat(transcriptStatus(projectId, AiDevAgent.NAME))
+                .as("the read of the very same tile still works afterwards — nothing was half-opened")
+                .isEqualTo(HttpStatus.OK.value());
+    }
+
+    @Test
+    @Timeout(60)
     // UC-WP-49
     void transcriptIsBounded() {
         String projectId = createProject("bounded");
@@ -337,6 +424,25 @@ class AgentInsightTest extends FactorySpringTest {
 
     private String transcriptUrl(String projectId, String name) {
         return "http://127.0.0.1:" + port + "/api/projects/" + projectId + "/agents/" + name;
+    }
+
+    private String conversationUrl(String projectId) {
+        return "http://127.0.0.1:" + port + "/api/projects/" + projectId + "/events";
+    }
+
+    private String agentStreamUrl(String projectId, String name) {
+        return transcriptUrl(projectId, name) + "/events";
+    }
+
+    /**
+     * The status of a stream edge, asked with an {@code Accept} of {@code text/event-stream} — the header a
+     * browser sends. How much of a refusal survives in words there is the shared advice's answer, and it has
+     * to be the same answer on every live edge; that is what the test below compares.
+     */
+    private int streamStatus(String url) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(List.of(MediaType.TEXT_EVENT_STREAM));
+        return http.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), String.class).getStatusCode().value();
     }
 
     private List<ChatMessageDto> historyOf(String projectId) {

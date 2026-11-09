@@ -12,6 +12,7 @@ import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
@@ -247,11 +248,30 @@ final class ProjectRuntime {
      * anything, so the chat stays the one conversation a project has (UC-WP-16).</p>
      */
     AgentTranscriptDto transcript(String name) {
+        AiAgent agent = insightTileOf(name);
+        return AgentTranscript.of(agent.getName(), agent.getMemory().getCopy());
+    }
+
+    /**
+     * The live view of one tile's own conversation (R-WP-53, UC-WP-90): the very same gate as
+     * {@link #transcript}, so the read and the wire of a tile answer exactly the same names, and an emitter
+     * exists only once the name is allowed — a refusal leaves no subscription behind.
+     */
+    SseEmitter subscribeAgent(String name) {
+        AiAgent agent = insightTileOf(name);
+        return streams.subscribeAgent(projectId, agent.getName());
+    }
+
+    /**
+     * The one gate both insight edges share (R-WP-26, R-WP-53); what it refuses is said at
+     * {@link #transcript(String)}. Deliberately one copy: a gate that is read twice drifts apart.
+     */
+    private AiAgent insightTileOf(String name) {
         AiAgent agent = tileNamed(name);
         if (!AgentTiles.capabilitiesOf(seatOf(agent)).contains(TileCapability.TRANSCRIPT)) {
             throw new IllegalArgumentException(agent.getName() + " offers no insight");
         }
-        return AgentTranscript.of(agent.getName(), agent.getMemory().getCopy());
+        return agent;
     }
 
     /** The team member a tile names — the roster is the only address space, so no name is a free path. */

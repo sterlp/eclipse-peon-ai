@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,7 @@ import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.shared.CallStats;
+import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.shared.OwnerMonitor;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
@@ -52,6 +54,8 @@ class SseTurnMonitorTest {
 
     private static final String PROJECT = "p1";
     private static final String DIFF_FILE = "src/App.java";
+    /** The turn start of a chunk decides nothing about who is shown — the stamp alone does (R-WP-4). */
+    private static final Instant TURN_START = Instant.EPOCH;
 
     private final ChatStreamRegistry registry = new ChatStreamRegistry();
     private final RecordingEmitter wire = new RecordingEmitter();
@@ -86,6 +90,9 @@ class SseTurnMonitorTest {
     // UC-WP-68
     @Test
     void everyProducerOfTheTurnShowsItsDiff() {
+        // a member's wire keeps its order too, so one line of his is what proves his wire complete
+        RecordingEmitter memberWire = new RecordingEmitter();
+        registry.subscribeAgent(PROJECT, "Dev", memberWire);
         // the core stamps its lines with the producing agent and passes a file update through unstamped —
         // a member's write therefore arrives at the very same translation as Jon's
         new OwnerMonitor("Dev", monitor).onFileUpdate(new AiFileUpdate(DIFF_FILE, "a\n", "a\nb\n"));
@@ -95,6 +102,58 @@ class SseTurnMonitorTest {
         assertThat(wire.payload(0).keySet()).as("a diff names no author: R-WP-36 shows Jon and the team")
                 .containsExactly("file", "diff");
         assertThat((String) wire.payload(0).get("diff")).startsWith("--- a/" + DIFF_FILE);
+
+        // R-WP-53: the diff stays on the conversation channel. The member's own step is what ordered his
+        // wire — everything published on that channel before it had arrived when that step arrived
+        new OwnerMonitor("Dev", monitor).onChatResponse(new SimpleMessage(SimpleMessage.Type.TOOL, "his own step"));
+        awaitUntil("the member's own step reached his wire", () -> memberWire.names().contains("tool"));
+        assertThat(memberWire.names())
+                .as("a member's channel never carries a diff — R-WP-36 shows writes to Jon")
+                .containsExactly("tool");
+    }
+
+    // R-WP-53
+    @Test
+    void memberThinkingAndAnswerArriveOnHisOwnChannel() {
+        RecordingEmitter memberWire = new RecordingEmitter();
+        registry.subscribeAgent(PROJECT, "Dev", memberWire);
+        // the core hands a delegated member its caller's monitor wrapped in his name (AbstractAgent,
+        // PoDelegateTool.dispatch) — this is that wrapper over the project's one monitor
+        AiMonitor dev = new OwnerMonitor("Dev", monitor);
+
+        dev.onStreamingChunk(new OnPartialAiResponse(OnPartialAiResponse.Type.THINK, "er überlegt", TURN_START, 0L));
+        dev.onStreamingChunk(new OnPartialAiResponse(OnPartialAiResponse.Type.ANSWER, "er antwortet", TURN_START, 0L));
+        endTheTurn();
+
+        // the member's channel carries no turn end by design, so his own two lines are its end state
+        awaitUntil("both chunks of the member reached his own wire", () -> memberWire.names().size() == 2);
+        assertThat(memberWire.names()).as("his thinking and his answer, in order").containsExactly("partial", "partial");
+        assertThat(memberWire.payload(0)).containsEntry("kind", "think").containsEntry("text", "er überlegt");
+        assertThat(memberWire.payload(1)).containsEntry("kind", "answer").containsEntry("text", "er antwortet");
+        assertThat(wire.names())
+                .as("Jon's wire keeps its turn end and nothing of the member — the same bytes it had before")
+                .containsExactly("done");
+    }
+
+    // R-WP-53
+    @Test
+    void memberToolLineGoesToHisChannelWithHisName() {
+        RecordingEmitter memberWire = new RecordingEmitter();
+        registry.subscribeAgent(PROJECT, "Dev", memberWire);
+
+        new OwnerMonitor("Dev", monitor).onChatResponse(new SimpleMessage(SimpleMessage.Type.TOOL, "ls in the checkout"));
+        endTheTurn();
+        awaitUntil("the member's step reached his own wire", () -> memberWire.names().contains("tool"));
+
+        assertThat(memberWire.names()).containsExactly("tool");
+        assertThat(memberWire.payload(0).keySet())
+                .as("his own line names him as its author, the way a stamped line always has")
+                .containsExactly("text", "origin");
+        assertThat(memberWire.payload(0))
+                .containsEntry("origin", "Dev").containsEntry("text", "ls in the checkout");
+        assertThat(wire.names())
+                .as("the tiles still ride along before the origin filter (R-WP-7) — the step itself stays his")
+                .containsExactly("agents", "done");
     }
 
     // UC-WP-68

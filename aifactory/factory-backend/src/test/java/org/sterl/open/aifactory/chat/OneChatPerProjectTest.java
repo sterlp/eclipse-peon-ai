@@ -105,14 +105,19 @@ class OneChatPerProjectTest extends FactorySpringTest {
      * The tile family (Inc 5b/5c, architecture doc "Die drei Gesprächs-Kanten bleiben drei"): one project
      * id and either the roster or <b>one tile of that same project</b>. {@code \{name\}} is the second
      * placeholder this application may have, and only ever behind {@code agents} — it names a tile to read,
-     * never a conversation to open, which is what the path form below pins down.
+     * never a conversation to open, which is what the path form below pins down. Since C-7 that same tile
+     * name may also carry <b>his own live wire</b> ({@code …/\{name\}/events}) — the same read, only
+     * growing: still one project, still one conversation, still no second address space.
      */
-    private static final Pattern TILE_PATH = Pattern.compile("^/api/projects/\\{id\\}/agents(/\\{name\\})?$");
+    private static final Pattern TILE_PATH =
+            Pattern.compile("^/api/projects/\\{id\\}/agents(/\\{name\\}(/events)?)?$");
 
     private static final Set<Route> TILE_ROUTES = Set.of(
             new Route(HttpMethod.GET, "/api/projects/{id}/agents"),
             new Route(HttpMethod.POST, "/api/projects/{id}/agents"),
-            new Route(HttpMethod.GET, "/api/projects/{id}/agents/{name}"));
+            new Route(HttpMethod.GET, "/api/projects/{id}/agents/{name}"),
+            // R-WP-53: die Live-Leitung genau dieser einen Kachel — dieselbe Lesung, nur wachsend
+            new Route(HttpMethod.GET, "/api/projects/{id}/agents/{name}/events"));
 
     /**
      * The names a second conversation would have to use. A <b>user</b> concept is no longer one of them:
@@ -281,6 +286,14 @@ class OneChatPerProjectTest extends FactorySpringTest {
         assertThat(runtimes.transcript(project.id(), AiDevAgent.NAME).lines())
                 .as("der Blick liest eine Kachel, er baut nichts auf — schon gar kein zweites Gespräch")
                 .isEmpty();
+        // R-WP-53: die Live-Leitung desselben Blicks zieht genau dieselbe Grenze — derselbe Helper, nicht
+        // eine zweite Prüfung, die abweichen kann
+        assertThatThrownBy(() -> runtimes.subscribeAgent(project.id(), "Fantom"))
+                .as("lesend und live gilt dieselbe Grenze — der Roster ist die einzige Adresse")
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> runtimes.subscribeAgent(project.id(), AiPoAgent.NAME))
+                .as("auch die Live-Leitung öffnet Jons Gespräch nicht ein zweites Mal")
+                .isInstanceOf(IllegalArgumentException.class);
         // the positive replacement for the fourth route: the stop ends the one conversation's turn, it
         // cannot be aimed at another one and it opens nothing (UC-WP-50, UC-WP-16)
         assertThatThrownBy(() -> runtimes.stop(project.id()))
