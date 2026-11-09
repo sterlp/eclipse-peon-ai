@@ -860,3 +860,29 @@ Grün gefahren: Backend 232, UI 224. Drei Befunde, alle von Review; Docs von Jon
 **Instruction gap:** `AGENTS-DEV.md` braucht die nvm-/PATH-Zeile für `pnpm`/Node ≥22 (hier fehlte `pnpm`, node war v18) — im Delta nachziehen.
 
 **Hinweis:** Findings stehen zunächst in `overview.md` (nur Plan-Tools schreiben dort) — Übertrag hierher vor dem nächsten Plan-Schreibvorgang.
+
+## API-Fehler (Review 2026-11-09, Scope `e6ca3573`..`b78e59d1`) — Verdict **CONCERNS** (kein BUG) → Delta N1
+
+Selbst gemessen: Backend 274/0 (`missCount=1`, 47 s), UI 267/29 grün, tsc 0, oxlint 0/0, lintDocs nur
+`UNBELEGT UC-WP-91` (so gewollt, M1/M2). M2 hier nachgemessen (`mvn clean test` erzeugt `server-api.ts`
+neu, `git status` unverändert). Alle 5 Inkremente auf der benannten Variante, D9–D23 nicht überschritten.
+
+- **S1 (Suspicion):** `ApiFormErrors` zeigt nur `ApiError.message` (= erste Violation). Antwort nennt zwei
+  Felder, eines davon nicht umfasst ⇒ dessen Grund erscheint nirgends — gegen R-WP-56/R8. Heute
+  unerreichbar (jede Server-Regel liegt auf einem umfassten Feld), aber R8 existiert genau dafür.
+  **Mutation `every`→`some` (`api.error.tsx:57`) überlebt** — der eine Mutation-Nachweis dieser Serie,
+  zusammen mit einem Zwei-Felder-Test. Delta empfohlen: Nachrichten der *nicht* umfassten Einträge zeigen.
+- **L1:** `.api-field { margin-bottom: 0 }` verliert gegen das zur Laufzeit injizierte `.ant-form-item`
+  (gleiche Spezifität, später) bzw. `.ant-form-inline .ant-form-item` (0,2,0) ⇒ doppelte Feldabstände.
+  Fix wie D8: `.api-field.ant-form-item` (+ Inline-Scope). Nur am Browser messbar (R1).
+- **L2:** Dedupe `ApiExceptionHandler:64-71` unerreichbar (kein DTO kann 2 Violations je Feld) ⇒
+  einfacher: `getAllErrors()` 1:1.
+- **Doc-Kleinigkeit:** `docs/api-errors.md:51` Beispiel-Property `jsonBody` — real heißt sie `extraBody`.
+- **Doku-Stand (kein Code-Fehler):** `api-errors.md` R-WP-54/55/56 + UC-WP-91/92/93 noch ❌,
+  `open-points.md` C-8 noch ❓ — ⏳/✅-Texte liegen in `peon-plan/api-error-notes.md`, Übernahme Jon.
+- **Skill-Lücke:** `.agents/skills/api-types-and-error-widget/SKILL.md` (untracked) trägt die AntD-6-Fakten
+  noch nicht. Nebenbefund: die episodische Edit-Nachlese-Regel in `AGENTS-DEV.md` gehört eher in die
+  Plan-Datei als in die Agent-Memory.
+- Architektur: ein Pfad je Verantwortung, `shared` ohne Component, ein Kontext (missCount=1), keine Datei
+  >600 (`config.page.tsx` 437, `config.agents.tsx` 388). Pre-existing, nicht blockierend: der feste
+  „gitUrl"-Text im Helper antwortet auch auf `/api/settings` (vorher schon so).

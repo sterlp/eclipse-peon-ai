@@ -75,8 +75,9 @@ MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabi
   [R-WP-53/UC-WP-89/90](chat.md)** (C-7, 2026-11-09))
 * [Dateien](files.md) — Schreiben nur in Projekt + TMP, Datei-Bereich lesend. ◐ (gebaut, reviewed 2026-11-01)
 * [API-Fehler](api-errors.md) — Server-Fehler sichtbar am Feld: generierte API-Typen
-  (typescript-generator), Bean Validation mit `fieldErrors`, ein Standard-Error-Widget (AntD). ❌
-  specified (Paul 2026-11-09)
+  (typescript-generator), Bean Validation mit `fieldErrors`, ein Standard-Error-Widget (AntD). ✅
+  gebaut+reviewed 2026-11-09 (R-WP-54/55/56 + N1; UC-WP-92/93 mit Tests, R-WP-54 per M1/M2; offen nur
+  die Browser-Abnahme der Feldabstände)
 * [Config](config.md) — eigene Datei der Factory, Config-Seite maskiert, „überschreiben" je Agent. ◐
   (Plugin-Parität F8 ✅ gebaut+reviewed 2026-11-09: R-WP-49–52 — Think (Default), Modell-AutoComplete
   mit Server-Liste, Max Tokens, Query-/Header-Params, je Agent Extra-Body + Tools-Allowlist)

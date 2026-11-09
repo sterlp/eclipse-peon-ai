@@ -2,6 +2,28 @@
 
 Status: ❓ offen · ⏳ selbst entschieden (Rückversicherung steht aus) · 🔒 geklärt.
 Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entfällt.
+## Runde 7 — Pauls Browser-Befunde zum API-Fehler-Stand (2026-11-09, „nach dem Release fixen")
+
+Pauls Wortlaut, je Punkt seine Entscheidung (alle zur Look-Story, kein Teil des api-errors-Zyklus):
+
+* **⏳ Überschriften im Main-Panel raus** — „die Überschriften kleben open, können raus im main panel —
+  wir haben es ja im Top-Menü." Zielt auf die Seiten-Überschriften (Projekte/Config/…) — genau
+  welche Flächen, am Browser abnehmen.
+* **⏳ „Chats" wieder ins Top-Menü** — Damit kehrt der Runde-6-Beschluss („Chat muss weg", 🔒 in
+  R-WP-43) **teilweise zurück**: Top-Menü wieder **Projekte · Chat · Settings**; der Sider bleibt,
+  ist aber **nur bei Chats sichtbar**. Widerspricht R-WP-43 — Regel wird in der Look-Story
+  umgeschrieben, nicht still.
+* **⏳ Reasoning-Effort-Feld ist ein Select ohne eigene Eingabe** — „ich kann nichts selber eingeben"
+  (F8, R-WP-51). Annahme: wie das Modell-Feld ein `AutoComplete` (Auswahl **oder** Eingabe) — am
+  Plugin nachlesen, wie Paul es dort entschieden hat, bevor gebaut wird.
+* **❓ Kacheln der Agenten oben im Chat sind weg (Paul: „most critical … damit wären wir defekt")** —
+  die Kachel-Reihe über dem Chat fehlt in seinem Blick; entweder Regression (C-7-Kanal, Kacheln-Read
+  nach `onOpen`) oder Look. Erst messen (Welcher Commit? Reproduktion), dann Regel — kein Blindfix.
+* **⏳ Clear am Chat-Eingabe-Bereich fehlt (nur Icon)** — Clear/Compact der Kachel-Reihe
+  ([R-WP-43](ui.md)) sind weg oder nicht sichtbar; „nur icon" heißt: Aktionen müssen als Icons an der
+  Eingabe sitzen, keine Text-Buttons.
+* **⏳ Compact am Chat-Eingabe-Bereich fehlt (nur Icon)** — dasselbe für Compact.
+* **⏳ Send nur als Icon** — der Send-Knopf soll ein reines Icon sein, kein Text-Knopf.
 
 ## Runde 6 — Browser-Abnahme Inc 4 (2026-11-08, abends, Screenshot `17.31.29`)
 
@@ -276,11 +298,19 @@ Defekte/Fragen, je eine Story je Punkt erst nach Klärung (❓ = präzisieren, b
   Review REJECTED → N1 `984d9e06` (Kachel-Wechsel remountet den Blick, Reconnect nach fehlgeschlagenem
   Re-Read); keine Core-Änderung nötig (Origin-Stamping + Turn-Monitor reichen). Offen nur die
   Browser-Abnahme (Höhe/Follow im Slide-out, Kachel-Wechsel ohne Close).
-* **❓ C-8 · Abgelehnte SSE-Kante antwortet 500 statt 400/404** (2026-11-09, C-7-Bau): mit
-  `Accept: text/event-stream` (so fragt die UI an, `chat.stream.ts`) kann der gemeinsame
-  `ApiExceptionHandler` sein JSON nicht verhandeln ⇒ `HttpMediaTypeNotAcceptableException` quält
-  jeden Gate-Fehler in einen 500 — betrifft die **bestehende** `/events`-Kante genauso. Fix (Fehler-
-  Handler: Negotiation der ursprünglichen Status-Codes) ist klein, aber eigenes Inkrement.
+* **🔒 C-8 · Abgelehnte SSE-Kante antwortete 500 statt 400/404** (2026-11-09, C-7-Bau): mit
+  `Accept: text/event-stream` (so fragt die UI an, `chat.stream.ts`) konnte der gemeinsame
+  `ApiExceptionHandler` sein JSON nicht verhandeln ⇒ `HttpMediaTypeNotAcceptableException` quälte
+  jeden Gate-Fehler in einen 500 — betrifft die **bestehende** `/events`-Kante genauso.
+  **Gelöst 2026-11-09** mit der API-Fehler-Story: `ApiErrorResponses` verhandelt den Body gegen
+  `Accept` (kein JSON möglich ⇒ Status ohne Body); gemessen — vorher 500, jetzt 404 mit leerem Body
+  (`ApiErrorContractTest.anSseEdgeKeepsItsRejectedStatus`). [R-WP-55](api-errors.md) ✅.
+* **⏳ „Spring default error view" gemessen, Entscheidung am Advice** (2026-11-09, Pauls explizite
+  Bitte „gerne mal messen"): ohne eigenen `@RestControllerAdvice` antwortet die nicht gemappte
+  `/api/`-Kante mit Springs Body — `{"timestamp","status","error","path"}`, **ohne** `message`,
+  **ohne** `fieldErrors`. Unsere Fehlerform (`ApiError` + `fieldErrors`) trägt nur der eigene
+  Advice ⇒ **Empfehlung: Advice bleibt.** Pauls Rückversicherung steht aus; andersfall (Spring-Body
+  reicht) wäre die Sag-Zeile des Advices schlanker, aber die Feld-Fehlerfunktion fiele weg.
 
 
 

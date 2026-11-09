@@ -5,6 +5,32 @@ Fabrik-Inkremente committet Dev je Schritt und pusht. **Core-Änderungen NUR mit
 Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwissen (Plan-Dateien und
 `peon-plan/review-findings.md` sind das Memory); Docs duplizieren nie Core-Regeln; Plan-Archive werden
 **gelöscht**, nie committet.
+## Runde 6e — API-Fehler „sichtbar am Feld" ✅ (2026-11-09, nachmittags/abends)
+
+* **Gebaut + reviewed + geflippt ✅** (R-WP-54/55/56 + UC-WP-92/93 in api-errors.md; UC-WP-91 **gefoldet
+  in R-WP-54** — UNBELEGT_ERLEDIGT blockierte den Flip, kein Suite-Test gewollt, Nachweis M1/M2
+  `peon-plan/overview.md` §9): 5 Inkremente `e6ca3573` → `65e6b616` → `ff5ca103` → `78a1164a` →
+  `b78e59d1` + **N1** `c47c9edc`/`d35f7f27` (Review CONCERNS, kein BUG: S1 Alert-Fangnetz für
+  ungefasste Felder + M6/M7-Mutationen, L1 `.api-field.ant-form-item`, L2 Dedupe raus).
+  **Backend 274 / UI 268 Tests** grün, missCount=1, tsc/oxlint/antd-lint 0.
+* Wesentlich: typescript-generator 3.2.1263 → `server-api.ts` (committet, Build-Produkt), die
+  handgeschriebenen `validate()` **gelöscht** → Wire*-Constraints am Draht (Drei-State: null/blank =
+  erfüllt), drei Server-Formulare = echte AntD `Form` (Pauls Q1), C-8 gelöst (SSE 500→404).
+  Achtung: factory-ui läuft **vor** factory-backend im Reactor (nur committete `server-api.ts`
+  hilft einem Frischbau). Kein Core-Eingriff.
+* **Pauls Q1-Antwort:** natives `<form>` → AntD `Form` (Variante a). **M3 gemessen:** Spring default
+  error view hat kein `message`/`fieldErrors` → Advice bleibt; ⏳ in open-points (Pauls Rückversicherung).
+* **Pauls Browser-Befunde Runde 7 (open-points, nach dem Release fixen):** Überschriften im Main-Panel
+  raus, **„Chat" zurück ins Top-Menü** (Sider nur bei Chats sichtbar — nimmt Runde-6-Beschluss
+  teilweise zurück, R-WP-43 wird umgeschrieben), Reasoning-Effort Select→kein eigentyp möglich
+  („kann nichts selbst eingeben"), **❓ Kachel-Reihe oben im Chat weg (most critical)**, Clear/Compact
+  + Send als Icons an der Eingabe. Bis auf die Kachel-Regression als Look-Story geplant.
+* **Offen:** Docs-Commit auf Zuruf (api-errors.md, index.md, open-points.md, memory.md, resolved
+  nichts), Skill-Schärfung `api-types-and-error-widget/SKILL.md` (Textvorschläge in
+  `peon-plan/api-error-notes.md`), Browser-Abnahme N1-A9 (Feldabstände) + ältere Look-Abnahmen.
+  Backlog danach: Runde-7-Look-Story, C-2a, C-1 TurnClaim-Timeout, F9/F10, M2b, leeres
+  Doppelverzeichnis `aifactory/aifactory/factory-ui/test/app` (+`.DS_Store`) löschen?
+
 ## Runde 6d — C-7 „Blick im selben Chat-Widget (live)" ✅ (2026-11-09, vormittags)
 
 * **Gebaut + reviewed + geflippt ✅** (R-WP-53/UC-WP-89/90 in chat.md, chat.md: R-WP-26 um Verweis
