@@ -571,8 +571,9 @@ export function ChatPage({
         <ChatComposer draft={draft} busy={busy} onDraftChange={setDraft} onSubmit={submit} onStop={stop} />
       </section>
       {files}
-      {/* the look stands on the right edge only while the address leaves it free (R-WP-33, UC-WP-60 G3) */}
-      {insight !== null && <ChatInsight projectId={project.id} name={insight} onClose={closeInsight} />}
+      {/* the look stands on the right edge only while the address leaves it free (R-WP-33, UC-WP-60 G3);
+          the member is its identity: another tile is another look and carries no line of the first one */}
+      {insight !== null && <ChatInsight key={insight} projectId={project.id} name={insight} onClose={closeInsight} />}
     </>
   )
 }

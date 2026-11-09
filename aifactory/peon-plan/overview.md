@@ -314,3 +314,116 @@ sequenceDiagram
 ## 9. Offene Fragen
 
 **none.** (Alle inhaltlichen Punkte E1–E8 sind entschieden; Jons Freigaben F1–F3 sind in diesem Plan umgesetzt: C-7 als Ziel, AntD-CLI als DoD-Gate je UI-Inkrement, „C-9" gibt es nicht.)
+
+---
+
+## Review findings — C-7, Spitze `9bddf5e1` (`web-factory-4`)
+
+**Verdict: REJECTED** — 2 Verhaltens-BUGs im neuen Blick-Zustand (UI), beide im ungetesteten
+Reconnect/Wechsel-Pfad. Backend-Kanal, Gate, Reihenfolge Snapshot→Stream, Anker-Regel, Auto-Follow,
+§6-A1–A8 und das Aufräumen (Ink 3, keine Testdatei angefasst) sind sauber; die Doks decken sich mit
+dem Code.
+
+**Messungen**
+- Backend: `mvn -o -f aifactory/pom.xml -pl factory-backend clean test -Dlogging.level.org.springframework.test.context.cache=DEBUG`
+  → 264 Tests, 0 Failures, 0 Errors, BUILD SUCCESS; Kontext `missCount = 1`.
+- UI (`pnpm` nicht im PATH; `node v18` bricht vitest/rolldown an `node:util.styleText`): mit
+  node `v22.23.4` `./node_modules/.bin/vitest run` → 27 Dateien, **250/250** grün. `tsc -b` = 0;
+  `oxlint` = 0/0 (94 Dateien); `antd lint ./src` = „Scanned 54 files. No issues found."
+- Doc-Lint in Repo-Konvention (`UC-WP-\d+`, `docs` / `factory-backend/src/test` + `factory-ui/test`):
+  **0 Findings**, 90/90 UCs definiert und belegt — kein `UNBELEGT_ERLEDIGT`, kein `VERWAIST`.
+
+### BUGs (Verhalten, nach Wirkung)
+
+**BUG-1 (hoch) — Der Blick übernimmt beim Kachel-Wechsel den Zustand des vorigen Agenten.**
+`factory-ui/src/chat/chat.insight.tsx:43-47, 70-93, 122-165`, `chat.page.tsx:575`, `chat.edge.ts:40-43`.
+`ChatInsight` wird ohne `key` gerendert; eine andere Kachel ändert nur die Prop `name`, die Instanz
+bleibt. Der Effekt-Cleanup räumt nur den Stream ab (`:158-164`) — `live`, `messages`, `snapshot` nicht;
+`readSnapshot` schreibt ohne Namens-/Mount-Guard. Folge: (a) die Live-Zeilen des alten Mitglieds bleiben
+stehen und hängen am Anker des neuen Snapshots — Dev-Zeilen im Blick „Plan", genau die Isolation, die
+der Server per Namens-Kanal herstellt (R-WP-53 „nur für diesen Agenten", UC-WP-90); (b) scheitert der
+Read des neuen Namens, bleibt der alte Verlauf dauerhaft unter dem neuen Head + Fehlerzeile (der alte
+Stand setzte `transcript(null)`). Kein Test deckt den Wechsel ohne Schließen ab (`chat.insight.test.tsx:335`
+schließt zuerst). Beleg: Code-Trace; `openInsight("Dev")` → sofort `openInsight("Plan")`.
+Richtung: Zustand an den Namen binden (`key={insight}` an `chat.page.tsx:575` ⇒ Cleanup ist vollständig)
+oder beim Wechsel `live/messages/snapshot` leeren und den Read gegen `name` + `mounted` prüfen.
+
+**BUG-2 (mittel) — Nach einem Server-Neustart kann der Blick dauerhaft stehen bleiben.**
+`chat.insight.tsx:132-144` gegen `chat.page.tsx:379-389` (Plan E3: „Reconnect = Re-Read, dann
+Re-Subscribe in der Form von `chat.page.tsx:367-412`"). Der nächste Versuch wird nur geplant, wenn der
+Re-Read `true` liefert (`:139-143`). `openChatStream` meldet eine abgerissene/abgelehnte Verbindung als
+`onEnd(true)` (`chat.stream.ts:31-36`) — der Neustart-Fall, für den `RECONNECT_MS` existiert. Antwortet
+der Server beim Re-Read noch nicht, gibt es **keinen** weiteren Versuch: eingefroren bis Schließen.
+Kein Test für den Reconnect-Pfad des Blicks. Beleg: Code-Trace (`read === false` ⇒ kein `setTimeout`).
+
+### Suspicions
+Keine.
+
+### LOW
+1. `ChatStreamRegistryTest:130-147` `jonChannelNeverCarriesAnAgentLine` prüft nicht, was der Name sagt:
+   nach `publishAgent` wird nur `dev.sent` geprüft, `jon.sent` danach nie — grün bliebe auch ein Leak
+   von `publishAgent` auf Jons Draht (Schutz liegt allein in `agentChannelReachesOnlyItsOwnAgent:102-125`).
+   Nach `settle(...)` Jons Draht unverändert asserten oder den Test umbenennen.
+2. `chat.insight.test.tsx:216` `expect(panel.lastElementChild).toBe(log)` ist implementationsgekoppelt:
+   kein CSS liest diese Geschwister-Ordnung, und mit `truncated` steht der Hinweis dahinter. Streichen.
+3. `chat.insight.test.tsx:259-293` deckt den Wachstum nur mit `partial(answer)` + `tool`; der Zweig
+   `event.thinking` (`chat.insight.tsx:102-107`, UC-WP-90 „Zwischenschritte") hat keine UI-Abdeckung.
+   Ein dritter Push `partial(think)` im selben Test genügt.
+4. `docs/aifactory-architektur.md:175-178` zählt die Kachel-Familie weiter ohne `…/{name}/events`
+   (Zeile 47: Registry „je Projekt"); `ChatController:27-29` zitiert diese Sektion. Doc-Lücke (Jon).
+5. Plan-Text vs. Code: §5 Ink3 nennt weiter den Selektor `.chat-insight .chat-log {…}`, umgesetzt ist
+   `.chat-insight{display:flex}` (in der FERTIG-Notiz begründet, nicht als §6-Abweichung geführt);
+   §6 A8 behauptet die Überschrift `RWP-53`, sie lautet `R-WP-53` (harmlos: Repo-Lint prüft nur UC-Ids).
+
+### Pre-existing (nicht blockierend)
+- **A7:** mit `Accept: text/event-stream` antwortet jede abgelehnte Live-Kante 500 statt 400/404 —
+  identisch für die alte `/events`-Kante; der neue Test misst die Codes über den verhandelbaren Pfad.
+- Der alte Verlauf blieb beim Kachel-Wechsel schon vor C-7 bis zum Ende des neuen Reads stehen (Wurzel
+  von BUG-1, jetzt um die Live-Zeilen verschärft).
+- `// R-WP-…`-Marker sind für die hiesige Doc-Lint unsichtbar; mit `(?:UC|R)-WP-\d+` entstehen 52
+  `VERWAIST`, alle aus bestehenden R-WP-Markern (nicht C-7-spezifisch).
+
+### Plan conflict (4)
+Keiner in der Sache; die einzige echte Plan↔Code-Spannung ist E3 (Reconnect-Form) = BUG-2.
+
+### Mutation-Check (9) / Skill-/Instruktions-Gap (10)
+Nicht beauftragt / keiner beobachtet (AntD-Gate, Spring-Ein-Kontext-Regel, Testkonventionen eingehalten).
+
+**Most likely reason this breaks later:** Der Blick bindet seinen Zustand nicht an den Agentennamen —
+ein Kachel-Wechsel zeigt Zeilen des einen Mitglieds unter dem Namen eines anderen.
+**Was das Risiko am stärksten senkt:** die Komponente pro Namen neu mounten (`key={insight}`) bzw. Read
+namensgebunden machen — und den Reconnect unabhängig vom Re-Read-Ergebnis planen.
+
+### N1 gebaut (Dev, 2026-11-09) — beide BUGs, ein Commit
+
+- **BUG-1** — `chat.page.tsx:575` rendert `<ChatInsight key={insight} …/>`: der Mitglied-Name ist die
+  Identität des Blicks, ein Kachel-Wechsel remountet ihn, `live`/`messages`/`snapshot` beginnen bei null, und
+  der Cleanup des Effekts (Abort + `clearTimeout`) ist damit vollständig. Keine Reset-Effekte, kein
+  Namens-Guard im Read — die Alternativ-Variante wäre mehr Code für dasselbe Ergebnis. Fall:
+  `anotherTileWithoutClosingShowsNothingOfTheFirstMember` (UC-WP-90).
+- **BUG-2** — `chat.insight.tsx` `onEnd`: `writeLive([])`, Read, **und unbedingt**
+  `setTimeout(connect, RECONNECT_MS)` — die Form von `chat.page.tsx:379-389`. Ein abgelehnter Re-Read kostet
+  nur die Antwort, die er nicht gab: die nächste Antwort beendet diese Verbindung und der Read danach ersetzt
+  den Stand. JavaDoc der Klasse auf diese Regel gezogen. Fall: `theLookKeepsAskingAfterARefusedReload`
+  (UC-WP-89, UC-WP-90).
+- **Rot vor grün:** `anotherTileWithoutClosingShowsNothingOfTheFirstMember` — „no live line of the previous
+  member is left behind: expected …(1) to have a length of +0 but got 1";
+  `theLookKeepsAskingAfterARefusedReload` — „expected 1 to be 2" (die zweite Subscription bleibt aus; die
+  Fehlerzeile und der gezählte fehlgeschlagene Read waren auch vorher schon grün). Beide nach dem Fix grün —
+  dieselben beiden Läufe sind damit zugleich der Mutationsnachweis der beiden Fixes.
+- **LOW mitgebaut:** LOW-2 (Assertion `panel.lastElementChild` gestrichen — kein Blatt liest diese
+  Geschwister-Ordnung, `styles.css` hat keinen Kombinator im Blick, und mit `truncated` stünde der Hinweis
+  dahinter) und LOW-3 (dritter Push `partial(think)` im Wachstums-Test; Mutation: `event.thinking`-Zweig tot ⇒
+  genau dieser Test rot, „expected [] to have a length of 1"). **LOW-1 nicht gebaut:** Backend-Testdatei,
+  außerhalb von Jons Delta-Umfang „nur UI + Tests" — bleibt offen. **LOW-4/LOW-5:** Doku bzw. Plan-Text,
+  Jons Seite.
+- **Test-Infra (benannt, A2 folgend):** der Stub kann Read-Ablehnungen gezielt setzen
+  (`failTranscriptRead(name)`) und `closeStream(path?)` schließt eine einzelne Leitung — ohne gezieltes
+  Schließen bräche auch der Jon-Draht ab und dessen History-Read trübte die Zählung; `PLAN_READ` ergänzt
+  (ein Pfad, zwei Benutzer).
+- **Abweichung vom „nur löschend"-Budget `chat.page.tsx`:** 587 → **588** Zeilen — eine Kommentarzeile für die
+  `key`-Regel, die Prop selbst sitzt in der bestehenden Zeile. Budgetgrenze 600 hält.
+- **Grün:** UI **252/252** in 27 Dateien (vorher 250), `tsc -b` 0, `oxlint` 0/0 (94 Dateien), `antd lint ./src`
+  „No issues found" (AntD nicht berührt, Gate trotzdem gefahren). Backend unverändert — keine Backend-Datei im
+  Delta, 264/0 zuletzt am selben Stand gemessen.
+- **Offen nach N1:** LOW-1 (Backend-Test), Browser-Abnahme des Blicks, Dok-Flips R-WP-53 / UC-WP-89 / UC-WP-90.

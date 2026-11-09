@@ -21,6 +21,7 @@ const ID = '/api/projects/demo-1a2b3c4'
 const JON_STREAM = `${ID}/events`
 const DEV_STREAM = `${ID}/agents/Dev/events`
 const DEV_READ = `${ID}/agents/Dev`
+const PLAN_READ = `${ID}/agents/Plan`
 
 interface Wire {
   calls: { method: string; path: string }[]
@@ -32,7 +33,10 @@ interface Wire {
    * a silently missing stream would only make the next `waitFor` time out.
    */
   stream(path: string): { push(text: string): Promise<void> }
-  closeStream(): Promise<void>
+  /** The next read of this tile's conversation answers 500 — a server that has not come back yet. */
+  failTranscriptRead(name: string): void
+  /** One wire by its exact path, or every open one when the test names none. */
+  closeStream(path?: string): Promise<void>
 }
 
 let active: Wire | undefined
@@ -77,6 +81,7 @@ function traceOf(kind: 'tool' | 'think', root: Element): Element[] {
 function stubWire(tiles: AgentTile[], transcripts: Record<string, AgentTranscript>): Wire {
   const calls: Wire['calls'] = []
   const streams = new Map<string, ReadableStreamDefaultController<Uint8Array>>()
+  const refusals = new Map<string, number>()
   const encoder = new TextEncoder()
 
   vi.stubGlobal(
@@ -99,6 +104,11 @@ function stubWire(tiles: AgentTile[], transcripts: Record<string, AgentTranscrip
       const named = path.match(/\/agents\/([^/]+)$/)
       if (named !== null) {
         const name = decodeURIComponent(named[1])
+        const refused = refusals.get(name) ?? 0
+        if (refused > 0) {
+          refusals.set(name, refused - 1)
+          return json(500, { status: 500, error: 'internal', message: `${name} ist noch nicht erreichbar` })
+        }
         const found = transcripts[name]
         return found === undefined
           ? json(400, { status: 400, error: 'bad request', message: `kein Blick für ${name}` })
@@ -128,9 +138,15 @@ function stubWire(tiles: AgentTile[], transcripts: Record<string, AgentTranscrip
         },
       }
     },
-    closeStream: async () => {
+    failTranscriptRead: (refusedName: string) => {
+      refusals.set(refusedName, (refusals.get(refusedName) ?? 0) + 1)
+    },
+    closeStream: async (path?: string) => {
       await act(async () => {
-        for (const opened of streams.values()) {
+        for (const [openPath, opened] of streams) {
+          if (path !== undefined && openPath !== path) {
+            continue
+          }
           try {
             opened.close()
           } catch {
@@ -212,8 +228,6 @@ test('theAgentViewRendersInTheSharedChatWidget', async () => {
   expect(answer.querySelector('[data-testid="chat-markdown"]')).not.toBeNull()
   expect(answer.textContent).toContain('Zwei Dateien.')
   expect(within(answer).getByTestId('chat-line-author')).toHaveTextContent('Dev')
-  // the log is the last thing of the slide-over: the sheet hangs its measures on that order
-  expect(panel.lastElementChild).toBe(log)
 })
 
 // UC-WP-49
@@ -283,6 +297,14 @@ test('theAgentViewGrowsWhileTheMemberWorks', async () => {
     steps[0].querySelector('.chat-step-name')?.textContent,
     'the step keeps the stamp his wire carried and the log invents nothing',
   ).toBe('Dev')
+  // a Think delta is a step of his trace and never a voice of his own (R-WP-40, UC-WP-90)
+  await wire.stream(DEV_STREAM).push(event('partial', { kind: 'think', text: 'ich lese erst den Root' }))
+  await waitFor(() => expect(traceOf('think', log)).toHaveLength(1))
+  expect(traceOf('think', log)[0].textContent).toContain('ich lese erst den Root')
+  expect(
+    log.querySelectorAll('[data-testid="chat-line-jon"]'),
+    'a thought of his streams as a step, not as an answer',
+  ).toHaveLength(0)
   expect(
     panel.querySelectorAll('[data-testid="working-indicator"]'),
     'his wire names no turn end, so no step of the look may claim to be working (R-WP-53)',
@@ -290,6 +312,40 @@ test('theAgentViewGrowsWhileTheMemberWorks', async () => {
   // and it grew without asking anything: one snapshot, no second read, the chat's history untouched
   expect(transcriptReads(wire)).toHaveLength(readsBefore)
   expect(historyReads(wire)).toHaveLength(historyBefore)
+})
+
+// UC-WP-89
+// UC-WP-90
+test('theLookKeepsAskingAfterARefusedReload', async () => {
+  const wire = stubWire([tile('Dev', MEMBER)], {
+    Dev: transcriptOf('Dev', [{ kind: 'agent', text: 'Der Code steht.' }]),
+  })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.click(screen.getByTestId('tile-open-Dev'))
+  const panel = await screen.findByTestId('insight-panel')
+  const log = await within(panel).findByTestId('insight-log')
+  await waitFor(() => expect(wire.paths('GET')).toContain(DEV_STREAM))
+  const subscriptions = () => wire.paths('GET').filter(path => path === DEV_STREAM).length
+
+  // a server that is restarting: his wire drops and the read that follows it is refused
+  wire.failTranscriptRead('Dev')
+  await wire.closeStream(DEV_STREAM)
+  await waitFor(() => expect(within(panel).queryByTestId('insight-error')).not.toBeNull())
+  expect(transcriptReads(wire), 'the refused reload is counted as the read it was').toEqual([DEV_READ, DEV_READ])
+
+  // the refusal must not freeze the look: asking again is what brings a member's view back
+  await waitFor(() => expect(subscriptions()).toBe(2), { timeout: 2_000 })
+  await wire.closeStream(DEV_STREAM)
+  await waitFor(() => expect(within(panel).queryByTestId('insight-error')).toBeNull())
+  expect(transcriptReads(wire)).toEqual([DEV_READ, DEV_READ, DEV_READ])
+  expect(log.textContent).toContain('Der Code steht.')
+
+  // and it grows again on the wire it asked for: the reload returned his conversation, not a blank
+  await waitFor(() => expect(subscriptions()).toBe(3), { timeout: 2_000 })
+  await wire.stream(DEV_STREAM).push(event('partial', { kind: 'answer', text: 'Die Tests laufen.' }))
+  await waitFor(() => expect(within(log).getByTestId('chat-live').textContent).toContain('Die Tests laufen.'))
 })
 
 // UC-WP-90
@@ -351,5 +407,39 @@ test('closingTheInsightThenOpeningAnotherTileReadsAgain', async () => {
   fireEvent.click(screen.getByTestId('tile-open-Plan'))
   const planPanel = await screen.findByTestId('insight-panel')
   await within(planPanel).findByTestId('chat-line-jon')
-  expect(transcriptReads(wire)).toEqual([DEV_READ, `${ID}/agents/Plan`])
+  expect(transcriptReads(wire)).toEqual([DEV_READ, PLAN_READ])
+})
+
+// UC-WP-90
+test('anotherTileWithoutClosingShowsNothingOfTheFirstMember', async () => {
+  const wire = stubWire([tile('Dev', MEMBER), tile('Plan', MEMBER)], {
+    Dev: transcriptOf('Dev', [{ kind: 'agent', text: 'Der Code steht.' }]),
+    Plan: transcriptOf('Plan', [{ kind: 'agent', text: 'Der Plan steht.' }]),
+  })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.click(screen.getByTestId('tile-open-Dev'))
+  const devPanel = await screen.findByTestId('insight-panel')
+  await within(devPanel).findByTestId('chat-line-jon')
+  await waitFor(() => expect(wire.paths('GET')).toContain(DEV_STREAM))
+  await wire.stream(DEV_STREAM).push(event('partial', { kind: 'answer', text: 'Dev schreibt noch.' }))
+  await waitFor(() =>
+    expect(within(devPanel).getByTestId('chat-live').textContent).toContain('Dev schreibt noch.'),
+  )
+
+  // the next tile while this look stands: it belongs to the member its tile named, and to nobody else —
+  // the server answers one member per name, so the look may carry no line of another (R-WP-53)
+  fireEvent.click(screen.getByTestId('tile-open-Plan'))
+  const planPanel = await screen.findByTestId('insight-panel')
+  const log = await within(planPanel).findByTestId('insight-log')
+  await waitFor(() => expect(log.textContent).toContain('Der Plan steht.'))
+
+  expect(within(planPanel).getByTestId('insight-agent')).toHaveTextContent('Plan')
+  expect(
+    log.querySelectorAll('[data-testid="chat-live"]'),
+    'no live line of the previous member is left behind',
+  ).toHaveLength(0)
+  expect(log.textContent).not.toContain('Dev schreibt noch.')
+  expect(transcriptReads(wire)).toEqual([DEV_READ, PLAN_READ])
 })

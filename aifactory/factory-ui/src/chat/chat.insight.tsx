@@ -32,7 +32,8 @@ interface Props {
  * One rule covers the opening and every reconnect, the chat's own rule D-E: <em>read, then subscribe</em>.
  * The anchor of every live line is the number of voices the snapshot held, frozen while the look stands — so
  * nothing is drawn twice and nothing is read a second time while the look is open. A dropped wire heals the
- * way it opened: re-read, then re-subscribe.
+ * way it opened — re-read and re-subscribe. A read the server has not come back for changes nothing about
+ * that: the look keeps asking, because a wire that stopped asking never comes back at all.
  *
  * What the read refuses stays one line of text where the conversation would stand — no dialog, no retry
  * (R-WP-26), and no second request for a name the runtime refuses (R-WP-53). A task line names nobody: the
@@ -134,13 +135,11 @@ export function ChatInsight({ projectId, name, onClose }: Props) {
               return
             }
             // a dropped wire loses the live lines and nothing else (R-WP-11): his snapshot is read again —
-            // the stream brings nothing back — and only a read that answered is followed by a subscription
+            // the stream brings nothing back — and the wire is asked for again in the same breath. A read the
+            // server has not come back for must not end the asking: it would freeze the look until it closes
             writeLive([])
-            void readSnapshot().then(read => {
-              if (mounted && read) {
-                reconnect = setTimeout(connect, RECONNECT_MS)
-              }
-            })
+            void readSnapshot()
+            reconnect = setTimeout(connect, RECONNECT_MS)
           },
         },
         controller.signal,
