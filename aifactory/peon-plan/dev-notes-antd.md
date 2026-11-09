@@ -1367,3 +1367,31 @@ Review REJECTED (1 BUG, 3 LOWs) → vier Commits, **kein Backend-Eingriff**, kei
 - **Werkzeug-Notiz:** `npm test -- test/chat/<datei>.test.tsx` bricht in diesem Projekt mit
   `Could not parse CSS stylesheet` (jsdom-Einzel Datei-Lauf) — einzelne Fälle über `npm test -- -t '<name>'`
   filtern, nie über den Dateipfad.
+
+
+### A7-N1 Zusatz — Test-Split der Chat-Seite (AGENTS.md:10-12)
+
+`test/chat/chat.page.test.tsx` war **2231** Zeilen (> 1000 = Blocker). Geteilt **nach dem, was eine Datei
+beweist**, und die geteilte Draht-Attrappe in ein Modul:
+
+- `test/chat/chat.page.stub.ts` (**294**) — `fetch`-Attrappe (`stubChat`, `event`, `json`, `flush`,
+  `KEEP_ALIVE`, `tile`), die Konstanten-Paare des Gesprächs, die Zähler-Helfer (`sentTexts`, `userLineTexts`,
+  `agentLinesSaying`, `authorsOfLines`, `framedLines`, `mockScrollOf`) und die Stub-Lebensdauer
+  (`resetChatStub` im `beforeEach`, `closeChatStub` im `afterEach` — der Hooks-Rumpf steckt jetzt dort, die
+  Aufrufe bleiben je Testdatei, sonst fehlt einer, wenn eine dritte Datei dazukommt).
+- `test/chat/chat.page.test.tsx` (**797**) — Projekt öffnen, Composer, Senden, Kacheln/Steuerung, Leer-Send,
+  Warten, Scroll.
+- `test/chat/chat.read.page.test.tsx` (**459**) — was der **Read** bringt: Races, Reconnect, Bestand,
+  Autoren/Team/Rollen.
+- `test/chat/chat.trace.page.test.tsx` (**758**) — die **Spur**: Timeline, Anker, Delegation, Diff.
+
+Beweis der Verlustfreiheit: 64 `test(`, 60 `// UC-`-Marker, 338 `expect(`-Aufrufe — vor und nachher gleich;
+Suite **222 grün** (24 Dateien), `tsc -b` 0, `oxlint` 0/0 (86 Dateien), `antd lint ./src` 0. **Keine**
+Assertion geändert.
+
+- **Warum drei Dateien statt zwei:** die Testmasse ist 1930 Zeilen; jede Zwei-Teilung hätte eine Datei über
+  1000 gehalten oder einen Test-Block zerschnitten. Die Grenze „Seite / Read / Spur" ist die einzige, die
+  zusammenhängende Blöcke hält.
+- **Werkzeug-Notiz:** die Bereiche wurden per `sed` aus der Originaldatei geschnitten (byte-treu), nicht
+  abgeschrieben. Die Blockanfänge müssen an der **Kommentarzone** sitzen, nicht an der `test(`-Zeile — ein
+  Schnitt bei einer Testnummer trennte JavaDoc und Rumpf (TS1109).
