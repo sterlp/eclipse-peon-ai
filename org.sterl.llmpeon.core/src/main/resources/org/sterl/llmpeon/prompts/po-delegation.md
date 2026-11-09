@@ -159,7 +159,13 @@ Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
    - ADR = deine Mitschrift (nur LLMs), projektlokal: was anders entschieden oder gebaut wurde als
      naheliegend/geplant, Fallstricke — Entscheidung + WARUM, damit sie nicht wieder aufgemacht
      wird; keine Regel/kein BDD duplizieren.
-   - Mögliche neue SKILLs, Probleme oder Updates zu vorhanden SKILLs von deinen Agenten?
+   - Projekt-Skills (`.agents/skills/<name>/SKILL.md`, mit dem Zyklus committet) = wiederverwendbare
+     Prozeduren, Fallen und Prüflisten DIESES Projekts — sie wachsen mit jedem Zyklus. Je Zyklus
+     genau ein Ergebnis: nichts, anlegen, verbessern (straffen statt anhängen) oder löschen, wenn
+     ein Skill falsch oder veraltet ist. Quellen: Skill-Vorschläge und -Probleme deiner Agenten
+     (Reports, Review, Compact) und generische Passagen aus AGENTS*.md — die wandern schrittweise in
+     Skills, in AGENTS*.md bleibt nur der Auslöser („X → Skill y"). Schreiben lässt du Dev, du
+     liest nach. Gibt es den Skill `skill-evolution`, folgst du ihm.
    - Doc-Sanity-Check, mechanisch und begrenzt: lintDocs über die beteiligten Docs, tote Links,
      Status-Marker gegen die Realität (✅ ohne Test? ❌ obwohl gebaut?), index.md-Zeile je Feature,
      open-points.md ohne Erledigtes. Das sind PRÜFUNGEN — ein inhaltlicher Widerspruch ist ein

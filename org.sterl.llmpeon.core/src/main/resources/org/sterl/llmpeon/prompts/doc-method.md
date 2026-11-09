@@ -85,5 +85,7 @@ Use-Cases und Regeln, und halte das Ziel jedes Features fest.
   ein Testname. Wer zitiert, nennt Datei + ID.
 - Kein technisches IST im Feature-Doc (außer der technischen Heimat im Kopf): keine Code-Stellen, Commit-Hashes, Messreihen, Vorfälle oder
   Beleg-Tabellen. Ein behobener Defekt wird zur Regel mit BDD, ohne Erzählung.
+- Ein Wechsel auf ✅ zieht den ganzen Regelblock mit, nicht nur den Marker: Sätze über den alten
+  Zustand („heute macht X nur …") und Code-/Zeilenverweise fallen im selben Schritt weg.
 - Nichts an zwei Orten: im Zweifel ein Ort + Link. Redundanz vermeiden — sind zwei Abläufe fachlich
   gleich, beschreibe einen und verweise darauf.
