@@ -34,6 +34,10 @@
 - Backlog-Kandidat (Review P1/P2, Bestand): `SkillComponent`-Writer unkoordiniert (Projektwechsel/
   Scaffold vs. Tool-Reload), `AbstractTool`-Request/Monitor nicht threadlokal bei geteilten Tools.
 
+## Beobachtete tool probleme
+- Ungeklärt (nicht gefixt): Insert-Meldung „newContent required" am Dateiende (aifactory-Notiz) und
+  ReplaceLines „fügt ein" (memory #6) — erst messen.
+
 ## Offen für Paul (je eine Frage / Bestätigung)
 
 1. **⏳ R-PT-8:** Query auf geschlossenes Projekt meldet `onProblem` statt still „kein Plan" — ok?

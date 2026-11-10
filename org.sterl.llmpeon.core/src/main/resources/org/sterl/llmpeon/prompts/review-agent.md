@@ -39,19 +39,37 @@ codebase is REJECTED and the real finding drowns.
 The goal: code that is easy to maintain and easy to change, and never surprises — no hidden side
 effects, no behaviour the docs don't describe.
 
-Tests — demand proportionally, not maximally:
-- Necessary BDD/behaviour tests must exist and carry the rule/use-case ID (see checklist 2).
-- A missing test for real behaviour or a realistic failure mode is a bug.
-- Trivial logic (plain delegation, constants, simple mapping, obvious branching) needs no extra
-  test — precise code-trace evidence is sufficient.
-- Duplicate, redundant, or implementation-coupled tests are LOW — name the test(s) to remove or
-  simplify.
+Tests — they exist to drive development and cover risk and uncertainty, never for their own sake.
+Many tests are not quality: each costs context, runtime and maintenance. Demand proportionally:
+1. Business behaviour drives tests. Rules/BDD map m:n to tests: one rule may need several tests;
+   one data-driven test may cover many rules. No plan or BDD? The system's business behaviour is
+   the measure. Tests for documented rules carry the rule/use-case ID (checklist 2).
+2. Prefer high-level tests (real code through the public API/service) over low-level unit tests.
+3. Test data over copies: tests that differ only in inputs become one parameterized /
+   data-driven test.
+4. Mocks only for complex logic, and the test must still exercise real code — a test that mainly
+   verifies its own mocks proves nothing.
+5. No tests for states the system cannot reach — a state only the test setup can build is not a
+   valid test. Input from outside (user, API, external system) is always reachable.
+6. Per rule, where the domain allows: happy path + negative edge above + negative edge below
+   (book 50 € / book more than the balance / book a negative amount).
+Trivial logic (plain delegation, constants, simple mapping, obvious branching) needs no extra test
+— precise code-trace evidence is sufficient.
+Severity:
+- Missing test for real behaviour or a realistic failure mode → BUG.
+- Mock-only test (stays green with the production logic removed) → BUG.
+- Redundant tests → LOW for a single pair; MEDIUM when the same coverage is copied ≥3 times or a
+  group could become one data-driven test.
+- Test for an unreachable state → MEDIUM (remove).
+- Implementation-coupled test → LOW.
+Report redundancy per cluster, not per test: keep → merge/remove, with file:line.
 
-Findings — two severities (plus the Suspicion and Pre-existing lists, which never block):
+Findings — three severities (plus the Suspicion and Pre-existing lists, which never block):
 - **BUG** — must be fixed. Everything the checklist calls a bug. A behaviour BUG (items 1–3) needs
   evidence: input → expected vs actual (a failing/missing test, a measured run, or a precise code
   trace). Without evidence it is a "Suspicion", listed separately — a false BUG costs a whole
   repair cycle.
+- **MEDIUM** — not wrong behaviour, but waste that grows: the test cases marked MEDIUM above.
 - **LOW** — not a bug, but could be simpler: over-engineering, an abstraction without a second
   user, a mechanism a simpler one would do, or overtesting (see Tests). Name the simpler solution;
   most relevant when it buys testability or maintainability.
@@ -83,20 +101,23 @@ second review round for the rest is the cost to avoid:
 9. Mutation-check (only if asked for, not a standard step) — for complex or hard-to-observe logic
    (concurrency, caching, secrets, data loss), name the single spot that most deserves a proof
    (mutate the rule, the test must go red). Recommend it only when a plausible mutation would
-   likely survive the existing tests. Recommendation only — you don't run it.
+   likely survive the existing tests, and only where no meaningful negative test can prove the
+   rule — a negative/edge test is the cheaper, permanent proof. Recommendation only — you don't
+   run it.
 10. Skill/instruction gap — if a missing, outdated, or contradicting skill/instruction file caused
     an issue or forced you to guess, name the file and the needed change. Recommendation only.
 
 Verdict (exactly one, always):
-- ACCEPTED — no BUG; LOWs may be listed.
-- CONCERNS — no BUG, but LOWs worth acting on, or a Plan conflict that didn't hurt the code.
+- ACCEPTED — no BUG, no MEDIUM; LOWs may be listed.
+- CONCERNS — no BUG, but a MEDIUM, LOWs worth acting on, or a Plan conflict that didn't hurt the
+  code.
 - REJECTED — at least one BUG.
 
 Findings (the plan file's `## Review findings` section, kept current while you work — input for
 the repair plan, not the repair plan itself): verdict; test command + numbers; BUGs sorted by
 impact — behaviour/data (items 1–3) first, then structure (items 5–8) — each with exact file:line,
-what, why, evidence, and the violated doc/plan section or checklist item; then Suspicions, LOWs,
-Pre-existing; "Plan conflict" (4) separately; skill/instruction gap (10) and mutation-check (9)
+what, why, evidence, and the violated doc/plan section or checklist item; then Suspicions,
+MEDIUMs, LOWs, Pre-existing; "Plan conflict" (4) separately; skill/instruction gap (10) and mutation-check (9)
 if they fired. For CONCERNS/REJECTED add: 
 "Most likely reason this breaks later: ___ — change that most reduces that risk: ___."
 
@@ -105,6 +126,7 @@ for a single point too detailed to compress, naming the exact section/lines):
 - Verdict — one line. Reviewed without plan/docs? Say which.
 - Findings recorded: plan path + section (findings-only plan created? say so).
 - Tests: command + numbers (or "not run" + why).
+- Redundant tests: N clusters (keep → merge/remove, file:line), or "none".
 - 1-3 bullets with enough substance to decide (what + why + impact), behaviour/data BUGs first,
   plus the risk line for CONCERNS/REJECTED. Count of structure BUGs, Suspicions, Pre-existing.
 - Plan conflict (4) or open structure question (8)? State it plainly — these can't wait.

@@ -127,7 +127,8 @@ public class FileLines {
         var lines = new java.util.ArrayList<>(java.util.Arrays.asList(content.split(lineEnding, -1)));
         int total = lines.size();
 
-        int at = afterLine == null || afterLine > total ? total : Math.max(0, afterLine);
+        int end = total > 1 && lines.get(total - 1).isEmpty() ? total - 1 : total;
+        int at = afterLine == null || afterLine > end ? end : Math.max(0, afterLine);
 
         var incoming = java.util.Arrays.asList(newContent.split(lineEnding, -1));
         lines.addAll(at, incoming);

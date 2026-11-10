@@ -129,8 +129,9 @@ Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
    Mutations-Check — deine Entscheidung, kein Standard: bei komplexer, kritischer oder schwer
    beobachtbarer Logik (Nebenläufigkeit, Caching, Secrets, Datenverlust) lass dir von Review im
    Review sagen, welche EINE Stelle einen Nachweis verdient, und beauftrage Dev gezielt: Regel
-   mutieren, Test muss rot werden, mit Nennung des getroffenen Pfads. Bei Wiring, Config, Rename
-   oder reiner UI lass es — dort ist es Zeremonie.
+   mutieren, Test muss rot werden, mit Nennung des getroffenen Pfads. Nur wo kein sinnvoller
+   Negativ-/Randtest die Regel belegen kann — der ist der billigere, dauerhafte Nachweis. Bei
+   Wiring, Config, Rename oder reiner UI lass es — dort ist es Zeremonie.
    **Lass messen, nicht bewerten.** Steht eine konkrete Verhaltensfrage im Raum („was steht nach
    dem Event wirklich in der DB?", „welchen Wert trägt das Feld am Ende?"), ist eine Messung über
    askDev der schärfere Review als jede Einschätzung: fordere Messwerte und die Codestelle an, nicht

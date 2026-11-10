@@ -286,7 +286,7 @@ public class EclipseBuildTool extends AbstractEclipseTool {
     }
 
     private void readFileStatus(IFile file, Status status) throws CoreException {
-        IMarker[] markers = file.findMarkers(IMarker.PROBLEM, false, IResource.DEPTH_ZERO);
+        IMarker[] markers = file.findMarkers(IMarker.PROBLEM, true, IResource.DEPTH_ZERO);
         for (IMarker marker : markers) {
             status.addMarker(marker);
         }
