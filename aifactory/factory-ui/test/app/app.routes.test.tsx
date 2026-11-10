@@ -369,18 +369,23 @@ test('anUnknownAddressShowsTheApp', async () => {
 })
 
 // UC-WP-51
-// INC-5A-D2: the trigger is the address now — R-WP-38 removed the "Chat" entry, so a bookmark and a
-// redirect are what this use case is about. Both claims below are the ones that were already here.
+// UC-WP-76
 test('chatOpensTheLastActiveProject', async () => {
   stubAppServer()
   localStorage.setItem('aifactory.lastProject', project().name)
-  const app = renderApp('/chat')
+  const app = renderApp('/projects')
+  await screen.findByLabelText(content.projects.gitUrl)
+
+  // the entry of the header is the way back in (R-WP-43), and the click is what makes this a claim about that
+  // entry: without it the app still stands on the list
+  fireEvent.click(within(topNav()).getByRole('menuitem', { name: content.nav.chat }))
 
   expect(await screen.findByRole('region', { name: content.chat.title })).toBeInTheDocument()
   expect(app.path()).toBe(CHAT_PATH)
-  // same mount, address nobody clicked in the tree: `/chat` became this project's chat, so the tree shows
-  // exactly that entry (R-WP-38) — the mark is the address, not what the mount found first
+  // `/chat` became this project's chat (UC-WP-51), so both menus answer the address they now stand on and not
+  // what the mount found first (R-WP-38, UC-WP-76 GIVEN 3)
   await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.chat))
+  expect(markedTopEntry().textContent).toBe(content.nav.chat)
 })
 
 // UC-WP-51

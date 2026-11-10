@@ -151,6 +151,9 @@ const onChatPage = page === chatRoot          // neu: eine Zeile, die einzige En
 | — | **L3** Sider nur bei Chats | R-WP-43 + **R-WP-44** (:210-235: Sider **und** sein Header-Griff existieren nur auf Chat-Adressen; auf `/projects` und `/settings` kein Baum) + **R-WP-38** (:98-105 „Top-Menü **und** Sider") + **UC-WP-77/UC-WP-78** (Sider-Zeichen nur auf Chat-Adressen) | ✅ nach L3 + Browser |
 | — | **L4** Think editierbar | **R-WP-23** Think-Aufzählung (:143-150), **UC-WP-67** GIVEN 1 (+ GIVEN 2 Wortlaut „Auswahl"), **R-WP-49** (:192-196), **UC-WP-85** GIVEN 1: Values/Toggle = **Auswahl aus der Provider-Liste oder eigene Eingabe** (Parität: editierbares Combo im Plugin), Wert immer verbatim, leer = erbt. Wortlaut „nie Freitext"/“kein Freitext-Feld" muss weg | ✅ nach L4 + Browser |
 
+**Stand nach L2 (2026-11-10):** L1 und **L2 gebaut** (`web-factory-5`) — die Doc-Häkchen ❌ L1/L2 bleiben
+bei Jon stehen, bis die Browser-Abnahme (§11) sie auf ✅ setzt. L3 und L4 sind nicht gebaut.
+
 Reihenfolge L1 → L2 → L3 → L4: kleinste Wirkung zuerst; L2 vor L3, weil L2 die Kopf-Polarität setzt, die L3 in den Tests mitliest; L4 ist unabhängig (nur `config.*`) und kann bei Jons Zuruf auch zuerst oder allein laufen.
 
 ## 7. Acceptance-Kriterien (je Kriterium ein laufbarer Test)
@@ -238,13 +241,53 @@ Abzunehmen: (1) Seiten ohne Überschrift, genug Luft oben? (2) Top-Menü Projekt
   * **Was der Test nicht beweist (§8):** ob der Kopf ohne Überschrift genug Luft hat / „zu leer" wirkt —
     Browser-Abnahme (§11.1), Annahme ⏳ Q1 (Chat-Kopf und `h2` bleiben) weiter offen.
   * **Commit:** siehe `git log` auf `web-factory-5` (`L1: …`), Push auf `origin/web-factory-5` gefahren.
-* L2: dito, plus: Liste der Tests, deren Polarisierung ersetzt wurde (erwartet 4), Rotliste vor dem Umbau: __
+* **L2 — gebaut 2026-11-10:** `pnpm test` = **268 Tests / 29 Dateien** grün (drei Läufe auf Node
+  v22.12.0, zwei auf v22.23.4), `npx tsc -b` **0**, `npx oxlint` **0/0** (98 Dateien),
+  `antd lint ./src` **0 findings** (55 Dateien), Doc-Lint **28 findings** (Baseline gehalten;
+  nur `UC-CR-*`/`UC-PC-*`, keine der behandelten IDs neu). Gate-Werkzeug-Hinweis: `npx antd lint`
+  schlägt fehl (`could not determine executable`) — der CLI liegt global unter Node **v22.23.4**
+  (`antd lint ./src`), unter dem nvm-default 22.12 gibt es kein `antd`-Binary.
+  * **Rotation (§9 L2):** vier Tests zuerst umgestellt, alle vier rot aus dem erwarteten Grund —
+    `AssertionError: expected [ 'Projects', 'Settings' ] to deeply equal [ 'Projects', 'Chat',
+    'Settings' ]` (`theHeaderCarriesTheBrandThePagesAndTheName`),
+    `a chat address marks the chat page of the header: expected [] to deeply equal [ 'Chat' ]`
+    (`theTopMarkFollowsAnAddressNobodyClicked`), je
+    `TestingLibraryElementError: Unable to find an accessible element with the role "menuitem" and
+    name "Chat"` (`theTopMarkAndTheTreeMarkAgreeInOneRender`, `chatOpensTheLastActiveProject`).
+    Polarisierung ersetzt in genau **4** Tests (erwartet 4): die drei `app.shell`-Tests oben +
+    `app.routes.test.tsx::chatOpensTheLastActiveProject` (erster Schritt jetzt der Klick auf den
+    neuen Eintrag statt der Direktadresse `/chat`; Behauptung „ohne Klick bleibt die Liste" dadurch
+    erhalten, dass die Mount auf `/projects` steht). Danach `app.top.tsx` (Eintrag zwischen Projects
+    und Settings, `chatRoot` als Schlüssel) + JavaDoc `app.top.tsx`/`app.shell.tsx` → grün.
+  * **Bestands-Flattern, bisectiert (kein L2-Effekt):** vor der Umsetzung meldeten drei Läufe je 1–2
+    Rotationen (`theTreeExpandsALevel`, `theWideTabRidesTheEdgeOfTheWidePanel`, je
+    `Unable to find role="button" and name "demo"`). Gegenprobe auf `HEAD` (7fa3f429, Änderungen per
+    `git stash` weg, Dateien vorher nach `/tmp/l2-backup` kopiert): **Baseline flackert ebenfalls** —
+    Lauf 1 `theViewerCanAlwaysBeClosed` rot, Lauf 2 **sieben** Tests rot
+    (`theTopMarkFollowsAnAddressNobodyClicked` 9.9 s, `stopOnAFinishedTurnIsSilent` 9.2 s,
+    `oneChatPerProject` 10.3 s, `theTabOpensTheUnitAddressAndBack` 9.8 s,
+    `fileAreaShowsTheRejectionInsteadOfContent` 10.8 s, `aLevelThatLeavesItsRootIsRefusedWhereItStands`,
+    `aListedLinkSaysLinkAndNoByteCount`), Lauf 3 grün. Deutung: Last-/Zeitflattern des Bestands
+    (29 Worker, `findBy`-Default 1 s, Einzelfall-Dauern bis 4.5 s), unabhängig von dieser Story —
+    **keine** Erwartung angepasst, **kein** Test geändert. Bei Bedarf eigenes Inkrement für die
+    Fristen; hier nur gemessen und gemeldet.
+  * **Was der Test nicht beweist (§8):** Reihenfolge und Aussehen des Dreier-Menüs im echten Browser,
+    ob das Menü bei schmaler Breite in die `…`-Überlauf-Klappe läuft (jsdom misst 0 px — die Basis
+    baut dort schon heute eine `aria-hidden`-Ellipsis, die die Rollen-Queries nicht trifft) —
+    Browser-Abnahme (§11.2).
+  * **Commit:** `L2: …` auf `web-factory-5`, Push auf `origin/web-factory-5`. Diff = genau die vier
+    §4-L2-Dateien (`app.top.tsx`, `app.shell.tsx`, `app.shell.test.tsx`, `app.routes.test.tsx`).
 * L3: dito, plus:ROTliste vor dem Umbau (erwartet 8) und etwaige zusätzliche Rotfälle: __
 * L4: dito, plus: `antd info AutoComplete` Messung (a)/(b) und ob der Fallback aus D7 nötig war: __
 * Abweichungen vom Plan (Regel, Grund, Auswirkung): **L1 keine** — Umfang D1/D2/D3 genau so gebaut. Einzige
   Randnotiz: `project.page.tsx` hatte bisher **kein** JavaDoc am exportierten Baustein (nur `Props`), die
   JavaDoc-Zeile des Plans (§4 L1) ist dort ein dreizeiliger Block geworden; `config.page.tsx` erhielt genau eine
   Zeile. Suite-Flattern siehe L1-Beobachtung.
+  **L2 keine** — drei Einträge in `app.top.tsx`, Markierung über das bestehende `entry(...)`,
+  `app.paths.ts`/`app.menu.ts`/`content.ts` unangetastet. Randnotiz: `chatOpensTheLastActiveProject`
+  trug den Kommentar `INC-5A-D2` („the trigger is the address now — R-WP-38 removed the Chat entry"),
+  der durch L2 falsche Aussagen macht; er ist durch die UC-Tags `UC-WP-51` + `UC-WP-76` ersetzt.
+  Testname, UC-Getaggte Zahl und Testbudget (268/29) unverändert.
 
 ## 13. Offene Fragen (Stand dieses Plans — alle mit Empfehlung)
 
