@@ -18,7 +18,7 @@ read-only: true               # optional, default false (also accepts read_only 
 include-default: true         # optional; false = no built-in system prompt
 temperature: 0.8              # optional; override for this agent only
 handover: some-agent          # optional; shows "Handoff → [agent]" button after work done
-model: qwen3.6-27b            # optional model override
+model: qwen3.8-27b            # optional model override
 tools:                        # optional; absent = all tools
   - grep
   - read_

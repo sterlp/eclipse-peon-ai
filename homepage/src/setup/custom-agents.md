@@ -39,7 +39,7 @@ system prompt:
 name: Docs-Assistant
 description: Answers only from the retrieved documents
 read-only: true
-model: qwen3.6-27b
+model: qwen3.8-27b
 think: true
 tools:
   - eclipseReadFile
@@ -52,7 +52,7 @@ with your tools. Never answer from prior knowledge.
 
 ::: warning No `#` comments in the frontmatter
 The frontmatter parser does **not** strip trailing `# ...` comments. A line like
-`model: qwen3.6-27b   # my model` is read as the literal value `qwen3.6-27b   # my model`
+`model: qwen3.8-27b   # my model` is read as the literal value `qwen3.8-27b   # my model`
 and breaks. Keep frontmatter values comment-free.
 :::
 
@@ -135,6 +135,9 @@ The built-in **Plan** agent uses exactly this: it hands over to **Dev**.
   name enables exactly that tool. A trailing `*` on any token is an optional wildcard suffix —
   the same meaning in allow and deny tokens: `eclipse*` ≡ `eclipse` (prefix match); `*` alone
   stays the All-Token. Works for built-in **and** MCP tools (e.g. `mcp__docs__search`).
+- a token containing `*` is a **glob over the whole name** (case-insensitive): `*ReadPicture`
+  matches every tool ending in `ReadPicture`, `*Read*` every tool containing `Read`.
+  `*, !*ReadPicture` = every tool except the picture readers (`!*` and `!**` have no effect).
 - a `!` **negation** — removes tools *after* the allowlist decided: deny wins, even over a
   matching allow token. `*, !debugJava*` = every tool except the debug family.
 - **negations only** — a list without any allow token is valid: it means *all* tools minus the
@@ -182,11 +185,11 @@ Common built-in prefixes:
 
 | Prefix | Tools |
 |--------|-------|
-| `eclipse` | Workspace file read/write/search/navigation, build, tests, console, project problems — the default toolset. E.g. `eclipseReadFile`, `eclipseWriteFile`, `eclipseGrepFiles`, `eclipseSearchFiles`, `eclipseBuildProject`, `eclipseRunJavaTests`, `eclipseReadProjectProblems`, `eclipseFindReferences`. |
+| `eclipse` | Workspace file read/write/search/navigation, build, tests, console, project problems — the default toolset. E.g. `eclipseReadFile`, `eclipseWriteFile`, `eclipseGrepFiles`, `eclipseSearchFiles`, `eclipseBuildProject`, `eclipseRunJavaTests`, `eclipseReadProjectProblems`, `eclipseFindReferences`, `eclipseReadPicture` (loads a png/jpg/jpeg/gif/webp up to 4 MB; the model sees it in the next message). A model **without vision**: add `*, !*ReadPicture` to the tool allowlist. |
 | `skill` | `skillList`, `skillRead`, `skillReadFile` |
 | `memory` | `memoryAdd`, `memoryReplace`, `memoryRemove` |
 | `plan` | `planRead`, `planSave`, `planUpdate`, `planImplemented` |
-| `disk` | Optional file/grep tools that bypass the Eclipse workspace — only registered when **Enable disk tools** is on (see [Advanced Configuration](./advanced-configuration.md)). E.g. `diskReadFile`, `diskGrepFiles`, `diskWriteFile`. The same toggle also enables `webGet` (download a URL to a disk path — status, size and path in the context, never the content). |
+| `disk` | Optional file/grep tools that bypass the Eclipse workspace — only registered when **Enable disk tools** is on (see [Advanced Configuration](./advanced-configuration.md)). E.g. `diskReadFile`, `diskReadPicture`, `diskGrepFiles`, `diskWriteFile`. The same toggle also enables `webGet` (download a URL to a disk path — status, size and path in the context, never the content). |
 | `debugJava` | Java debugger — 15 actions (e.g. `debugJavaGetState`, `debugJavaStepOver`, `debugJavaSetBreakpoint`, `debugJavaSuspend`). An **edit tool**, so only offered to non-read-only agents (in practice Dev). You start the debug session in the Debug view; breakpoint set/remove work without one (stored as markers). See [Java debugger](#java-debugger). |
 | `web` | `webSearch` (DuckDuckGo hit list — numbered title, URL and snippet, never page content; read a hit with `webFetchAsMarkdown`), `webFetchAsMarkdown` (read a URL as paginated text: HTML becomes Markdown, everything else comes back raw — the footer names which) and `webGet` (download a URL to a disk path). `webSearch` and `webFetchAsMarkdown` are always registered; `webGet` only when **Enable disk tools** is on, like the `disk*` tools above. Tokens are **prefix** matches: `web` covers all three, a narrower token such as `webFetch` covers only `webFetchAsMarkdown` — never `webSearch`. |
 | `shell` | `shellRunCommand` (run a shell command — mvn, npm, git; only for build/test/git, not for file I/O — output is trimmed beyond `maxChars`, default 10 000 chars). |

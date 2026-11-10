@@ -97,6 +97,11 @@ per skill). The full content is loaded only when the LLM decides the task matche
 Good for knowledge that isn't project-specific: Eclipse API patterns, framework recipes,
 code-style rules.
 
+Agents pick up skill changes on disk without a restart: `skillList` reloads all skill folders,
+and reading a skill reloads them after 10 minutes or when the skill name is unknown. The status
+line and slash autocomplete update on the next reload.
+
+
 Skills follow the [agentskills.io](https://agentskills.io/specification) spec.
 
 

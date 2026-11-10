@@ -175,7 +175,8 @@ public class AIChatView implements EclipseAiMonitor {
             this::onAgentChange,
             LlmPreferenceInitializer::buildWithDefaults,
             this::onModelChange,
-            this::doCompactAgent
+            this::doCompactAgent,
+            this::refreshChat
         );
 
         statusLine = new StatusLineWidget(inputBlock, SWT.NONE,
@@ -287,10 +288,12 @@ public class AIChatView implements EclipseAiMonitor {
         if (aiService.getUserContext().setSelectedResource(selection)) {
             EclipseUtil.runInUiThread(parent, this::refreshStatusLine);
         }
-        updateSelectedProject(EclipseUtil.resolveProject(selection));
+        EclipseUtil.resolveProject(selection).ifPresent(this::updateSelectedProject);
     }
 
     private void updateSelectedProject(IProject project) {
+        // the guard is not dead: EclipseUtil.firstOpenOrSelectedProject() hands out null on a
+        // workspace without an open project — the selection path can no longer do so
         if (project != null && !aiService.getUserContext().isProjectPinned()) {
             var changed = aiService.setProject(project);
             if (changed) refreshStatusLine();
@@ -396,6 +399,7 @@ public class AIChatView implements EclipseAiMonitor {
     // -------------------------------------------------------------------------
 
     // TODO: DOUBLE CHECK if refreshStatusLine and refreshChat are 2 methods!
+    /** call in UI thread */
     public void refreshStatusLine() {
         if (statusLine == null) return;
         if (actionsBar == null) return;
@@ -415,12 +419,15 @@ public class AIChatView implements EclipseAiMonitor {
     /**
      * clears the chat history and rebuilds it.
      * Also calls refresh refreshStatusLine.
+     * 
+     * call in UI thread
      */
     private void refreshChat() {
         var memory = aiService.getActiveAgent().getMemory();
         chatHistory.clear();
         memory.forEach(chatHistory::appendMessage);
         refreshStatusLine();
+        if (aiService.getActiveAgent().isWorking()) chatHistory.updateLiveResponseInUIThread("waiting for AI...", 0, null);
     }
 
     // -------------------------------------------------------------------------
@@ -716,7 +723,9 @@ public class AIChatView implements EclipseAiMonitor {
     private Exception handleChatException(Exception e) {
         if (e == null) return null;
         if (isCanceled()) return null;
-        if (ExceptionUtil.isCanceled(e)) return null;
+        if (ExceptionUtil.isCanceled(e)) {
+            return null;
+        }
         if (ExceptionUtil.isRateLimit(e)) {
             onChatResponse(new SimpleMessage(Type.PROBLEM, "API rate limit! " + e.getMessage()));
             return null;
@@ -732,8 +741,8 @@ public class AIChatView implements EclipseAiMonitor {
     private void onPinChange(boolean pinned) {
         aiService.getUserContext().setProjectPinned(pinned);
         if (!pinned && aiService.getUserContext().getSelectedResource() != null) {
-            var project = EclipseUtil.resolveProject(aiService.getUserContext().getSelectedResource());
-            if (project != null)  aiService.setProject(project);
+            EclipseUtil.resolveProject(aiService.getUserContext().getSelectedResource())
+                    .ifPresent(project -> aiService.setProject(project));
         }
         statusLine.setPinned(pinned);
         refreshStatusLine();

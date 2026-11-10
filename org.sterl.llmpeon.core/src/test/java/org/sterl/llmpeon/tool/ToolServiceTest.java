@@ -30,6 +30,8 @@ import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.ChatMessageUtil;
+import org.sterl.llmpeon.tool.component.RescueToolComponent;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.tool.web.WebFetchTool;
@@ -305,41 +307,6 @@ class ToolServiceTest {
         assertThat(toolResult.text()).contains("\tat ");
     }
 
-    /** The one tool-failure problem line reported to the monitor. */
-    private static String failureLine(List<String> problems) {
-        return problems.stream().filter(p -> p.startsWith("boom failed")).findFirst().orElseThrow();
-    }
-
-    /**
-     * The real loop with a failing tool in round 1 and a plain text answer in round 2 — collecting every
-     * problem line and every ChatRequest sent.
-     */
-    private void runFailingToolLoop(SmartTool tool, List<String> problems, List<ChatRequest> requests) {
-        subject.replaceTool(tool);
-        var round = new AtomicInteger();
-        var cm = mockWithHandler(req -> {
-            requests.add(req);
-            if (round.incrementAndGet() == 1) {
-                return ChatResponse.builder().aiMessage(AiMessage.builder()
-                        .toolExecutionRequests(List.of(ToolExecutionRequest.builder()
-                                .id("1").name("boom").arguments("{}").build()))
-                        .build()).build();
-            }
-            return ChatResponse.builder().aiMessage(AiMessage.from("done")).build();
-        });
-        var memory = new ThreadSafeMemory();
-        memory.add(UserMessage.from("go"));
-
-        subject.executeLoop(ToolLoopRequest.builder()
-                .memory(memory)
-                .chatModel(new ConfiguredChatModel(LlmConfig.newOpenAi("foo"), cm))
-                .monitor(new AiMonitor() {
-                    @Override public void onChatResponse(SimpleMessage m) {}
-                    @Override public void onProblem(String message) { problems.add(message); }
-                })
-                .build());
-    }
-
 
     /**
      * A canceling tool aborts the entire loop — the exception propagates through SmartToolExecutor
@@ -464,6 +431,7 @@ class ToolServiceTest {
         assertThat(round.get()).isEqualTo(1);
     }
 
+    @SuppressWarnings("null")
     public StreamingChatModel mockWithHandler(Function<ChatRequest, ChatResponse> fn) {
         var cm = mock(StreamingChatModel.class);
         doAnswer(inv -> {
@@ -574,6 +542,37 @@ class ToolServiceTest {
         assertThat(lines).isNotEmpty();
         assertThat(lines).allSatisfy(line -> assertThat(line.origin()).isEqualTo("Search"));
     }
+    
+    // https://github.com/sterlp/eclipse-peon-ai/issues/163
+    @Test
+    void testRescueToolCalls() {
+        // GIVEN
+        var requestRef  = new AtomicReference<ChatRequest>();
+        var badToolCall = AiMessage.builder().text(" <tool_call> <function=Read> <parameter=file_path> foobar </parameter> </function> </tool_call> ").build();
+        var cm = mockWithHandler(req -> {
+            requestRef.set(req);
+            AiMessage msg;
+            if (ChatMessageUtil.toString(req.messages().getLast()).contains("Hello AI")) {
+                msg = badToolCall;
+            } else {
+                msg = AiMessage.builder().text("Ok").build();
+            }
+            return ChatResponse.builder().aiMessage(msg).build();
+        });
+        var memory = new ThreadSafeMemory();
+        // WHEN
+        memory.add(UserMessage.from("Hello AI"));
+        subject.executeLoop(ToolLoopRequest.builder().memory(memory).chatModel(new ConfiguredChatModel(LlmConfig.newOpenAi("foo"), cm)).build());
+
+        // THEN
+        var messages = memory.getCopy();
+        assertThat(messages.get(1)).isEqualTo(badToolCall);
+        assertThat(messages.get(2)).isEqualTo(RescueToolComponent.AI_INFO);
+        assertThat(messages.get(3)).isEqualTo(AiMessage.builder().text("Ok").build());
+        // AND
+        verify(cm, times(2)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+
+    }
 
     /** One answering round through the real loop, on the given monitor with the given owner. */
     private void runAnsweringLoop(AiMonitor monitor, LoopOwner owner) {
@@ -587,5 +586,42 @@ class ToolServiceTest {
                 .owner(owner)
                 .build());
     }
+    
+
+    /** The one tool-failure problem line reported to the monitor. */
+    private static String failureLine(List<String> problems) {
+        return problems.stream().filter(p -> p.startsWith("boom failed")).findFirst().orElseThrow();
+    }
+
+    /**
+     * The real loop with a failing tool in round 1 and a plain text answer in round 2 — collecting every
+     * problem line and every ChatRequest sent.
+     */
+    private void runFailingToolLoop(SmartTool tool, List<String> problems, List<ChatRequest> requests) {
+        subject.replaceTool(tool);
+        var round = new AtomicInteger();
+        var cm = mockWithHandler(req -> {
+            requests.add(req);
+            if (round.incrementAndGet() == 1) {
+                return ChatResponse.builder().aiMessage(AiMessage.builder()
+                        .toolExecutionRequests(List.of(ToolExecutionRequest.builder()
+                                .id("1").name("boom").arguments("{}").build()))
+                        .build()).build();
+            }
+            return ChatResponse.builder().aiMessage(AiMessage.from("done")).build();
+        });
+        var memory = new ThreadSafeMemory();
+        memory.add(UserMessage.from("go"));
+
+        subject.executeLoop(ToolLoopRequest.builder()
+                .memory(memory)
+                .chatModel(new ConfiguredChatModel(LlmConfig.newOpenAi("foo"), cm))
+                .monitor(new AiMonitor() {
+                    @Override public void onChatResponse(SimpleMessage m) {}
+                    @Override public void onProblem(String message) { problems.add(message); }
+                })
+                .build());
+    }
+
 }
 

@@ -27,9 +27,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -37,8 +35,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
@@ -55,15 +51,19 @@ import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.poagent.AiPoAgent;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.tool.WriteValidator;
+import org.sterl.open.aifactory.FactorySpringTest;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
-import org.sterl.open.aifactory.project.FakeGitConfig;
 import org.sterl.open.aifactory.shared.FactoryHome;
 import org.sterl.open.aifactory.shared.TmpRoots;
 
 /**
  * R-WP-6 und R-WP-13 an der laufenden Fabrik: Jon <b>und</b> jedes Team-Mitglied schreiben nur in die
  * Projekt-Root und in den System-TMP dieser Instanz — {@code disk*}-Werkzeuge, kein zweiter Pfad.
+ *
+ * <p>Das Home ist das geteilte {@code target/test-home} der Basisklasse und kein {@code @TempDir}: auf
+ * macOS <em>ist</em> {@code java.io.tmpdir} die zweite Schreibwurzel — ein Home darin liesse jedes
+ * {@code ..} innerhalb einer erlaubten Wurzel landen, UC-WP-10 waere nicht beweisbar.</p>
  *
  * <p><b>Bekannte Luecke, bewusst nicht gebaut (A2, Inc-4-Beschluss):</b> {@code ShellTool} ruft
  * {@code validateWrite} niemals auf. Gepinnt und getestet ist der {@code disk*}-Pfad; die Shell bleibt
@@ -75,17 +75,8 @@ import org.sterl.open.aifactory.shared.TmpRoots;
  * ({@code SmartToolExecutor#reportProblem}), deshalb wird der volle Text am naechsten Anbieter-Payload
  * belegt und auf dem Draht nur das Praefix behauptet.</p>
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(FakeGitConfig.class)
 @Timeout(60)
-class WritePinningTest {
-
-    /**
-     * Festes Home unter {@code target/}, kein {@code @TempDir}: auf macOS <em>ist</em>
-     * {@code java.io.tmpdir} die zweite Schreibwurzel — ein Home darin liesse jedes {@code ..} innerhalb
-     * einer erlaubten Wurzel landen, UC-WP-10 waere nicht beweisbar.
-     */
-    private static final Path HOME = Path.of("target", "inc4-home").toAbsolutePath().normalize();
+class WritePinningTest extends FactorySpringTest {
 
     /** Dritte Wurzel, nachweislich auesserhalb beider Schreibwurzeln — ebenfalls nicht unter TMP. */
     private static final Path OUTSIDE = Path.of("target", "inc4-outside").toAbsolutePath().normalize();
@@ -101,11 +92,8 @@ class WritePinningTest {
             .build();
 
     static {
-        // vor jedem Kontext-Aufbau: ein Home aus einem frueheren Lauf wuerde Projekte eines anderen
-        // Mock-Ports kennen
-        deleteRecursively(HOME);
+        // die dritte Wurzel vor jedem Lauf leer — das geteilte Home der Basisklasse resettet je Test
         deleteRecursively(OUTSIDE);
-        createDirectories(HOME);
         createDirectories(OUTSIDE);
     }
 
@@ -137,11 +125,6 @@ class WritePinningTest {
     @AfterAll
     static void stopStreams() {
         STREAMS.close();
-    }
-
-    @DynamicPropertySource
-    static void isolateHome(DynamicPropertyRegistry registry) {
-        registry.add("aifactory.home", HOME::toString);
     }
 
     @Test
@@ -187,12 +170,19 @@ class WritePinningTest {
                     .as("UC-WP-8: ein Team-Mitglied schreibt innerhalb der Projekt-Root wie im Plugin")
                     .isEqualTo("team-text");
             assertThat(messages(project.id()))
-                    .as("die Delegation antwortet Jon, das ist ihre eigene Zeile — im Verlauf, nicht auf dem Draht")
-                    .filteredOn(line -> "Dev".equals(line.origin()))
+                    .as("die Delegation antwortet Jon, das ist ihre eigene Zeile — im Verlauf, nicht auf"
+                            + " dem Draht; Jons Schritt zu ihr ist eine tool-Zeile, keine Antwort")
+                    .filteredOn(line -> "Dev".equals(line.origin()) && "jon".equals(line.role()))
                     .singleElement()
                     .satisfies(line -> assertThat(line.text())
                             .startsWith(MEMBER_ANSWER + System.lineSeparator()));
-            assertThat(toolLineTexts(stream).subList(linesBeforeTeam, toolLineTexts(stream).size()))
+            // das Fenster erst greifbar, dann belegt: eine leere Fenster-Spanne wäre mit
+            // allSatisfy leer gewonnen, deshalb ist sie selbst die Aussage
+            List<String> afterDelegation = toolLineTexts(stream).subList(linesBeforeTeam, toolLineTexts(stream).size());
+            assertThat(afterDelegation)
+                    .as("nach der Delegation laufen Werkzeug-Zeilen über den Draht")
+                    .isNotEmpty();
+            assertThat(afterDelegation)
                     .as("vom Mitglied kommt nur seine Antwort an, seine Werkzeug-Zeile bleibt sein Internum (R-WP-4)")
                     .allSatisfy(line -> assertThat(line).doesNotContain("Created file:"));
         }
@@ -231,7 +221,10 @@ class WritePinningTest {
             assertThat(Files.exists(escape)).as("UC-WP-9: die Datei entsteht nicht").isFalse();
 
             assertThat(messages(project.id()))
-                    .as("UC-WP-9/R-WP-11: eine Werkzeug-Zeile ist live — nach dem Reload steht sie nicht im Verlauf")
+                    .as("UC-WP-9/R-WP-11: die Ablehnung bleibt aus dem Gespraech verbannt — als Antwort"
+                            + " steht sie nicht im Verlauf; ihr Wortlaut darf seit R-WP-47 im Auszug"
+                            + " seines Schritts stehen, denn der ist der Bestand und keine Erfindung")
+                    .filteredOn(message -> !"tool".equals(message.role()))
                     .noneMatch(message -> message.text() != null && message.text().contains("Write denied"));
         }
     }
@@ -273,13 +266,16 @@ class WritePinningTest {
             assertThat(messages(project.id()))
                     .as("die Delegation selbst laeuft weiter — ihr Ergebnis ist ihre eigene Zeile im"
                             + " Verlauf, nicht ihre Ablehnung")
-                    .filteredOn(line -> "Dev".equals(line.origin()))
+                    .filteredOn(line -> "Dev".equals(line.origin()) && "jon".equals(line.role()))
                     .singleElement()
                     .satisfies(line -> assertThat(line.text())
                             .startsWith(MEMBER_ANSWER + System.lineSeparator()));
 
             assertThat(messages(project.id()))
-                    .as("UC-WP-9 zweiter GIVEN/R-WP-11: auch im wiederhergestellten Verlauf steht keine Ablehnung")
+                    .as("UC-WP-9 zweiter GIVEN/R-WP-11: auch im wiederhergestellten Verlauf steht keine"
+                            + " Ablehnung — als Antwort nicht; der Auszug seines Schritts ist Bestand"
+                            + " (R-WP-47)")
+                    .filteredOn(message -> !"tool".equals(message.role()))
                     .noneMatch(message -> message.text() != null && message.text().contains("Write denied"));
         }
     }

@@ -16,16 +16,16 @@ Trigger für die URL-Anreicherung am Choke-Point?
 p2-Pfad-Rückversicherung nach dem nächsten Release.
 **Entscheidung:** unwichtig — Aufwand ohne aktuellen Nutzen; entfällt ersatzlos.
 
-## Issue #163 Rescue-Heuristik „Tool-Call als Text" — erstmal vergessen (Paul 2026-10-29)
+## Issue #163 Rescue-Heuristik „Tool-Call als Text" — gebaut (2026-11-07, Paul)
 
 **Punkt:** Rescue-Heuristik im `ToolService`-Loop bauen, die `function=<name>`-Fließtexte zu
 `ToolExecutionRequest` rettet?
-**Entscheidung:** zurückgestellt, kein Bau. Erkenntnis bleibt: langchain4j ist **nicht** das Problem —
-alle drei Provider mappen ausschließlich strukturierte Tool-Call-Felder (OpenAI `OpenAiUtils`,
-Anthropic `AnthropicMapper`, Ollama `InternalOllamaHelper`); ein Call, der als Fließtext mit
-XML-artigen Function-Tags ankommt, ist korrekt verarbeiteter Text (schwache/lokale Modelle,
-Unicode-fragil). **Kein Upstream-Issue.** Bei Bedarf: Fix-Idee stand 2026-10-23 in open-points.md
-(git-Historie).
+**Stand:** 2026-10-29 zurückgestellt; **2026-11-07 gebaut** — als Heuristik mit Meldung statt
+Re-Parsing: `RescueToolComponent` + Loop-Handling (AI-Message + „Invalid tool call"-UserMessage in
+die Memory, erneuter Call, gebunden an den Stuck-Counter), Regel R-TL-1 in
+[tool-loop.md](../org.sterl.llmpeon.core/docs/tool-loop.md). „Kein Upstream-Issue" bleibt: alle
+drei Provider mappen ausschließlich strukturierte Tool-Call-Felder; ein Call als Fließtext ist
+korrekt verarbeiteter Text.
 
 ## Skill-Roots First-Launch — unverändert lassen (Paul 2026-10-29)
 

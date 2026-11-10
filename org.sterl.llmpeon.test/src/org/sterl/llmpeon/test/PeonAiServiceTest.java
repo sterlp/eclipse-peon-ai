@@ -780,8 +780,10 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         assertTrue("memoryAdd (write) expected", names.contains("memoryAdd"));
         assertTrue("planRead expected", names.contains("planRead"));
         assertTrue("hasPlan expected", names.contains("hasPlan"));
+        assertTrue("planImplemented expected", names.contains("planImplemented"));
         // Jon delegates planning — he must not be able to write the plan himself
         assertFalse("planSave must not be Jon's tool", names.contains("planSave"));
+        assertFalse("planUpdate must not be Jon's tool", names.contains("planUpdate"));
     }
 
     /** Slaves may READ the shared memory (injected) but must NOT be able to write it. */
@@ -1468,7 +1470,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             var jon = svc.getActiveAgent();
             var ctx = jon.getStaticContext();
             assertEquals(1, ctx.size());
-            assertContains(ctx.get(0).render().body(), "prefer eclipse*"); // Env
+            assertContains(ctx.get(0).render().body(), "eclipse* only; outside workspace"); // Env
 
             // AND: no memory snapshot and no file items in the static context
             var forbidden = List.of(memoryText, "docs/memory.md", "docs/index.md");
@@ -1558,7 +1560,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             // THEN: the new custom agent carries Env in its static context (system prompt) — no memory
             var custom = svc.getAgentService().get("TestAgent").orElseThrow();
             var ctx = custom.getStaticContext();
-            assertContains(ctx.get(0).render().body(), "prefer eclipse*"); // Env
+            assertContains(ctx.get(0).render().body(), "workspace files -> eclipse* only; outside workspace -> disk* only."); // Env
 
             // AND: the original callback fired AFTER the re-bake
             assertEquals("baked", callbackState.get());
@@ -2005,7 +2007,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
 
             // AND: die System-Message trägt Env, aber KEINEN Memory-Snapshot mehr
             var systemMessage = extractSystemMessage(mockLlmServer.getLastRequestBody());
-            assertContains(systemMessage, "prefer eclipse*"); // Env
+            assertContains(systemMessage, "workspace files -> eclipse* only; outside workspace -> disk* only."); // Env
             assertFalse("system prompt must not carry the memory snapshot",
                     systemMessage.contains(memoryText));
 
@@ -2015,7 +2017,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                     .filter(r -> r != null)
                     .map(TaggedResult::body)
                     .toList();
-            assertHasMessageWith(devRendered, "prefer eclipse*"); // Env
+            assertHasMessageWith(devRendered, "workspace files -> eclipse* only; outside workspace -> disk* only."); // Env
             assertHasNoMessageWith(devRendered, memoryText);
         } finally {
             wmt.memoryReset(); // isoliert: Memory nicht in andere Tests/Runs leaken
@@ -2631,6 +2633,68 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         } finally {
             eclipseDeleteResource(planFile);
             forgetRememberedAgent();
+        }
+    }
+
+    /**
+     * R-SEL-5 (org.sterl.llmpeon/docs/user-context.md): the phantom handle an externally opened file
+     * resolves to must never become state. The planRef assertion is what pins the guard as the FIRST
+     * statement of setProject: moved behind clearPlan() it would leave the reference null here, because
+     * a phantom is never re-preloaded.
+     */
+    // UC-SEL-5
+    @Test
+    public void phantomProjectHandleIsRejected() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN: fixture project bound, plan agent active, its plan reference live
+        var planFile = "/" + PeonTestFixture.PROJECT_NAME + "/" + PlanTool.OVERVIEW_FILE;
+        eclipseWriteFile(planFile, "# plan\nmust survive the phantom\n");
+        aiService.setActiveAgent(AiPlanAgent.NAME);
+        var agentContext = (AgentContextComponent) readField(aiService, "agentContext");
+        var planRef = agentContext.planRef();
+        assertNotNull("the fixture needs a live plan reference, otherwise this is not the case under test",
+                planRef);
+
+        // AND: a handle for a project the workspace does not know
+        var phantom = ResourcesPlugin.getWorkspace().getRoot().getProject("phantom_selection_project");
+        assertFalse("fixture must be a phantom handle", phantom.exists());
+
+        // WHEN
+        assertFalse("a phantom handle must be rejected", aiService.setProject(phantom));
+
+        // THEN: the previous project stays bound and its plan reference is the SAME instance —
+        // no clearPlan, no tool wiring, no plan I/O for the phantom
+        assertEquals("the fixture project must stay bound", project, aiService.getProject());
+        assertSame("the guard has to run before clearPlan()", planRef, agentContext.planRef());
+    }
+
+    /**
+     * UC-SEL-5 BDD line 2: only exists() decides. A closed but real project is bound as before —
+     * isOpen() as the criterion would break the ordinary selection in a closed project.
+     */
+    // UC-SEL-5
+    @Test
+    public void closedButExistingProjectIsStillAccepted() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN: a project that exists but is closed
+        var closed = ResourcesPlugin.getWorkspace().getRoot().getProject("aaa_closed");
+        if (closed.exists()) closed.delete(true, true, new NullProgressMonitor());
+        closed.create(new NullProgressMonitor());
+        closed.open(new NullProgressMonitor());
+        closed.close(new NullProgressMonitor());
+        assumeTrue("fixture needs a closed but existing project", closed.exists() && !closed.isOpen());
+        try {
+            // WHEN
+            assertTrue("exists() and not isOpen() decides", aiService.setProject(closed));
+
+            // THEN
+            assertEquals(closed, aiService.getProject());
+        } finally {
+            aiService.setProject(project);
+            closed.open(new NullProgressMonitor());
+            closed.delete(true, true, new NullProgressMonitor());
         }
     }
 

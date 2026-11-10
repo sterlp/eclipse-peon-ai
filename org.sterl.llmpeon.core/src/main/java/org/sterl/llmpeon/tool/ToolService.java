@@ -18,6 +18,7 @@ import org.sterl.llmpeon.mcp.McpService;
 import org.sterl.llmpeon.queuedmessages.QueuedUserMessages;
 import org.sterl.llmpeon.shared.OwnerMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.tool.component.RescueToolComponent;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 import org.sterl.llmpeon.tool.model.ToSimpleMessage;
 import org.sterl.llmpeon.tool.tools.AbstractTool;
@@ -203,11 +204,19 @@ public class ToolService {
             if (isToolrequest) {
                 stuck = 0; // reset on productive tool use
                 var tR = runAllTools(response, req);
-                req.getMemory().addResult(response, tR);
+                req.getMemory().addResult(response, tR, req.drainAfterResults());
                 // R-CC-18: the state-based decision runs after EVERY tool round — over budget the
                 // component compacts directly, in the band it hints (one implementation, ADR-0070)
                 compactHandler.handle(req, hasCompactTool);
 
+            } else if (RescueToolComponent.isToolCall(response.aiMessage())) {
+                ++stuck;
+                req.monitor.onProblem("AI returned a tool call as response!");
+                if (stuck > MAX_STUCK_ITERATIONS) break;
+
+                req.getMemory().addResult(response);
+                req.getMemory().add(RescueToolComponent.AI_INFO);
+                shouldLoop = true;
             } else if (hasResponseMessage) {
                 stuck = 0; // reset on productive response
                 req.getMemory().addResult(response);
@@ -298,8 +307,7 @@ public class ToolService {
         var monitor = req.getMonitor();
         String result;
         var mcpGroupService = executor == null ? findMcpService(tr.name()) : null;
-        var isMcpTool = mcpGroupService != null;
-        if (isMcpTool) {
+        if (mcpGroupService != null) {
             monitor.onTool("Running MCP: " + tr.name() + " - " + tr.arguments());
             result = mcpGroupService.executeTool(tr);
             monitor.onTool("MCP " + tr.name() + " done. " + StringUtil.charsSuffix(result));
@@ -359,12 +367,12 @@ public class ToolService {
      * Registers any object that has methods annotated with {@link Tool}.
      * Existing tools with the same name trigger an error.
      */
-    public void addTool(SmartTool toolObject) {
+    public void addTool(@NonNull SmartTool toolObject) {
         var old = replaceTool(toolObject);
         if (old != null) throw new RuntimeException("Tool " + old.getSpec().name() + " already registered ...");
     }
     
-    public SmartToolExecutor replaceTool(SmartTool toolObject) {
+    public SmartToolExecutor replaceTool(@NonNull SmartTool toolObject) {
         SmartToolExecutor result = null;
         for (Method method : toolObject.getClass().getDeclaredMethods()) {
             if (method.isAnnotationPresent(Tool.class)) {

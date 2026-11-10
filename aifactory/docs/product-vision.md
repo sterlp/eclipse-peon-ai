@@ -1,6 +1,8 @@
 # Product Vision — Open AI Fabric (OAF, Jon@Web)
 
 > Entwurf 2026-10-27 aus [Pauls Produktvision](../pauls-product-vision.md) — noch nicht abgestimmt.
+> Begriffe, die hier vorkommen und darüber hinaus reichen, definiert das [Glossary](glossary.md):
+> **Jon** (bauender, technischer PO je Projekt) und **Paco** (fachlicher PO je Nutzer).
 > Max. 100 Zeilen. Repo-/Ordnername bleibt `aifactory/`. Geteilte Lib: [Core Ground Rules](../../org.sterl.llmpeon.core/docs/ground-rules.md);
 > Schwesterprodukt: [Peon AI (Eclipse-Plugin)](../../docs/product-vision.md).
 

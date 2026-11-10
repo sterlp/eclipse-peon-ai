@@ -28,6 +28,7 @@ public class ActionsBarWidget extends Composite {
     private Button btnClear;
     private Button btnImplement;
     private final Button btnCompact;
+    private final Button btnSync;
     private Combo agentCombo;
     private final ChatModelComboWidget modelCombo;
 
@@ -44,7 +45,8 @@ public class ActionsBarWidget extends Composite {
             Consumer<AiAgent> onAgentChange,
             Supplier<LlmConfig> liveConfig,
             Consumer<String> onModelChange,
-            Runnable onCompress) {
+            Runnable onCompress,
+            Runnable onReload) {
         super(parent, style);
         
         colorWarning = new Color(180, 130, 0);
@@ -72,6 +74,9 @@ public class ActionsBarWidget extends Composite {
 
         btnCompact = new Button(this, SWT.PUSH);
         buildCompact(onCompress);
+        
+        btnSync = new Button(this, SWT.PUSH);
+        buildBtnCync(onReload);
 
         btnClear = new Button(this, SWT.PUSH);
         //btnClear.setText("Clear");
@@ -83,7 +88,7 @@ public class ActionsBarWidget extends Composite {
     }
     
     private void buildCompact(Runnable onCompress) {
-        btnCompact.setImage(ImageUtil.loadImage(this, ImageUtil.COMPACT));
+        btnCompact.setImage(ImageUtil.loadImage(this, ImageUtil.Icon.COMPACT));
         btnCompact.setToolTipText("Compact conversation context");
         btnCompact.addListener(SWT.Selection, e -> onCompress.run());
     }
@@ -97,6 +102,12 @@ public class ActionsBarWidget extends Composite {
         btnImplement.setVisible(false);
         btnImplement.setEnabled(true);
         btnImplement.addListener(SWT.Selection, e -> onImplement.run());
+    }
+    
+    private void buildBtnCync(Runnable onReload) {
+        btnSync.setImage(ImageUtil.loadImage(this, ImageUtil.Icon.REFRESH));
+        btnSync.setToolTipText("Reload chat");
+        btnSync.addListener(SWT.Selection, e -> onReload.run());
     }
 
     private void buildAgentCombo(Consumer<AiAgent> onModeChange) {

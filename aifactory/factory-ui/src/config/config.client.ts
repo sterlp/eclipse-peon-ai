@@ -1,67 +1,90 @@
 import { request } from '../shared/api.client'
+import type {
+  AgentSettingsUpdateRequest,
+  ModelListRequest,
+  ProviderDefaultsDto,
+  SettingsDto,
+  SettingsUpdateRequest,
+  ThinkForm,
+} from '../shared/server-api'
 
-/** Where the effective value came from — the file wins, the environment is the start value (R-WP-9). */
-export type KeySource = 'FILE' | 'ENV' | 'NONE'
-
-/**
- * The masked config as the server delivers it: the six documented fields plus the key
- * <em>status</em> — there is no field carrying a key, so the UI cannot display one by accident.
- */
-export interface Settings {
-  provider: string
-  model: string | null
-  url: string | null
-  tokenWindow: number
-  timeoutSeconds: number
-  sendThinking: boolean
-  keySet: boolean
-  keySource: KeySource
-}
-
-/** The provider names the server accepts — the nine values of its own provider enum. */
-export const PROVIDERS = [
-  'OLLAMA',
-  'OPEN_AI',
-  'OPEN_AI_OFFICIAL',
-  'LM_STUDIO',
-  'GOOGLE_GEMINI',
-  'MISTRAL',
-  'ANTHROPIC',
-  'GITHUB_MODELS',
-  'GITHUB_COPILOT',
-] as const
-
-export async function getSettings(): Promise<Settings> {
-  return request<Settings>('/api/settings')
+/** What a think field needs to build itself: the form and, for `VALUES`, the list it offers. */
+export interface ThinkInput {
+  form: ThinkForm
+  values: string[]
 }
 
 /**
- * A save. Every field is optional because an empty input means <em>unchanged</em> (R-WP-16
- * "leeres Feld = unverändert"): what the server never sees cannot be overwritten, so a value — the key
- * above all — can be set here and never cleared.
+ * The think form of one provider answer. Without a provider — the list has not arrived, or the file names
+ * one the core does not offer — the form is `UNKNOWN`, which is a text field: the page keeps showing
+ * what the file holds instead of narrowing it to a list it cannot justify.
  */
-export interface SettingsPatch {
-  provider?: string
-  model?: string
-  url?: string
-  apiKey?: string
-  tokenWindow?: number
-  timeoutSeconds?: number
-  sendThinking?: boolean
+export function thinkInputOf(provider: ProviderDefaultsDto | undefined): ThinkInput {
+  return { form: provider?.thinkForm ?? 'UNKNOWN', values: provider?.thinkValues ?? [] }
 }
 
-export async function updateSettings(patch: SettingsPatch): Promise<Settings> {
-  return request<Settings>('/api/settings', { method: 'PUT', body: JSON.stringify(withoutBlanks(patch)) })
+/**
+ * The masked config (R-WP-16): no field carries a key, so the UI cannot display one by accident. `think` is
+ * the Dev slot's value read at the base level (R-WP-49), not a copy of it.
+ */
+export async function getSettings(): Promise<SettingsDto> {
+  return request<SettingsDto>('/api/settings')
 }
 
-/** Only fields that carry a value travel — the trim mirrors the server, which stores trimmed too. */
-function withoutBlanks(patch: SettingsPatch): SettingsPatch {
+/**
+ * The providers the page offers — the core's own list, so a new provider needs no change here (D-10). None
+ * names a model: the core knows no model default, so the page clears the field instead of offering a value
+ * that belongs to another provider (Q2). `thinkSupported` is the yes/no answer the default area disables its
+ * switch from, `thinkForm` and `thinkValues` the same answer undimmed for the agent field (UC-WP-67).
+ */
+export async function listProviders(): Promise<ProviderDefaultsDto[]> {
+  return request<ProviderDefaultsDto[]>('/api/settings/providers')
+}
+
+/**
+ * The models of one connection (UC-WP-86). A POST although it only reads: the endpoint and the slot belong in
+ * a body and not in a query string or an access log, and the key belongs in neither — the server reads it from
+ * the config. A field the form holds empty travels empty: the list is meant to predict the connection a save
+ * would build. A connection that cannot answer is answered as an empty list, so the caller has nothing to
+ * report and the model field simply stays a text field.
+ */
+export async function listModels(query: ModelListRequest): Promise<string[]> {
+  const ids = await request<string[]>('/api/settings/models', {
+    method: 'POST',
+    body: JSON.stringify(query),
+  })
+  // no body and an empty list are the same answer for the field
+  return ids ?? []
+}
+
+export async function updateSettings(patch: SettingsUpdateRequest): Promise<SettingsDto> {
+  return request<SettingsDto>('/api/settings', {
+    method: 'PUT',
+    body: JSON.stringify(trimBody(patch)),
+  })
+}
+
+/**
+ * Trims what travels and throws nothing away: an empty string is a field the user cleared, so dropping
+ * blanks would make that state unreachable (UC-WP-46). Only the key field is left out when empty — for
+ * it, empty is not a value but a request to leave the stored key alone. The agent section saves by the
+ * same rule, which is why this is the one body-shaper of the component (R-WP-16).
+ *
+ * Typed on the two request shapes rather than on `object`: a field the server does not know must fail the
+ * build, not travel as a typo that silently changes nothing.
+ */
+export function trimBody(
+  patch: SettingsUpdateRequest | AgentSettingsUpdateRequest,
+): Record<string, unknown> {
   const sent: Record<string, unknown> = {}
   for (const [field, value] of Object.entries(patch)) {
-    const blank = value === undefined || value === null || (typeof value === 'string' && value.trim() === '')
-    if (!blank) {
-      sent[field] = typeof value === 'string' ? value.trim() : value
+    if (value === undefined || value === null) {
+      continue
     }
+    if (field === 'apiKey' && value === '') {
+      continue
+    }
+    sent[field] = typeof value === 'string' ? value.trim() : value
   }
-  return sent as SettingsPatch
+  return sent
 }

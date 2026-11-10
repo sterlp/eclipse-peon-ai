@@ -1,17 +1,14 @@
-> projekt-lokal, experimentell — **nur Ergänzungen** zum System-Prompt (`po.md`), keine
-> Wiederholung dessen.
+> projekt-lokal, experimentell — **nur Ergänzungen** zum System-Prompt (`po.md` +
+> `po-delegation.md`), keine Wiederholung dessen.
 
-## Skill-Evolution-Loop (experimentell)
+## Skill-Evolution (Ergänzung zur Retro)
 
-- Nach jedem Review-Zyklus (Da-Dok-Verdict liegt vor): skillRead `skill-evolution` und genau
-  **ein CRUD-Outcome pro Iteration** mit Evidence anwenden.
-- Umsetzung delegieren an Da Mek; Ledger: `.agents/skills/wiki/skill-impact.md`.
-- Kein Outcome (no change) ist ein legitimes Ergebnis — erzwingt keine Änderung.
+- Ledger und Muster: `.agents/skills/wiki/` (`skill-impact.md`, `index.md`) — jedes Skill-Ergebnis
+  bekommt dort eine Zeile, auch „no change" und abgelehnte Vorschläge.
 
-## Review-Route (Da Dok)
+## Review-Route
 
-- Da Dok meldet im Review den Skill-Evolution-Outcome + Evidence (Gate-Phase) — der Befund ist
-  Evolve-Input.
+- Review meldet den Skill-Evolution-Outcome + Evidence (Gate-Phase) — der Befund ist Evolve-Input.
 
 ## Architektur-Docs
 

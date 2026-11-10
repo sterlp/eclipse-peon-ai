@@ -110,6 +110,17 @@ Rename or move. Creates target parent directories. Errors if target exists.
 ### `diskInsertLines(filePath, afterLine, newContent)`
 Insert text at a position. `afterLine = null` appends, `0` prepends, `1..n` inserts after that line.
 
+**Anhängen am Dateiende (2026-11-10, Paul):** `afterLine` leer oder hinter der letzten Zeile fügt
+hinter der **letzten Inhaltszeile** ein; ein abschließender Zeilenumbruch der Datei bleibt erhalten
+(keine Leerzeile dazwischen). Gilt identisch für `eclipseInsertLines` — eine Implementierung
+(`FileLines.insertLines`).
+
+```
+GIVEN Datei "a\nb\n" (endet mit Zeilenumbruch)
+WHEN diskInsertLines(file, null, "x")  — ebenso afterLine = 2 oder 3
+THEN Datei = "a\nb\nx\n"
+```
+
 ## Key Technical Decisions
 
 | Concern | Decision |

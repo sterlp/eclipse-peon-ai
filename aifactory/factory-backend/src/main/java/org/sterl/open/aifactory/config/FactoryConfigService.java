@@ -1,18 +1,27 @@
 package org.sterl.open.aifactory.config;
 
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
+import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.FileLlmConfigStore;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.ai.LlmConfigLoader;
 import org.sterl.llmpeon.ai.LlmConfigStore;
+import org.sterl.llmpeon.provider.LlmProvider;
+import org.sterl.llmpeon.provider.LlmProviders;
+import org.sterl.llmpeon.provider.ThinkSupport;
+import org.sterl.open.aifactory.config.agent.AgentConfigFile;
+import org.sterl.open.aifactory.config.agent.AgentSlots;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
@@ -28,13 +37,12 @@ import org.sterl.open.aifactory.shared.FactoryHome;
 @Service
 public class FactoryConfigService {
 
-    /** Static and value-free on purpose — this text reaches the 400 body (R-WP-16 "kein Zeichen nach draußen"). */
-    private static final String PROVIDER_HINT = "provider must name one of the supported providers";
-    private static final String TOKEN_WINDOW_HINT = "tokenWindow must be a positive number of tokens";
-    private static final String TIMEOUT_HINT = "timeoutSeconds must be a positive number of seconds";
-    /** Value-free for the same reason — a turn's failure reaches the browser as a live line (Q1). */
+    /**
+     * Static and value-free on purpose — this text reaches the browser as a live line (R-WP-16), and a
+     * turn's failure must not repeat what someone typed. The wire's own sentences live in
+     * {@link WireValidationHints}, beside the constraints that state them.
+     */
     private static final String TURN_MODEL_HINT = "turn needs a model — set model in the factory config";
-    private static final String TURN_API_KEY_HINT = "turn needs an api key — set apiKey in the factory config, or choose a provider that needs none";
 
     /** Key-free is factory knowledge (R-WP-9 names exactly these two); the core has no such flag. */
     private static final Set<AiProvider> KEY_FREE_PROVIDERS = Set.of(AiProvider.OLLAMA, AiProvider.LM_STUDIO);
@@ -82,73 +90,103 @@ public class FactoryConfigService {
             throw new TurnNotConfiguredException(TURN_MODEL_HINT);
         }
         if (!KEY_FREE_PROVIDERS.contains(provider) && !present(config.getApiKey())) {
-            throw new TurnNotConfiguredException(TURN_API_KEY_HINT);
+            throw new TurnNotConfiguredException(turnApiKeyHint(provider));
         }
         return config;
     }
 
-
-    /** The masked read model: the one place that ever sees {@link LlmConfig#getApiKey()}. */
-    public SettingsSnapshot snapshot() {
-        EnvFallbackLlmConfigStore connector = store();
-        LlmConfig config = pin(LlmConfigLoader.load(connector));
-        return new SettingsSnapshot(config.getProviderType().name(), config.getModel(), config.getUrl(),
-                config.getAutoCompactAfter(), config.getTimeout().getSeconds(), config.isSendThinkingEnabled(),
-                present(config.getApiKey()), connector.apiKeySource());
+    /**
+     * R-WP-16: the failure of UC-WP-20 names the page that solves it and the provider the key is missing
+     * for. Both are the factory's own values — the provider has been checked against the enum before this
+     * line — so the rule that a submitted value never returns still holds.
+     */
+    private static String turnApiKeyHint(AiProvider provider) {
+        return "turn needs an api key — set apiKey in Settings, or choose a provider that needs none"
+                + " (provider: " + provider.name() + ")";
     }
 
     /**
-     * Saves a submitted value and only a submitted value: a {@code null} or blank field never reaches
-     * the store, which is what makes an emptied input mean "unchanged" although the core store reads a
-     * blank as removal — through this API the key can be set, never deleted (UC-WP-24).
+     * What the core knows per provider (UC-WP-62): the base URL it falls back to and whether it can carry
+     * a think input at all, plus that input's form for the agent slots (UC-WP-67) and whether the provider
+     * accepts an {@code extra_body} (R-WP-52). No model default, because
+     * the core knows none — a page that invented one would carry over a value belonging to another provider.
      *
-     * <p>Validation runs before the first write, so a rejected request leaves the file untouched, and
-     * the answer is a fresh masked read rather than the submitted body — the next delivery therefore
-     * shows what is really stored (UC-WP-24 GIVEN 1).</p>
+     * <p>{@link ThinkSupport.Unknown} counts as supported: it says the form is not known <em>yet</em>,
+     * which is not the claim "this provider has no think input" that the disabled field makes.</p>
+     */
+    public List<ProviderDefaults> providerDefaults() {
+        return Arrays.stream(AiProvider.values())
+                .map(name -> {
+                    LlmProvider provider = LlmProviders.of(name);
+                    ThinkSupport support = provider.thinkSupport();
+                    return new ProviderDefaults(name.name(), provider.defaultBaseUrl(),
+                            !(support instanceof ThinkSupport.None), ThinkForm.of(support),
+                            support instanceof ThinkSupport.Values values ? values.values() : List.of(),
+                            provider.supportsExtraBody());
+                })
+                .toList();
+    }
+
+    /**
+     * The masked read model: the one place that ever sees {@link LlmConfig#getApiKey()}.
      *
-     * <p>The write uses the same connector as the read: that connector is the single write owner, so a
-     * saved value lands in the factory's own file and never in the environment, and a hand edit made
-     * since the last read is respected instead of overwritten.</p>
+     * <p>{@code think} is the dev slot's record read <em>after</em> {@link #pin(LlmConfig)}, so the
+     * default page and the agent section answer the very value a turn sends (R-WP-49). The two param
+     * fields answer as the text the file carries: the core keeps them as a map, and re-rendering that
+     * map would give one field a second spelling.</p>
+     */
+    public SettingsSnapshot snapshot() {
+        EnvFallbackLlmConfigStore connector = store();
+        LlmConfig config = pin(LlmConfigLoader.load(connector));
+        return new SettingsSnapshot(config.getProviderType().name(), config.getModel(),
+                config.modelConfigFor(AgentModelConfig.DEV).think(), config.getUrl(),
+                config.getAutoCompactAfter(), config.getTimeout().getSeconds(), config.isSendThinkingEnabled(),
+                providerDefaultOrNumber(config.getMaxTokens()), connector.get(LlmConfigKeys.QUERY_PARAMS, null),
+                connector.get(LlmConfigKeys.HEADER_PARAMS, null),
+                present(config.getApiKey()), connector.apiKeySource());
+    }
+
+    /** The core's 0 is "the provider decides" (R-WP-51), which an empty field shows — not a typed zero. */
+    private static Integer providerDefaultOrNumber(int maxTokens) {
+        return maxTokens == 0 ? null : maxTokens;
+    }
+
+    /**
+     * Saves in the three states of R-WP-16: a field the request does not name keeps its value, a field
+     * the user <b>cleared</b> is deleted from the file (UC-WP-46 — afterwards what applies without it
+     * applies again), and a field with a value is stored trimmed. The api key is the documented
+     * exception: write-only, never prefilled, so an empty field means unchanged and only
+     * {@code removeApiKey} deletes (UC-WP-24 GIVEN 2, UC-WP-63).
+     *
+     * <p>The rules of the wire are checked on the request's own shape before this method is entered
+     * (R-WP-55) — nothing here weighs them a second time. A save therefore either writes what was
+     * accepted whole or writes nothing, and the answer is a fresh masked read rather than the submitted
+     * body: the next delivery shows what is really stored (UC-WP-24 GIVEN 1).</p>
+     *
+     * <p>Deleting a key the file does not carry rewrites nothing, so a save without an edit still changes
+     * no byte even though the page names every field. The write uses the same connector as the read: that
+     * connector is the single write owner, so a saved value lands in the factory's own file and never in
+     * the environment, and a hand edit made since the last read is respected instead of overwritten.</p>
      */
     public SettingsSnapshot update(SettingsUpdate update) {
         writeLock.lock();
         try {
-            validate(update);
             LlmConfigStore connector = store();
-            putIfPresent(connector, LlmConfigKeys.PROVIDER_TYPE, update.provider());
-            putIfPresent(connector, LlmConfigKeys.MODEL, update.model());
-            putIfPresent(connector, LlmConfigKeys.URL, update.url());
-            putIfPresent(connector, LlmConfigKeys.API_KEY, update.apiKey());
-            putIfPresent(connector, LlmConfigKeys.TOKEN_WINDOW, update.tokenWindow());
-            putIfPresent(connector, LlmConfigKeys.TIMEOUT, update.timeoutSeconds());
-            putIfPresent(connector, LlmConfigKeys.SEND_THINKING_ENABLED, update.sendThinking());
+            apply(connector, LlmConfigKeys.PROVIDER_TYPE, update.provider());
+            apply(connector, LlmConfigKeys.MODEL, update.model());
+            apply(connector, LlmConfigKeys.URL, update.url());
+            applyApiKey(connector, update.apiKey(), update.removeApiKey());
+            apply(connector, LlmConfigKeys.TOKEN_WINDOW, update.tokenWindow());
+            apply(connector, LlmConfigKeys.TIMEOUT, update.timeoutSeconds());
+            apply(connector, LlmConfigKeys.SEND_THINKING_ENABLED, normalizedBoolean(update.sendThinking()));
+            apply(connector, LlmConfigKeys.MAX_TOKENS, providerDefaultMeansGone(update.maxTokens()));
+            apply(connector, LlmConfigKeys.QUERY_PARAMS, update.queryParams());
+            apply(connector, LlmConfigKeys.HEADER_PARAMS, update.headerParams());
+            applyDefaultThink(update.think());
             return snapshot();
         } finally {
             writeLock.unlock();
         }
-    }
-
-    /**
-     * Hand-written because this module has no Bean Validation starter — and policy is the internal
-     * facade's job anyway. Every message is a constant naming the <em>field</em>: a submitted value,
-     * least of all a key, must not be repeated into a response body or a log line.
-     */
-    private static void validate(SettingsUpdate update) {
-        // AiProvider.parse is forbidden here: it coerces an unknown name to OLLAMA, so a typo would be
-        // answered with 200 and stored as garbage.
-        if (present(update.provider()) && !isProviderName(update.provider().trim())) {
-            throw new IllegalArgumentException(PROVIDER_HINT);
-        }
-        if (update.tokenWindow() != null && update.tokenWindow() <= 0) {
-            throw new IllegalArgumentException(TOKEN_WINDOW_HINT);
-        }
-        if (update.timeoutSeconds() != null && update.timeoutSeconds() <= 0) {
-            throw new IllegalArgumentException(TIMEOUT_HINT);
-        }
-    }
-
-    private static boolean isProviderName(String value) {
-        return Arrays.stream(AiProvider.values()).anyMatch(name -> name.name().equals(value));
     }
 
     /**
@@ -162,27 +200,120 @@ public class FactoryConfigService {
         }
         rawName = rawName.trim();
         if (!isProviderName(rawName)) {
-            throw new TurnNotConfiguredException(PROVIDER_HINT);
+            throw new TurnNotConfiguredException(WireValidationHints.PROVIDER_HINT);
         }
         return AiProvider.valueOf(rawName);
     }
 
-    /** Trimmed, and only when a value was actually submitted — absent and blank both write nothing. */
-    private static void putIfPresent(LlmConfigStore store, String key, Object value) {
+    /**
+     * The three states of one visible field (UC-WP-46). An absent field is not submitted at all; an empty
+     * one is the user clearing it, which the store reads as removal — that is the whole point of handing
+     * it a blank here.
+     */
+    private static void apply(LlmConfigStore store, String key, String value) {
         if (value == null) {
             return;
         }
-        String text = value.toString().trim();
-        if (!text.isEmpty()) {
-            store.put(key, text);
+        String text = value.trim();
+        if (text.isEmpty()) {
+            store.remove(key);
+            return;
+        }
+        store.put(key, text);
+    }
+
+    /**
+     * The key is the exception of R-WP-16: its field is write-only and never prefilled, so a blank means
+     * unchanged and only {@code removeApiKey} deletes. Removal is idempotent and reaches the file only —
+     * a key the environment still supplies stays effective, and the answer names ENV as its source.
+     */
+    private static void applyApiKey(LlmConfigStore store, String value, boolean removeApiKey) {
+        if (removeApiKey) {
+            store.remove(LlmConfigKeys.API_KEY);
+            return;
+        }
+        if (present(value)) {
+            store.put(LlmConfigKeys.API_KEY, value.trim());
         }
     }
 
+    /** Stored the way the core reads it, so a saved {@code TRUE} does not stay in the file as {@code TRUE}. */
+    private static String normalizedBoolean(String value) {
+        return present(value) ? Boolean.toString(Boolean.parseBoolean(value.trim())) : value;
+    }
+
+    /** Max tokens 0 says "the provider decides" (R-WP-51), which is the key being absent, not a stored zero. */
+    private static String providerDefaultMeansGone(String value) {
+        return present(value) && "0".equals(value.trim()) ? "" : value;
+    }
+
+    /**
+     * "Think (Default)" <b>is</b> the dev slot's field (R-WP-49): the core has no base think key, so a
+     * properties entry would be a second store the agent section could not see. The write therefore goes
+     * through the slot's own file and its lock, both under {@link #writeLock}. The file lock is released
+     * again before {@link #snapshot()} reads the value back, so the two locks are never nested.
+     */
+    private void applyDefaultThink(String think) {
+        if (think == null) {
+            return;
+        }
+        AgentConfigFile.forSlot(home, AgentModelConfig.DEV)
+                .write(new AgentConfigFile.Changes(false, null, null, null, think, null, null, null));
+    }
+
     private LlmConfig pin(LlmConfig loaded) {
-        return loaded.toBuilder()
+        return withAgentOverrides(loaded.toBuilder()
                 .configDir(home.root())
                 .diskToolsEnabled(true)
-                .build();
+                .build());
+    }
+
+    /**
+     * R-WP-23 (D-11): what an agent's own file says wins over the loaded config — one record per slot, no
+     * second store, and the file read again with every load, so a save needs no restart and no runtime
+     * cache. A slot whose file carries nothing is never put on the config at all, which keeps "empty
+     * means unset" the core's resolution instead of an empty record of ours.
+     *
+     * <p>The record is built the way {@link LlmConfigLoader} builds one, so the factory adds no semantics
+     * of its own: the dev slot carries no model, url or key because dev <em>is</em> the base slot
+     * (ADR-0062; {@code devAgentConfig()} forces the base model whatever the file says).</p>
+     *
+     * <p>{@code tools} (R-WP-52) does not live in the record — the core reads it from its own map — so a
+     * file that names tools joins that map, entry per slot, and wins over a {@code llm.agent.<id>.tools}
+     * line the same way the record wins over the property. The raw wording travels untouched; only the
+     * core interprets it (D9).</p>
+     */
+    private LlmConfig withAgentOverrides(LlmConfig loaded) {
+        LlmConfig config = loaded;
+        Map<String, String> tools = null;
+        for (AgentSlots.AgentSlot slot : AgentSlots.all()) {
+            AgentConfigFile.Values values = AgentConfigFile.forSlot(home, slot.id()).read();
+            if (values.overridden()) {
+                config = config.withModelConfig(slot.id(), recordFor(slot.id(), values));
+            }
+            if (present(values.tools())) {
+                if (tools == null) {
+                    tools = new LinkedHashMap<>(config.getAgentTools());
+                }
+                tools.put(slot.id(), values.tools().trim());
+            }
+        }
+        return tools == null ? config : config.toBuilder().agentTools(tools).build();
+    }
+
+    /** The file's seven values as the core's record — blanks unset; {@code tools} is no record field. */
+    private static AgentModelConfig recordFor(String id, AgentConfigFile.Values values) {
+        boolean dev = AgentModelConfig.DEV.equals(id);
+        return new AgentModelConfig(dev ? null : blankToNull(values.url()),
+                dev ? null : blankToNull(values.apiKey()),
+                dev ? null : blankToNull(values.model()),
+                blankToNull(values.think()),
+                blankToNull(values.extraBody()),
+                blankToNull(values.temperature()));
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     /**
@@ -193,8 +324,13 @@ public class FactoryConfigService {
         return new EnvFallbackLlmConfigStore(new FileLlmConfigStore(home.configFile()), environment);
     }
 
-    /** A submitted value — {@code null} and blank are both "the client left this one alone". */
+    /** A submitted value — {@code null} and blank are the two states that never store anything. */
     private static boolean present(String value) {
         return value != null && !value.isBlank();
+    }
+
+    /** Package-internal because {@link ModelListService} refuses the same names for the same reason. */
+    static boolean isProviderName(String value) {
+        return Arrays.stream(AiProvider.values()).anyMatch(name -> name.name().equals(value));
     }
 }

@@ -62,6 +62,8 @@ Rename or move within the workspace. Creates target parent folders. Errors if ta
 
 ### `eclipseInsertLines(filePath, afterLine, newContent)`
 Insert text at a position. `afterLine = null` appends, `0` prepends, `1..n` inserts after that line.
+Anhängen am Dateiende behält den abschließenden Zeilenumbruch — Regel + BDD identisch zu
+`diskInsertLines` ([disk-file-write-tool.md](../../org.sterl.llmpeon.core/docs/disk-file-write-tool.md)).
 
 ## Key Technical Decisions
 

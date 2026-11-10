@@ -44,7 +44,7 @@ flowchart LR
 |---|---|---|
 | `ProjectService` (Package `project`) | Projektliste, Klonen, Entfernen, Pfad je Projekt | den Core kennen |
 | `ProjectRuntime` | Jon + Team je Projekt, Serialisierung der Turns, Clear/Compact je Agent, Tool- und Write-Roots | HTTP, JSON, Browser-Formate |
-| `ChatStreamRegistry` | Events des `AiMonitor` als SSE je Projekt verteilen, tote Zuschauer abmelden | eigene Nachrichten halten (Memory ist im Core), **kein** Replay des Verlaufs, kein Emitter-I/O unter dem Projekt-Lock (ein langsamer Leser darf den Turn nicht bremsen, UC-WP-41) |
+| `ChatStreamRegistry` | Events des `AiMonitor` als SSE je Projekt verteilen, tote Zuschauer abmelden; **zwei Kanäle je Projekt** (seit C-7, [R-WP-53](chat.md)): Jon-Kanal (`channel == null`, nur Jon + namenlose Zeilen — UC-WP-40) und je Mitglied ein Agenten-Kanal (`publishAgent`, nur `partial`/`tool` dieses Mitglieds) | eigene Nachrichten halten (Memory ist im Core), **kein** Replay des Verlaufs, kein Emitter-I/O unter dem Projekt-Lock (ein langsamer Leser darf den Turn nicht bremsen, UC-WP-41) |
 | `FactoryConfig` (Package `config`) | Lesen/Schreiben der Factory-Config, Maskierung der Keys, Auflösung pro Turn | den geteilten Config-Bestand des Plugins schreiben **oder lesen** |
 | `PacoRuntime` | ein Paco je Nutzer und Projekt, Write-Liste `stories/<nutzer>/` + `proposals/<nutzer>/`, nur `searchAgent` | Team Plan/Dev/Review, Projekt-Jon-Memory |
 | Core (`AiPoAgent` …) | Agent-Logik, Tools, Memory, History-Store | Eclipse, HTTP, Factory-Klassen |
@@ -143,7 +143,66 @@ sequenceDiagram
   `chat`; die Chat-Oberfläche hängt ihn nur ein. Im UI heißt die Komponente `project`
   (`project.files.tsx` + `files.client.ts`), der Chat-View bekommt sie als Slot von `app` — die
   Abhängigkeitsrichtung bleibt `app` → `chat` · `project`, `chat` kennt `project` nicht.
+* **Ein Symlink ist ein Name, keine Metadaten (Inc 5a).** Das Listing verfolgt einen Link nie:
+  ein Symlink erscheint mit `symlink: true`, `directory: false` und Größe 0 — auch wenn sein Ziel
+  regulär erscheint; Ziel-Wissen fließt nie in die Antwort. Der Leseweg bleibt unverändert: Link
+  innerhalb der Wurzel liest 200, ausbrechender Link endet 400 (UC-WP-42).
 
+
+### Kacheln und Blick je Agent (Design für Inc 5, chat.md R-WP-7/R-WP-26)
+
+```mermaid
+sequenceDiagram
+  participant U as Browser (Kachel)
+  participant C as ChatController
+  participant R as ProjectRuntimeRegistry
+  participant P as ProjectRuntime
+  participant A as AiAgent (Plan/Dev/Review/Jon)
+  participant S as ChatStreamRegistry
+  U->>C: POST /api/projects/{id}/agents {name, action}
+  C->>R: act(id, name, action)
+  R->>P: act(name, action)
+  P->>P: Name im Roster? sonst 400
+  P->>P: busy? (Turn läuft oder ein Agent arbeitet) ⇒ 409
+  P->>S: Agents(tiles) — Zustand „startet"
+  P->>A: über den Turn-Executor: clear() bzw. compact(monitor)
+  C-->>U: 202
+  A-->>S: Compact-Zeilen (Jons Origin) / Fehler als Tool-Zeile
+  P->>S: Agents(tiles) — endgültig
+  U->>C: GET /agents + GET /messages (neu lesen)
+```
+
+* **Die drei Gesprächs-Kanten bleiben drei.** `GET/POST …/messages` und `GET …/events` führen den
+  Turn; die **Kachel-Familie** (`GET …/agents` — Roster, `POST …/agents` — Clear/Compact,
+  `GET …/agents/{name}` — Blick) startet weder Turn noch zweiten Verlauf. Alles Agent-bezogene
+  bleibt im `chat`-Paket (`ComponentArchitectureTest` verbietet Agent-Instanzen anderswo).
+* **SSE `agents` ist ein Snapshot, kein Verlauf.** Das Event trägt die ganze Kachel-Liste, die UI
+  ersetzt ihren Zustand; kein Replay, kein zweiter Speicher. Frisch gelesen wird beim Mount/Reconnect
+  über `GET …/agents` (dieselbe Regel wie beim Verlauf: *re-connect ⇒ lesen*). Die Kontextzahl ist
+  der Plugin-Wert (`getTotalTokenUsed()` + `isTokenEstimate()`, Prozent gegen das Auto-Compact-Budget);
+  die Fabrik formatiert nicht selbst. Search ist ein Sub-Loop — Kachel ohne Kontext, kein Clear/Compact,
+  kein Blick (R-WP-7/R-WP-26).
+* **Ein Claim je Projekt — Turn und Aktion treffen sich nie** (`TurnClaim` in `chat`, Inc 5e):
+  Clear/Compact mutieren das Memory, ein paralleler Turn würde sie zerschreiben; der Claim entscheidet
+  „Turn läuft" und „Aktion läuft" in **einem** Monitor. `POST` antwortet `202`; läuft ein Turn, wird die
+  Aktion abgelehnt (`409`), nicht eingereiht. Umgekehrt wartet ein Senden hinter einer laufenden Aktion
+  — Senden wird **nie** abgelehnt (R-WP-10). Ein Stop während einer wartenden Aktion wird abgelehnt
+  (`409`): der Cancel-Flag gehört der Aktion, ein halber Compact ist kein Ergebnis (D-17). Nach einer
+  abgeschlossenen Aktion ist der Cancel-Flag gelöscht — ein Compact nach einem Stop läuft. Wartet ein
+  Senden länger als **10 s** auf die Freigabe (Frist gegen das Claim-Leck), endet der Turn als
+  `failed`-Event, nie als stiller Block. Fehler einer Aktion sind eine `tool`-Zeile (live), kein neuer
+  Kanal.
+* **Der Blick (`GET …/agents/{name}`) liest das Core-Memory im RAM** (`AiAgent.getMemory()`) —
+  schreibgeschützt, nur für Plan/Dev/Review (Jon/Search ⇒ 400), begrenzt (letzte 500 Zeilen, 8 192
+  Zeichen je Zeile, `truncated`-Kennzeichnung). Nach einem Neustart ist der Blick leer (Team beginnt
+  leer, R-WP-11); es gibt keine Route, die ein Agentengespräch anlegt oder wählt.
+* **Stop (UC-WP-50)** gehört zur Gesprächs-Kante: er bricht den laufenden Turn ab (Jon und laufende
+  Delegationen), kein zweiter Turn-Pfad, keine zweite Speicherung — die already gezeigten Zeilen
+  bleiben. Die Queue-Klausel von [UC-WP-50](chat.md) ist **nicht** erfüllt: eine Eingabe, die der
+  laufende Turn beim Abbruch schon aus der Queue gepollt hat, geht mit ihm verloren (gemessenes
+  Core-Verhalten: `AbstractAgent.call` pollt, die Cancel-Schleife verlässt, der Drain findet eine leere
+  Queue); nur was in diesem Moment noch wartet, überlebt (`handleAbortAndDrain` legt es als Memory-Zeile
+  ab). Das ist Core-Verhalten, nicht Fabrik-Code — UC-WP-50 bleibt offen.
 
 ## UI-Aufbau — dieselben Komponenten wie im Backend (Entscheidung 2026-10-26)
 
@@ -154,21 +213,22 @@ Datei die Rolle im Namen (`<komponente>.<rolle>.tsx`). Kein Sammelordner für Vi
 ```
 factory-ui/
   src/
-    app/      app.shell.tsx          Router (eine Adresse je Seite, R-WP-1), Auswahl des Projekts
-    project/  project.page.tsx       Liste + Hinzufügen
-              project.list.tsx
-              project.add.tsx
+    app/      app.shell.tsx          Rahmen: Header · Sider · Content (R-WP-38)
+              app.top.tsx            dunkles Top-Menü — hält keine Auswahl (R-WP-43)
+              app.menu.ts            NavItem + entry(): eine Markenregel für beide Menüs
+              app.routes.tsx         eine Adresse je Seite und je Einheit (R-WP-1)
+              app.sider.tsx          Projektbaum — hält keine Auswahl
+              app.paths.ts           das Adress-Modell: Erzeuger und Deuter in EINER Datei
+              app.context.ts         was der Rahmen den Seiten reicht
+    project/  project.page.tsx       Liste + Hinzufügen/Entfernen — liest die Liste nicht selbst
+              project.list.ts        useProjectList: der Eigner der Liste im Rahmen
+              project.files.tsx      Datei-Bereich (Slide-out), props-getrieben
     chat/     chat.page.tsx          Verlauf, Composer, Live-Zeilen
-              chat.log.tsx
-              chat.composer.tsx
+              chat.log.tsx · chat.composer.tsx · chat.tools.tsx
               chat.stream.ts         SSE-Lesen/Parser
     config/   config.page.tsx        Config-Seite
-              config.form.tsx
-    shared/   api.client.ts          HTTP + Fehlertyp, von allen benutzt
-              dto.ts
-  test/
-    project/project.page.test.tsx
-    chat/chat.page.test.tsx
+    shared/   api.client.ts · sse.client.ts · content.ts · theme.ts · last.project.ts
+  test/<komponente>/                 Spiegel von src/, niemals Tests unter src/
 ```
 
 * **Gleicher Name wie im Backend** (`project`, `chat`, `config`, `shared`): wer den Server versteht,
@@ -180,6 +240,48 @@ factory-ui/
   ausgeliefert wird, und beides wird beim Lesen verwechselt.
 * **Abhängigkeitsrichtung wie im Backend:** `app` kennt die Komponenten, `shared` kennt keine; eine
   Komponente importiert nie aus einer anderen außer `shared` (Ausnahme: `app` als Verdrahtung).
+
+### Rahmen, Adresse, Einheit (2026-11-07)
+
+```mermaid
+flowchart LR
+  URL[Adresse] -->|navKeyOfPathname| Sider[AppSider · Markierung]
+  URL -->|Route| Shell[AppShell · Rahmen]
+  List[useProjectList<br/>project.list.ts] -->|projects| Shell
+  Shell -->|projects · onOpen| Page[ProjectPage]
+  Shell -->|projects · activeKey| Sider
+  Shell -->|openProject: merken + navigate| URL
+  URL -->|chat/:project| Chat[ChatPage<br/>bleibt gemountet]
+  URL -->|chat/:project/files| Files[ProjectFiles<br/>Kind-Route]
+  Chat --- Files
+```
+
+* **Der Rahmen besitzt Liste und Navigation.** `useProjectList` (eine Datei, ein GET) füttert Sider
+  **und** Projekte-Seite über `app.context.ts`; eine Seite fragt die Liste nie selbst. `app.paths.ts` ist
+  der **einzige** Ort, der Adressen baut und liest (`chatPath`, `projectSegment`, `navKeyOfPathname`) —
+  der Sider hält dafür **keinen** Zustand.
+* **Markierung ist eine Funktion der Adresse**, nicht das Ergebnis eines Klicks. Messbarer Grund
+  (Review 2026-11-07): eine Auswahl im State überlebt Back/Forward und jede Weiterleitung — und bleibt
+  bei Tests grün, wenn die Mutation nur `useState(null)` trifft. Zu treffen sind **geseedeter** State und
+  **beim Mount eingefrorener** Wert; `unmount()` + Neu-Mount prüft zwei Mounts, nie eine Zustandsänderung.
+* **Der Datei-Bereich gehört der Adresse, nicht dem Seiten-State** (Inkrement 5b): **wer** „offen" nennt,
+  entscheidet die Route — `project.files.tsx` ist props-getrieben, die Panel-**Fläche** wird mit der
+  Adresse geboren und stirbt mit ihr („Schließen vergisst die Position" gilt damit **per Konstruktion**,
+  nicht durch einen Reset-Effekt); der „Files"-Tab bleibt außen gemountet, weil er die sichtbare Öffnung
+  ist. Der Tab im Chat ([R-WP-33](files.md)) und der Sider-Eintrag sind zwei Griffe auf dieselbe
+  Adressänderung, kein zweiter Mechanismus. **Seit Runde 6 (2026-11-08) ist das Panel ein AntD
+  `Drawer`** (von rechts, [R-WP-33](files.md)): die eigene Slide-Mechanik weicht. Der Drawer läuft mit
+  `getContainer={false}` **inline im Chat-Layout** (nicht als body-Portal) — nur so sitzt die
+  Panel-Oberkante bündig am „Files"-Tab und die Panel-Breite bleibt an unsere CSS-Variablen gebunden.
+  Die alte Geschwister-Nähe (`+`/`~`) entfällt damit trotzdem: Tab-zu-Panel-Nähe wird über
+  Positionierung bewiesen, nicht über DOM-Geschwisterlichkeit.
+* **Gemessen, nicht geglaubt (5b-1):** die Kind-Route ist die **klare Grammatik** (die Einheit ist ein
+  Unterpfad der Chat-Adresse), aber sie ist **nicht** der Grund, warum die Chat-Seite gemountet bleibt —
+  eine Schwesterroute mit demselben Element an derselben Stelle mountet `chat/:project` ebenfalls **nicht**
+  neu (React Router 7.18.5, gemessen: `/messages` bleibt bei einem Read). Bewiesen wird der bleibende Mount
+  deshalb über einen **erzwungenen** Remount (`key` auf die Adresse ⇒ Test rot), nie über die Routenform
+  ([UC-WP-70 G2](ui.md): „ein laufender Turn endet nicht an diesem Klick").
+
 
 ## Abbildung Core → Factory
 

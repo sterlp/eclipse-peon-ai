@@ -12,9 +12,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import org.sterl.open.aifactory.config.FactoryConfigService;
+import org.sterl.open.aifactory.chat.dto.AgentAction;
+import org.sterl.open.aifactory.chat.dto.AgentTileDto;
+import org.sterl.open.aifactory.chat.dto.AgentTranscriptDto;
 import org.sterl.open.aifactory.project.ProjectNotFoundException;
 import org.sterl.open.aifactory.project.ProjectRemoved;
 import org.sterl.open.aifactory.project.ProjectService;
+import org.sterl.open.aifactory.project.ProjectStatusStream;
 import org.sterl.open.aifactory.project.Project;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
@@ -24,7 +28,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * (§3.3.1), so a change to the turn mechanics never touches this class.
  *
  * <p>Every entry point answers for an unknown project with {@link ProjectNotFoundException} — the 404
- * half of all three edges, and the shared advice of {@code project} answers it.</p>
+ * half of every edge, and the shared advice of {@code project} answers it.</p>
  */
 @Component
 public class ProjectRuntimeRegistry {
@@ -33,6 +37,7 @@ public class ProjectRuntimeRegistry {
     private final FactoryConfigService config;
     private final FactoryHome home;
     private final ChatStreamRegistry streams;
+    private final ProjectStatusStream status;
 
     private final Map<String, ProjectRuntime> runtimes = new ConcurrentHashMap<>();
 
@@ -40,11 +45,12 @@ public class ProjectRuntimeRegistry {
     private final ExecutorService turns = Executors.newVirtualThreadPerTaskExecutor();
 
     public ProjectRuntimeRegistry(ProjectService projects, FactoryConfigService config, FactoryHome home,
-            ChatStreamRegistry streams) {
+            ChatStreamRegistry streams, ProjectStatusStream status) {
         this.projects = projects;
         this.config = config;
         this.home = home;
         this.streams = streams;
+        this.status = status;
     }
 
     /**
@@ -59,16 +65,60 @@ public class ProjectRuntimeRegistry {
     /**
      * Fire and forget — the caller's thread is never used for the turn, which is what lets the POST answer
      * 202 while Jon is still working, and what lets a second input reach the queue of the same Jon (D2).
+     *
+     * @param user the sender's label (R-WP-25); it goes in front of the text and chooses nothing, so a
+     *             name is no second conversation and no addressee (UC-WP-48, UC-WP-16)
      */
-    public void submit(String projectId, String text) {
+    public void submit(String projectId, String text, String user) {
         if (text == null || text.isBlank()) {
             throw new IllegalArgumentException("text must not be blank");
         }
-        runtime(projectId).submit(text);
+        runtime(projectId).submit(text, user);
     }
 
     public List<ChatLine> history(String projectId) {
         return runtime(projectId).history();
+    }
+
+    /** The team's tiles, read live — re-connect means read, so this and the SSE snapshot share one source. */
+    public List<AgentTileDto> agents(String projectId) {
+        return runtime(projectId).tiles();
+    }
+
+    /**
+     * Clear or Compact one tile. A name that is no tile and an action that tile does not offer are
+     * {@link IllegalArgumentException} (400), a busy project is {@link IllegalStateException} (409) — an
+     * action is refused, never queued.
+     */
+    public void act(String projectId, String name, AgentAction action) {
+        runtime(projectId).act(name, action);
+    }
+
+    /**
+     * The read-only insight into one tile's own chat. A name that is no tile of this project, and a tile
+     * that offers no insight, are {@link IllegalArgumentException} (400) — this edge reads a conversation,
+     * it can never open, choose or start one.
+     */
+    public AgentTranscriptDto transcript(String projectId, String name) {
+        return runtime(projectId).transcript(name);
+    }
+
+    /**
+     * The live view of one tile's own chat (R-WP-53) — same edge, same gate as {@link #transcript}: a name
+     * that is no tile of this project and a tile that offers no insight are
+     * {@link IllegalArgumentException} (400), an unknown project {@link ProjectNotFoundException} (404).
+     * It grows a read that was already there; it opens, chooses and starts nothing.
+     */
+    public SseEmitter subscribeAgent(String projectId, String name) {
+        return runtime(projectId).subscribeAgent(name);
+    }
+
+    /**
+     * Stop the turn that is running (UC-WP-50). No turn is {@link IllegalStateException} (409), an unknown
+     * project 404 — and nothing else: the stop ends a conversation, it never opens one.
+     */
+    public void stop(String projectId) {
+        runtime(projectId).stop();
     }
 
     /**
@@ -104,9 +154,18 @@ public class ProjectRuntimeRegistry {
         // built outside the map, never in computeIfAbsent: building an agent must not hold a map bin, and
         // the first writer wins — two concurrent POSTs must not get two Jons on one history
         ProjectRuntime built = new ProjectRuntime(projectId, project.localPath(), home.stateDir(projectId),
-                config::load, config::loadForTurn, streams, turns);
+                config::load, config::loadForTurn, streams, status, turns);
         ProjectRuntime raced = runtimes.putIfAbsent(projectId, built);
         return raced != null ? raced : built;
+    }
+
+    /**
+     * The runtime of a project that already has one, and nothing else: reading a work state must not
+     * build a Jon, his team and their memory (R-WP-24, UC-WP-47) — the project list is opened to look at
+     * the registry.
+     */
+    ProjectRuntime peek(String projectId) {
+        return runtimes.get(projectId);
     }
 
     int runtimeCount() {

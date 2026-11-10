@@ -59,9 +59,13 @@ public final class JonToolSet {
      * The delegation tool Jon needs to reach his team. Registered before the agent is built, otherwise
      * the first turn cannot see it. No standing orders (D6): order texts are a story field of their own.
      */
-    public void addDelegateTool(AiAgent plan, AiAgent review, AiAgent dev,
+    public PoDelegateTool addDelegateTool(AiAgent plan, AiAgent review, AiAgent dev,
             IntSupplier autoCompactAfter) {
-        tools.addTool(new PoDelegateTool(plan, review, dev, unused -> List.of(), autoCompactAfter));
+        PoDelegateTool tool = new PoDelegateTool(plan, review, dev, unused -> List.of(), autoCompactAfter);
+        tools.addTool(tool);
+        // the tool itself, so the caller can hang its own listeners on it — the delegation events of the
+        // wire come from there and from nowhere else (R-WP-40, UC-WP-72)
+        return tool;
     }
 
     public ToolService tools() {
@@ -69,10 +73,10 @@ public final class JonToolSet {
     }
 
     /**
-     * Project checkout plus system temp — the two roots of R-WP-13. Read by the core at validate time
-     * and again at prompt time, so a root is never cached and the agent's prompt cannot age behind the
-     * check. Handed to the agent through {@code getWriteValidator()} for Jon and Dev; Plan and
-     * Review keep their core validators (Q5).
+     * Project checkout plus system temp — the two roots of R-WP-6 (the temp root is R-WP-13's). Read by
+     * the core at validate time and again at prompt time, so a root is never cached and the agent's
+     * prompt cannot age behind the check. Handed to the agent through {@code getWriteValidator()} for
+     * Jon and Dev; Plan and Review keep their core validators (Q5).
      */
     public WriteValidator writeValidator() {
         return writeValidator;

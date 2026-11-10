@@ -19,6 +19,7 @@ import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -54,6 +55,40 @@ class DiskFileWriteToolTest {
         Files.writeString(tempDir.resolve("data.txt"), "before");
         tool.diskWriteFile("data.txt", "after");
         assertEquals("after", Files.readString(tempDir.resolve("data.txt")));
+    }
+
+    // UC-SD-1
+    @Test
+    void writeDiskFile_newFileFiresAFileUpdate() {
+        var monitor = new CapturingMonitor();
+        tool.withToolRequest(requestWith(monitor));
+
+        // GIVEN a path that does not exist WHEN the tool creates it
+        tool.diskWriteFile("sub/new.txt", "created");
+
+        // THEN exactly one update with an empty old content — that is what makes the create a + diff
+        assertEquals(1, monitor.fileUpdates.size());
+        var update = monitor.fileUpdates.get(0);
+        assertEquals("sub/new.txt", update.file());
+        assertEquals("", update.oldContent());
+        assertEquals("created", update.newContent());
+    }
+
+    @Test
+    void writeDiskFile_existingFileFiresAFileUpdateWithOldContent() throws IOException {
+        Files.writeString(tempDir.resolve("data.txt"), "before");
+        var monitor = new CapturingMonitor();
+        tool.withToolRequest(requestWith(monitor));
+
+        // WHEN the existing file is overwritten
+        tool.diskWriteFile("data.txt", "after");
+
+        // THEN the update names the previous content — an always-empty old would diff against nothing
+        assertEquals(1, monitor.fileUpdates.size());
+        var update = monitor.fileUpdates.get(0);
+        assertEquals("data.txt", update.file());
+        assertEquals("before", update.oldContent());
+        assertEquals("after", update.newContent());
     }
 
     @Test
@@ -250,9 +285,15 @@ class DiskFileWriteToolTest {
     /** Captures TOOL chat messages so void tools' success messages can be asserted. */
     private static final class CapturingMonitor implements AiMonitor {
         final List<String> toolMessages = new ArrayList<>();
+        final List<AiFileUpdate> fileUpdates = new ArrayList<>();
         @Override
         public void onChatResponse(SimpleMessage m) {
             if (m.role() == SimpleMessage.Type.TOOL) toolMessages.add(m.message());
+        }
+        /** Deliberately not {@code super} — the default answers with an "Updated:" tool line. */
+        @Override
+        public void onFileUpdate(AiFileUpdate update) {
+            fileUpdates.add(update);
         }
     }
 

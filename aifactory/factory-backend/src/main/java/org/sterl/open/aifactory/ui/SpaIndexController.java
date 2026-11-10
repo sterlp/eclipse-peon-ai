@@ -19,8 +19,9 @@ import org.springframework.web.bind.annotation.GetMapping;
  * before its resolvers run.</p>
  *
  * <p>Only these two addresses are mapped, so {@code /ui/assets/**} and {@code /ui/index.html} stay with
- * {@link ResourceUIConfig}. There is no fallback for unknown sub-paths: the MVP has no client-side
- * router, so there is no route to rescue (open-points: <em>kein SPA-Routing im MVP</em>).</p>
+ * {@link ResourceUIConfig}. The fallback for a sub-path the client routes is not here either — it belongs
+ * to that handler's {@link SpaFallbackResolver}, which is the only place that can tell a missing file from
+ * a route (UC-WP-43). Mapping {@code /ui/**} here would answer every asset with HTML.</p>
  */
 @Controller
 public class SpaIndexController {

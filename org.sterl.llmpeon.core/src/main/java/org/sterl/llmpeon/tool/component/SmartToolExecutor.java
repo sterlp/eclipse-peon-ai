@@ -1,7 +1,9 @@
 package org.sterl.llmpeon.tool.component;
 
 import java.lang.reflect.Method;
+import java.util.Objects;
 
+import org.jspecify.annotations.NonNull;
 import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.tool.SmartTool;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
@@ -13,10 +15,12 @@ import dev.langchain4j.service.tool.DefaultToolExecutor;
 
 public class SmartToolExecutor {
     private final DefaultToolExecutor executor;
+    @NonNull
     private final SmartTool tool;
+    @NonNull
     private final ToolSpecification spec;
 
-    public SmartToolExecutor(SmartTool tool, Method method, ToolSpecification spec) {
+    public SmartToolExecutor(@NonNull SmartTool tool, @NonNull Method method, @NonNull ToolSpecification spec) {
         this.executor = DefaultToolExecutor.builder()
                 .object(tool)
                 .originalMethod(method)
@@ -26,10 +30,14 @@ public class SmartToolExecutor {
 
         this.tool = tool;
         this.spec = spec;
+        Objects.requireNonNull(this.tool, "SmartTool cannot be null");
+        Objects.requireNonNull(this.spec, "ToolSpecification cannot be null");
     }
+    @NonNull
     public SmartTool getTool() {
         return tool;
     }
+    @NonNull
     public ToolSpecification getSpec() {
         return spec;
     }
@@ -46,12 +54,11 @@ public class SmartToolExecutor {
             if (ExceptionUtil.isCanceled(e)) throw e; // cancellation wins — not a tool error
             // R5: a denial anywhere in the cause chain is a tool error — the model gets its message verbatim
             var denial = ExceptionUtil.findCause(e, IllegalArgumentException.class);
-            if (denial != null) {
-                var msg = messageOf(denial);
-                reportProblem(request, req, msg);
-                return msg;
-            }
-            throw e;
+            if (denial == null) throw e;
+
+            var msg = messageOf(denial);
+            reportProblem(request, req, msg);
+            return msg;
         } catch (Exception e) {
             if (ExceptionUtil.isCanceled(e)) throw e; // cancellation wrapped in another exception
             if (e instanceof RuntimeException ex) throw ex;

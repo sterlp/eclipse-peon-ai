@@ -1,6 +1,7 @@
 package org.sterl.open.aifactory.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.file.Path;
@@ -28,6 +29,7 @@ import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.tool.web.WebFetchTool;
 import org.sterl.llmpeon.tool.web.WebGetTool;
 import org.sterl.llmpeon.tool.web.WebSearchTool;
+import org.sterl.open.aifactory.project.dto.ProjectFileRoot;
 import org.sterl.open.aifactory.shared.TmpRoots;
 
 /**
@@ -97,6 +99,28 @@ class JonToolSetTest {
         assertThatThrownBy(() -> validator.validate(root.resolve("..").resolve("..").resolve("escape").toString()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining(root.toString());
+    }
+
+    /**
+     * Two classes name the two roots of R-WP-6 — this one for the write pinning, {@link ProjectFileRoot}
+     * for the file area — and the area's JavaDoc claims they are the same pair. Only behaviour keeps that
+     * promise: a root that silently left the write pinning would still be listed by the file area.
+     */
+    @Test
+    // UC-WP-19
+    void everyReadRootIsAWriteRootOfJon() {
+        Path root = projectRoot.toAbsolutePath().normalize();
+        WriteValidator validator = JonToolSet.forProject(root).writeValidator();
+
+        for (ProjectFileRoot readRoot : ProjectFileRoot.values()) {
+            Path dir = readRoot.resolve(root).toAbsolutePath().normalize();
+            assertThatCode(() -> validator.validate(dir.resolve("parity-probe.md").toString()))
+                    .as("read root %s is writable by Jon and his team", readRoot.wireName())
+                    .doesNotThrowAnyException();
+            assertThat(validator.pathScopePrompt())
+                    .as("R6: the prompt names the root the check allows")
+                    .contains(dir.toString());
+        }
     }
 
     /**

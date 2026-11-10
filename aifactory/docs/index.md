@@ -9,13 +9,16 @@ Kein Protokoll, kein Code-Bestand.
 
 Status: ✅ done · ◐ teilweise gebaut (Regeln mit ✅/❌ darunter) · 🚧 in design · ❌ specified (nicht
 gebaut) · ⏳ geparkt · 📝 Studie.
-Backlog = jedes ❌/🚧/◐.
+Backlog = jedes ❌/🚧/◐/❓.
 
 ## Wo das Wissen liegt
 
 * **[Architektur](aifactory-architektur.md)** — das WIE: Komponenten, Turn-Besitz, Core-Abbildung,
   Invarianten. **Vor jedem Plan** zu lesen.
 * **[Product Vision](product-vision.md)** — was Open AI Fabric (OAF, Jon@Web) ist und was nicht.
+* **[Glossary](glossary.md)** — ein Begriff, eine Bedeutung. Definiert hier: **Jon** (bauender,
+  technischer PO je Projekt) und **Paco** (fachlicher PO je Nutzer). Begriffe, die über ein einzelnes
+  Doc hinausreichen, kommen hierher, bevor sie in einem Doc „erfunden" werden.
 * **[Pauls Produktvision](../pauls-product-vision.md)** — Pauls Rohvision (*für Agenten nur zu lesen*).
   **Quelle des SOLL**, soweit keine bessere Idee abgestimmt ist (Paul 2026-10-27); verbindlich wird
   ein Punkt erst als Regel in einem Feature-Doc. Abweichungen stehen als ❓ in [Open Points](open-points.md).
@@ -48,16 +51,38 @@ Nicht hier: alles Eclipse-/OSGi-spezifische (SWT-Views, Widgets, Preference-Page
 
 ## Features
 
-MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabil). **Code nach
-Core-Aufräumen 2026-10-27 bewusst defekt.**
+MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabil).
 
-* [UI](ui.md) — vier Seiten unter `/ui/`, Reload bleibt auf der Seite, Look. ◐ (Auslieferung ✅, Seiten/Router ❌)
+* [UI](ui.md) — Rahmen: Top-Menü + Projektbaum im Sider (AntD), URL-stabil, Auslieferung unter `/ui/`, Look. ◐ (Auslieferung,
+  **Sider + URL ✅ [R-WP-38/UC-WP-70](ui.md)**, **Look-Restart ✅ [R-WP-43/UC-WP-76/77](ui.md)**,
+  **Design-Übernahme ✅ [R-WP-39/UC-WP-71](ui.md)** gebaut+reviewed 2026-11-07 (Inkremente 1–2 auf
+  `web-factory`); **Sider-Baum ✅ [R-WP-44/UC-WP-78](ui.md)** (Klapp-Gruppen je
+  Projekt, Chats als Einträge — Paul 2026-11-08), **AntD zuerst + wiederverwendbare Widgets ✅
+  [R-WP-46/UC-WP-81](ui.md)**; offen bleiben Look-Reparaturen aus der
+  Browser-Abnahme 2026-11-08 (in Inc 4 gebaut) und der Look am Browser; Chat-Aktionen-Buttons ✅
+([R-WP-43](ui.md) Aktionen inkl. Composer, Inc 4), [open-points](open-points.md) Runde 4b)
 * [Projekte](project.md) — Git-Checkout als Projekt: klonen, eindeutig, entfernen, nie interaktiv, Live-Status. ◐
 * [Jon-Chat](chat.md) — ein Jon, ein Gespräch je Projekt: Streaming, Queue, Neustart, Tools, Kacheln. ◐
-  (Herkunft je Zeile ❌, [AF-ADR-002](adr/002-origin-in-core-display-in-factory.md); Kacheln 🚧)
-* [Dateien](files.md) — Schreiben nur in Projekt + TMP, Datei-Bereich lesend. ❌ (gebaut, nicht reviewt)
+  (Herkunft je Zeile ✅ UC-WP-39/40; Kacheln ✅ R-WP-7, Blick je Agent ✅ R-WP-26, **Timeline als AntD-
+  Widget inkl. Think ✅ R-WP-40/UC-WP-72** gebaut 2026-11-07; **Warte-Rahmen gelöscht, Arbeit am
+  Status-Indikator ✅ [R-WP-31/45/UC-WP-65/79](chat.md)** gebaut+reviewed 2026-11-08 (Inc 4,
+  Farb-/Maß-Abnahme am Browser steht aus); **Blasen: volle Breite,
+  Höhe = Text ✅ [R-WP-29](chat.md)** + **Scroll/FloatButton ✅ [R-WP-35/UC-WP-80](chat.md)** (Inc 4,
+  Look-Abnahme am Browser steht aus); **Resend am Send-Knopf ✅ [R-WP-30/UC-WP-57](chat.md)** +
+  **Send nie deaktiviert ✅ [R-WP-41/UC-WP-74](chat.md)** (Runde 6, 2026-11-08); **Werkzeug-Schritte
+  im Restore ✅ [R-WP-47/UC-WP-82](chat.md)** (A7, 2026-11-08); **je Turn genau ein Endereignis ✅
+  [R-WP-48/UC-WP-83/84](chat.md)** (Nachtzyklus, 2026-11-09); **Blick im selben Chat-Widget, live ✅
+  [R-WP-53/UC-WP-89/90](chat.md)** (C-7, 2026-11-09))
+* [Dateien](files.md) — Schreiben nur in Projekt + TMP, Datei-Bereich lesend. ◐ (gebaut, reviewed 2026-11-01)
+* [API-Fehler](api-errors.md) — Server-Fehler sichtbar am Feld: generierte API-Typen
+  (typescript-generator), Bean Validation mit `fieldErrors`, ein Standard-Error-Widget (AntD). ✅
+  gebaut+reviewed 2026-11-09 (R-WP-54/55/56 + N1; UC-WP-92/93 mit Tests, R-WP-54 per M1/M2; offen nur
+  die Browser-Abnahme der Feldabstände)
 * [Config](config.md) — eigene Datei der Factory, Config-Seite maskiert, „überschreiben" je Agent. ◐
-* [Nutzer](user.md) — Name statt Login, `[User Name]:` an Jon und Paco. ❌
+  (Plugin-Parität F8 ✅ gebaut+reviewed 2026-11-09: R-WP-49–52 — Think (Default), Modell-AutoComplete
+  mit Server-Liste, Max Tokens, Query-/Header-Params, je Agent Extra-Body + Tools-Allowlist)
+* [Nutzer](user.md) — Name statt Login, `[User Name]:` an Jon und Paco.
+  ◐ (Name, Präfix, Anzeige ✅ R-WP-17/R-WP-25; Paco ❌)
 * [Paco](paco.md) — fachlicher PO je Nutzer (grillt Vision/Ziele/SOLL), Stories/Proposals in `stories|proposals/<nutzer>/`,
   konfliktfrei oder mit benanntem Konflikt. ❌ specified (nach dem MVP)
 * [Config-Repo](config-repo.md) — Fabrik-Config (Agenten, Skills, `projects.yml`) aus einem Git-Repo beim
@@ -66,7 +91,6 @@ Core-Aufräumen 2026-10-27 bewusst defekt.**
 
 ## Noch nicht angelegt
 
-[Glossary](glossary.md) — kommt mit dem ersten übergreifenden Begriff.
 [ADRs](adr/index.md): unsere Web-ADRs liegen **hier** im eigenen Raum `AF-ADR-*`; nur eine ADR, die
 den geteilten **Core** betrifft, liegt im globalen Raum
 [`docs/adr/`](../../docs/adr/index.md). [Open Points](open-points.md) existiert.

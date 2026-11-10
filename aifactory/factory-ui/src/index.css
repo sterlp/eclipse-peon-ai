@@ -1,111 +1,142 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
+/*
+ * Design tokens — the one owner of every colour and every measure (R-WP-39): one table per colour mode,
+ * which our own sheet reads and the design basis translates (`shared/theme.ts` is the one reader, so no rule
+ * and no component paints a value of its own). Which table paints is the `data-theme` attribute on the
+ * document, written by `main.tsx` before the first render and kept by `app/app.root.tsx`. The measures come
+ * from the design sheet `aifactory/ant-design.md` (body-md 14/22, code 13/20, 4px grid, surface radius 8).
+ */
+
+:root,
+[data-theme='light'] {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --text-h: #111827;
+  --text: #6b7280;
+  --border: #e5e7eb;
+  --code-bg: #f3f4f6;
+  --accent: #1677ff;
+  --accent-bg: rgba(22, 119, 255, 0.1);
+  /* the header band of the pages' menu (R-WP-43): one tone for the band and the dark menu on it (R-WP-39) */
+  --top-bg: #1f2937;
+  --top-text: #ffffff;
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  /* roles */
+  --user: #2563eb;
+  --on-user: #ffffff;
+  --agent: #16a34a;
+  --tool: #6b7280;
+  --problem: #dc2626;
+  --question: #d97706;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
+  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, 'Cascadia Code', 'Fira Code', Menlo, Consolas, monospace;
+
+  /* the measure content is centred to: a scroll area keeps the full width and centres what it holds inside
+     itself, so its scrollbar stays at the edge of the surface (`padding-inline` of `.view`) */
+  --content-max: 1100px;
+  --content-gutter: max(1rem, calc((100% - var(--content-max)) / 2));
+  /* the chat's own edge (R-WP-35): its surface takes the screen's full width and keeps one edge, so it must
+     not ride the centring measure above — that one grows with the window and, with the file panel standing
+     beside the column, reads as two different edges */
+  --chat-gutter: 1rem;
+
+  /* the measures of the design sheet: two voices of type (body-md, code) with a mini label, a 4px grid and
+     one radius for surfaces — a rule that needs a length reads one of these, never a number of its own */
+  --fs-body: 14px;
+  --lh-body: 22px;
+  --fs-code: 13px;
+  --lh-code: 20px;
+  --fs-mini: 12px;
+  --lh-mini: 20px;
+  --radius-surface: 8px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+
+  color-scheme: light;
+  font-family: var(--sans);
+  color: var(--text-h);
   background: var(--bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+[data-theme='dark'] {
+  --bg: #111827;
+  --surface: #1f2937;
+  --text-h: #e5e7eb;
+  --text: #9ca3af;
+  --border: #374151;
+  --code-bg: #111827;
+  --accent: #60a5fa;
+  --accent-bg: rgba(96, 165, 250, 0.16);
+  --top-bg: #0b1220;
+  --top-text: #e5e7eb;
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+  /* the bubble keeps the light mode's own blue — white on the dark accent would not hold its contrast */
+  --user: #2563eb;
+  --agent: #4ade80;
+  --tool: #9ca3af;
+  --problem: #f87171;
+  --question: #fbbf24;
+
+  color-scheme: dark;
 }
 
+body {
+  margin: 0;
+  /* the app speaks body-md (sheet): our own text used to sit on the browser's 16px next to the basis' 14 */
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+/* The app fills the window: no column of its own, no side borders (R-WP-1) — every scroll area reaches the
+   edge and centres its content inside itself with `--content-gutter`, the chat alone excepted: it takes the
+   width it is given and keeps one edge of its own (R-WP-35). The shell is the fixed frame and each view
+   carries its own scroll area, so nothing here scrolls as a whole. */
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
 }
 
-body {
-  margin: 0;
-}
-
 h1,
 h2 {
-  font-family: var(--heading);
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-h);
+  letter-spacing: -0.01em;
 }
 
 h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+  font-size: 1.15rem;
+  margin: 0 0 0.6rem;
 }
+
 h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
 }
+
 p {
   margin: 0;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
 code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
+  font-family: var(--mono);
+  font-size: var(--fs-code);
+  line-height: var(--lh-code);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  color: var(--text-h);
   background: var(--code-bg);
 }

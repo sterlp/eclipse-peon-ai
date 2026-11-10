@@ -1,8 +1,9 @@
 package org.sterl.llmpeon.tool;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 
 import org.jspecify.annotations.Nullable;
@@ -16,12 +17,11 @@ import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.streaming.ApiRetry;
-import org.sterl.llmpeon.streaming.AsyncStreamingBridge;
-import org.sterl.llmpeon.streaming.AsyncStreamingBridge.SteamHandler;
 import org.sterl.llmpeon.streaming.StreamingBridge;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.Builder;
@@ -47,6 +47,7 @@ import lombok.NonNull;
  * https://github.com/ggml-org/llama.cpp/issues/22746
  * https://github.com/ggml-org/llama.cpp/pull/13194#issuecomment-4586088278
  */
+// TODO move to model
 @Builder(toBuilder = true)
 public class ToolLoopRequest {
 
@@ -59,8 +60,6 @@ public class ToolLoopRequest {
 
     @Default
     private final StreamingBridge bridge = new StreamingBridge();
-    @Default
-    private final AsyncStreamingBridge asyncBridge = new AsyncStreamingBridge();
 
     /** R20: the agent-owned turn start time. Default keeps stand-alone calls (tests, voice) working. */
     @Default
@@ -107,6 +106,27 @@ public class ToolLoopRequest {
 
     public void addMessage(ChatMessage message) {
         memory.add(message);
+    }
+
+    /**
+     * User messages tools queue for the memory right after this round's tool results (R-RP-1, picture
+     * follow-ups). Deliberately no {@code @Default}: Lombok skips an initialized {@code final} field, so a
+     * {@code toBuilder()} sub-request gets its OWN list — a sub-agent loop never feeds the parent's round.
+     */
+    private final List<UserMessage> afterResults = Collections.synchronizedList(new ArrayList<>());
+
+    public void appendAfterResults(UserMessage message) {
+        afterResults.add(message);
+    }
+
+    /** Empties the queue and returns what it held, in order. */
+    // TODO Paul 07.11.2026: This should return 1 UserMessage not a list
+    public List<UserMessage> drainAfterResults() {
+        synchronized (afterResults) {
+            var copy = List.copyOf(afterResults);
+            afterResults.clear();
+            return copy;
+        }
     }
 
     public LlmConfig getConfig() {
@@ -165,13 +185,6 @@ public class ToolLoopRequest {
         var name = cause.getClass().getSimpleName();
         var message = StringUtil.stripToNull(cause.getMessage());
         return message == null ? name : name + ": " + message.lines().findFirst().orElse("").strip();
-    }
-    
-    public CompletableFuture<SteamHandler> asyncCall(ChatRequest chatRequest) {
-        // TODO build on retry ... if steam handler has an error ...
-        // but here we add the partial response, if any received, to the chat history
-        // we have to test if this is valid of course, AI, message after AI message guess we have to merge or add a User message "retry x/y?" 
-        return asyncBridge.call(chatModel.modelFor(getAgentConfig()), chatRequest, monitor, turnStart);
     }
 
     /**

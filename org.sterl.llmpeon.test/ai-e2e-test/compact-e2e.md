@@ -27,10 +27,12 @@ Anweisung für Da Mek:
 - Rufe `compactSession` selbst auf und hinterlasse dir dabei als State die Anweisung: „Antworte mit
   ‚Hallo Jon'" + das Random, das Jon dir mitgibt.
 - Deine finale Antwort an mich muss exakt sein: „Hallo Jon" + **wortgetreues Echo des
-  `compactSession`-Tool-Results** (Stats-Zeile und ggf. `Preserved:`-Block).
-  **Erwartung an das Result:** es nennt Zahlen (messages/tokens), die Zusammenfassung selbst steht
-  **nicht** darin (R-CC-9, R-CC-18.4) — sie wirkt nur als State und muss im nächsten Turn noch da
-  sein. Wer eine Summary im Result erwartet, prüft das falsche.
+  `compactSession`-Tool-Results** (Stats-Zeile und der Preserve-Marker).
+  **Erwartung an das Result:** es nennt Zahlen (messages/tokens) und den Marker
+  „Compacted. Preserve text is in call arguments." — weder Summary noch preserve stehen selbst im
+  Result (R-CC-9, R-CC-18.4; Preserve-Echo seit 2026-11-07 entfallen — preserve wirkt als State und
+  muss im nächsten Turn noch da sein). Wer eine Summary oder den preserve-Text im Result erwartet,
+  prüft das falsche.
 
 ## 3. Jon (du):
 

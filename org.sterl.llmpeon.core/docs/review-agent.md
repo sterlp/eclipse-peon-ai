@@ -39,7 +39,12 @@ Delegation über [PoDelegateTool](../../docs/adr/0020-po-agent-orchestration.md)
   Docs↔Plan-Konflikt (Docs sind Maßstab) · überflüssige Kommentare statt Doc-Verweis · schlechte
   Testbarkeit · schlechte Kapselung, Wiederholung (≥3×), Modul-Zyklen · verschmierte Struktur
   (Änderung braucht viele Module). Diese sind **BUG** (→ REJECTED); Überkomplexes ist **LOW** mit
-  einfacherer Lösung; Nitpicks/Stil werden ignoriert. Ein Durchgang meldet **alle** BUGs (kein
+  einfacherer Lösung; Nitpicks/Stil werden ignoriert. **Test-Policy (2026-11-10, Paul):** gleiche
+  6 Punkte in `developer.md` und `review-agent.md` (Fachlichkeit treibt Tests m:n, High-Level vor
+  Low-Level, Testdaten statt Kopien, Mocks nur für komplexe Logik, keine unerreichbaren Zustände,
+  Happy + Rand oben + Rand unten). Mock-only-Test = BUG; Redundanz ab 3 Kopien bzw.
+  zusammenlegbare Gruppe und Test unerreichbarer Zustände = **MEDIUM** (→ CONCERNS, eigene Zeile
+  „Redundant tests" in der Chat-Summary); Mutations-Check nur, wo kein Negativtest die Regel belegt. Ein Durchgang meldet **alle** BUGs (kein
   Abbruch beim ersten); BUG nur für geänderten/neuen Code, Altlast als nicht-blockierende Liste
   „Pre-existing"; Verhaltens-BUG nur mit Beleg (sonst „Verdacht"), Tests des Moduls laufen mit
   Befehl + Zahlen; BUGs nach Wirkung sortiert (Verhalten/Daten vor Struktur). Inhalt: Prompt
@@ -50,6 +55,15 @@ Delegation über [PoDelegateTool](../../docs/adr/0020-po-agent-orchestration.md)
   (Plan-Datei korrigieren bei legitimen Abweichungen), nie Application Code, nie Docs. **Ausnahme
   Shell** ([agent-tool-filter.md](agent-tool-filter.md) R-TF-1): Diagnose/git/Build/Test erlaubt —
   Code-Änderungen via Shell bleiben Regelbruch (soft rule).
+- **R9 ✅ (2026-11-05, Paul; prompt-basiert, kein BDD) — Plan-Datei als Arbeitsgedächtnis.**
+  Review hält jeden bestätigten Befund sofort in der Plan-Datei fest (Abschnitt
+  `## Review findings`): vorhandener Plan → `planUpdate`, kein Plan → `planSave` einer
+  Findings-only-Plan-Datei; nie `planSave` über einen bestehenden Plan. Nach einem Compact liest er
+  zuerst den Plan und setzt dort fort. Breites Erkunden über `searchAgent` (heißer
+  Rolling-Block, [search-agent-tool.md](search-agent-tool.md)) statt eigener Massen-Reads. Tool-Filter
+  unverändert (Plan-Tools hatte Review schon, R5).
+  - GIVEN kein Plan WHEN Review findet einen BUG THEN existiert eine Plan-Datei mit dem Befund
+    unter `## Review findings`, bevor das Review endet
 - **R6 ✅** Kontext wie alle Sklaven: Turn-Context-Supplier (gewähltes Projekt + AgentsMd-Basis —
   Agent-File-Konvention `AGENTS-REVIEW.md`, `Peon-`-Präfix wird gestrippt) + Workspace-Memory-Snapshot
   über die generische `ordersFor`-Lambda.
@@ -81,4 +95,4 @@ Delegation über [PoDelegateTool](../../docs/adr/0020-po-agent-orchestration.md)
 | R1 | `AgentServiceTest.hasDefaultAgent` (named: enthält Review) |
 | R2 | `PoDelegateToolTest` (drei `AiAgent` im Ctor) · `PeonAiServiceTest.test_status_agents_are_jons_team_when_po_active` (Header: Jon, Plan, Dev, Review) |
 | R3 | `PoDelegateToolTest.clearReview_wipesReviewSlaveMemoryOnly` / `compactReview_compactsReviewSlaveMemory` · `AiPoAgentTest.clear_cascadesToAllThreeSlaves` / `compact_cascadesToAllThreeSlaves` · Sticky-Path: `reviewPlanAgent_reusesStickyPlanPath` |
-| R4–R6, R8 | Prompt/Verhalten — manuelle Verifikation (kein Unit-Test, wie Prompts-Konvention) |
+| R4–R6, R8, R9 | Prompt/Verhalten — manuelle Verifikation (kein Unit-Test, wie Prompts-Konvention) |

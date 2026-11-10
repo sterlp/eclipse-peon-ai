@@ -7,8 +7,9 @@ import org.sterl.open.aifactory.shared.TmpRoots;
 /**
  * The two read roots of the file area (R-WP-14) and nothing else: the project checkout and the system
  * temp dir — the same pair the write pinning of R-WP-6 grants an agent, so the area never shows more
- * than Jon could write. An unknown value is rejected, not defaulted: a typo in {@code root} that
- * silently listed the checkout would answer a request the caller never sent.
+ * than Jon could write. That equality is held by a behaviour test, not by this sentence
+ * ({@code JonToolSetTest.everyReadRootIsAWriteRootOfJon}). An unknown value is rejected, not defaulted:
+ * a typo in {@code root} that silently listed the checkout would answer a request the caller never sent.
  */
 public enum ProjectFileRoot {
 

@@ -25,11 +25,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -37,8 +34,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
@@ -47,22 +42,23 @@ import com.jayway.jsonpath.JsonPath;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 
+import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.poagent.AiPoAgent;
 import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
+import org.sterl.open.aifactory.FactorySpringTest;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
-import org.sterl.open.aifactory.project.FakeGitConfig;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
  * A second input that arrives while Jon is mid-turn must not start a second turn on the same memory: it
  * lands in the queue of the very same Jon and is answered by him (UC-WP-14, UC-WP-22). Nothing below
  * {@code AiPoAgent} is stubbed — the busy guard, the {@code UserMessageQueue}, the drain and the tool loop
- * are the production ones. The turn is slowed down by a <b>real</b> {@code sleep 3} shell tool (working
+ * are the production ones. The turn is held by a <b>real</b> {@link TurnGate} shell tool (working
  * directory = the checkout, the same binding UC-WP-5 proves), so the window in which the second POST must
- * queue is real, never a faked delay.
+ * queue is real, never a faked delay — and it is the test that closes it, not a pause.
  *
  * <p>The measurements are the ones the core actually exposes — {@code MockLlmServer} has no request
  * counter. What is proven: the queue length of the live Jon, the raw body of the last provider request,
@@ -73,7 +69,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * (plan §3.6), so a queue count is only asserted exactly where one send meets an empty queue.</p>
  *
  * <p>The model double is <b>fresh per test</b>: a turn is fire-and-forget, so a test whose assertions fail
- * midway still has a {@code sleep 3} turn running on the shared executor. With one shared double that
+ * midway still has a gated turn running on the shared executor. With one shared double that
  * orphaned turn would drain the next test's scripted answers; with a per-test double it points at its own
  * already-stopped server and dies harmlessly. Every test also waits for its own turn to end.</p>
  *
@@ -90,22 +86,17 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * gibt. Die Fabrik misst den Turn deshalb um den einen {@code call()}-Aufruf herum
  * ({@code ProjectRuntime#submit}), nicht im Monitor.</p>
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(FakeGitConfig.class)
-@Timeout(120)
-class ChatQueueTest {
+@Timeout(90)
+class ChatQueueTest extends FactorySpringTest {
 
-    /** Real tool content that keeps one turn busy long enough for a second POST to have to queue. */
-    private static final String SLEEP_TOOL = "{\"command\":\"sleep 3\",\"timeout\":20}";
+    /** Holds one turn inside a running tool until the test releases it — long enough for a second POST. */
+    private static final String GATE_TOOL = TurnGate.toolArguments();
 
     /** HTTP/1.1 on purpose — the SSE edge is what the browser talks (see {@code ChatTurnTest}). */
     private static final HttpClient STREAMS = HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(Duration.ofSeconds(5))
             .build();
-
-    @TempDir
-    static Path home;
 
     private MockLlmServer model;
 
@@ -140,11 +131,6 @@ class ChatQueueTest {
         }
     }
 
-    @DynamicPropertySource
-    static void isolateHome(DynamicPropertyRegistry registry) {
-        registry.add("aifactory.home", home::toString);
-    }
-
     @Test
     @Timeout(60)
     // UC-WP-14
@@ -155,7 +141,7 @@ class ChatQueueTest {
         try (ChatStream stream = new ChatStream(project.id())) {
             // one tool turn needs both halves: the call, then the answer that ends the loop; then the
             // reply to the queued input — three scripted answers in order.
-            model.queueResponse(toolCall("call_sleep", "shellRunCommand", SLEEP_TOOL));
+            model.queueResponse(toolCall("call_gate", "shellRunCommand", GATE_TOOL));
             model.queueResponse("erste Antwort fertig");
             model.queueResponse("zweite Antwort aus der Warteschlange");
 
@@ -180,6 +166,8 @@ class ChatQueueTest {
                     .as("wartend heißt: noch nicht beim Anbieter — kein zweiter Turn")
                     .doesNotContain("zweite Frage");
 
+            // both sends are read off the live queue, so the tool may end and the drain answer them
+            TurnGate.release(project.localPath());
             stream.awaitEvent("done", 1);
             assertThat(stream.countOf("done"))
                     .as("ein Turn, ein done — die abgearbeitete Warteschlange ist kein zweiter Turn (A1)")
@@ -214,7 +202,7 @@ class ChatQueueTest {
         CreatedProject project = createProject("parallel-22");
 
         try (ChatStream stream = new ChatStream(project.id())) {
-        model.queueResponse(toolCall("call_sleep", "shellRunCommand", SLEEP_TOOL));
+        model.queueResponse(toolCall("call_gate", "shellRunCommand", GATE_TOOL));
         model.queueResponse("erste Antwort fertig");
         model.queueResponse("zweite Antwort aus der Warteschlange");
 
@@ -247,6 +235,8 @@ class ChatQueueTest {
                 .as("und der eine Jon ist Jon")
                 .isEqualTo(AiPoAgent.NAME);
 
+        // the queue count and the runtime identity are read; now the tool may end and drain it
+        TurnGate.release(project.localPath());
         // Completion is anchored on the queued input's answer landing in THIS conversation's history:
         // isWorking() only says a turn is held, not that the waiting input was drained and answered —
         // the answer in the history is the honest signal that the same Jon did it, never a parallel turn.
@@ -275,7 +265,7 @@ class ChatQueueTest {
         CreatedProject project = createProject("two-3c");
 
         try (ChatStream stream = new ChatStream(project.id())) {
-            model.queueResponse(toolCall("call_sleep", "shellRunCommand", SLEEP_TOOL));
+            model.queueResponse(toolCall("call_gate", "shellRunCommand", GATE_TOOL));
             model.queueResponse("erste Antwort fertig");
             // verschmolzen braucht die Queue eine Antwort, nicht verschmolzen zwei — beide Fälle abdecken
             model.queueResponse("erste Warteschlangen-Antwort");
@@ -295,6 +285,8 @@ class ChatQueueTest {
                     .as("zum einen Eintrag verschmolzen oder getrennt — beides ist zulässiges Core-Verhalten")
                     .isBetween(1, 2);
 
+            // both waiting texts are on the queue, so the tool may end and the drain answer them
+            TurnGate.release(project.localPath());
             stream.awaitEvent("done", 1);
             assertThat(stream.countOf("done"))
                     .as("ein Turn, ein done — auch wenn zwei Eingaben darin abgearbeitet wurden (A1)")
@@ -320,12 +312,140 @@ class ChatQueueTest {
     }
 
     // ------------------------------------------------------------------
+    // the `!` of R-WP-42: the core's prio message, not a turn of the factory
+    // ------------------------------------------------------------------
+
+    /**
+     * UC-WP-75 GIVEN 1 + 3: the same gate as the queue tests above, so the turn is provably inside a tool
+     * when the {@code !} arrives. What separates it from {@code secondInputDuringTurnQueues} is the lane:
+     * the core's urgent entry rides on the running turn's tool result (core R11) and is never written to the
+     * memory (core R8.7) — so the marker of the normal lane stays away and no history line appears.
+     *
+     * <p>The {@code !} alone (core R8.6) is asked in the same turn, because only a turn that is provably
+     * running can tell "consumed" from "enqueued": it answers with nothing at all — no entry, no delivery,
+     * no turn. The named send is what lets this test claim the entry carries its sender (R-WP-25).</p>
+     */
+    @Test
+    @Timeout(60)
+    // UC-WP-75
+    void urgentMessageJoinsTheRunningTurn() throws Exception {
+        writeFactoryConfig("inc3b-urgent-75");
+        CreatedProject project = createProject("urgent-75");
+
+        try (ChatStream stream = new ChatStream(project.id())) {
+            model.queueResponse(toolCall("call_gate", "shellRunCommand", GATE_TOOL));
+            model.queueResponse("Antwort mit der Prio am Werkzeug-Ergebnis");
+
+            assertThat(send(project.id(), "frage, die arbeitet").getStatusCode())
+                    .as("die erste Eingabe startet einen Turn")
+                    .isEqualTo(HttpStatus.ACCEPTED);
+            ProjectRuntime runtime = runtimes.runtime(project.id());
+            AiPoAgent jon = runtime.jon();
+            awaitUntil(jon::isWorking, 2_000, "Jon arbeitet an der ersten Eingabe");
+            stream.awaitShellRunning(5_000, "die Shell des ersten Turns läuft");
+
+            // mit Absender gesendet: die Prio-Zeile ist eine Eingabe wie jede andere, also trägt sie ihn
+            assertThat(send(project.id(), "! bitte abbrechen", "Anna").getStatusCode())
+                    .as("die Prio-Eingabe wird angenommen — als Eingabe, nicht als Turn")
+                    .isEqualTo(HttpStatus.ACCEPTED);
+
+            awaitUntil(() -> jon.getQueuedMessageCount() == 1, 2_000,
+                    "die Prio liegt in der Queue desselben Jon — über beide Lanes gezählt");
+            assertThat(model.getLastRequestBody())
+                    .as("kein zweiter Turn: die Prio war nachweislich nie beim Anbieter")
+                    .doesNotContain("bitte abbrechen");
+
+            // R8.6 am laufenden Turn, mit demselben Absender: ohne ihn wäre das Payload selbst blank und
+            // die Verwerfung wäre nicht von der Core-Regel zu unterscheiden — mit ihm wäre die eingereihte
+            // Zeile eine Namenszeile ohne Inhalt. Einzureihen ist die Arbeit des Request-Threads, darum ist
+            // die Zählung unmittelbar danach entschieden.
+            assertThat(send(project.id(), "!", "Anna").getStatusCode())
+                    .as("das einsame `!` wird ebenso angenommen")
+                    .isEqualTo(HttpStatus.ACCEPTED);
+            assertThat(jon.getQueuedMessageCount())
+                    .as("und reiht nichts ein — der eine Eintrag bleibt der einzige")
+                    .isEqualTo(1);
+
+            TurnGate.release(project.localPath());
+            stream.awaitEvent("done", 1);
+            assertThat(stream.countOf("done"))
+                    .as("ein Turn, ein done — weder die Prio noch das einsame `!` sind ein zweiter Turn")
+                    .isEqualTo(1);
+            assertThat(jon.getQueuedMessageCount())
+                    .as("der laufende Turn hat sie verbraucht — nichts bleibt für einen Follow-up")
+                    .isZero();
+        }
+
+        assertThat(capturedText())
+                .as("der Core stellt sie als queued_user_message-Block am Werkzeug-Ergebnis zu (R11)")
+                .contains(TaggedResult.PREFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE)
+                .contains("bitte abbrechen")
+                .as("und nicht als normalen Queue-Eintrag mit seinem Marker")
+                .doesNotContain(UserMessageQueue.QUEUED_MARKER_PREFIX);
+        // das Leerzeichen nach dem `!` bleibt, wo es der Core gelassen hat, deshalb das Muster und kein
+        // Wortlaut: behauptet wird der Absender vor dem Text (R-WP-25), nicht die Zahl der Leerzeichen
+        assertThat(capturedText())
+                .as("die Prio-Zeile trägt den Absendernamen wie jede andere Eingabe an Jon (R-WP-25)")
+                .containsPattern("\\[User Anna]:\\s+bitte abbrechen");
+        assertThat(capturedText())
+                .as("das konsumierte `!` hat nichts zugestellt — es bleibt bei dem einen Block (R8.6)")
+                .containsOnlyOnce(TaggedResult.PREFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE);
+        // und es bleibt bei dem einen Absender: eingereiht wäre hier sonst eine Namenszeile ohne Inhalt
+        assertThat(capturedText())
+                .as("genau eine Absenderzeile ist zugestellt — das einsame `!` hat keine leere hinterlassen")
+                .containsOnlyOnce("[User Anna]");
+
+        assertThat(messages(project.id()))
+                .as("die Prio wird nie in die Memory geschrieben (R8.7) — keine Nutzerzeile damit; dass"
+                        + " der Core ihren Block auf das Werkzeug-Ergebnis legt, steht seit R-WP-47 als"
+                        + " Auszug seines Schritts im Verlauf und ist dort Bestand")
+                .filteredOn(message -> !"tool".equals(message.role()))
+                .extracting(ChatMessageDto::text)
+                .noneMatch(text -> text.contains("bitte abbrechen"));
+    }
+
+    /** UC-WP-75 GIVEN 3: läuft kein Turn, ist {@code !} schlicht Text (Core R8.1) — ein normaler Turn. */
+    @Test
+    @Timeout(60)
+    // UC-WP-75
+    void exclamationStaysTextWhenNoTurnRuns() throws Exception {
+        writeFactoryConfig("inc3b-idle-75");
+        CreatedProject project = createProject("idle-75");
+
+        model.queueResponse("Antwort auf die Eingabe mit Ausrufezeichen");
+        assertThat(send(project.id(), "! prio").getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+
+        awaitUntil(() -> messages(project.id()).stream()
+                .map(ChatMessageDto::text)
+                .anyMatch("Antwort auf die Eingabe mit Ausrufezeichen"::equals), 20_000,
+                "die Eingabe lief als normaler Turn durch");
+
+        assertThat(capturedText())
+                .as("das Ausrufezeichen ist Teil der Nachricht, wie getippt (R-WP-37)")
+                .contains("! prio");
+        // nach dem Turn entschieden und ohne Zustand, der verschwinden kann: keine Prio-Lane, also auch
+        // nirgends ein Block — eine Queue-Zählung hier hinge vom Augenblick des Lesens ab
+        assertThat(capturedText())
+                .as("im Idle gibt es keine Prio-Lane, also auch keine Zustellung an einen laufenden Turn")
+                .doesNotContain(TaggedResult.PREFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE);
+        assertThat(messages(project.id()))
+                .as("und der Verlauf trägt genau die eine Nutzerzeile damit")
+                .extracting(ChatMessageDto::text)
+                .containsExactlyInAnyOrder("! prio", "Antwort auf die Eingabe mit Ausrufezeichen");
+    }
+
+    // ------------------------------------------------------------------
     // the three edges
     // ------------------------------------------------------------------
 
     private ResponseEntity<String> send(String projectId, String text) {
+        return send(projectId, text, null);
+    }
+
+    /** A send with the sender's label (R-WP-25) — the shape the browser carries, name included. */
+    private ResponseEntity<String> send(String projectId, String text, String user) {
         return http.postForEntity("http://127.0.0.1:" + port + "/api/projects/" + projectId + "/messages",
-                jsonEntity(new SendMessageRequest(text)), String.class);
+                jsonEntity(new SendMessageRequest(text, user)), String.class);
     }
 
     private HttpEntity<Object> jsonEntity(Object body) {
@@ -367,7 +487,7 @@ class ChatQueueTest {
         properties.setProperty(LlmConfigKeys.MODEL, model);
         properties.setProperty(LlmConfigKeys.URL, this.model.getUrl());
         properties.setProperty(LlmConfigKeys.API_KEY, "test-key");
-        try (var out = Files.newOutputStream(home.resolve(FactoryHome.CONFIG_FILE))) {
+        try (var out = Files.newOutputStream(HOME.resolve(FactoryHome.CONFIG_FILE))) {
             properties.store(out, "ChatQueueTest");
         }
     }
@@ -454,14 +574,14 @@ class ChatQueueTest {
         }
 
         /**
-         * Blocks until a live {@code tool} line names the running shell command — the shell writes
-         * {@code Running: `sleep 3`} just before it blocks in {@code process.waitFor}. Once it is on the
-         * wire, the turn is provably inside the three-second tool, so any send that now arrives meets a
+         * Blocks until a live {@code tool} line names the running gate command — the shell writes its
+         * {@code Running: …} line just before it blocks in {@code process.waitFor}. Once it is on the
+         * wire, the turn is provably inside the tool, so any send that now arrives meets a
          * busy Jon and must queue; the queue assertion stops racing the turn's start.
          */
         void awaitShellRunning(long timeoutMs, String what) {
             long until = System.currentTimeMillis() + timeoutMs;
-            while (dataLines.stream().noneMatch(d -> d.contains("Running") && d.contains("sleep 3"))) {
+            while (dataLines.stream().noneMatch(d -> d.contains(TurnGate.runningLine()))) {
                 assertThat(System.currentTimeMillis())
                         .as("%s kam vor der Deadline von %d ms an (Verbindung: %s)", what, timeoutMs, failure)
                         .isLessThan(until);

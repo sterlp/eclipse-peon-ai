@@ -2,6 +2,16 @@
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.md).
+
+## 2026-11-05 — Phantom-Projekt-Crash-Zyklus (Jon, autonom nach Pauls Freigabe)
+
+- 🔒 **R-PT-8 (Query nennt geschlossenes Projekt)** — Paul 2026-11-05: „gut so, ist ein User
+  Fehler und so sieht er es" — bestätigt, Regel lebt als **R-PT-8/UC-PT-8 ✅** in
+  `org.sterl.llmpeon/docs/plan-tool.md` (gebaut inc-11, Mutanten belegt).
+- 🔒 **R-SEL-4 stale ❌-Flip (2026-11-05)**: UC-SEL-4-Tests existieren seit 2026-09-16
+  (`UserContextTest:279–371`), der ❌ war Doc-Drift — Jon hat auf ✅ geflippt (lint grün, Tests
+  belegen die BDDs). Kein Code-Change.
+
 ## 2026-10-31 — Issues vom Reparatur-Zyklus (Paul: „erst aufnehmen, Fix auf Ansage")
 
 - 🔒 **Issue 2 — Default-Sortierung im Dropdown defekt** (gebaut auf `web-factory-goon`): der
@@ -465,3 +475,11 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 - ❓ **`PoDelegateTool.dispatch` fängt nur `IllegalStateException`** (`PoDelegateTool.java:267`):
   andere RuntimeExceptions schlagen als roher Stacktrace-Dump zum PO durch statt als ehrliche
   Meldung „Delegation nicht möglich: <Grund>". Beide im nächsten Bug-Zyklus triagen.
+
+## 2026-11-09 — R18 Skill-Refresh-Hotfix (aifactory, Jon)
+
+- ⏳ **R18-Zusage „eigene Schreib-Änderung wird sofort sichtbar" gilt nur außerhalb der
+  10-min-Ruhezeit** (skillRead liefert in der Ruhezeit stale Inhalte) — die gepatchte Lösung ist
+  bewusst nur ein **Hotfix**. Pauls Idee (2026-11-09): „später erweitern wir die Tools, Skill-Writes
+  gehen an den Scaffold, das Refresh kommt ins Tool" — Proper fix = eigenes Tool-Extension-Inkrement
+  (Refresh ins Tool / Skill-Writes an den Scaffold). Kein Core-Bug-Fix jetzt.

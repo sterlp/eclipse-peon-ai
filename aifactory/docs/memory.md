@@ -1,40 +1,78 @@
 # Session-Stand — AI Factory (OAF)
 
-Paul: **ein Thema pro Nachricht**, kurz. Nur Jon schreibt `docs/`. Branch: Core-Repo auf `main`
-(2.15.1), `web-factory` existiert nicht mehr. **Paul committet selbst.**
-**Core-Änderungen NUR mit Pauls Approval, per Proposal mit WARUM** (2026-10-29).
+Paul: **ein Thema pro Nachricht**, kurz. Nur Jon schreibt `docs/`. Paul committet selbst (Core);
+Fabrik-Inkremente committet Dev je Schritt und pusht. **Core-Änderungen NUR mit Pauls Approval, per
+Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwissen (Plan-Dateien und
+`peon-plan/review-findings.md` sind das Memory); Docs duplizieren nie Core-Regeln; Plan-Archive werden
+**gelöscht**, nie committet.
 
-## Jetzt — Origin im Core: GEBAUT, Review-Befunde im Nachzug (2026-10-30)
+## Stand (2026-11-10, Release)
 
-* **Gebaut & gepusht** (`web-factory-goon`, Inc 0–4): Core stempelt `origin` fill-if-null am
-  Turn-Besitzer (`OwnerMonitor`, Emitter `call`/`compact`/`buildStaticMessages`), Loop-Zuordnung
-  über `LoopOwner` (`LoopOwner.NONE = named(null, dev)`) — **keine** Tool-Call-Id-Buchführung
-  (ADR-0078 Decision 6). Fabrik-Filter: Mitglieder-Zeilen fallen per gestempeltem `origin`
-  (`isJon(origin)` + Null-Fallback), `delegated`-SSE-Event entfällt. Namen: Jon/Plan/Dev/Review,
-  Sub-Loops `Search`/`Compact` ([ADR-0079](../../docs/adr/0079-display-names-without-ork-names.md)).
-* **UC-WP-39/40 ✅** — `TeamInternalsTest`/`DelegatedAnswerTest`/`ProjectRuntimeTest` belegen es,
-  [chat.md](chat.md) ist nachgezogen.
-* **AF-ADR-002** teilweise abgelöst; aifactory-architektur.md nachgezogen.
-* **Offen (Paul):** Browser-Proof Fabrik auf 8099 + Plugin-Harness (`test-chat.html`) — manuelle
-  Nachweise; Details in [../../docs/memory.md](../../docs/memory.md).
-
-## Code-Stand
-
-| Inc | Inhalt | Stand |
-|-----|--------|-------|
-| 1 · 2a–d · 3a–e · 3-H · 4a-2…4b-2 | Registry/Clone, Auslieferung, Config, Chat, Schreib-Pinning, Datei-Bereich | gebaut; Inc 4 Review fehlt (geparkt) |
-| 3f | Herkunft + Team-Antwort | gebaut (Origin-Reihe Inc 0–4, UC-WP-39/40 ✅) |
-| 5 · 6 | Kacheln (UC-WP-11/12/13) · Nutzername (UC-WP-25) | nicht gebaut |
-
-* `ProcessCommandRunner.java:29-34` `BatchMode=yes` als Env-Var wirkungslos → Fix mit R-CR-7.
-* Bug: Custom Agent mit Built-in-Namen überschreibt still (`AgentService.java:180-202`) → Agent-Datei-Feature.
+* **Release durch PAUL selbst** („kein main merge das mache immer ich"): `web-factory-4` → main macht
+  Paul. main (`9fa23402`, Plan-Mode-Doku) ist **in den Branch gemergt** (`8bac0386`, konfliktfrei, nur
+  `planner.md`) — der Branch enthält main vollständig, Paul kann das Final-Review fahren und mergt
+  danach. Stand `web-factory-4` = `8bac0386`. Inhalt der Spitze: **API-Fehler ✅** (R-WP-54/55/56 +
+  UC-WP-92/93, UC-WP-91 gefaltet in R-WP-54, 5 Inkremente `e6ca3573`→`b78e59d1` + N1
+  `c47c9edc`/`d35f7f27`), **R18 Skill-Refresh** `88b81a8c` (Paul), **R6 Skill-Evolution-Loop ✅**
+  `742293c3`. **Backend 274 / UI 268 Tests** grün, missCount=1, tsc/oxlint/antd-lint 0, Core-Suite
+  1486/0. Kein Core-Eingriff der Story.
+* **BUG A geparkt:** ⏳ im Root-`docs/open-points.md` (uncommittet — Paul committet ihn selbst mit dem
+  Release) — R18-Zusage „eigene Schreib-Änderung" gilt nicht innerhalb der 10-min-Ruhezeit (skillRead
+  stale); Proper fix = Refresh ins Tool / Skill-Writes an Scaffold, späteres Tool-Extension-Inkrement.
+* **Ebenfalls drin:** F8 Config-Plugin-Parität ✅ (R-WP-49–52/UC-WP-85–88), C-7 Blick-live ✅
+  (R-WP-53/UC-WP-89/90), R-WP-48 Endereignis ✅ — Details in den Docs.
+* **Nächste Story: Runde-7-Look-Story** (Pauls Browser-Befunde, ⏳/❓ in [open-points.md](open-points.md))
+  — **vorher die Kachel-Reihe ❓ messen** (most critical; Regression aus C-7, `chat.tiles.tsx` /
+  Kacheln-Read nach `onOpen`). Danach: C-2a, C-1 TurnClaim-Timeout (`ProjectRuntime.java:348`),
+  F9/F10, M2b (Paul-Entscheidung).
+* **Offene Browser-Abnahmen:** Feldabstände N1-A9, ältere Look-Abnahmen (Inc-4 Look, Drawer §7,
+  A7 Punkt 8, R-WP-48), F8 Config-Seite, C-7 Höhe/Follow im Slide-out.
+* **⏳ M3** (Spring default error view): Messung sagt „Advice bleibt", Pauls Rückversicherung ausstehend.
+* **Auf Zuruf:** Skill-Proposal `proposals/antd-skill-cli-rows-update.md` (4 CLI-Zeilen + Hinweis
+  „installierte Version prüfen"); leeres Doppelverzeichnis `aifactory/aifactory/factory-ui/test/app`
+  (+ `.DS_Store`) löschen.
+* Untracked geblieben: `aifactory/.agents/`, Pauls PNGs (`SOLL.png`, Bildschirmfoto) — Pauls Seite.
+  Die `web-factory-4-skill-*.patch`-Dateien sind von der Platte verschwunden (außerhalb unserer
+  Läufe) — irrelevant, der Patch ist längst drin.
 
 ## Fallstricke (gemessen)
 
-* Baureihenfolge: Kern `clean test` → `install -DskipTests` → Fabrik `clean verify`; immer `clean`
-  (Eclipse-Lombok-Stümpfe in `target/classes`).
-* `MockLlmServer`: kein `getRequestCount()`, fängt keine `system`-Nachrichten; `@P(name=…)` für Tool-Namen.
-* Guards `OneChatPerProjectTest`/`SharedProjectChatTest` (DTO-Feldliste + Verbotliste) nicht anfassen.
-* Port 8080 = IDE → Nachweise auf 8099; `~/.peon` vor/nach vergleichen.
-* Lint immer mit `docRoots`/`testRoots` eingeschränkt; **Plan-Gate**: `lintDocsAndTests` je Inkrement,
-  umgeschriebene Tests behalten ihre `// UC-…`-Anker (sonst UNBELEGT beim ✅-Flip).
+* Bauen: Kern `clean test` → `install -DskipTests` → Fabrik `clean verify`; immer `clean`. Backend
+  `mvn -o -f aifactory/pom.xml -pl factory-backend clean test`; UI `cd factory-ui &&
+  COREPACK_ENABLE_PROJECT_SPEC=0 pnpm test` (pnpm 10.28.0, Node 22.12). Nur-UI-Änderung ⇒ nur
+  UI-Tests. Smoke: `spring-boot:run -Dspring-boot.run.arguments=--server.port=8099` →
+  `http://localhost:8099/ui/`. Node 22.23.4 installiert, **nvm-`default` bleibt 22.12** ⇒ PATH-Export
+  Pflicht; vor jedem UI-Gate `node -v` ≥22 + `pnpm -v` prüfen.
+* **Stale-Fallen Fabrik-UI:** `factory-ui/pom.xml` clean-Filesets zeigen auf `web-app/` (existiert
+  nicht) ⇒ `mvn clean` löscht `factory-ui/dist` nie; `copy-resources` ist additiv (mehrere
+  Asset-Generationen in `target/classes/static/ui`); ein Eclipse-Bau führt `pnpm run build` nie aus;
+  ein repo-aufgelöster `mvn spring-boot:run` liefert die Oktober-SPA aus `~/.m2`. Bei „Zustand kommt
+  aus Quelle X" immer am **Frischbau** messen.
+* **Bei „Zustand kommt aus Quelle X" muss die Mutation geseedeten State UND Mount-Einfrieren treffen**;
+  `unmount()` + Neu-Mount prüft zwei Mounts, nie eine Zustandsänderung. Anzeige eines offenen Zustands
+  immer an das **laufende Objekt** binden, nie an „Flag + letztes Element"; **Identität schützt das _Ob_,
+  nicht das _Wo_** (Idiom `chat.page.test.tsx::toolLinesSurviveTheDoneRefresh`).
+* AntD 6.7.0: hell malt **`lightSiderBg`** (nicht `siderBg`); Responsive-Effekt ruft `matchMedia`
+  **beim Mount** ⇒ gefiltert stubben (`includes('max-width')`); `collapsed` controlled ⇒ Effekt
+  ignoriert; Zero-Width-Trigger ist ein **`span` ohne Rolle**; `Menu` liefert **keine** `navigation`-
+  Landmarke ⇒ eigenes `<nav aria-label>`; `aria-current` am Eintrag = ANTD-A9. AntD nie aus dem
+  Gedächtnis: `antd info/lint` vor Abschluss (Skill user-level `~/.agents/skills/antd`).
+* `sheets.ts::declarations()` trifft nur den **ersten** Block ⇒ `allDeclarations`; Selektorwortlaut nie
+  in CSS-Prosa; jsdom 26.1.0 ohne Layout/Farbe; Vitest ohne `.as()`; `act()`-Rauschen bei AntD+React 19
+  ist Baseline; **CSS mit `+`/`~` braucht einen Nestungs-Beweis** (DOM-Assertion auf Adjazenz).
+* Vitest nie `pnpm test -- <datei>` (jsdom CSS-Fehler) ⇒ `pnpm test -t '<name>'`.
+* `MockLlmServer`: kein `getRequestCount()`, keine `system`-Nachrichten, SSE in einem Stück. Guards
+  `OneChatPerProjectTest`/`SharedProjectChatTest`/`ChatTurnTest`/`TeamInternalsTest` nur **verschärfen**.
+* `lintDocsAndTests`/`nextIds`: Pfade relativ zum Session-cwd (`docRoots:["docs"]`, `testRoots`:
+  `factory-backend/src/test`, `factory-ui/test`, `factory-ui/src`) — **`idPattern` weglassen**.
+* Git mit Paul im selben Repo: **nie amend/rebase auf seinen Commits**, nur `aifactory/`-Pfade,
+  **kein Modell-/Tool-Name und kein `Assisted-by`-Trailer**, kein `git add -A` (fängt Plan-Archive und
+  Pauls Core-Edits ein). Tool-Quirks: `eclipseEditFile` verliert `oldString` bei langen Blöcken ⇒
+  `diskEditFile` kurz ankern; `*InsertLines` scheitern am Dateiende mit Leerzeile; Mutations-Restore
+  nur per `cp` + `diff -q`, nie `git checkout`.
+* Dev-Antworten kommen manchmal als rohes Tool-Fragment ⇒ **nie neu bauen**, Text-Status verlangen.
+  Review-Verdicts und neue Inkremente kommen **nur von Jon**. Dev-Kontext >85 % → `compactDev`.
+* Patches: Patch-Basis = **Branch-Commits, nicht main**; `git apply --3way` versteckt Konflikte ⇒ erst
+  `--check -R`, dann ohne `--3way`.
+* `web-prototype.md` existiert nicht mehr — SOLL in `chat.md`/`files.md`. Grundsatzentscheidungen
+  Pauls immer im **Eclipse-Plugin** nachlesen (chat.html, Plugin-Dialoge), nicht neu fragen.

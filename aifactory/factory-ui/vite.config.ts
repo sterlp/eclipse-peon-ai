@@ -17,6 +17,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './test/shared/setup.ts',
-    css: false,
+    // the app's own sheets stay readable as text for the colour contract of R-WP-29; everything else,
+    // Bootstrap above all, stays stubbed — jsdom lays out nothing either way
+    css: { include: [/\/src\/[^/]+\.css(\?|$)/] },
   },
 })

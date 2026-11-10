@@ -66,7 +66,7 @@ public class ApiRetry {
                 credit = Math.min(credit + 1, MAX_CREDIT);
                 retryCount = 0;
                 return response;
-            } catch (CancellationException ce) {
+            } catch (CancellationException | AiCancellationException ce) {
                 throw ce; // a cancel is never a transient error — never retry it
             } catch (RuntimeException e) {
                 if (retryCount >= credit) throw e; // out of patience — let the UI log & show it

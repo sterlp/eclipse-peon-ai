@@ -75,7 +75,7 @@ File-Inhalt (Doc/Code-Drift). Der Homepage-Text stimmt bereits und wird **nicht*
 
 **Test:** `UserContextTest.test_rSel3_snippetPlusFilePath_notFullContent`
 
-### R-SEL-4 — JavaType-Selektion ersetzt File/Text-Selektion (Paul 2026-09-16) ❌
+### R-SEL-4 — JavaType-Selektion ersetzt File/Text-Selektion (Paul 2026-09-16) ✅
 
 **Regel:** Wird ein Java-Typ selektiert, gewinnt dieses Event: die bestehende File-Selektion
 (`selectedResource`) **und** die Text-Selektion werden geräumt, der Typ wird als `javaType`
@@ -95,7 +95,7 @@ ist tot.
 **Begründung:** „Neuestes Event gewinnt" — R-SEL-1 schützt die Text-Selektion nur vor *irrelevanten*
 Neben-Events, nicht vor einer bewussten Typ-Auswahl. Ein Typ-Klick ist eine klare Intent-Änderung.
 
-#### UC-SEL-4 — Typ-Selektion ersetzt File und Text ❌
+#### UC-SEL-4 — Typ-Selektion ersetzt File und Text ✅
 
 - GIVEN Text-Selektion + File-Selektion aktiv WHEN Typ-Selektions-Event (`IType` oder `IClassFile`) THEN `javaType` gesetzt, `selectedResource` null, Text-Selektion geräumt; `get()` liefert „Java type selected: <Name>".
 - GIVEN Typ-Selektion aktiv WHEN neue Text-Selektion (auch leer/Caret) THEN Text-Selektion gewinnt, `javaType` geräumt (R-SEL-1/2/3-Semantik).
@@ -103,6 +103,25 @@ Neben-Events, nicht vor einer bewussten Typ-Auswahl. Ein Typ-Klick ist eine klar
 
 **Test:** `UserContextTest` (headless über die UserContext-Setter); die UI-Erkennung (IType vor
 resolveResource im View-Pfad) ist manuell im User-Smoke verifiziert — headless nicht testbar.
+
+### R-SEL-5 — Phantom-Projekt-Handles werden nicht übernommen ✅ done (2026-11-05)
+
+Eine Selektion kann zu einem Projekt-Handle für ein nicht existierendes Projekt auflösen — z. B.
+eine extern geöffnete Datei: Eclipse mappt ihren Pfad auf `/home/…`, Segment 1 wird zum
+Projektnamen, `selection.getProject()` liefert ein Handle mit `exists() == false`. **SOLL:** die
+einzige Projektbindung (`PeonAiService.setProject`, Choke-Point) verwirft ein solches Handle
+sofort (Rückgabe `false`): das bisherige Projekt bleibt aktiv, kein Tool-Wiring, kein
+Skills-dir-Wechsel, kein Plan-I/O. `resolveProject` bleibt dumb accessor — die Prüfung lebt
+genau dort, wo der Zustand gesetzt wird. Ein früherer UI-Crash (Unhandled event loop exception,
+„Failed to open project with plan file home", 2026-11-03) entfällt damit an der Quelle.
+
+#### UC-SEL-5 — phantomProjectHandleIsRejected ✅
+
+- GIVEN aktives Projekt A WHEN `setProject` mit einem Handle aufgerufen wird, dessen `exists() == false`
+  THEN Rückgabe `false`, `getCurrentProject()` bleibt A, kein Tool-Wiring, kein Plan-Refresh
+  (`preloadPlanIfNeeded` läuft nicht).
+- GIVEN aktives Projekt A WHEN `setProject` mit einem geschlossenen, aber existierenden Projekt THEN
+  es wird wie bisher übernommen (nur `exists()` zählt, nicht `isOpen()`).
 
 ## Nebenfunde
 

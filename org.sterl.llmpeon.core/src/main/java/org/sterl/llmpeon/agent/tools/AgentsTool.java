@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.context.ContextItem;
+import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.model.CompactResult.Stats;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ArgsUtil;
@@ -57,7 +58,11 @@ public class AgentsTool extends AbstractTool {
         }
 
         boolean isFailed() {
-            return e != null;
+            return e != null && !isCanceled();
+        }
+        
+        boolean isCanceled() {
+            return ExceptionUtil.isCanceled(e);
         }
         
         String status() {
@@ -66,7 +71,12 @@ public class AgentsTool extends AbstractTool {
                 + " agent=" + agent.getName()
                 + " status=FAILED" 
                 + errorText();
-
+            } else if (isCanceled()) {
+                return "task=" + id
+                        + " agent=" + agent.getName()
+                        + " status=CANCELED" 
+                        + "result:" + System.lineSeparator() 
+                        + result;
             } else if (status == Status.COMPLETED) {
                 return "task=" + id
                         + " agent=" + agent.getName()
@@ -79,6 +89,7 @@ public class AgentsTool extends AbstractTool {
         
         String errorText() {
             if (e == null) return "";
+            if (isCanceled()) return "Agent cancled by user.";
             return " error: " + e.getClass().getSimpleName() + " " + e.getMessage()
                 + " stack: " + System.lineSeparator() + stackTraceOf();
         }
@@ -115,13 +126,14 @@ public class AgentsTool extends AbstractTool {
         }
     }
 
-    public Task spawn(String agentName, String prompt) {
+    public CompletableFuture<Task> spawn(String agentName, String prompt) {
         var agent = getAgent(agentName);
         ArgsUtil.requireNonBlank(prompt, "prompt");
 
         Task result;
         var runsAsync = this.maxConcurrent > this.asyncRunning.get();
         if (runsAsync) {
+            // -- currently not in use only prepared!
             monitor.onTool(agent.getName() + " start async: " + System.lineSeparator() + prompt);
             var slaveMonitor = runsAsync ? new AsyncMonitor(this.monitor) : monitor; 
             long taskId = ID_GENERATOR.incrementAndGet();
@@ -142,7 +154,7 @@ public class AgentsTool extends AbstractTool {
             }
         }
 
-        return result;
+        return result.future;
     }
     
     private static String dispatch(AiAgent target, String prompt,
@@ -183,12 +195,11 @@ public class AgentsTool extends AbstractTool {
         
         task.status = Status.COMPLETED;
         task.result = result + System.lineSeparator() + target.getName() + statsLine;
-        task.e = throwable;
+        task.e = ExceptionUtil.unwrap(throwable);
 
-        if (throwable != null) {
-            task.e = throwable.getCause() != null
-                    ? throwable.getCause()
-                    : throwable;
+        if (task.isCanceled()) {
+            monitor.onTool(target.getName() + " canceled. " + StringUtil.charsSuffix(result));
+        } else if (task.isFailed()) {
             monitor.onProblem(target.getName() + " failed. " + task.e.getMessage() + " " + statsLine + " " + StringUtil.charsSuffix(result));
         } else {
             monitor.onTool(target.getName() + " done. " + statsLine + " " + StringUtil.charsSuffix(result));

@@ -1,0 +1,131 @@
+import type { ProjectDto } from '../shared/server-api'
+
+/** The address of the project list. */
+export const projectsPath = '/projects'
+
+/** The address of the settings. */
+export const settingsPath = '/settings'
+
+/** The chat on its own: it answers with the project this browser last opened (UC-WP-51, R-WP-1). */
+export const chatRoot = '/chat'
+
+/**
+ * The address of one project's Jon-Chat (UC-WP-52) — segment as it stands, never escaped here: that would be
+ * a second answer beside the one {@link navKeyOfPathname} reads back.
+ */
+export function chatPath(segment: string): string {
+  return `${chatRoot}/${segment}`
+}
+
+/**
+ * The address of one project's file area (R-WP-38, UC-WP-70 G2): a **child** of the chat address, so naming
+ * the unit never leaves the chat — a fourth top-level address would be a fourth view (R-WP-1).
+ */
+export const filesSuffix = '/files'
+
+/** The address of one project's file area (UC-WP-70 G2) — same rule as {@link chatPath}: raw segment. */
+export function chatFilesPath(segment: string): string {
+  return `${chatPath(segment)}${filesSuffix}`
+}
+
+/**
+ * The one producer of the part of the address that names a project (R-WP-38): the **name**, so the address
+ * reads as what the tree shows (C-3). The backend keeps a name single — a second folder of that name is
+ * refused case-insensitively (`ProjectService.add`) — and its `SAFE_NAME` keeps it free of `/` and spaces, so
+ * a name is always a legal path segment. The sider's keys, the navigation and what this browser remembers as
+ * its last project all read it here — the alternative is three places that have to agree about one string.
+ */
+export function projectSegment(project: ProjectDto): string {
+  return project.name
+}
+
+/**
+ * The project an address segment names: its name and nothing else (C-3). A database key names no project — a
+ * bookmark that still speaks one lands on the list, where the project is picked again by name; that is the
+ * accepted cost of a single, readable address. `null` is the same reading: a project the registry does not
+ * hold, which is where the address leads to the list rather than to a fourth page (R-WP-1).
+ */
+export function projectOfSegment(projects: ProjectDto[], segment: string): ProjectDto | null {
+  return projects.find(entry => projectSegment(entry) === segment) ?? null
+}
+
+/**
+ * The key of one project's **group** (R-WP-44) — prefixed, because a project is free to be called `chat` or
+ * `files`. A group is never an address, so no reader ever answers with this key.
+ */
+export function projectKeyOf(segment: string): string {
+  return `project:${segment}`
+}
+
+/** The sider key of one project's chat unit — the unit the chat address names (UC-WP-77). */
+export function chatKeyOf(segment: string): string {
+  return `chat:${segment}`
+}
+
+/** The sider key of one project's file area — its own prefix, because a project may be called `files`. */
+export function filesKeyOf(segment: string): string {
+  return `files:${segment}`
+}
+
+/** The project a raw path segment names: decoded, and as it stands when it cannot be decoded. */
+function readSegment(raw: string): string {
+  try {
+    return decodeURIComponent(raw)
+  } catch {
+    return raw
+  }
+}
+
+/**
+ * Which entry of the sider an address names (UC-WP-52, R-WP-1, UC-WP-70 G2): a reading of the path and
+ * nothing else, so the mark survives a reload and follows an address nobody clicked. An address that names no
+ * entry — `/projects`, `/settings`, the bare `/chat`, `/chat/x/anything-else` — marks nothing, which is the
+ * honest answer rather than a guess at the first entry: the tree holds projects and their units, and the
+ * project list is a page of the header, not a place in the tree (R-WP-44).
+ *
+ * The **unit is read before the chat**: `/chat/x/files` names x's file area, not x's chat — reading the first
+ * segment alone would mark the project and leave the panel owner without an answer.
+ *
+ * The segment is read **decoded**, because the chat resolves what `useParams` hands it — already decoded —
+ * and a mark that disagreed with the chat about the spelling would be a second answer. An address that cannot
+ * be decoded is no reason to throw: then the raw reading is the answer.
+ */
+export function navKeyOfPathname(pathname: string): string | null {
+  if (!pathname.startsWith(`${chatRoot}/`)) {
+    return null
+  }
+  // a trailing slash names the same thing: `/chat/x/` is x's chat, `/chat/x/files/` is x's unit
+  const path = pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
+  const [raw = '', ...rest] = path.slice(chatRoot.length + 1).split('/')
+  if (raw === '') {
+    return null
+  }
+  const segment = readSegment(raw)
+  if (rest.length === 0) {
+    // the chat address names the **chat unit** of its project and not the project entry: the tree lists the
+    // units chat · files under it, and the finer handle is the one that has to show (UC-WP-77)
+    return chatKeyOf(segment)
+  }
+  return `/${rest.join('/')}` === filesSuffix ? filesKeyOf(segment) : null
+}
+
+/**
+ * Which page of the header an address names (R-WP-43, UC-WP-76) — the second reading of the path, in the
+ * same file and for the same reason: the menu shows what the address says, so a reload marks the page a click
+ * marked. The two readers answer different questions and never overwrite each other: `navKeyOfPathname` names
+ * an entry of the tree, this one names a page.
+ *
+ * Every chat address is the **chat page**, including a unit of it: the header names the page, the tree names
+ * the unit. The keys returned are addresses themselves, which is what lets a menu entry navigate to its key.
+ */
+export function pageKeyOfPathname(pathname: string): string | null {
+  // a trailing slash names the same page as the bare address, like everywhere else in this file
+  const path = pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
+  if (path === projectsPath) {
+    return projectsPath
+  }
+  if (path === chatRoot || path.startsWith(`${chatRoot}/`)) {
+    return chatRoot
+  }
+  return path === settingsPath ? settingsPath : null
+}

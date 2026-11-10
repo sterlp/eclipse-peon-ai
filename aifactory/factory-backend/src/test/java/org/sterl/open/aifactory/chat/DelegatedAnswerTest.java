@@ -26,10 +26,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.io.TempDir;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -37,8 +34,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
@@ -52,9 +47,9 @@ import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.poagent.AiPoAgent;
+import org.sterl.open.aifactory.FactorySpringTest;
 import org.sterl.open.aifactory.chat.dto.ChatMessageDto;
 import org.sterl.open.aifactory.chat.dto.SendMessageRequest;
-import org.sterl.open.aifactory.project.FakeGitConfig;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
@@ -73,10 +68,8 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * the text would prove that somebody guessed (R-WP-4 "niemand rät die Herkunft"). The reading half over a
  * real restart is {@link DelegatedAnswerRestartTest}.</p>
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(FakeGitConfig.class)
-@Timeout(120)
-class DelegatedAnswerTest {
+@Timeout(90)
+class DelegatedAnswerTest extends FactorySpringTest {
 
     /** The prompt Jon hands over — visible on his own delegation line. */
     private static final String MEMBER_PROMPT = "MITGLIEDS-AUFGABE: nenne genau eine Frucht";
@@ -98,9 +91,6 @@ class DelegatedAnswerTest {
             .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(Duration.ofSeconds(5))
             .build();
-
-    @TempDir
-    static Path home;
 
     private MockLlmServer model;
 
@@ -131,14 +121,9 @@ class DelegatedAnswerTest {
         }
     }
 
-    @DynamicPropertySource
-    static void isolateHome(DynamicPropertyRegistry registry) {
-        registry.add("aifactory.home", home::toString);
-    }
-
     @Test
     @Timeout(60)
-    // UC-WP-40
+    // UC-WP-40, UC-WP-82
     void onlyFinalAnswersFromTheTeam() throws Exception {
         writeFactoryConfig("inc3f3-live");
         CreatedProject project = createProject("delegated-answer");
@@ -168,24 +153,42 @@ class DelegatedAnswerTest {
                     .as("Jon's own answer still grows live on the same wire")
                     .isEqualTo(JON_ANSWER);
             assertThat(stream.eventNames())
-                    .as("the wire speaks exactly the three known names — a member line leaking under a"
-                            + " fourth name is red here, not merely unnamed")
-                    .containsOnly("partial", "tool", "done");
+                    .as("the conversation still speaks its three names, plus the tile snapshot and the one"
+                            + " timeline entry of a delegation — the entry names a member and carries no word"
+                            + " of his, so the member's text is still checked against every data line above"
+                            + " (R-WP-7, R-WP-40)")
+                    .containsOnly("partial", "tool", "done", "agents", "delegation");
             assertThat(stream.countOf("done"))
                     .as("and it stays one done for the whole turn — the team's line is not a second answer")
                     .isEqualTo(1);
             assertThat(stream.countOf("error")).isZero();
 
+            // the order the core's own dispatch produces: the tool writes its start line, CallStats.run speaks
+            // the start before the member runs and its finally speaks the end (core PoDelegateTool.java:225-245,
+            // CallStats.java:34-45) — so the entry stands between the two tool lines of its own order
+            assertThat(stream.eventNames().stream()
+                    .filter(name -> "tool".equals(name) || "delegation".equals(name))
+                    .toList())
+                    .as("start line, its own start, result line, its own end")
+                    .containsExactly("tool", "delegation", "tool", "delegation");
+            assertThat(stream.payloads("delegation").stream()
+                    .map(payload -> List.of(JsonPath.read(payload, "$.member"), JsonPath.read(payload, "$.working")))
+                    .toList())
+                    .as("both events name the member; only the flag tells them apart (UC-WP-72 GIVEN 3)")
+                    .containsExactly(List.of("Dev", true), List.of("Dev", false));
+
             List<ChatMessageDto> history = messages(project.id());
             assertThat(history)
                     .as("with the read that done causes, the member's line stands in the history: its own"
-                            + " name as author, Jon's answer behind it, the typed input nameless")
+                            + " name as author, Jon's answer behind it, the typed input nameless — and"
+                            + " Jon's step names the member it went to, never the tool askDev (R-WP-47)")
                     .extracting(ChatMessageDto::role, ChatMessageDto::origin)
                     .containsExactly(
                             tuple("user", null),
+                            tuple("tool", "Dev"),
                             tuple("jon", "Dev"),
                             tuple("jon", AiPoAgent.NAME));
-            assertThat(history.get(1).text())
+            assertThat(history.get(2).text())
                     .as("the tool result verbatim — answer and statistics line, nothing shortened")
                     .startsWith(MEMBER_ANSWER + System.lineSeparator())
                     .contains("Dev done.");
@@ -261,24 +264,27 @@ class DelegatedAnswerTest {
 
         List<ChatMessageDto> history = messages(project.id());
         assertThat(history)
-                .as("the history holds both team lines in the order of Jon's memory, his own answer last")
+                .as("the history holds both team lines in the order of Jon's memory, his own answer last;"
+                        + " his two steps stand where he asked for them (R-WP-47)")
                 .extracting(ChatMessageDto::role, ChatMessageDto::origin)
                 .containsExactly(
                         tuple("user", null),
+                        tuple("tool", "Dev"),
+                        tuple("tool", "Dev"),
                         tuple("jon", "Dev"),
                         tuple("jon", "Dev"),
                         tuple("jon", AiPoAgent.NAME));
-        assertThat(history.get(1).text())
+        assertThat(history.get(3).text())
                 .as("the first answer kept its own line — the second did not take it over")
                 .startsWith(MEMBER_ANSWER_FIRST + System.lineSeparator());
-        assertThat(history.get(2).text())
+        assertThat(history.get(4).text())
                 .as("and the second is its own line, not a repeat of the first")
                 .startsWith(MEMBER_ANSWER_SECOND + System.lineSeparator());
     }
 
     @Test
     @Timeout(60)
-    // UC-WP-40
+    // UC-WP-40, UC-WP-82
     void delegationWithoutAnswerStillProducesALine() throws Exception {
         writeFactoryConfig("inc3f3-noanswer");
         CreatedProject project = createProject("delegated-empty");
@@ -302,10 +308,10 @@ class DelegatedAnswerTest {
         List<ChatMessageDto> history = messages(project.id());
         assertThat(history)
                 .as("the empty result is a line with an author like any other — an author is a fact, not"
-                        + " a verdict over the text (UC-WP-40)")
+                        + " a verdict over the text (UC-WP-40); his step names the same member")
                 .extracting(ChatMessageDto::origin)
-                .containsExactly(null, "Dev", AiPoAgent.NAME);
-        assertThat(history.get(1).text())
+                .containsExactly(null, "Dev", "Dev", AiPoAgent.NAME);
+        assertThat(history.get(2).text())
                 .as("and it says so in the member's own words, not in a reworded form")
                 .startsWith("Dev returned no result");
     }
@@ -400,7 +406,7 @@ class DelegatedAnswerTest {
         properties.setProperty(LlmConfigKeys.MODEL, model);
         properties.setProperty(LlmConfigKeys.URL, this.model.getUrl());
         properties.setProperty(LlmConfigKeys.API_KEY, "test-key");
-        try (var out = Files.newOutputStream(home.resolve(FactoryHome.CONFIG_FILE))) {
+        try (var out = Files.newOutputStream(HOME.resolve(FactoryHome.CONFIG_FILE))) {
             properties.store(out, "DelegatedAnswerTest");
         }
     }

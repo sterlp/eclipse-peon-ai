@@ -16,10 +16,15 @@ import org.springframework.web.bind.annotation.RestController;
 import org.sterl.open.aifactory.project.dto.AddProjectRequest;
 import org.sterl.open.aifactory.project.dto.ProjectDto;
 
+import jakarta.validation.Valid;
+
 /**
  * Project registry over HTTP. Clone is synchronous, so the {@code 201} is only sent after the
  * checkout exists on disk (UC-WP-2) — a failed clone answers {@code 400} with the git output and
  * the list stays unchanged (UC-WP-4).
+ *
+ * <p>The body of an add is validated against its own shape before the registry is entered (R-WP-55), so a
+ * url that is empty or not public {@code https} is refused as a field error and nothing is cloned.</p>
  */
 @RestController
 @RequestMapping("/api/projects")
@@ -37,7 +42,7 @@ public class ProjectController {
     }
 
     @PostMapping
-    public ResponseEntity<ProjectDto> add(@RequestBody(required = false) AddProjectRequest request) {
+    public ResponseEntity<ProjectDto> add(@Valid @RequestBody(required = false) AddProjectRequest request) {
         AddProjectResult result = projects.add(request == null ? null : request.gitUrl());
         // a url that is already registered is reused, not rejected — 200, nothing new was created (UC-WP-3)
         return ResponseEntity.status(result.created() ? HttpStatus.CREATED : HttpStatus.OK)

@@ -10,6 +10,8 @@ import static org.junit.Assume.assumeTrue;
 
 import java.nio.file.Files;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.eclipse.ui.PlatformUI;
 import org.junit.Test;
@@ -20,8 +22,11 @@ import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
+import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.WriteValidator;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
 
 public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
 
@@ -531,5 +536,67 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
                 .chatModel(model)
                 .writeValidator(WriteValidator.DOCS)
                 .build();
+    }
+
+    /** A tool request carrying the monitor — a monitor only reaches a tool through the loop request. */
+    private ToolLoopRequest requestWith(AiMonitor monitor) {
+        var model = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
+        return ToolLoopRequest.builder()
+                .memory(new ThreadSafeMemory())
+                .chatModel(model)
+                .monitor(monitor)
+                .build();
+    }
+
+    /** Captures the SUT's file updates; the interface default would only echo a tool line. */
+    private static final class UpdateCapturingMonitor implements AiMonitor {
+        final List<AiFileUpdate> fileUpdates = new ArrayList<>();
+        @Override public void onChatResponse(SimpleMessage message) {}
+        @Override public void onFileUpdate(AiFileUpdate update) { fileUpdates.add(update); }
+    }
+
+    // UC-SD-1
+    @Test
+    public void eclipseWriteFile_newFileFiresAFileUpdate() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        var fileName = "/test_project/sdCreate_" + System.nanoTime() + ".txt";
+        var monitor = new UpdateCapturingMonitor();
+        tool.setCurrentProject(project);
+        tool.withToolRequest(requestWith(monitor));
+
+        try {
+            // GIVEN a workspace path that does not exist WHEN eclipseWriteFile creates it
+            tool.eclipseWriteFile(fileName, "created content");
+
+            // THEN exactly one update with an empty old content — the parity case of the disk tool
+            assertEquals(1, monitor.fileUpdates.size());
+            var update = monitor.fileUpdates.get(0);
+            assertEquals(fileName, update.file());
+            assertEquals("", update.oldContent());
+            assertEquals("created content", update.newContent());
+        } finally {
+            eclipseDeleteResource(fileName);
+        }
+    }
+
+    // UC-SD-1
+    @Test
+    public void eclipseWriteFile_overwriteFiresAFileUpdateWithTheOldContent() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        var fileName = "/test_project/sdOverwrite_" + System.nanoTime() + ".txt";
+        eclipseWriteFile(fileName, "the previous content");
+        var monitor = new UpdateCapturingMonitor();
+        tool.setCurrentProject(project);
+        tool.withToolRequest(requestWith(monitor));
+
+        // WHEN an existing workspace file is written again
+        tool.eclipseWriteFile(fileName, "the new content");
+
+        // THEN the update carries what stood there before, never an empty string
+        assertEquals(1, monitor.fileUpdates.size());
+        var update = monitor.fileUpdates.get(0);
+        assertEquals(fileName, update.file());
+        assertEquals("the previous content", update.oldContent());
+        assertEquals("the new content", update.newContent());
     }
 }

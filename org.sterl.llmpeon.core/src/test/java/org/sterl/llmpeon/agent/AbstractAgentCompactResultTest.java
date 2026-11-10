@@ -10,7 +10,6 @@ import static org.mockito.Mockito.mock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -29,6 +28,7 @@ import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.OnPartialAiResponse;
+import org.sterl.llmpeon.streaming.AiCancellationException;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.model.SimpleMessage.Type;
@@ -491,7 +491,7 @@ class AbstractAgentCompactResultTest {
 
         // THEN — the Stop stays a cancellation (R-CC-7 owns it): it propagates out of the compact
         // instead of turning into a failure result
-        assertThat(thrown).isInstanceOf(CancellationException.class);
+        assertThat(thrown).isInstanceOf(AiCancellationException.class);
         assertThat(ExceptionUtil.isCanceled(thrown)).isTrue();
         // AND — the agent is usable again and the history untouched: the clear happens only after a
         // response, so an aborted compact keeps every message

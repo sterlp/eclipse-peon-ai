@@ -5,9 +5,10 @@ import org.sterl.llmpeon.tool.tools.AbstractTool;
 import dev.langchain4j.agent.tool.Tool;
 
 /**
- * Read-only view onto {@link PlanTool} for Jon: he reviews a plan and hands its path to his
- * Dev slave, but never writes plans himself — planning is delegated to his Plan agent. Delegates
- * to the shared {@link PlanTool} instance so it always sees the current project.
+ * Read-only view onto {@link PlanTool} for Jon, plus the archive step: he reviews a plan, hands its
+ * path to his Dev slave and archives it once his review passed — but never writes plans himself;
+ * planning is delegated to his Plan agent. Delegates to the shared {@link PlanTool} instance so it
+ * always sees the current project.
  */
 public class PlanReadTool extends AbstractTool {
 
@@ -25,5 +26,10 @@ public class PlanReadTool extends AbstractTool {
     @Tool("Checks whether a saved plan exists; returns its path (" + PlanTool.OVERVIEW_FILE + ") to hand to buildWithDev, or states that none exists yet.")
     public String hasPlan() {
         return planTool.hasPlan() ? PlanTool.OVERVIEW_FILE : "No plan exists yet.";
+    }
+
+    @Tool("Archives the current plan (" + PlanTool.OVERVIEW_FILE + ") with a timestamp. Call once your review of the implemented plan passed.")
+    public void planImplemented() {
+        planTool.planImplemented();
     }
 }

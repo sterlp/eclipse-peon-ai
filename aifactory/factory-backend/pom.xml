@@ -52,6 +52,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
+        <!-- Bean Validation an den Request-DTOs (R-WP-55): in Boot 4 steckt die Auto-Konfiguration
+             im Modul spring-boot-validation, ohne das @Valid am Body still nicht ausgeführt wird -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.modulith</groupId>
             <artifactId>spring-modulith-observability-api</artifactId>
@@ -106,6 +112,55 @@
 
     <build>
         <plugins>
+            <!-- R-WP-54: the UI's API types come from these classes - server-api.ts is a build product,
+                 committed and never edited by hand (UC-WP-91) -->
+            <plugin>
+                <groupId>cz.habarta.typescript-generator</groupId>
+                <artifactId>typescript-generator-maven-plugin</artifactId>
+                <version>3.2.1263</version>
+                <executions>
+                    <execution>
+                        <id>generate</id>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <phase>process-classes</phase>
+                    </execution>
+                </executions>
+                <configuration>
+                    <jsonLibrary>jackson2</jsonLibrary>
+                    <noFileComment>true</noFileComment>
+                    <outputKind>module</outputKind>
+                    <outputFileType>implementationFile</outputFileType>
+                    <!-- the union is what the UI spells by hand today; fixed so an upgrade cannot
+                         silently turn it into an enum -->
+                    <mapEnum>asUnion</mapEnum>
+                    <optionalPropertiesDeclaration>questionMarkAndNullableType</optionalPropertiesDeclaration>
+                    <optionalAnnotations>
+                        <annotation>jakarta.annotation.Nullable</annotation>
+                        <annotation>org.springframework.lang.Nullable</annotation>
+                        <annotation>org.jspecify.annotations.Nullable</annotation>
+                    </optionalAnnotations>
+                    <classPatterns>
+                        <pattern>org.sterl.open.aifactory.shared.ApiError</pattern>
+                        <pattern>org.sterl.open.aifactory.shared.ApiFieldError</pattern>
+                        <pattern>org.sterl.open.aifactory.config.dto.*</pattern>
+                        <pattern>org.sterl.open.aifactory.config.ModelListRequest</pattern>
+                        <!-- only the shapes the UI binds: the file area narrows kind and root to its own
+                             literals, so its DTOs stay out of the contract rather than invite a wrong import -->
+                        <pattern>org.sterl.open.aifactory.project.dto.AddProjectRequest</pattern>
+                        <pattern>org.sterl.open.aifactory.project.dto.ProjectDto</pattern>
+                        <pattern>org.sterl.open.aifactory.project.dto.ProjectWorkDto</pattern>
+                    </classPatterns>
+                    <excludeClasses>
+                        <!-- validator detail (R-WP-55), never a wire type: the two update bodies name the
+                             key fields themselves -->
+                        <class>org.sterl.open.aifactory.config.KeyIntentRequest</class>
+                    </excludeClasses>
+                    <outputFile>${project.basedir}/../factory-ui/src/shared/server-api.ts</outputFile>
+                </configuration>
+            </plugin>
+
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

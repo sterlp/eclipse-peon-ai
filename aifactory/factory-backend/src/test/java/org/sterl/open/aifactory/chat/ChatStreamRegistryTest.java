@@ -97,6 +97,78 @@ class ChatStreamRegistryTest {
         assertThat(registry.listenerCount("p2")).isZero();
     }
 
+    // R-WP-53
+    @Test
+    void agentChannelReachesOnlyItsOwnAgent() {
+        ChatStreamRegistry registry = new ChatStreamRegistry();
+        RecordingEmitter dev = new RecordingEmitter();
+        RecordingEmitter plan = new RecordingEmitter();
+        RecordingEmitter jon = new RecordingEmitter();
+        registry.subscribeAgent("p1", "Dev", dev);
+        registry.subscribeAgent("p1", "Plan", plan);
+        registry.subscribe("p1", jon);
+
+        registry.publishAgent("p1", "Dev", new ChatEvent.Partial("answer", "nur Dev"));
+
+        // order is kept per connection, so his own line is what orders his own wire
+        awaitUntil("Dev received his line", () -> dev.sent.size() == 1);
+        // a leak would have taken the same delivery window the other two wires needed for theirs
+        settle(200);
+        assertThat(plan.sent).as("another member's wire carries nothing of Dev").isEmpty();
+        assertThat(jon.sent).as("Jon's chat stays free of a member's own lines (UC-WP-40)").isEmpty();
+
+        assertThat(registry.listenerCount("p1", "Dev")).as("one listener on Dev's channel").isOne();
+        assertThat(registry.listenerCount("p1", "Plan")).as("and one on Plan's").isOne();
+        assertThat(registry.listenerCount("p1", null))
+                .as("the conversation channel is one of the three subscriptions")
+                .isOne();
+        assertThat(registry.listenerCount("p1")).as("all of them are listeners of the project").isEqualTo(3);
+    }
+
+    // UC-WP-90
+    @Test
+    void jonChannelNeverCarriesAnAgentLine() {
+        ChatStreamRegistry registry = new ChatStreamRegistry();
+        RecordingEmitter dev = new RecordingEmitter();
+        RecordingEmitter jon = new RecordingEmitter();
+        registry.subscribe("p1", jon);
+        registry.subscribeAgent("p1", "Dev", dev);
+
+        // three events of the conversation, then one of the member: each wire's own last event orders it
+        registry.publish("p1", new ChatEvent.Diff("src/App.java", "--- a\n+++ b\n"));
+        registry.publish("p1", new ChatEvent.Agents(List.of()));
+        registry.publish("p1", new ChatEvent.Done(4L));
+        registry.publishAgent("p1", "Dev", new ChatEvent.Partial("answer", "mitglied"));
+
+        awaitUntil("Jon received all three of his events", () -> jon.sent.size() == 3);
+        awaitUntil("Dev received his one event", () -> dev.sent.size() == 1);
+        assertThat(dev.sent)
+                .as("diff, tiles and the turn end never cross onto a member's channel")
+                .hasSize(1);
+    }
+
+    // R-WP-53
+    @Test
+    void removedProjectClosesTheAgentChannel() {
+        ChatStreamRegistry registry = new ChatStreamRegistry();
+        RecordingEmitter dev = new RecordingEmitter();
+        RecordingEmitter jon = new RecordingEmitter();
+        registry.subscribe("p1", jon);
+        registry.subscribeAgent("p1", "Dev", dev);
+
+        registry.closeProject("p1");
+
+        assertThat(registry.listenerCount("p1")).as("both channels went with the project").isZero();
+        assertThat(registry.projectCount()).as("and the project left the map").isZero();
+
+        registry.publishAgent("p1", "Dev", new ChatEvent.Partial("answer", "nach dem Entfernen"));
+        registry.publish("p1", new ChatEvent.Done(1L));
+        settle(150);
+        assertThat(dev.sent).as("nothing reaches a project that is gone").isEmpty();
+        assertThat(jon.sent).as("on either channel").isEmpty();
+    }
+
+
     // UC-WP-41
     @Test
     void slowReaderNeverStopsTheTurn() throws Exception {

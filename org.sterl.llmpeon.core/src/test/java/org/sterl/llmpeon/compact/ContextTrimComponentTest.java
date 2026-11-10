@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.model.CompactResult.Stage;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
+import org.sterl.llmpeon.shared.Picture;
+import org.sterl.llmpeon.shared.PictureMessage;
 import org.sterl.llmpeon.tool.ToolService;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -466,6 +468,41 @@ class ContextTrimComponentTest {
         assertThat(outcome.input()).doesNotContain("STATIC PROMPT");
         assertThat(outcome.input()).contains("q");
     }
+
+    /** The picture message is harness state, never "the last real user message" (R-RP-4, architecture Fallstrick). */
+    @Test
+    void pictureMessageDoesNotStealTheLastRealUserSlot() {
+        // GIVEN — the real question, a long thinking turn and a picture message after it; budget fits stage 1
+        var picture = PictureMessage.of(new Picture("/work/a.png", "image/png", "AAAA", 4));
+        var messages = List.<ChatMessage>of(user("real-question " + "B".repeat(2000)), ai("a", "T".repeat(15000)), picture);
+
+        // WHEN
+        var outcome = subject.stage(messages, 4000);
+
+        // THEN
+        assertThat(outcome.stage()).isEqualTo(Stage.THINK_AND_USER);
+        assertThat(outcome.input()).contains("B".repeat(2000));
+    }
+
+    // UC-RP-5
+    @Test
+    void picturePlaceholdersSurviveTheStageCut() {
+        // GIVEN — same shape, two pictures; the budget forces stage 1 (state-only render of earlier user messages)
+        var a = PictureMessage.of(new Picture("/work/a.png", "image/png", "AAAA", 4));
+        var b = PictureMessage.of(new Picture("/work/b.png", "image/png", "BBBB", 4));
+        var messages = List.<ChatMessage>of(user("real-question " + "B".repeat(2000)), ai("a", "T".repeat(15000)), a, b);
+
+        // WHEN
+        var outcome = subject.stage(messages, 4000);
+
+        // THEN — both placeholders reach the summary input, the question stays
+        assertThat(outcome.stage()).isEqualTo(Stage.THINK_AND_USER);
+        assertThat(outcome.input())
+                .contains("[picture removed for compact: /work/a.png]")
+                .contains("[picture removed for compact: /work/b.png]")
+                .contains("B".repeat(2000));
+    }
+
 
     private static UserMessage user(String text) {
         return UserMessage.from(text);

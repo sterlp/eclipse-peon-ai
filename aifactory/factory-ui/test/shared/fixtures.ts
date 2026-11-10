@@ -1,6 +1,6 @@
-import type { Project } from '../../src/shared/dto'
+import type { ProjectDto } from '../../src/shared/server-api'
 
-export function project(overrides: Partial<Project> = {}): Project {
+export function project(overrides: Partial<ProjectDto> = {}): ProjectDto {
   return {
     id: 'demo-1a2b3c4',
     name: 'demo',
