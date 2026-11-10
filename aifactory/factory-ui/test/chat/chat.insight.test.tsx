@@ -343,7 +343,8 @@ test('theLookKeepsAskingAfterARefusedReload', async () => {
   expect(log.textContent).toContain('Der Code steht.')
 
   // and it grows again on the wire it asked for: the reload returned his conversation, not a blank
-  await waitFor(() => expect(subscriptions()).toBe(3), { timeout: 2_000 })
+  // wider than the first window: nothing was delivered in between, so this attempt waits 1000 ms (R-WP-58)
+  await waitFor(() => expect(subscriptions()).toBe(3), { timeout: 2_500 })
   await wire.stream(DEV_STREAM).push(event('partial', { kind: 'answer', text: 'Die Tests laufen.' }))
   await waitFor(() => expect(within(log).getByTestId('chat-live').textContent).toContain('Die Tests laufen.'))
 })

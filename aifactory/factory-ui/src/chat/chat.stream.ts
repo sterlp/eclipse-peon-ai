@@ -3,9 +3,6 @@ import type { ChatStreamEvent, ChatStreamHandlers } from './chat.client'
 import type { AgentTile } from './chat.agents.client'
 import { content } from '../shared/content'
 
-/** How long a view waits before it asks again — long enough not to hammer a restarting server. */
-export const RECONNECT_MS = 500
-
 /**
  * Reads the SSE wire with `fetch` + `ReadableStream` instead of `EventSource`: the parsing is what
  * R-WP-5 promises, so it has to be observable in a test, and reconnecting stays the view's single

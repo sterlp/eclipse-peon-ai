@@ -7,9 +7,7 @@ import { fieldErrorsOf } from '../shared/api.client'
 import { ApiField, ApiFormErrors } from '../shared/api.error'
 import { content } from '../shared/content'
 import type { ProjectDto, ProjectWorkDto } from '../shared/server-api'
-
-/** The same pause the conversation uses: long enough not to hammer, short enough to be noticed. */
-const RECONNECT_MS = 500
+import { sseBackoff } from '../shared/sse.client'
 
 /**
  * The fields this form wraps with `ApiField` — a name the answer carries besides these still reaches the
@@ -47,6 +45,7 @@ export function ProjectPage({ projects, listError, onOpen, onReload }: Props) {
     // replaces what this view holds, every change afterwards merges into it, and nothing of it is kept
     // past the row it belongs to — the states are a picture of the runtimes and never a store
     const controller = new AbortController()
+    const backoff = sseBackoff()
     let reconnect: ReturnType<typeof setTimeout> | undefined
     let mounted = true
 
@@ -54,17 +53,20 @@ export function ProjectPage({ projects, listError, onOpen, onReload }: Props) {
       void openProjectStatusStream(
         {
           onEvent: event => {
+            // delivered events are what ends the waiting (R-WP-58) — keep-alive comments never reach here
+            backoff.reset()
             if (event.kind === 'snapshot') {
               setWork(Object.fromEntries(event.work.map(state => [state.projectId, state])))
               return
             }
             setWork(current => ({ ...current, [event.work.projectId]: event.work }))
           },
-          // a stream that ended is re-opened, and the new connection is answered with a fresh snapshot —
-          // so a viewer that lost the wire is back on the current state without reading the list again
+          // a stream that ended is re-opened — waiting longer per attempt (R-WP-58) — and the new connection
+          // is answered with a fresh snapshot, so a viewer that lost the wire is back on the current state
+          // without reading the list again
           onEnd: retry => {
             if (mounted && retry) {
-              reconnect = setTimeout(connect, RECONNECT_MS)
+              reconnect = setTimeout(connect, backoff.next())
             }
           },
         },

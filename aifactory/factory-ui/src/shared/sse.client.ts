@@ -39,6 +39,35 @@ export async function readSseStream(
   }
 }
 
+/** What a view asks of a waiting rule: the next pause, or the start again. */
+export interface SseBackoff {
+  next(): number
+  reset(): void
+}
+
+/**
+ * The waiting rule of every event stream this app opens (R-WP-58): a chain of attempts grows — start,
+ * doubled per attempt, capped — and a connection that stood and delivered events starts it again at the
+ * start. Holds no timer and knows no page: the view keeps `setTimeout(connect, backoff.next())`.
+ *
+ * One instance belongs to one connection chain. Sharing it between two streams would hand one stream's
+ * waiting to the other, and an instance that outlives its chain (a module-level object) would never come
+ * back to the short start after the server returned.
+ */
+export function sseBackoff(startMs = 500, maxMs = 10_000): SseBackoff {
+  let waiting = startMs
+  return {
+    next(): number {
+      const pause = waiting
+      waiting = Math.min(pause * 2, maxMs)
+      return pause
+    },
+    reset(): void {
+      waiting = startMs
+    },
+  }
+}
+
 interface Wire {
   event: string
   data: string[]

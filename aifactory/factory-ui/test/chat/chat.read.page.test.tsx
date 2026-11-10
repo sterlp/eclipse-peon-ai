@@ -146,7 +146,8 @@ test('theReconnectReadsTheRosterFresh', async () => {
 
   // the positive replacement: the next reading lands, and the row moves with it (no second store, UC-WP-84)
   await chat.closeStream()
-  await waitFor(() => expect(chat.countOf('/events', 'GET')).toBe(3), { timeout: 1500 })
+  // the window is wider than the first one: nothing was delivered in between, so this attempt waits 1000 ms (R-WP-58)
+  await waitFor(() => expect(chat.countOf('/events', 'GET')).toBe(3), { timeout: 2500 })
   await waitFor(() =>
     expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.IDLE),
   )

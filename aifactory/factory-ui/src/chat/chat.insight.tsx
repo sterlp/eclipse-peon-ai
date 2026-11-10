@@ -5,9 +5,10 @@ import { isTraceLine, type ChatMessage, type ChatStreamEvent } from './chat.clie
 import { ChatLog } from './chat.log'
 import { appendLiveText, appendLiveThink, appendLiveTool, type LiveItem } from './chat.live'
 import { useFollowBottom } from './chat.scroll'
-import { openChatStream, RECONNECT_MS } from './chat.stream'
+import { openChatStream } from './chat.stream'
 import { errorMessage } from '../shared/api.client'
 import { content } from '../shared/content'
+import { sseBackoff } from '../shared/sse.client'
 
 interface Props {
   /** The project whose runtime holds this agent — the read is addressed by project and tile name. */
@@ -123,13 +124,17 @@ export function ChatInsight({ projectId, name, onClose }: Props) {
   useEffect(() => {
     let mounted = true
     const controller = new AbortController()
+    const backoff = sseBackoff()
     let reconnect: ReturnType<typeof setTimeout> | undefined
 
     const connect = () => {
       void openChatStream(
         projectId,
         {
-          onEvent: applyEvent,
+          onEvent: event => {
+            backoff.reset()
+            applyEvent(event)
+          },
           onEnd: retry => {
             if (!mounted || !retry) {
               return
@@ -139,7 +144,7 @@ export function ChatInsight({ projectId, name, onClose }: Props) {
             // server has not come back for must not end the asking: it would freeze the look until it closes
             writeLive([])
             void readSnapshot()
-            reconnect = setTimeout(connect, RECONNECT_MS)
+            reconnect = setTimeout(connect, backoff.next())
           },
         },
         controller.signal,
