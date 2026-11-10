@@ -17,6 +17,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Event;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -29,7 +30,11 @@ import org.sterl.llmpeon.parts.widget.ChatModelComboWidget;
  * refresh button directly into the RowLayout parent (like the production ActionsBar), so the
  * helpers look them up there. Display/Shell lifecycle, the Assume-skip and UI-thread access come
  * from {@link AbstractSwtUiTest}. The commit callback is the contract boundary — AIChatView
- * persists its argument to PREF_MODEL through the existing config path.
+ * persists its argument to PREF_MODEL (covered by {@link ChatModelPreferenceTest}).
+ *
+ * <p>Programmatic {@code select()}/{@code setText()} fire no {@code SWT.Selection}/{@code FocusOut};
+ * user interaction is simulated with {@code notifyListeners}. Headless runs skip these tests —
+ * run them in a PDE launch with a workbench.</p>
  */
 public class ChatModelComboWidgetTest extends AbstractSwtUiTest {
 
@@ -139,9 +144,11 @@ public class ChatModelComboWidgetTest extends AbstractSwtUiTest {
         });
         waitUntil(() -> ui(() -> combo(built.parent()).getItems().length) > 0, "model list not applied");
 
-        // WHEN the user selects another entry
+        // WHEN the user selects another entry — select() alone fires no SWT.Selection (only a
+        // real dropdown click does, on all platforms), so the test raises the event itself
         ui(() -> {
             combo(built.parent()).select(1);
+            combo(built.parent()).notifyListeners(SWT.Selection, new Event());
             return null;
         });
 

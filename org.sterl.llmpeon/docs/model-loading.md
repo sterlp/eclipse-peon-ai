@@ -3,7 +3,7 @@
 The model dropdown shows the available models from the current LLM provider, with per-agent
 model resolution. The list is fetched lazily and persists across agent switches — it is only
 refetched when the provider config changes. The chat dialog's action bar carries a base-model
-selector on the same cache ([R-ML5](#r-ml5—chat-oberfläche-base-model-selector-in-der-actionsbar-2026-11-01-paul--done)).
+selector on the same cache (R-ML5).
 
 ## SOLL (2026-08-28) — ✅ gebaut (Zyklus 2b, 2026-08-30)
 
@@ -112,16 +112,20 @@ Section 3) zeigt den **Base-Model**-Selector (`ChatModelComboWidget`): editierba
 (~200px) + Refresh-Button `↻`. Die Liste kommt aus demselben `ModelListCache` für die
 **Base**-`ConnectionIdentity` (R-ML1: Identity live zur Fetch-Zeit via
 `LlmPreferenceInitializer::buildWithDefaults`), Fetch bei View-Open (Cache-on-success → kein
-Duplikat-HTTP) und auf Refresh. R-ML4 gilt unverändert — geteilte Implementierung
-`ModelComboWidget.applyModelListTo` (one behaviour, one implementation).
+Duplikat-HTTP) und auf Refresh. Der gesamte Lade-Ablauf (Job, `getOrFetch`/`refresh`,
+Cache-Fallback, Stale-Guard, R-ML4-Apply) existiert genau einmal in `ModelComboWidget`; das
+Chat-Widget baut nur Combo + Refresh-Button im RowLayout und hängt die Commit-Listener an
+(one behaviour, one implementation).
 
 **Scope (PO 2026-11-01):** nur das Base-Model (`PREF_MODEL` / `LlmConfig.model`). Pro-Agent-
 Overrides aus der Advanced-Page bleiben wirksam — das Tooltip sagt es. Persistenz: eine
 Selection **oder ein FocusOut** commitet den gezeigten Text (auch getippter Freitext — ein
 editierbares Combo ohne Effekt wäre eine lügende UI) → `AIChatView.onModelChange` schreibt
 `PREF_MODEL` (+ `flush()`) → der bestehende prefListener-Pfad re-applyt die Config synchron
-(UI-Thread) — Settings und Chat bleiben sync, überlebt Restart. Programmatische `setModel`
-(applyConfig nach Apply/Restart) feuert keinen Commit (Guard-Flag).
+(UI-Thread) — Settings und Chat bleiben sync, überlebt Restart. Programmatische Updates
+(`setModel` aus applyConfig, List-Apply) committen nicht — SWT feuert `SWT.Selection` nur bei
+echter User-Interaktion, nie bei `select()`/`setText()`/`setItems()`; ein Guard-Flag ist nicht nötig.
+Das Speichern liegt in `LlmPreferenceInitializer.saveBaseModel(prefs, model)`.
 
 ```
 GIVEN der Chat ist offen und der List-Fetch schlägt fehl
@@ -137,4 +141,6 @@ WHEN der User ein anderes Model wählt (Selection) oder getippten Text bestätig
 THEN PREF_MODEL zeigt das gezeigte Model und die nächste Config (buildWithDefaults) trägt es
 ```
 
-Tests: `ChatModelComboWidgetTest` (PDE/SWT, Widget-Level bis zur Commit-Callback-Grenze).
+Tests: `ChatModelComboWidgetTest` (PDE/SWT, Widget-Level bis zur Commit-Callback-Grenze —
+headless übersprungen, live in PDE laufen lassen), `ChatModelPreferenceTest` (BDD 3:
+`saveBaseModel` → PREF_MODEL + `buildWithDefaults`).

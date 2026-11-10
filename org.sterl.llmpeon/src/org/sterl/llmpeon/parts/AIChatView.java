@@ -498,10 +498,8 @@ public class AIChatView implements EclipseAiMonitor {
      *  A flush failure only breaks the restart persistence, the in-memory switch already
      *  happened — reported, not thrown (like ActiveAgentPreference). */
     private void onModelChange(String model) {
-        var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
-        prefs.put(PeonConstants.PREF_MODEL, StringUtil.stripToEmpty(model));
         try {
-            prefs.flush();
+            LlmPreferenceInitializer.saveBaseModel(InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID), model);
         } catch (BackingStoreException e) {
             LOG.error("Failed to persist the chat model preference " + PeonConstants.PREF_MODEL, e);
         }
