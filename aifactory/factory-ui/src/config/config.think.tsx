@@ -1,4 +1,4 @@
-import { Input, Select } from 'antd'
+import { AutoComplete, Input } from 'antd'
 
 import { content } from '../shared/content'
 import type { ThinkInput } from './config.client'
@@ -19,12 +19,15 @@ interface ThinkProps {
 }
 
 /**
- * The think control of one level: the form of the **base provider**, never a free text box by choice
- * (R-WP-23, R-WP-49, UC-WP-67) — the four forms the plugin's think field takes, and the one place that knows
- * them. A stored value outside the offered list stays on the screen and travels back unchanged (ADR-0064):
- * the form narrows what can be picked, it decides nothing about what the file already holds. `NONE` shows no
- * control and still sends the stored value, so a provider without think input does not delete what it cannot
- * show.
+ * The think control of one level: the **offer** of the base provider beside an editable field (R-WP-23,
+ * R-WP-49, UC-WP-67) — the four forms the plugin's think field takes, and the one place that knows them.
+ * `VALUES` and `TOGGLE` are one `AutoComplete` each, because the plugin's field is an editable combo in
+ * both forms (`ThinkValueSupport`: "Toggle → editable combo", `readThink(): thinkCombo.getText()`) and
+ * because a provider's list is not a verdict about what a level may be called: what is typed is what is
+ * stored, verbatim, and a stored value outside the offered list is offered as itself (ADR-0064). Empty is
+ * the inherit answer, named by the option and by the placeholder of a field that can be emptied by hand.
+ * `NONE` shows no control and still sends the stored value, so a provider without think input does not
+ * delete what it cannot show.
  *
  * The visible label is the host's — the agent row paints a `<label>`, the default form a `<dt>` — so the
  * control carries the accessible name only. That is what lets both levels use one control.
@@ -46,15 +49,18 @@ export function ThinkControl(props: ThinkProps) {
     const choices =
       props.value !== '' && !offered.includes(props.value) ? [props.value, ...offered] : offered
     return (
-      <Select
+      <AutoComplete
         id={props.id}
         aria-label={props.label}
         value={props.value}
-        onChange={props.onChange}
+        // the list is an offer and never a filter: the field keeps whatever is typed (R-WP-23)
         options={[
           { value: '', label: content.agents.inheritOption },
           ...choices.map((item) => ({ value: item, label: item })),
         ]}
+        placeholder={content.agents.inheritOption}
+        allowClear
+        onChange={(value) => props.onChange(value ?? '')}
       />
     )
   }

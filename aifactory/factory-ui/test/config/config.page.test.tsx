@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 
 import { ConfigPage } from '../../src/config/config.page'
 import { content } from '../../src/shared/content'
-import { chooseOption, openChoice, shownChoice } from '../shared/choices'
+import { chooseOption, inputField, openChoice, shownChoice } from '../shared/choices'
 import { refused } from '../shared/refusal'
 import {
   KEY,
@@ -258,10 +258,10 @@ test('agentThinkFollowsTheProviderOfTheForm', async () => {
   })
   render(<ConfigPage />)
 
-  // OPEN_AI answers a fixed list, so the agent field is that list and not a text box. ANTD-A3 (AntD 6): the list
-  // is the dropdown of the base — opened and read there, since a choice renders no `<option>`s. Since R-WP-49
-  // the page shows the label twice — the default form edits the same value — so the handle is the Dev slot's
-  // own field id, and the reading stays inside the slot's card.
+  // OPEN_AI answers a fixed list, which the agent field offers and can be typed past (Runde 7). ANTD-A3
+  // (AntD 6): the list is the dropdown of the base — opened and read there, since a choice renders no
+  // `<option>`s. Since R-WP-49 the page shows the label twice — the default form edits the same value — so
+  // the handle is the Dev slot's own field id, and the reading stays inside the slot's card.
   const devSlot = await screen.findByTestId('agent-slot-dev')
   await within(devSlot).findByLabelText(content.agents.thinkDefault)
   expect(await openChoice(content.agents.thinkDefault, 'agent-dev-think')).toEqual([
@@ -271,7 +271,7 @@ test('agentThinkFollowsTheProviderOfTheForm', async () => {
     'medium',
     'high',
   ])
-  expect(shownChoice(content.agents.thinkDefault, 'agent-dev-think')).toBe('medium')
+  expect(inputField(content.agents.thinkDefault, 'agent-dev-think')).toHaveValue('medium')
 
   // the provider chosen on the page decides, at once and without a save in between (as R-WP-16 does for the URL)
   await chooseOption(content.config.provider, 'GOOGLE_GEMINI')
@@ -309,7 +309,7 @@ test('savingTheDefaultThinkShowsTheNewValueInTheDevSlot', async () => {
 
   const devSlot = await screen.findByTestId('agent-slot-dev')
   await within(devSlot).findByLabelText(content.agents.thinkDefault)
-  expect(shownChoice(content.agents.thinkDefault, 'agent-dev-think')).toBe('low')
+  expect(inputField(content.agents.thinkDefault, 'agent-dev-think')).toHaveValue('low')
 
   // what the dev file holds once the default form has saved: the value the PUT below writes
   server.script.AGENTS = [devFile('high')]
@@ -325,7 +325,7 @@ test('savingTheDefaultThinkShowsTheNewValueInTheDevSlot', async () => {
     expect(server.calls.filter((call) => call.path === '/api/settings/agents')).toHaveLength(2),
   )
   await waitFor(() =>
-    expect(shownChoice(content.agents.thinkDefault, 'agent-dev-think')).toBe('high'),
+    expect(inputField(content.agents.thinkDefault, 'agent-dev-think')).toHaveValue('high'),
   )
   expect(server.calls.filter((call) => call.method === 'PUT')).toHaveLength(1)
 })

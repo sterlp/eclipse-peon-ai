@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 
 import { ConfigPage } from '../../src/config/config.page'
 import { content } from '../../src/shared/content'
-import { chooseOption, openChoice, shownChoice } from '../shared/choices'
+import { chooseOption, inputField, openChoice } from '../shared/choices'
 import { sentBodies, settingsAnswer, stubServer, valueOf } from '../shared/config.stub'
 
 /**
@@ -36,7 +36,8 @@ test('defaultThinkShowsTheProviderFormAndSaves', async () => {
   render(<ConfigPage />)
   await screen.findByText(content.config.provider)
 
-  // the provider's list, not a text box — and the empty entry that sends no value stands first
+  // the provider's list as an offer the field can be typed past, and the empty entry that sends no value
+  // stands first, named by the word that says what empty means (R-THINK-10)
   expect(await openChoice(content.agents.thinkDefault, DEFAULT_THINK)).toEqual([
     content.agents.inheritOption,
     'minimal',
@@ -44,7 +45,13 @@ test('defaultThinkShowsTheProviderFormAndSaves', async () => {
     'medium',
     'high',
   ])
-  expect(shownChoice(content.agents.thinkDefault, DEFAULT_THINK)).toBe('medium')
+  expect(inputField(content.agents.thinkDefault, DEFAULT_THINK)).toHaveValue('medium')
+
+  // and a level the provider does not list is an answer too — typed, not picked (Runde 7)
+  fireEvent.change(inputField(content.agents.thinkDefault, DEFAULT_THINK), {
+    target: { value: 'ultra' },
+  })
+  expect(inputField(content.agents.thinkDefault, DEFAULT_THINK)).toHaveValue('ultra')
 
   await chooseOption(content.agents.thinkDefault, 'high', DEFAULT_THINK)
   fireEvent.click(screen.getByRole('button', { name: content.config.save }))
@@ -68,7 +75,10 @@ test('defaultThinkClearsIndependentlyOfSendThinking', async () => {
   })
   render(<ConfigPage />)
   await waitFor(() =>
-    expect(shownChoice(content.agents.thinkDefault, DEFAULT_THINK), 'the stored level').toBe('high'),
+    expect(
+      inputField(content.agents.thinkDefault, DEFAULT_THINK),
+      'the stored level',
+    ).toHaveValue('high'),
   )
 
   await chooseOption(content.agents.thinkDefault, content.agents.inheritOption, DEFAULT_THINK)
@@ -92,7 +102,7 @@ test('defaultThinkIsDisabledForAProviderWithoutThinking', async () => {
   })
   render(<ConfigPage />)
   await screen.findByText(content.config.provider)
-  expect(shownChoice(content.agents.thinkDefault, DEFAULT_THINK)).toBe('high')
+  expect(inputField(content.agents.thinkDefault, DEFAULT_THINK)).toHaveValue('high')
 
   await chooseOption(content.config.provider, 'GOOGLE_GEMINI')
 

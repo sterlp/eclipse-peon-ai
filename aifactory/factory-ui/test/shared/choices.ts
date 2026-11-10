@@ -52,3 +52,12 @@ export function shownChoice(label: string, id?: string): string {
     ?.querySelector('.ant-select-content')
   return shown?.getAttribute('title') ?? shown?.textContent ?? ''
 }
+
+/**
+ * The field of a choice that is **editable** (`AutoComplete`): its own text is the answer and the list beside
+ * it is only an offer (R-WP-50, R-WP-23), so the value is read where it is typed — `shownChoice` reads the
+ * selection of a `Select`, which an editable field never fills. Read with `toHaveValue`.
+ */
+export function inputField(label: string, id?: string): HTMLInputElement {
+  return fieldOf(label, id) as HTMLInputElement
+}

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 
 import { content } from '../../src/shared/content'
-import { chooseOption, openChoice, shownChoice } from '../shared/choices'
+import { chooseOption, inputField, openChoice } from '../shared/choices'
 import { refused } from '../shared/refusal'
 import {
   agent,
@@ -211,9 +211,10 @@ test('aRefusedSaveSaysWhyAndKeepsWhatWasTyped', async () => {
 })
 
 /**
- * UC-WP-67 GIVEN 1: the think field is the base provider's own form, not a text box by choice. A `VALUES`
- * provider answers with its list, a `Toggle` provider with its two answers — and the empty choice that
- * inherits stays first either way (R-THINK-10).
+ * UC-WP-67 GIVEN 1: the think field is the base provider's own form — its list as an **offer** the user can
+ * type past (Runde 7: „ich kann nichts selber eingeben"). A `VALUES` provider answers with its list, a
+ * `Toggle` provider with its two answers, and the empty choice that inherits stays first either way
+ * (R-THINK-10).
  */
 // UC-WP-67
 test('thinkFieldFollowsTheProviderForm', async () => {
@@ -231,10 +232,14 @@ test('thinkFieldFollowsTheProviderForm', async () => {
     'medium',
     'high',
   ])
-  expect(shownChoice(content.agents.thinkDefault)).toBe('medium')
+  expect(inputField(content.agents.thinkDefault)).toHaveValue('medium')
 
   await chooseOption(content.agents.thinkDefault, 'low')
-  expect(shownChoice(content.agents.thinkDefault)).toBe('low')
+  expect(inputField(content.agents.thinkDefault)).toHaveValue('low')
+
+  // a level the provider does not list is still an answer: nothing forces the field back onto the offer
+  fireEvent.change(inputField(content.agents.thinkDefault), { target: { value: 'ultra' } })
+  expect(inputField(content.agents.thinkDefault)).toHaveValue('ultra')
 
   // one form per section, because the form is the base provider's — the toggle needs its own answer
   cleanup()
@@ -243,7 +248,10 @@ test('thinkFieldFollowsTheProviderForm', async () => {
 
   await waitFor(() => row('po'))
   expect(await openChoice(content.agents.think)).toEqual([content.agents.inheritOption, 'true', 'false'])
-  expect(shownChoice(content.agents.think)).toBe('true')
+  expect(inputField(content.agents.think)).toHaveValue('true')
+  // and the toggle form types too: the plugin's think field is an editable combo in both forms
+  fireEvent.change(inputField(content.agents.think), { target: { value: 'minimal' } })
+  expect(inputField(content.agents.think)).toHaveValue('minimal')
 })
 
 /**
@@ -288,7 +296,7 @@ test('storedThinkStaysVerbatim', async () => {
     'medium',
     'high',
   ])
-  expect(shownChoice(content.agents.thinkDefault)).toBe('ultra')
+  expect(inputField(content.agents.thinkDefault)).toHaveValue('ultra')
 
   fireEvent.click(within(slot).getByRole('button', { name: content.agents.save }))
   await waitFor(() => expect(server.calls.some((call) => call.method === 'PUT')).toBe(true))
