@@ -3,6 +3,7 @@ package org.sterl.llmpeon.parts.widget;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
@@ -14,12 +15,13 @@ import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.sterl.llmpeon.agent.AiAgent;
+import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
- * Action bar below the user input. RowLayout (wrapping) with agent selector,
- * Clear, and conditional controls.
+ * Action bar below the user input. RowLayout (wrapping) with agent selector, base-model
+ * selector, Clear, and conditional controls.
  */
 public class ActionsBarWidget extends Composite {
 
@@ -28,6 +30,7 @@ public class ActionsBarWidget extends Composite {
     private final Button btnCompact;
     private final Button btnSync;
     private Combo agentCombo;
+    private final ChatModelComboWidget modelCombo;
 
     private volatile boolean working = false;
     private List<AiAgent> agents = new ArrayList<>();
@@ -40,6 +43,8 @@ public class ActionsBarWidget extends Composite {
             Runnable onClear,
             Runnable onImplement,
             Consumer<AiAgent> onAgentChange,
+            Supplier<LlmConfig> liveConfig,
+            Consumer<String> onModelChange,
             Runnable onCompress,
             Runnable onReload) {
         super(parent, style);
@@ -65,6 +70,7 @@ public class ActionsBarWidget extends Composite {
         setLayout(rowLayout);
 
         buildAgentCombo(onAgentChange);
+        modelCombo = new ChatModelComboWidget(this, liveConfig, onModelChange);
 
         btnCompact = new Button(this, SWT.PUSH);
         buildCompact(onCompress);
@@ -158,10 +164,21 @@ public class ActionsBarWidget extends Composite {
         agentCombo.select(restore);
     }
 
+    /** Sets the base model shown in the model selector. */
+    public void setModel(String model) {
+        modelCombo.setModel(model);
+    }
+
+    /** Fetches the base model list for the model selector (view open). */
+    public void fetchModels() {
+        modelCombo.fetchModels();
+    }
+
     /** Enable/disable controls while a request is in flight. */
     public void lockWhileWorking(boolean value) {
         working = value;
         agentCombo.setEnabled(!working);
+        modelCombo.setEnabled(!working);
         btnClear.setEnabled(!working);
         btnImplement.setEnabled(!working);
         btnCompact.setEnabled(!working);
