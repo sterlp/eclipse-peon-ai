@@ -1,8 +1,8 @@
 import { expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
-import { Agents } from '../../src/config/config.agents'
 import { content } from '../../src/shared/content'
+import { AgentsHost } from './config.agents.host'
 import { Refused } from './refusal'
 import type { AgentSettingsDto } from '../../src/shared/server-api'
 import { listModels, type ThinkInput } from '../../src/config/config.client'
@@ -135,16 +135,20 @@ export const FIELDS = [
  */
 export const BASE = { provider: 'OPEN_AI', url: 'https://api.example.com/v1' }
 
+/**
+ * The section inside its page: `AgentsHost` holds the one panel the page owns (R-WP-62), so a test of the
+ * section reads a refusal where the user reads it — above the slots — and never from a line of the
+ * section's own, which it has none of (R-WP-56).
+ */
 export function renderAgents(
   think: ThinkInput = { form: 'UNKNOWN', values: [] },
   { extraBodySupported = true }: { extraBodySupported?: boolean } = {},
 ) {
   return render(
-    <Agents
+    <AgentsHost
       think={think}
       connection={BASE.provider + ' ' + BASE.url}
       extraBodySupported={extraBodySupported}
-      reloadToken={0}
       loadModels={(slotId, slotUrl, force) =>
         listModels({ ...BASE, agent: slotId, agentUrl: slotUrl, refresh: force })
       }

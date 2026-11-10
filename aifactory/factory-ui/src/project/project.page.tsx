@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Alert, Button, Card, Form, Input, Popconfirm } from 'antd'
+import { Button, Card, Form, Input, Popconfirm } from 'antd'
 
 import { addProject, removeProject } from './project.client'
 import { openProjectStatusStream } from './project.status.client'
 import { fieldErrorsOf } from '../shared/api.client'
-import { ApiField, ApiFormErrors } from '../shared/api.error'
+import { ApiField } from '../shared/api.error'
+import { ApiErrorPanel } from '../shared/api.error.panel'
 import { content } from '../shared/content'
 import type { ProjectDto, ProjectWorkDto } from '../shared/server-api'
 import { sseBackoff } from '../shared/sse.client'
@@ -112,11 +113,13 @@ export function ProjectPage({ projects, listError, onOpen, onReload }: Props) {
     }
   }
 
-  // what the widget cannot put on a field, and nothing else — the frame's own read of the registry is the
-  // other line, and this page's refusal reads before it (UC-WP-4)
+  // the fields the last refusal named, marked at the input itself (R-WP-56) — what it names besides those,
+  // and the frame's own read of the registry, belong to the panel above this page
   const errors = fieldErrorsOf(saveError)
 
-  return (
+  // the page keeps its own element on purpose: R-WP-62 wants the band outside the area that scrolls, and
+  // `.view` IS this page's scroll area — the panel above it therefore cannot be its child
+  const view = (
     <section className="view" aria-label={content.projects.title}>
       <Form className="add-project" layout="inline" onFinish={() => void submit()}>
         <ApiField field="gitUrl" errors={errors}>
@@ -132,8 +135,6 @@ export function ProjectPage({ projects, listError, onOpen, onReload }: Props) {
           {busy ? content.projects.cloning : content.projects.add}
         </Button>
       </Form>
-      <ApiFormErrors error={saveError} fields={ADD_ERROR_FIELDS} />
-      {saveError === null && listError && <Alert type="error" title={listError} />}
       {projects.length === 0 ? (
         <p className="empty-state">{content.projects.empty}</p>
       ) : (
@@ -176,5 +177,18 @@ export function ProjectPage({ projects, listError, onOpen, onReload }: Props) {
         </ul>
       )}
     </section>
+  )
+
+  return (
+    <>
+      {/* R-WP-62: the page's one panel, above the area that scrolls. What the frame read of the registry is
+          a page error like a refused clone, and the next interaction of this page closes whatever stands */}
+      <ApiErrorPanel
+        error={saveError ?? listError}
+        fields={ADD_ERROR_FIELDS}
+        onClose={() => setSaveError(null)}
+      />
+      {view}
+    </>
   )
 }

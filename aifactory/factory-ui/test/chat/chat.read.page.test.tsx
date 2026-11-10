@@ -135,7 +135,7 @@ test('theReconnectReadsTheRosterFresh', async () => {
   await waitFor(() => expect(chat.countOf('/events', 'GET')).toBe(2), { timeout: 1500 })
   // UC-WP-94 GIVEN 3: the fresh read of the standing connection fails. The page says why and the board keeps
   // the stand it read last — it never falls back to an empty row; the next reading is what corrects it
-  expect(await screen.findByTestId('chat-error')).toHaveTextContent(ROSTER_FAILURE)
+  expect(await screen.findByTestId('error-panel')).toHaveTextContent(ROSTER_FAILURE)
   expect(screen.getByTestId('chat-tiles'), 'no fall back to an empty row').toBeInTheDocument()
   expect(screen.getByTestId('tile-state-Jon'), 'the last read stand stays').toHaveTextContent(
     content.tiles.state.WORKING,

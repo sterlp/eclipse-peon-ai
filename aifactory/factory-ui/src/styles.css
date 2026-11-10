@@ -111,6 +111,25 @@
   padding-block-end: 2rem;
 }
 
+/* The error panel of a page (R-WP-62): the band above whatever of the page scrolls, so the server's answer
+   stays on the screen while the user reads on. No colour of its own — the basis paints it with `colorError`,
+   which is `--problem` in both themes (R-WP-39) — and no height, it takes exactly its line. */
+.api-error-panel {
+  padding: 0.75rem var(--content-gutter) 0;
+}
+
+/* the server's answer keeps the line breaks Spring wrote: a clone report and a validation answer arrive as
+   several sentences and are unreadable as one */
+.api-error-panel .ant-alert {
+  white-space: pre-wrap;
+}
+
+/* the chat carries its own gutter and its view none (see `.chat-workspace > .view` below), so the band
+   aligns with the log, the tiles and the field beside it */
+.chat-workspace > .view .api-error-panel {
+  padding-inline: var(--chat-gutter);
+}
+
 /* `.ant-form` arrives with the basis' own sheet at runtime and carries the same specificity as a class of
    ours, so the envelope of a form names both (D8). */
 .add-project.ant-form {
@@ -760,12 +779,6 @@ button {
   .chat-waiting-caret {
     animation: none;
   }
-}
-
-.chat-error {
-  color: var(--problem);
-  margin: 0 0 0.75rem;
-  padding-inline: var(--chat-gutter);
 }
 
 /* The row a chat view sits in (R-WP-33): the positioned box that both handles of the file area hang on —

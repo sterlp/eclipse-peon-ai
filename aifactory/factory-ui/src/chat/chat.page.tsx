@@ -36,6 +36,7 @@ import { ChatTiles } from './chat.tiles'
 import { ChatWaiting } from './chat.waiting'
 import { openChatStream } from './chat.stream'
 import { ApiRequestError, errorMessage } from '../shared/api.client'
+import { ApiErrorPanel } from '../shared/api.error.panel'
 import { content } from '../shared/content'
 import type { ProjectDto } from '../shared/server-api'
 import { sseBackoff } from '../shared/sse.client'
@@ -547,6 +548,11 @@ export function ChatPage({
         <header className="chat-head">
           <h1 className="chat-title">{project.name}</h1>
         </header>
+        {/* the page's own trouble, above the team and outside the one area that scrolls here (R-WP-62): a
+            send refused, a refused stop, a tile action that did not run, a roster the read lost. A failed
+            turn is not announced here: it is a line of the log, read from the conversation like every other
+            line (R-WP-34, UC-WP-64), and the 409 of a stop that came too late is absorbed (D-17) */}
+        <ApiErrorPanel error={error} onClose={() => setError(null)} />
         <ChatTiles tiles={tiles} onAction={act} onInspect={openInsight} />
         <ChatLog
           messages={messages}
@@ -560,18 +566,10 @@ export function ChatPage({
         />
         {/* the way back to the end, on the screen exactly while he reads away from it (UC-WP-80). The box
             carries no height of the column: the button hangs at its bottom edge, which is the top edge of
-            whatever stands below — the wait, the notice, the input — and never on them. */}
+            whatever stands below — the wait and the input — and never on them. */}
         <div className="chat-scroll-bottom">
           {!following && <ScrollBottomButton onFollow={followNow} />}
         </div>
-        {/* this notice is the page's own trouble only — a request that failed here: a send refused, a
-            refused stop, a tile action that did not run. A failed turn is not announced here: it is a
-            line of the log, read from the conversation like every other line (R-WP-34, UC-WP-64) */}
-        {error !== null && (
-          <p className="chat-error" data-testid="chat-error" role="alert">
-            {error}
-          </p>
-        )}
         {/* one rule with the stop button: while a turn works on this project, the wait is on the screen
             (R-WP-31) — another browser's turn included, because this stream carries its lines anyway */}
         {busy && <ChatWaiting preview={livePreview(live)} />}

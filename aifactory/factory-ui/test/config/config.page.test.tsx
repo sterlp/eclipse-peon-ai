@@ -508,6 +508,32 @@ test('aConflictWithoutFieldStillShowsTheAlert', async () => {
   expect(screen.queryAllByTestId(/^field-error-/)).toEqual([])
 })
 
+// UC-WP-99
+test('theSettingsPanelStandsAboveTheForm', async () => {
+  stubServer({
+    GET: settingsAnswer(),
+    PUT: refused({ status: 409, error: 'Conflict', message: 'a turn is running on this project' }),
+  })
+  render(<ConfigPage />)
+  await screen.findByDisplayValue('gpt-demo')
+
+  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
+
+  const panel = await screen.findByTestId('error-panel')
+  expect(panel).toHaveTextContent('a turn is running on this project')
+  // the form is the long scroll area of this page — the band stands above it and outside of it, so the
+  // reason is on the screen whatever the user has scrolled to (UC-WP-99 GIVEN 1)
+  expect(panel.closest('.view')).toBeNull()
+  expect(panel.nextElementSibling).toBe(document.querySelector('section.view'))
+  expect(document.querySelectorAll('[role=alert]'), 'one panel per page').toHaveLength(1)
+
+  fireEvent.click(screen.getByTestId('error-panel-close'))
+  expect(screen.queryByTestId('error-panel')).toBeNull()
+  expect(screen.queryAllByTestId(/^field-error-/), 'no field is painted for a fieldless refusal').toEqual(
+    [],
+  )
+})
+
 // UC-WP-93
 test('anUnwrappedFieldErrorStillReachesTheScreen', async () => {
   const REASON = 'think is not offered by this provider'

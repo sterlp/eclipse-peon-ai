@@ -113,11 +113,19 @@ function response(status: number, body: unknown): Response {
  * The frame in miniature: it owns the list (D1) exactly as `useProjectList` does, only without the tree —
  * so a test of this page reads nothing at mount and the row appears through `onReload` alone.
  */
-function Host({ initial = [] }: { initial?: ProjectDto[] }) {
+function Host({
+  initial = [],
+  listError = null,
+}: {
+  initial?: ProjectDto[]
+  /** what the frame's own read of the registry answered — the page owns no copy of it (D1, R-WP-38). */
+  listError?: string | null
+} = {}) {
   const [projects, setProjects] = useState<ProjectDto[]>(initial)
   return (
     <ProjectPage
       projects={projects}
+      listError={listError}
       onOpen={() => undefined}
       onReload={async () => setProjects(await listProjects())}
     />
@@ -211,6 +219,54 @@ test('credentialUrlRejectedAndNothingStored', async () => {
   expect(alert.textContent).not.toContain('user')
   expect(alert.textContent).not.toContain('token')
   expect(screen.getByText(content.projects.empty)).toBeInTheDocument()
+})
+
+// UC-WP-99
+test('theProjectsPanelStandsAboveTheScrollArea', async () => {
+  stubServer({
+    GET: [],
+    POST: refused({ status: 409, error: 'Conflict', message: 'clone is busy' }),
+  })
+  render(<Host />)
+  await screen.findByText(content.projects.empty)
+
+  fireEvent.change(screen.getByLabelText(content.projects.gitUrl), {
+    target: { value: 'https://git.example.com/acme/busy.git' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: content.projects.add }))
+
+  const panel = await screen.findByTestId('error-panel')
+  expect(panel).toHaveTextContent('clone is busy')
+  // this page IS the scroll area, so the band stands outside it — the first thing of the frame, the page
+  // scrolling on below it (UC-WP-99 GIVEN 1, R-WP-62)
+  expect(panel.closest('.view')).toBeNull()
+  expect(panel.nextElementSibling).toBe(document.querySelector('section.view'))
+  expect(document.querySelectorAll('[role=alert]'), 'one announcement, not two').toHaveLength(1)
+  // a refusal that named no field marks no field (UC-WP-93 GIVEN 2)
+  expect(screen.queryAllByTestId(/^field-error-/)).toEqual([])
+})
+
+// UC-WP-99
+test('theFrameListFailureStandsInThePanelAndTheXHidesIt', async () => {
+  const server = stubServer({ GET: [] })
+  render(<Host listError="registry unreadable" />)
+
+  // the frame's own read of the registry is a page error like any other: it reaches the same panel
+  const panel = await screen.findByTestId('error-panel')
+  expect(panel).toHaveTextContent('registry unreadable')
+
+  fireEvent.click(screen.getByTestId('error-panel-close'))
+  expect(screen.queryByTestId('error-panel')).toBeNull()
+
+  // the frame keeps what it read — closing is not the page's to answer for it; the next refusal of this
+  // page is a new answer and opens the panel again (UC-WP-99 GIVEN 2)
+  server.script.POST = refused({ status: 409, error: 'Conflict', message: 'clone is busy' })
+  fireEvent.change(screen.getByLabelText(content.projects.gitUrl), {
+    target: { value: 'https://git.example.com/acme/busy.git' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: content.projects.add }))
+
+  expect(await screen.findByTestId('error-panel')).toHaveTextContent('clone is busy')
 })
 
 // UC-WP-28

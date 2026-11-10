@@ -319,7 +319,7 @@ test('failedTurnIsALineInTheHistory', async () => {
   expect(screen.getByTestId('chat-log')).toContainElement(failures[0])
   expect(failures[0]).toHaveTextContent(reason)
   // no notice beside the log: a failed turn is a line of the conversation, not a message about it
-  expect(screen.queryByTestId('chat-error')).toBeNull()
+  expect(screen.queryByTestId('error-panel')).toBeNull()
   // no alarm dialog, no dead input: the next turn is one line away (Q1)
   expect(screen.getByTestId('chat-input')).toBeEnabled()
   // the send stays clickable whatever happened (UC-WP-74 GIVEN 1) — an empty field is no reason to refuse it
@@ -357,7 +357,7 @@ test('clearOnATileNamesThatTileAndARefusalIsALine', async () => {
   await flush()
 
   fireEvent.click(screen.getByTestId('tile-clear-Dev'))
-  await waitFor(() => expect(screen.getByTestId('chat-error')).toHaveTextContent(/still running/))
+  await waitFor(() => expect(screen.getByTestId('error-panel')).toHaveTextContent(/still running/))
 
   // one POST, and it addresses exactly the tile that was clicked — name and action, nothing else
   expect(chat.countOf('/agents', 'POST')).toBe(1)
@@ -369,6 +369,39 @@ test('clearOnATileNamesThatTileAndARefusalIsALine', async () => {
   expect(chat.countOf('/messages', 'GET')).toBe(1)
   expect(chat.countOf('/agents', 'GET')).toBe(2)
   expect(screen.getByTestId('chat-log')).toBeInTheDocument()
+})
+
+// UC-WP-99
+test('thePageErrorPanelStandsAboveTheTeamAndOutsideTheLog', async () => {
+  const chat = stubChat({
+    messages: [QUESTION],
+    agents: [tile('Jon', 'IDLE'), tile('Dev', 'IDLE')],
+  })
+  const REFUSAL = 'a turn or another action is still running'
+  chat.refuseActions(409, REFUSAL)
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  // Paul's case, measured: a Compact refused because a turn runs is the answer the page has to show where
+  // he is looking — not under what he is reading (R-WP-62)
+  fireEvent.click(screen.getByTestId('tile-compact-Dev'))
+
+  const panel = await screen.findByTestId('error-panel')
+  expect(panel).toHaveTextContent(REFUSAL)
+  // outside the scroll area, proven structurally: the log is the only thing in this column that runs past
+  // its edges, and the panel stands nowhere inside it (UC-WP-99 GIVEN 1)
+  expect(panel.closest('.chat-log')).toBeNull()
+  // above the team — the adjacency is the proof jsdom cannot deliver as a style (memory #15)
+  expect(panel.nextElementSibling).toBe(screen.getByTestId('chat-tiles'))
+  expect(document.querySelectorAll('[role=alert]'), 'one announcement, not two').toHaveLength(1)
+
+  // its own X closes it, and the next refused click shows it again (UC-WP-99 GIVEN 2)
+  fireEvent.click(screen.getByTestId('error-panel-close'))
+  expect(screen.queryByTestId('error-panel')).toBeNull()
+
+  fireEvent.click(screen.getByTestId('tile-compact-Dev'))
+  expect(await screen.findByTestId('error-panel')).toHaveTextContent(REFUSAL)
+  expect(chat.countOf('/agents', 'POST')).toBe(2)
 })
 
 // UC-WP-50
@@ -422,7 +455,7 @@ test('stopOnAFinishedTurnIsSilent', async () => {
   await waitFor(() => expect(chat.countOf('/agents', 'GET')).toBe(rosterReads + 1))
 
   // 409 says the turn was already over — that is what the click wanted, so it is not an error line
-  expect(screen.queryByTestId('chat-error')).toBeNull()
+  expect(screen.queryByTestId('error-panel')).toBeNull()
   expect(chat.countOf('/messages', 'POST')).toBe(0)
   expect(chat.countOf('/messages', 'GET')).toBe(1)
 })
@@ -529,7 +562,7 @@ test('emptySendWithoutMessagesDoesNothing', async () => {
 
   expect(chat.countOf('/messages', 'POST')).toBe(0)
   expect(screen.queryAllByTestId('chat-line-user')).toEqual([])
-  expect(screen.queryByTestId('chat-error')).toBeNull()
+  expect(screen.queryByTestId('error-panel')).toBeNull()
 })
 
 // UC-WP-58
@@ -608,7 +641,7 @@ test('waitingBarEndsWithAFailedTurn', async () => {
   await chat.push(event('error', { message: 'Es fehlt ein Modellschlüssel für OPEN_AI' }))
 
   expect(screen.getByTestId('chat-line-error')).toHaveTextContent('Es fehlt ein Modellschlüssel')
-  expect(screen.queryByTestId('chat-error')).toBeNull()
+  expect(screen.queryByTestId('error-panel')).toBeNull()
   expect(screen.queryByTestId('chat-waiting')).toBeNull()
 })
 

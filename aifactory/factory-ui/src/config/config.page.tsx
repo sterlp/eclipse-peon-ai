@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Card, Form, Input, Select } from 'antd'
+import { Button, Card, Form, Input, Select } from 'antd'
 
-import { errorMessage, fieldErrorsOf } from '../shared/api.client'
-import { ApiField, ApiFormErrors } from '../shared/api.error'
+import { fieldErrorsOf } from '../shared/api.client'
+import { ApiField } from '../shared/api.error'
+import { ApiErrorPanel } from '../shared/api.error.panel'
 import { content } from '../shared/content'
 import type { KeySource, ProviderDefaultsDto, SettingsDto, SettingsUpdateRequest } from '../shared/server-api'
 import { Agents } from './config.agents'
 import { getSettings, listModels, listProviders, thinkInputOf, updateSettings } from './config.client'
+// the names this page marks at a control and the names its panel says — one list, shared with the slots
+import { PAGE_ERROR_FIELDS } from './config.error.fields'
 import { ModelField } from './config.model'
 import { ThinkControl } from './config.think'
 
@@ -23,22 +26,6 @@ const NO = 'no'
 /** The same decision on the wire: the file holds text, the core reads it back as a boolean. */
 const TRUE = 'true'
 const FALSE = 'false'
-
-/**
- * The fields this form wraps with `ApiField` — exactly the ones the server answers with a rule of its own
- * (`Wire*` constraints, R-WP-55). A name the answer carries besides these still reaches the screen as a
- * line, so a rule added on the server cannot be lost between the two display paths (R8).
- */
-const SETTINGS_ERROR_FIELDS = [
-  'provider',
-  'tokenWindow',
-  'timeoutSeconds',
-  'sendThinking',
-  'maxTokens',
-  'queryParams',
-  'headerParams',
-  'apiKey',
-]
 
 /**
  * The form holds every editable value as text, so "empty" is one concept across text and number fields —
@@ -109,8 +96,10 @@ export function ConfigPage() {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [providers, setProviders] = useState<ProviderDefaultsDto[]>([])
   const [removeKey, setRemoveKey] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
-  const [saveError, setSaveError] = useState<unknown>(null)
+  // one page, one error: what a read could not bring and what a save refused are the page's own trouble
+  // either way, and the page has one panel for it (R-WP-62) — the fields a refusal names come out of this
+  // same answer (`fieldErrorsOf`), never out of a second state kept beside it
+  const [error, setError] = useState<unknown>(null)
   const [busy, setBusy] = useState(false)
   // R-WP-49: the dev slot's file holds the default think value — after a save the section reads again
   const [agentsReload, setAgentsReload] = useState(0)
@@ -123,10 +112,10 @@ export function ConfigPage() {
         setSettings(loaded)
         setDraft(draftOf(loaded))
       })
-      .catch((error) => setMessage(errorMessage(error)))
+      .catch(setError)
     listProviders()
       .then(setProviders)
-      .catch((error) => setMessage(errorMessage(error)))
+      .catch(setError)
   }, [])
 
   /** The one way a field changes: by its new value, whatever control reported it. */
@@ -164,7 +153,7 @@ export function ConfigPage() {
       return
     }
     setBusy(true)
-    setSaveError(null)
+    setError(null)
     try {
       // the answer is the stored state, read back masked — the form is refilled from it, not from the
       // input, which is also what makes the key status fresh after every save (UC-WP-63)
@@ -175,9 +164,10 @@ export function ConfigPage() {
       // the save can have written the dev slot's file (think, R-WP-49) — the section may not keep a
       // draft of a value the page has just changed, its next save would write the old one back
       setAgentsReload((current) => current + 1)
-    } catch (error) {
-      // the typed values stay: the message names the field to fix, nothing the user wrote is lost
-      setSaveError(error)
+    } catch (reason) {
+      // the typed values stay: the reason names the field to fix, nothing the user wrote is lost — and what
+      // it names besides a field of this form is the panel's to say (R-WP-62)
+      setError(reason)
     } finally {
       setBusy(false)
     }
@@ -215,16 +205,15 @@ export function ConfigPage() {
   ).map((name) => ({ value: name, label: name }))
 
   // the fields the last refusal named — read off the error, never kept beside it as a second state
-  const errors = fieldErrorsOf(saveError)
+  const errors = fieldErrorsOf(error)
 
-  return (
+  // the page keeps its own element on purpose: R-WP-62 wants the band outside the area that scrolls, and
+  // `.view` IS this page's scroll area — the panel above it therefore cannot be its child
+  const view = (
     <section className="view" aria-label={content.config.title}>
-      {message && <Alert type="error" title={message} />}
       {settings && draft && (
         <Card size="small" className="settings-card">
           <Form className="settings-form" onFinish={() => void save()}>
-            {/* what carries no field this form draws speaks here, with the server's own text (R-WP-56) */}
-            <ApiFormErrors error={saveError} fields={SETTINGS_ERROR_FIELDS} />
             <dl className="settings">
               <div>
                 <dt>{content.config.provider}</dt>
@@ -431,7 +420,17 @@ export function ConfigPage() {
         extraBodySupported={chosen?.extraBodySupported === true}
         loadModels={loadSlotModels}
         reloadToken={agentsReload}
+        onError={setError}
       />
     </section>
+  )
+
+  return (
+    <>
+      {/* R-WP-62: the page's one panel, above the form and outside the area that scrolls it. What a slot
+          could not place at one of its cards arrives here too — the section hands it up (R-WP-56) */}
+      <ApiErrorPanel error={error} fields={PAGE_ERROR_FIELDS} onClose={() => setError(null)} />
+      {view}
+    </>
   )
 }

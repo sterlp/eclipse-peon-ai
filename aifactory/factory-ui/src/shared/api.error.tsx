@@ -1,7 +1,6 @@
 import type { ReactElement, ReactNode } from 'react'
-import { Alert, Form } from 'antd'
+import { Form } from 'antd'
 
-import { errorMessage, fieldErrorsOf } from './api.client'
 import type { ApiFieldError } from './server-api'
 
 /**
@@ -11,6 +10,9 @@ import type { ApiFieldError } from './server-api'
  * context and the help line and decides nothing about the value.
  *
  * Needs a `Form` above it: a `Form.Item` outside one keeps working but logs on every mount.
+ *
+ * The other half of the same rule belongs to the page, not the field: what no field of the answer owns
+ * reaches {@link ApiErrorPanel} (R-WP-62) — one display path per half, never a second one (R-WP-56).
  */
 export function ApiField({
   field,
@@ -32,41 +34,5 @@ export function ApiField({
     >
       {children}
     </Form.Item>
-  )
-}
-
-/**
- * The other half of the same rule (R-WP-56): a reason the page cannot place at a field still reaches the
- * screen, with the server's own sentence. One `Alert` per entry — the top-level `message` is only the first
- * violation, so it is not the whole answer and a second name the page does not wrap keeps its own line (R8).
- * `errorMessage` is left to what names no field at all: a 409, the git output of a failed clone, a 500.
- *
- * It stays silent while every named field is one the page marks itself, because then the line would only
- * repeat the field.
- */
-export function ApiFormErrors({
-  error,
-  fields,
-}: {
-  error: unknown
-  fields: readonly string[]
-}): ReactElement | null {
-  if (error === null || error === undefined) {
-    return null
-  }
-  const named = fieldErrorsOf(error)
-  if (named.length === 0) {
-    return <Alert type="error" title={errorMessage(error)} />
-  }
-  const unwrapped = named.filter((entry) => !fields.includes(entry.field))
-  if (unwrapped.length === 0) {
-    return null
-  }
-  return (
-    <>
-      {unwrapped.map((entry) => (
-        <Alert key={entry.field} type="error" title={entry.message} />
-      ))}
-    </>
   )
 }
