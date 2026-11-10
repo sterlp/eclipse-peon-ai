@@ -34,6 +34,12 @@ export interface Chat {
   deferNextAgentsRead(answersWith?: AgentTile[]): { resolve(): void }
   /** Every `POST …/agents` answers this instead of 202 — the refusal a running turn produces. */
   refuseActions(status: number, message: string): void
+  /**
+   * The next `GET …/agents` answers this instead of 200 — the roster read that fails while the board already
+   * stands (UC-WP-94 GIVEN 3: said as a page failure, the last read stand kept). Consumed by exactly that one
+   * read, so the next reading lands and is what corrects the board.
+   */
+  refuseRosterRead(status: number, message: string): void
   /** Every `POST …/messages` answers this instead of 202 — the send that never landed. */
   refuseSend(status: number, message: string): void
   /** Every `POST …/messages/stop` answers this instead of 202 — the refusal of an ended turn. */
@@ -106,6 +112,8 @@ export function stubChat(
   // the roster reads the test holds open, in the order they were asked for — a read on the wire is the race
   // UC-WP-84 GIVEN 3 is about: the snapshot can overtake it
   let heldAgentReads: { wait: Promise<void>; answersWith?: AgentTile[] }[] = []
+  // the roster read the test refuses, and exactly one: one-shot, because the reading after it has to land
+  let rosterRefusal: { status: number; message: string } | undefined
 
   vi.stubGlobal(
     'fetch',
@@ -141,6 +149,12 @@ export function stubChat(
         return new Response(null, { status: 202 })
       }
       if (path.endsWith('/agents')) {
+        // the refusal wins and consumes no held read: a server that fails answers, it does not stall one
+        if (rosterRefusal !== undefined) {
+          const refused = rosterRefusal
+          rosterRefusal = undefined
+          return json(refused.status, { status: refused.status, error: 'unavailable', message: refused.message })
+        }
         const [held, ...rest] = heldAgentReads
         heldAgentReads = rest
         if (held === undefined) {
@@ -231,6 +245,9 @@ export function stubChat(
     },
     refuseActions: (status, message) => {
       state.refusal = { status, message }
+    },
+    refuseRosterRead: (status, message) => {
+      rosterRefusal = { status, message }
     },
     refuseSend: (status, message) => {
       state.sendRefusal = { status, message }

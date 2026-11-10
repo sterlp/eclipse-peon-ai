@@ -117,6 +117,7 @@ test('aTurnEndingBeforeTheStreamStandsLeavesNoWaitingTile', async () => {
 })
 
 // UC-WP-84
+// UC-WP-94
 test('theReconnectReadsTheRosterFresh', async () => {
   const chat = stubChat({ messages: [QUESTION], agents: [tile('Jon', 'WORKING')] })
   render(<ChatPage project={project()} />)
@@ -126,14 +127,30 @@ test('theReconnectReadsTheRosterFresh', async () => {
 
   // the wire drops and the turn behind that WORKING ends while no one is watching: only a fresh read of
   // the roster can bring this board back from the wait (R-WP-48, R-WP-7)
+  const ROSTER_FAILURE = 'the roster is not reachable'
   chat.setAgents([tile('Jon', 'IDLE')])
+  chat.refuseRosterRead(503, ROSTER_FAILURE)
   await chat.closeStream()
 
   await waitFor(() => expect(chat.countOf('/events', 'GET')).toBe(2), { timeout: 1500 })
+  // UC-WP-94 GIVEN 3: the fresh read of the standing connection fails. The page says why and the board keeps
+  // the stand it read last — it never falls back to an empty row; the next reading is what corrects it
+  expect(await screen.findByTestId('chat-error')).toHaveTextContent(ROSTER_FAILURE)
+  expect(screen.getByTestId('chat-tiles'), 'no fall back to an empty row').toBeInTheDocument()
+  expect(screen.getByTestId('tile-state-Jon'), 'the last read stand stays').toHaveTextContent(
+    content.tiles.state.WORKING,
+  )
+  expect(chat.countOf('/agents', 'GET'), 'the refused read is the fresh read of the connection').toBe(
+    rosterReads + 1,
+  )
+
+  // the positive replacement: the next reading lands, and the row moves with it (no second store, UC-WP-84)
+  await chat.closeStream()
+  await waitFor(() => expect(chat.countOf('/events', 'GET')).toBe(3), { timeout: 1500 })
   await waitFor(() =>
     expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.IDLE),
   )
-  expect(chat.countOf('/agents', 'GET'), 'the reconnect read the roster again').toBe(rosterReads + 1)
+  expect(chat.countOf('/agents', 'GET'), 'the next reading corrected the board').toBe(rosterReads + 2)
 })
 
 // UC-WP-84
