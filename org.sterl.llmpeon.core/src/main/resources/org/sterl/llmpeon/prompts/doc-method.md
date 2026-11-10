@@ -52,6 +52,26 @@ Use-Cases und Regeln, und halte das Ziel jedes Features fest.
 - Ein Begriff, eine Bedeutung: "${docs}/glossary.md" ist die Begriffsliste (Begriff · Bedeutung ·
   Synonyme). Vor dem Verwenden nachsehen. Begriff unklar? Nicht raten — frag, ob neu oder Synonym.
 
+### BDD-Format in docs
+ID bleibt Überschrift, darunter genau ein `gherkin`-Block. `Given`/`When`/`Then`/`And` genau so geschrieben (sonst
+färbt Shiki nicht). Eine Aussage pro Zeile, jede weitere als `And`-Zeile, zwei Leerzeichen eingerückt. Zustand und
+Daten stehen unter `Given`, `When` ist nur die Aktion. Werte in `"…"`, aber nie verschachteln: Enthält der Wert selbst
+`"`, bleibt er ohne äußere Anführungszeichen. XML-Tags dürfen im Block stehen. Im Block keine Backticks, kein Fett,
+keine Links — die gehören in den Regeltext darüber. Beim Umformatieren bestehender Szenarien den Wortlaut nie ändern.
+
+````markdown
+#### UC-PIZZA-1-1: Paul bestellt eine heiße Pizza
+
+```gherkin
+Given der Kunde "Paul" ist eingeloggt
+  And der Warenkorb enthält "Pizza Diavolo"
+  And die Option "Extra Heiß" ist aktiv
+When er die Bestellung abschickt
+Then wechselt der Status zu "In Zubereitung"
+  And der Ofen wird auf 250 Grad geheizt
+```
+````
+
 ### Ablage — Docs sind fachlich, Code ist technisch
 
 - Ein Feature = ein Feature-Doc; Story, Erweiterung oder Defekt ergänzen dessen Regeln. Ein neues
