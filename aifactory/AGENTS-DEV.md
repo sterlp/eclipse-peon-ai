@@ -72,6 +72,9 @@
 - **Vor jedem UI-Gate `node -v` (≥ 22) und `pnpm -v` prüfen**: ein frischer nvm-Node bringt keine pnpm-Shims →
   `corepack enable` auf genau diesem Node, PATH-Zeile siehe *Build*. Fehlt beides, bricht das Gate als
   Werkzeug-Crash (`Cannot run program "pnpm"`) vor der ersten Testaussage — das ist kein Testfehler.
+  **`antd lint` ist kein `npx`-Lauf** (`npx antd` zieht das UI-Paket — kein Bin-Link →
+  `could not determine executable to run`); der CLI liegt global nur unter **v22.23.4**, dort
+  `antd lint ./src` fahren (auf dem nvm-Default 22.12 fehlt das `antd`-Binary).
 - **Doc-Lint-Baseline ist nicht 0** (❌-UCs kommender Inkremente): findings-frei = **keine neuen** Findings
   und die eigenen UCs von der Liste genommen.
 - **AntD-v6-Timeline (Inc 3)**: `Steps` erzwingt `min-height:48px` + `padding-bottom:12px` — Geometrie nur
