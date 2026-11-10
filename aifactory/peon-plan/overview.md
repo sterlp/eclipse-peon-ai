@@ -151,10 +151,11 @@ const onChatPage = page === chatRoot          // neu: eine Zeile, die einzige En
 | — | **L3** Sider nur bei Chats | R-WP-43 + **R-WP-44** (:210-235: Sider **und** sein Header-Griff existieren nur auf Chat-Adressen; auf `/projects` und `/settings` kein Baum) + **R-WP-38** (:98-105 „Top-Menü **und** Sider") + **UC-WP-77/UC-WP-78** (Sider-Zeichen nur auf Chat-Adressen) | ✅ nach L3 + Browser |
 | — | **L4** Think editierbar | **R-WP-23** Think-Aufzählung (:143-150), **UC-WP-67** GIVEN 1 (+ GIVEN 2 Wortlaut „Auswahl"), **R-WP-49** (:192-196), **UC-WP-85** GIVEN 1: Values/Toggle = **Auswahl aus der Provider-Liste oder eigene Eingabe** (Parität: editierbares Combo im Plugin), Wert immer verbatim, leer = erbt. Wortlaut „nie Freitext"/“kein Freitext-Feld" muss weg | ✅ nach L4 + Browser |
 
-**Stand nach L3 (2026-11-10):** L1, L2 und **L3 gebaut** (`web-factory-5`, L3 = `4f404fd9`) — die
-Doc-Häkchen ❌ L1/L2/L3 bleiben bei Jon stehen, bis die Browser-Abnahme (§11) sie auf ✅ setzt.
-Jons Doc-Fassung von R-WP-44 / UC-WP-78 GIVEN 5 (`docs/ui.md:219-224`, `:261-262`) deckt sich genau mit
-D5 (Sider **und** Griff nur auf Chat-Adressen). L4 ist nicht gebaut.
+**Stand nach L4 (2026-11-10):** **alle vier Inkrete gebaut** (`web-factory-5`): L1 `7fa3f429`,
+L2 `f6636688`, L3 `4f404fd9`, L4 `c44a057c`. Die Doc-Häkchen ❌ L1–L4 bleiben bei Jon stehen, bis die
+Browser-Abnahme (§11) sie auf ✅ setzt. Jons Doc-Fassung von R-WP-44 / UC-WP-78 GIVEN 5 (`docs/ui.md:219-224`,
+`:261-262`) deckt sich genau mit D5; für L4 ist R-WP-23 / UC-WP-67 / R-WP-49 / UC-WP-85 von ihm gesetzt
+(„Auswahl **oder eigene Eingabe**", Wert verbatim, leer = erbt).
 
 Reihenfolge L1 → L2 → L3 → L4: kleinste Wirkung zuerst; L2 vor L3, weil L2 die Kopf-Polarität setzt, die L3 in den Tests mitliest; L4 ist unabhängig (nur `config.*`) und kann bei Jons Zuruf auch zuerst oder allein laufen.
 
@@ -314,7 +315,48 @@ Abzunehmen: (1) Seiten ohne Überschrift, genug Luft oben? (2) Top-Menü Projekt
     (§11.3). Annahme ⏳ Q1 (Chat-Kopf und `h2` bleiben) weiter offen.
   * **Commit:** `4f404fd9` auf `web-factory-5`, Push auf `origin/web-factory-5`. Diff = genau drei
     Dateien (`app.shell.tsx`, `app.shell.test.tsx`, `app.routes.test.tsx`).
-* L4: dito, plus: `antd info AutoComplete` Messung (a)/(b) und ob der Fallback aus D7 nötig war: __
+* **L4 — gebaut 2026-11-10:** `pnpm test` = **268 Tests / 29 Dateien** grün (zwei volle Läufe
+  nacheinander, beide komplett grün — kein Flackern), `npx tsc -b` **0**, `npx oxlint` **0/0**
+  (98 Dateien), `antd lint ./src` **0 findings** (55 Dateien), Doc-Lint **28 findings** (Baseline
+  gehalten; nur `UC-CR-*`/`UC-PC-*`, `UC-WP-67`/`UC-WP-85` erscheinen nicht neu). Node v22.23.4,
+  pnpm 10.28.0. **Kein neuer Test, keine neue Datei.**
+  * **Messung vor dem Umbau (§9 L4):** statt `antd info` (kein Bericht über das Verhalten) ist die
+    Messung **zweifach belegt**: (1) Quelle `node_modules/antd/es/auto-complete/AutoComplete.js` —
+    `AutoComplete` gibt an `Select` weiter mit `mode: SECRET_COMBOBOX_MODE_DO_NOT_USE` (Combobox-Modus,
+    editierbares Feld, keine Auswahl erzwungen); (2) ein **laufender Wegwerf-Test**
+    (`test/config/zz-probe.test.tsx`, nach der Messung gelöscht, nie committet) mit genau der geplanten
+    Option-Form: (a) `document.getElementById(id)` **ist** das editierbare `<input class="ant-select-input"
+    role="combobox">` und zeigt den gespeicherten Wert → `toHaveValue` direkt am Feld, kein `..._list`-
+    Lesart-Fallback nötig; (b) die leere Erbe-Option **ist wählbar** und feuert `onChange('')` →
+    **Fallback aus D7 nicht nötig**; zusätzlich gemessen: Tippen filtert das Angebot nicht (Liste bleibt
+    vollständig), und das Basis-Clear-Symbol (.ant-select-clear) reagiert in jsdom **nicht** — der
+    bewiesene Leer-Weg bleibt die leere Option, `allowClear` bleibt als Angebot im echten Browser.
+  * **Rotation (§9 L4):** Tests zuerst umgestellt → **7 rot**, alle aus dem erwarteten Grund
+    (`Error: expect(element).toHaveValue(ultra)` usw. — ein `Select` zeigt den Wert nicht im Feld und
+    nimmt keine Eingabe an): `thinkFieldFollowsTheProviderForm`, `storedThinkStaysVerbatim`,
+    `defaultThinkShowsTheProviderFormAndSaves`, `defaultThinkClearsIndependentlyOfSendThinking`,
+    `defaultThinkIsDisabledForAProviderWithoutThinking`, `agentThinkFollowsTheProviderOfTheForm`,
+    `savingTheDefaultThinkShowsTheNewValueInTheDevSlot`. Nachbar `thinkFieldIsHiddenForNone` (NONE-Form)
+    blieb grün, wie geplant — keine vierte Form wurde angefasst. Nach dem Umbau von `config.think.tsx`
+    grün. **Zusatz während der Rotation, gemeldet:** eine ursprünglich geplante Assertion
+    `toHaveAttribute('placeholder', …)` ist **gefallen und entfernt** — AntD 6 rendert den Platzhalter
+    nicht als Attribut des Feldes. Nicht durch eine `.ant-*`-Innenleben-Assertion ersetzt (AGENTS-DEV:
+    Look nicht als Blatt-/Innenleben-Pin); an ihre Stelle trat die **Freitext-Behauptung auf der
+    Default-Ebene** (`ultra` in `defaultThinkShowsTheProviderFormAndSaves`) — die stärkere Aussage.
+    `placeholder` + `allowClear` bleiben als Angebot im Code, Beweiskraft: Browser-Abnahme (§11.4).
+  * **Umgesetzte Tat:** `config.think.tsx` — VALUES **und** TOGGLE zeichnen ein `AutoComplete`
+    (`value`, `options` wie bisher: Erbe-Eintrag zuerst, Liste, gespeicherter Wert verbatim vorn),
+    `onChange(value ?? '')`, `placeholder` + `allowClear`; FREE/UNKNOWN bleibt `Input`, NONE bleibt
+    Hinweis; JavaDoc von `ThinkControl` neu (Parität zum Plugin-Combo, mit Fundstelle
+    `ThinkValueSupport` / `readThink()`). `ThinkField`-JavaDoc **unverändert** — ihr Text machte keine
+    Aussage über wählbar/editierbar, §4 L4 forderte sie nur der Ordnung halber.
+  * **Was der Test nicht beweist (§8):** ob das editierbare Feld im echten Browser als solches erkennbar
+    ist (Platzhalter, Clear-Symbol, Dropdown-Höhe bei langer Provider-Liste) und ob die eigene Eingabe
+    dort nicht als „ungültig" markiert wird — Browser-Abnahme (§11.4). Backend unverändert (Draht und
+    `SettingsControllerTest` unangetastet, R5).
+  * **Commit:** `c44a057c` auf `web-factory-5`, Push auf `origin/web-factory-5`. Diff = fünf Dateien
+    (`config.think.tsx`, `config.agents.test.tsx`, `config.page.fields.test.tsx`,
+    `config.page.test.tsx`, `test/shared/choices.ts`).
 * Abweichungen vom Plan (Regel, Grund, Auswirkung): **L1 keine** — Umfang D1/D2/D3 genau so gebaut. Einzige
   Randnotiz: `project.page.tsx` hatte bisher **kein** JavaDoc am exportierten Baustein (nur `Props`), die
   JavaDoc-Zeile des Plans (§4 L1) ist dort ein dreizeiliger Block geworden; `config.page.tsx` erhielt genau eine
