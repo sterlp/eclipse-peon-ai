@@ -20,6 +20,7 @@ import {
   appendLiveDelegation,
   appendLiveDiff,
   appendLiveError,
+  appendLiveProblem,
   appendLiveText,
   appendLiveThink,
   appendLiveTool,
@@ -280,20 +281,20 @@ export function ChatPage({
           // to continue is the one that stands, not the one a past render showed (D-A, D-B)
           writeLive(appendLiveText(liveItems.current, event.text, beginTurn().anchor))
           break
-        case 'tool': {
+        case 'tool':
+        case 'problem': {
+          // a step and a refusal of a tool are anchored, stamped and clocked by ONE rule: the wire's stamp,
+          // the moment this browser received it, the turn that reported it — each its own, so the cap of a
+          // long run cannot move a time and an entry of a finished turn cannot work for the next one
+          // (R-WP-40, UC-WP-72 GIVEN 2 and 5). Only what they become differs: a refusal is no step, so the
+          // screen paints it as the refusal it is (R-WP-61, UC-WP-98)
           const step = beginTurn()
-          // the step keeps the stamp the wire carried, the moment this browser received it and the turn that
-          // reported it — each of them its own, so the cap of a long run cannot move a time and a step of a
-          // finished turn cannot work for the next one (R-WP-40, UC-WP-72 GIVEN 2 and GIVEN 5)
+          const stamp = event.origin ?? null
+          const at = Date.now()
           writeLive(
-            appendLiveTool(
-              liveItems.current,
-              event.text,
-              step.anchor,
-              event.origin ?? null,
-              Date.now(),
-              step.id,
-            ),
+            event.kind === 'problem'
+              ? appendLiveProblem(liveItems.current, event.text, step.anchor, stamp, at, step.id)
+              : appendLiveTool(liveItems.current, event.text, step.anchor, stamp, at, step.id),
           )
           break
         }

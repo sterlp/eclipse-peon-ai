@@ -235,7 +235,8 @@ public class ChatStreamRegistry {
         return switch (event) {
             case ChatEvent.Partial partial -> SseEmitter.event().name("partial")
                     .data(payload("kind", partial.kind(), "text", partial.text()), MediaType.APPLICATION_JSON);
-            case ChatEvent.ToolLine toolLine -> toolLineEvent(toolLine);
+            case ChatEvent.ToolLine toolLine -> namedEvent("tool", toolLine.text(), toolLine.origin());
+            case ChatEvent.Problem problem -> namedEvent("problem", problem.text(), problem.origin());
             case ChatEvent.Done done -> SseEmitter.event().name("done")
                     .data(payload("millis", done.millis()), MediaType.APPLICATION_JSON);
             case ChatEvent.Failed failed -> SseEmitter.event().name("error")
@@ -253,15 +254,16 @@ public class ChatStreamRegistry {
     }
 
     /**
-     * The stamp of a step rides on the wire only where the core gave one: an unstamped line keeps the
-     * payload it always had, so no browser reads a field of nothing and no name is invented downstream
-     * (R-WP-16, UC-WP-72).
+     * The stamp of a step and of a problem report rides on the wire only where the core gave one: a line
+     * without one keeps the payload it always had, so no browser reads a field of nothing and no name is
+     * invented downstream (R-WP-16, R-WP-37, UC-WP-72). One rule for both events on purpose — the report got
+     * its own event name (R-WP-61) and must not grow a second copy of this sentence.
      */
-    private SseEmitter.SseEventBuilder toolLineEvent(ChatEvent.ToolLine event) throws IOException {
-        return event.origin() == null
-                ? SseEmitter.event().name("tool").data(payload("text", event.text()), MediaType.APPLICATION_JSON)
-                : SseEmitter.event().name("tool").data(
-                        payload("text", event.text(), "origin", event.origin()), MediaType.APPLICATION_JSON);
+    private SseEmitter.SseEventBuilder namedEvent(String name, String text, String origin) throws IOException {
+        return origin == null
+                ? SseEmitter.event().name(name).data(payload("text", text), MediaType.APPLICATION_JSON)
+                : SseEmitter.event().name(name).data(payload("text", text, "origin", origin),
+                        MediaType.APPLICATION_JSON);
     }
 
     private String payload(Object... nameAndValue) throws IOException {

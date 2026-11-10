@@ -75,12 +75,12 @@ function toEvent(name: string, payload: string): ChatStreamEvent | null {
   switch (name) {
     case 'partial':
       return { kind: 'partial', thinking: fields.kind === 'think', text: String(fields.text ?? '') }
-    case 'tool': {
-      // the stamp of the agent that worked, and nothing else: a field of another type or an empty name is
-      // no author, so the step simply carries none (R-WP-37, R-WP-40)
-      const stamp = typeof fields.origin === 'string' && fields.origin !== '' ? fields.origin : null
-      return { kind: 'tool', text: String(fields.text ?? ''), origin: stamp }
-    }
+    case 'tool':
+      return { kind: 'tool', text: String(fields.text ?? ''), origin: stampOf(fields) }
+    case 'problem':
+      // a refusal of a tool is its own event and keeps the stamp rule of a step — one rule, one wording
+      // (R-WP-37, R-WP-61)
+      return { kind: 'problem', text: String(fields.text ?? ''), origin: stampOf(fields) }
     case 'done':
       return { kind: 'done', millis: Number(fields.millis ?? 0) }
     case 'error':
@@ -115,4 +115,13 @@ function toEvent(name: string, payload: string): ChatStreamEvent | null {
     default:
       return null
   }
+}
+
+/**
+ * The core's stamp of the agent a line belongs to, read off a payload: absent, of another type or empty is no
+ * author, and the screen then names nobody (R-WP-37). One rule for both lines a tool reports — its step and
+ * its refusal — so the two can never drift apart.
+ */
+function stampOf(fields: Record<string, unknown>): string | null {
+  return typeof fields.origin === 'string' && fields.origin !== '' ? fields.origin : null
 }

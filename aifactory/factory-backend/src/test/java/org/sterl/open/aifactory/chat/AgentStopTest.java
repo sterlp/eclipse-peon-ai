@@ -192,8 +192,13 @@ class AgentStopTest extends FactorySpringTest {
             // to find now is the wait the retry takes before its next call
             TurnGate.release(project.localPath());
 
-            awaitUntil(() -> wire.hasToolLine("API error — attempt"), 30_000,
+            // the core's own patience reports every failed attempt as a problem (ApiRetry.java:75
+            // m.onProblem), and since R-WP-61 that report is its own event instead of a grey step
+            awaitUntil(() -> wire.hasProblemLine("API error — attempt"), 30_000,
                     "die Retry-Geduld meldet den Fehler auf der Leitung");
+            assertThat(wire.hasToolLine("API error — attempt"))
+                    .as("der Fehler steht als Meldung und nicht doppelt als Werkzeug-Schritt (R-WP-61)")
+                    .isFalse();
             assertThat(stop(project.id()))
                     .as("the wait before a retry belongs to the turn, so it is stoppable")
                     .isEqualTo(HttpStatus.ACCEPTED.value());
@@ -531,6 +536,14 @@ class AgentStopTest extends FactorySpringTest {
         /** A tool line of the live wire, told by its text — no JSON reading needed for a plain line. */
         boolean hasToolLine(String text) {
             return payloads("tool").stream().anyMatch(payload -> payload.contains(text));
+        }
+
+        /**
+         * A problem report of the live wire, told by its text. What a tool refused and what the core's
+         * retry reports as a problem arrives here and not among the steps (R-WP-61, UC-WP-98).
+         */
+        boolean hasProblemLine(String text) {
+            return payloads("problem").stream().anyMatch(payload -> payload.contains(text));
         }
 
         /** A negative assertion needs a grace window — this is the only fixed wait in this class. */

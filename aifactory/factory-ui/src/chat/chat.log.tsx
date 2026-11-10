@@ -57,14 +57,18 @@ interface Row {
 }
 
 /**
- * A live item that speaks: an answer or a failure. A tool step, a Think section, a diff block and a
- * delegation are drawn as themselves and never as a line of speech, so they are out of this type by
- * construction (R-WP-28, R-WP-36, R-WP-40). A Think section is what a model thought on its way to the
- * answer and not the answer: only what the turn says is speech (R-WP-28).
+ * A live item that speaks: an answer or a failure. A tool step, a refusal of one, a Think section, a diff
+ * block and a delegation are drawn as themselves and never as a line of speech, so they are out of this type
+ * by construction (R-WP-28, R-WP-36, R-WP-40, R-WP-61). A Think section is what a model thought on its way to
+ * the answer and not the answer: only what the turn says is speech (R-WP-28).
  */
 type SpokenItem = Exclude<
   LiveItem,
-  { kind: 'tool' } | { kind: 'think' } | { kind: 'diff' } | { kind: 'delegation' }
+  | { kind: 'tool' }
+  | { kind: 'problem' }
+  | { kind: 'think' }
+  | { kind: 'diff' }
+  | { kind: 'delegation' }
 >
 
 /**
@@ -74,11 +78,11 @@ type SpokenItem = Exclude<
 type Entry =
   | { type: 'row'; row: Row }
   | { type: 'live'; item: SpokenItem }
-  /** The trace of one place of the log: its steps, its Think sections and its delegations in the order they
-   *  arrived, in the one timeline they share (R-WP-40). `open` is the one entry the open turn works on and
-   *  stands in at most one of the widgets the log draws — identity, so neither the cap nor the place in the
-   *  list decides it. `restored` marks the group the history handed back: it is the same account as the live
-   *  entries beside it, so those join this widget instead of drawing a second one. */
+  /** The trace of one place of the log: its steps, its refusals, its Think sections and its delegations, in
+   *  the order they arrived, in the one timeline they share (R-WP-40, R-WP-61). `open` is the one entry the
+   *  open turn works on, and it stands in at most one of the widgets the log draws — identity, so neither the
+   *  cap nor the place in the list decides it. `restored` marks the group the history handed back: it is the
+   *  same account as the live entries beside it, so those join this widget instead of drawing a second one. */
   | { type: 'trace'; items: TimelineEntry[]; open: TraceItem | null; restored?: boolean }
   | { type: 'diff'; file: string; text: string }
 
@@ -268,9 +272,10 @@ function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entr
 
   for (const run of liveRuns(live)) {
     pushRows(run[0].afterLines)
-    // the trace of this place: the steps, the Think sections and the delegations of one run are ONE account
-    // and end only where the account is interrupted — by a voice, by a failure, by a block of its own, or by
-    // the next turn (R-WP-40: a message of the model ends the group; a diff is a block of its own, R-WP-36)
+    // the trace of this place: the steps, the refusals, the Think sections and the delegations of one run are
+    // ONE account and end only where the account is interrupted — by a voice, by a failure, by a block of its
+    // own, or by the next turn (R-WP-40: a message of the model ends the group; a diff is a block of its own,
+    // R-WP-36; a refusal is a link of the account itself, R-WP-61)
     let trace: TraceItem[] = []
     const flushTrace = () => {
       if (trace.length === 0) {
@@ -280,10 +285,15 @@ function entriesOf(rows: Row[], live: LiveItem[], openTurn: number | null): Entr
       trace = []
     }
     for (const item of run) {
-      if (item.kind === 'tool' || item.kind === 'think' || item.kind === 'delegation') {
-        // a Think section and a delegation join the run instead of breaking it: the indicator still moves to
-        // them, because ONE decider names the entry that works (`openTimelineItem`) and not the order of the
-        // widgets
+      if (
+        item.kind === 'tool' ||
+        item.kind === 'problem' ||
+        item.kind === 'think' ||
+        item.kind === 'delegation'
+      ) {
+        // a Think section, a refusal and a delegation join the run instead of breaking it: the indicator
+        // still moves to them, because ONE decider names the entry that works (`openTimelineItem`) and not the
+        // order of the widgets — and a refusal names nobody else as working either (R-WP-61)
         trace.push(item)
         continue
       }

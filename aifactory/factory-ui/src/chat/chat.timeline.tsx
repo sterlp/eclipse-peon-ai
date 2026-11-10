@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 
 import { Timeline, type TimelineItemProps } from 'antd'
+import { CloseCircleFilled } from '@ant-design/icons'
 
 import { content } from '../shared/content'
 import { WorkingIndicator } from './chat.status'
@@ -18,9 +19,10 @@ interface Props {
 }
 
 /**
- * The trace of ONE place in the conversation as one timeline (R-WP-40): the steps, the Think sections and
- * the delegations of a run are links of the same account, so they share the widget the wire's order drew
- * instead of each kind drawing a box of its own.
+ * The trace of ONE place in the conversation as one timeline (R-WP-40): the steps, the refusals of a tool,
+ * the Think sections and the delegations of a run are links of the same account, so they share the widget the
+ * wire's order drew instead of each kind drawing a box of its own. A refusal is a link like any other and
+ * painted as what it is — red text, the word `Problem`, the basis' error icon on its head (R-WP-61, R-WP-46).
  *
  * The widget is the design basis' own; its dots and its gaps are tokens of `shared/theme.ts` and are never
  * painted over from a sheet. What the factory owns is the entry of every link and every handle standing on
@@ -37,9 +39,9 @@ export function ChatTraceTimeline({ items, open }: Props) {
 
 /**
  * The entries in arrival order. A run of steps keeps its tail (`MAX_TOOL_LINES`, R-WP-28) and no other kind
- * joins that cut — a Think section and a delegation each say something no step says (a thought, a member),
- * so dropping one would silently drop a fact (UC-WP-72 GIVEN 5). Keyed by the place in the run, so the cut
- * shifts no entry's identity.
+ * joins that cut — a Think section, a refusal and a delegation each say something no step says (a thought, a
+ * refusal, a member), so dropping one would silently drop a fact (UC-WP-72 GIVEN 5). Keyed by the place in
+ * the run, so the cut shifts no entry's identity.
  */
 function timelineItems(items: TimelineEntry[], open: TimelineEntry | null): TimelineItemProps[] {
   const steps = items.filter((item): item is EntryOf<'tool'> => item.kind === 'tool')
@@ -56,11 +58,18 @@ function timelineItems(items: TimelineEntry[], open: TimelineEntry | null): Time
       // loading glyph, which carries no handle of ours — the working dot is our widget (R-WP-40, UC-WP-72).
       // `icon` and not the deprecated `dot` (`useItems.js`: `mergedIcon = icon ?? dot`)
       loading: working,
-      icon: working ? <WorkingIndicator size="small" /> : undefined,
+      // an entry that does not work carries no mark at all — a refusal excepted: its red icon belongs on the
+      // head of the link, where the basis paints a mark, and not in the content (R-WP-46, R-WP-61)
+      icon: working ? <WorkingIndicator size="small" /> : refusalIconOf(item),
       content: entryOf(item, working),
     })
   })
   return shown
+}
+
+/** The mark of an entry that does not work: none — a refusal excepted, whose red glyph is the basis' own. */
+function refusalIconOf(item: TimelineEntry) {
+  return item.kind === 'problem' ? <CloseCircleFilled className="chat-problem-icon" /> : undefined
 }
 
 /** The entry of one link, by its kind — a new kind of the trace is a branch here and no edit of the others. */
@@ -71,6 +80,9 @@ function entryOf(item: TimelineEntry, working: boolean) {
   if (item.kind === 'think') {
     return <ThinkEntry item={item} working={working} />
   }
+  if (item.kind === 'problem') {
+    return <ProblemEntry item={item} working={working} />
+  }
   return <StepEntry item={item} working={working} />
 }
 
@@ -78,6 +90,25 @@ function entryOf(item: TimelineEntry, working: boolean) {
 function StepEntry({ item, working }: { item: EntryOf<'tool'>; working: boolean }) {
   return (
     <TraceEntry kind="tool" working={working} at={item.at}>
+      {item.origin !== null && <span className="chat-step-name">{item.origin}</span>}
+      {item.text}
+    </TraceEntry>
+  )
+}
+
+/**
+ * The core's report that a tool refused (R-WP-61, UC-WP-98): the word that says what kind of entry this is,
+ * the agent the wire stamped under it where the wire has one (the step's own idiom, so a refusal names its
+ * agent exactly as a step does), and the report under both. Red is the sheet's, on our handles
+ * `.chat-problem`, `.chat-problem-name` and `.chat-problem-icon` — and it is never inherited: a step's stamp
+ * paints itself grey by design, so an entry that only leaned on inheritance would read grey. The icon does not
+ * stand here: `refusalIconOf` hands it to the widget, because that is where the basis paints a mark. A refusal
+ * never works, whatever the open turn does — the tool that refused is finished.
+ */
+function ProblemEntry({ item, working }: { item: EntryOf<'problem'>; working: boolean }) {
+  return (
+    <TraceEntry kind="problem" working={working} at={item.at}>
+      <span className="chat-problem-name">{content.chat.problem}</span>
       {item.origin !== null && <span className="chat-step-name">{item.origin}</span>}
       {item.text}
     </TraceEntry>
@@ -120,8 +151,9 @@ function DelegationEntry({ item, working }: { item: EntryOf<'delegation'>; worki
  * `data-*` and never a class of the basis; the working flag on the one entry the open turn works on; and the
  * clock of arrival only once the entry is finished **and** the wire really brought a moment — a working entry
  * has no clock yet, an untimestamped one never gets one. The delegation answers to `chat-delegation` and the
- * two other kinds to `chat-trace`, because one element carries one handle; `data-trace` tells the kinds
- * apart wherever a test needs to.
+ * other kinds to `chat-trace`, because one element carries one handle; `data-trace` tells the kinds apart
+ * wherever a test needs to. A refusal stands in the trace's class **and** in `chat-problem`: the red of a
+ * refusal is read off that handle and off the icon's own, never off an inheritance (R-WP-61).
  */
 function TraceEntry({
   kind,
@@ -136,7 +168,7 @@ function TraceEntry({
 }) {
   return (
     <span
-      className="chat-trace-item"
+      className={kind === 'problem' ? 'chat-trace-item chat-problem' : 'chat-trace-item'}
       data-testid={kind === 'delegation' ? 'chat-delegation' : 'chat-trace'}
       data-trace={kind}
       data-working={working ? 'true' : undefined}

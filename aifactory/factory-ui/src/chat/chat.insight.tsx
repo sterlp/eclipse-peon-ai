@@ -3,7 +3,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { readTranscript } from './chat.agents.client'
 import { isTraceLine, type ChatMessage, type ChatStreamEvent } from './chat.client'
 import { ChatLog } from './chat.log'
-import { appendLiveText, appendLiveThink, appendLiveTool, type LiveItem } from './chat.live'
+import {
+  appendLiveText,
+  appendLiveThink,
+  appendLiveTool,
+  appendLiveProblem,
+  type LiveItem,
+} from './chat.live'
 import { useFollowBottom } from './chat.scroll'
 import { openChatStream } from './chat.stream'
 import { errorMessage } from '../shared/api.client'
@@ -97,7 +103,9 @@ export function ChatInsight({ projectId, name, onClose }: Props) {
   const applyEvent = useCallback(
     (event: ChatStreamEvent) => {
       // `diff`, `agents`, `delegation`, `done` and `error` never reach this wire (R-WP-53): the server keeps
-      // them on Jon's channel, so no branch here would ever be taken
+      // them on Jon's channel, so no branch here would ever be taken. `partial`, `tool` and a refusal of a
+      // tool do — the core reports one for his tool too, and his look shows it as the red entry it is
+      // (R-WP-61)
       const anchor = afterLines.current
       switch (event.kind) {
         case 'partial':
@@ -114,6 +122,13 @@ export function ChatInsight({ projectId, name, onClose }: Props) {
           // this look ever claims to be the one being worked on (R-WP-40)
           writeLive(
             appendLiveTool(liveItems.current, event.text, anchor, event.origin ?? null, Date.now(), null),
+          )
+          break
+        case 'problem':
+          // his refusal, drawn like his step and with the same stamp rule; of this look's entries none ever
+          // works, since his stream ends no turn here (R-WP-53, R-WP-61)
+          writeLive(
+            appendLiveProblem(liveItems.current, event.text, anchor, event.origin ?? null, Date.now(), null),
           )
           break
       }

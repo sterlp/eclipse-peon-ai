@@ -202,9 +202,12 @@ class WritePinningTest extends FactorySpringTest {
             send(project.id(), "schreib " + escape);
             stream.awaitEvent("done", 1);
 
-            assertThat(toolLineTexts(stream))
-                    .as("UC-WP-9: Jons Ablehnung steht als Werkzeug-Zeile im Chat")
+            assertThat(problemLineTexts(stream))
+                    .as("UC-WP-9: Jons Ablehnung steht als eigene Problem-Meldung im Chat (R-WP-61)")
                     .anyMatch(line -> line.startsWith(DENIAL_PREFIX));
+            assertThat(toolLineTexts(stream))
+                    .as("UC-WP-9: und tarnt sich nicht mehr als Werkzeug-Zeile zwischen den Schritten (R-WP-61)")
+                    .noneMatch(line -> line.startsWith(DENIAL_PREFIX));
 
             String fullDenial = toolResults().stream()
                     .filter(text -> text.startsWith("Write denied:") && text.contains("allowed roots"))
@@ -298,11 +301,14 @@ class WritePinningTest extends FactorySpringTest {
             send(project.id(), "zwei Ausbruchsversuche");
             stream.awaitEvent("done", 1);
 
-            List<String> denials = toolLineTexts(stream).stream()
+            List<String> denials = problemLineTexts(stream).stream()
                     .filter(line -> line.startsWith(DENIAL_PREFIX)).toList();
             assertThat(denials)
-                    .as("UC-WP-10: beide Pfade werden abgelehnt, einer pro Werkzeug-Zeile")
+                    .as("UC-WP-10: beide Pfade werden abgelehnt, einer pro Problem-Meldung (R-WP-61)")
                     .hasSize(2);
+            assertThat(toolLineTexts(stream))
+                    .as("UC-WP-10: keine der beiden Ablehnungen steht noch als Werkzeug-Zeile (R-WP-61)")
+                    .noneMatch(line -> line.startsWith(DENIAL_PREFIX));
 
             // "../../" von <home>/projects/<name> liegt in <home> — einer dritten Wurzel, weil das Home
             // bewusst nicht unter java.io.tmpdir liegt
@@ -461,6 +467,16 @@ class WritePinningTest extends FactorySpringTest {
     /** Die Werkzeug-Zeilen, wie der Browser sie liest — den {@code text} der {@code tool}-Events. */
     private static List<String> toolLineTexts(LiveStream stream) {
         return stream.payloads("tool").stream()
+                .map(payload -> (String) JsonPath.read(payload, "$.text"))
+                .toList();
+    }
+
+    /**
+     * Die Problem-Meldungen, wie der Browser sie liest — den {@code text} der {@code problem}-Events.
+     * Eine abgelehnte Werkzeug-Nutzung steht hier und nicht mehr bei den Schritten (R-WP-61, UC-WP-98).
+     */
+    private static List<String> problemLineTexts(LiveStream stream) {
+        return stream.payloads("problem").stream()
                 .map(payload -> (String) JsonPath.read(payload, "$.text"))
                 .toList();
     }

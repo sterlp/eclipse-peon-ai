@@ -29,10 +29,11 @@ export function isTraceLine(line: ChatMessage): boolean {
 }
 
 /**
- * A live event of the running turn (§3.3.3): `partial` is a <em>delta</em>, `tool` one tool or problem
- * line, `done` closes one <em>turn</em> — an input that queued up behind a running one is closed by that
- * turn's `done` too — and `error` is a turn failure; the composer stays usable either way. Finished text
- * of anybody, team member included, is never an event: it arrives with the history (`done` reads it).
+ * A live event of the running turn (§3.3.3): `partial` is a <em>delta</em>, `tool` one tool line, `problem`
+ * the core's own report that a tool refused (R-WP-61), `done` closes one <em>turn</em> — an input that queued
+ * up behind a running one is closed by that turn's `done` too — and `error` is a turn failure; the composer
+ * stays usable either way. Finished text of anybody, team member included, is never an event: it arrives
+ * with the history (`done` reads it).
  *
  * `agents` is the one event that is not part of a conversation: the whole tile roster, every time. The UI
  * <em>replaces</em> its list with it and accumulates nothing, so a snapshot can never become a second
@@ -47,6 +48,10 @@ export type ChatStreamEvent =
   /** `origin` is the core's stamp of the agent that worked — absent, null or a name; the screen names a
    *  step only where the wire carries one (R-WP-37, R-WP-40). */
   | { kind: 'tool'; text: string; origin?: string | null }
+  /** The core's own report that a tool refused (R-WP-61) — its own event and never a `tool` line, because the
+   *  screen paints a refusal where a step cannot. `origin` follows the rule of a step: a name only where the
+   *  core named one. Live only, like a step: the Bestand of the turn carries the same words as a step. */
+  | { kind: 'problem'; text: string; origin?: string | null }
   | { kind: 'diff'; file: string; diff: string }
   /** One delegation of the turn: `member` is the team member the order went to and `working` says whether it
    *  began or ended — both fields, always. No task text: neither of the core's two listeners carries a

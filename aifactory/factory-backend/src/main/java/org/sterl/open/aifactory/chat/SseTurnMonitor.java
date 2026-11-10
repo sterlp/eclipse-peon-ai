@@ -23,11 +23,11 @@ import org.sterl.open.aifactory.chat.dto.AgentTileDto;
  *
  * <p><b>What reaches the browser</b> (R-WP-4): the core stamps every callback with the agent that produced
  * it, and this class decides <em>which wire</em> a line takes — the lines stamped with the conversation's
- * agent, plus the lines carrying no stamp. A member's thinking, tool lines and half answers are his own
- * conversation and go <b>by their stamp</b> to his own wire, never into Jon's chat (R-WP-53). The
- * delegation's trace lines stay: Jon's tool emitted them under his own name. The rule is policy and so lives
- * the factory, not in the core: the Eclipse plugin hands the same callback stream to its views and goes on
- * showing every member line.</p>
+ * agent, plus the lines carrying no stamp. A member's thinking, tool lines, problem reports and half
+ * answers are his own conversation and go <b>by their stamp</b> to his own wire, never into Jon's chat
+ * (R-WP-53). The delegation's trace lines stay: Jon's tool emitted them under his own name. The rule is
+ * policy and so lives the factory, not in the core: the Eclipse plugin hands the same callback stream to its
+ * views and goes on showing every member line.</p>
  *
  * <p><b>A file write is a block, not a line.</b> {@link #onFileUpdate} is the callback that carries the
  * content of a change instead of a chat line, and the one that arrives <em>unstamped</em>:
@@ -144,12 +144,16 @@ class SseTurnMonitor implements AiMonitor {
         if (message.role() != SimpleMessage.Type.TOOL && message.role() != SimpleMessage.Type.PROBLEM) {
             return;
         }
-        // the stamp rides along: a step names its agent only where the core stamped one (R-WP-40, UC-WP-72)
-        ChatEvent.ToolLine step = new ChatEvent.ToolLine(message.message(), message.origin());
+        // the stamp rides along: a step names its agent only where the core stamped one (R-WP-40, UC-WP-72).
+        // A refusal of the same shape is its own event, so the browser paints a problem instead of a step
+        // (R-WP-61) — both share the routing below: Jon to the chat, a member to his own channel (R-WP-53)
+        ChatEvent line = message.role() == SimpleMessage.Type.PROBLEM
+                ? new ChatEvent.Problem(message.message(), message.origin())
+                : new ChatEvent.ToolLine(message.message(), message.origin());
         if (isJon(message.origin())) {
-            streams.publish(projectId, step);
+            streams.publish(projectId, line);
         } else {
-            streams.publishAgent(projectId, message.origin(), step);
+            streams.publishAgent(projectId, message.origin(), line);
         }
     }
 

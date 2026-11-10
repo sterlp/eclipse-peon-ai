@@ -470,6 +470,33 @@ button {
   font-style: normal;
 }
 
+/* The refusal of a tool is the one link of the trace that speaks in the problem's colour (R-WP-61): its text,
+   the word it names itself with and the icon on its head — each on the token, so both themes answer with
+   their own red and no colour of its own stands in this sheet (R-WP-39). Flat rules, one selector each: the
+   colour contract of the trace is read off this sheet rule by rule in a test. */
+.chat-log .chat-line.trace .chat-problem {
+  color: var(--problem);
+}
+
+/* The word that says what kind of entry this is, in the mini measure of a stamp and upright like a step's name
+   (R-WP-61). Its own rule and its own colour: the stamp of a step paints itself grey on purpose, so a red
+   that leaned on inheritance alone would lose the one word this entry owes its reader. */
+.chat-log .chat-line.trace .chat-problem-name {
+  display: block;
+  font-size: var(--fs-mini);
+  line-height: var(--lh-mini);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-style: normal;
+  color: var(--problem);
+}
+
+/* The basis' error glyph on the head of the link, in our red and not in the library's (R-WP-46, R-WP-61). The
+   agent the wire stamped on a refusal keeps the grey of a step's name — the same name, in the same idiom. */
+.chat-log .chat-line.trace .chat-problem-icon {
+  color: var(--problem);
+}
+
 /* A file the turn changed (R-WP-36) is a block of the log and neither a voice nor a trace line: the trace's
    grey stays its colour, the colours are the ones the app already has — an addition is what the agent did
    (the agent token), a removal the problem token, the headers and context dimmed. Flat rules, one selector

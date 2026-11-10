@@ -24,6 +24,17 @@ export type LiveItem =
       at: number | null
       turn: number | null
     }
+  /** The core's own report that one of these steps refused (R-WP-61): an entry of the trace like a step and
+   *  drawn as the refusal it is. Its fields are the step's, so the stamp, the clock and the identity of the
+   *  turn mean here exactly what they mean there — only the drawing differs. */
+  | {
+      kind: 'problem'
+      text: string
+      afterLines: number
+      origin: string | null
+      at: number | null
+      turn: number | null
+    }
   /** One Think section of the turn, drawn as an entry of the trace like a step (R-WP-40). `text` is the
    *  wire's wording and never Markdown, `at` the moment its FIRST delta reached this browser, `turn` the
    *  identity of the turn that reported it. The wire names no author of a thought, so the entry names none. */
@@ -47,6 +58,9 @@ export type LiveItem =
 /** One step of a tool run, as the timeline draws it. */
 export type ToolItem = Extract<LiveItem, { kind: 'tool' }>
 
+/** One refusal of a tool, as the timeline draws it — an entry of the trace like a step (R-WP-61). */
+export type ProblemItem = Extract<LiveItem, { kind: 'problem' }>
+
 /** One Think section, as the timeline draws it. */
 export type ThinkItem = Extract<LiveItem, { kind: 'think' }>
 
@@ -54,11 +68,11 @@ export type ThinkItem = Extract<LiveItem, { kind: 'think' }>
 export type DelegationItem = Extract<LiveItem, { kind: 'delegation' }>
 
 /**
- * One entry of the trace — the steps, the Think sections and the delegations of a turn, which the screen
- * draws in ONE timeline (R-WP-40). A diff and a text of the answer are of no such family: the first is a
- * block of its own (R-WP-36), the second is a voice.
+ * One entry of the trace — the steps, the refusals of a tool, the Think sections and the delegations of a
+ * turn, which the screen draws in ONE timeline (R-WP-40, R-WP-61). A diff and a text of the answer are of no
+ * such family: the first is a block of its own (R-WP-36), the second is a voice.
  */
-export type TraceItem = ToolItem | ThinkItem | DelegationItem
+export type TraceItem = ToolItem | ProblemItem | ThinkItem | DelegationItem
 
 /**
  * One entry of the timeline as the log **draws** it: a `TraceItem` without the anchor, which the log has
@@ -67,6 +81,7 @@ export type TraceItem = ToolItem | ThinkItem | DelegationItem
  */
 export type TimelineEntry =
   | Omit<ToolItem, 'afterLines'>
+  | Omit<ProblemItem, 'afterLines'>
   | Omit<ThinkItem, 'afterLines'>
   | Omit<DelegationItem, 'afterLines'>
 
@@ -99,6 +114,24 @@ export function appendLiveTool(
 }
 
 /**
+ * The core's report that a tool refused, as an entry of its own (R-WP-61, UC-WP-98): never joined to a step
+ * and never a step itself, because the screen paints a refusal red and a step grey. Stamp, clock and turn
+ * follow the rule of a step — an unstamped refusal names nobody, and one of a turn that ended never works
+ * (R-WP-37, UC-WP-98 GIVEN 2). Like a Think section it stays out of the cap of a long run: a fact of the
+ * account is never what a cut throws away (UC-WP-72 GIVEN 5).
+ */
+export function appendLiveProblem(
+  items: LiveItem[],
+  text: string,
+  afterLines: number,
+  origin: string | null = null,
+  at: number | null = null,
+  turn: number | null = null,
+): LiveItem[] {
+  return [...items, { kind: 'problem', text, afterLines, origin, at, turn }]
+}
+
+/**
  * A Think delta continues the Think entry that stands last, and only that one: the wire streams one thought
  * in pieces and one thought is ONE entry of the timeline. A delta behind a step, behind an answer or behind
  * a thought of another turn opens a new entry — the merge is by the turn's identity and never by a place,
@@ -126,7 +159,9 @@ export function appendLiveThink(
  * open turn that has reported no step of its own has no indicator — the core reports no end of a single
  * tool, so only the next step, the entry's own end or the end of the turn takes the indicator away. The
  * answer a turn is writing, and the file changes it reports, are steps of neither: a step keeps its
- * indicator while the answer streams to it.
+ * indicator while the answer streams to it. A refusal of a tool is neither as well, and more than that: it
+ * ENDS the step above it — the tool refused, so his step works no longer and nothing behind the refusal
+ * works until the turn reports again (R-WP-61, UC-WP-98).
  */
 export function openTimelineItem(
   items: LiveItem[],
@@ -150,7 +185,8 @@ export function openTimelineItem(
     if (item.kind === 'text' || item.kind === 'diff') {
       continue
     }
-    // a failure is an end of the answer, so nothing that stands behind it works
+    // a turn's failure and a tool's refusal are each an end: neither entry works itself, and nothing that
+    // stands behind it works either (R-WP-34, R-WP-61)
     return null
   }
   return null
@@ -234,7 +270,9 @@ export function endLiveDelegation(items: LiveItem[], member: string, turn: numbe
  * as does R-WP-40 its delegation and its thinking.
  *
  * A tool step belongs to the history's family since R-WP-47: the read carries it as a line of its own, so
- * a live step that stayed would stand twice under one answer — one widget, not two (R-WP-40). What
+ * a live step that stayed would stand twice under one answer — one widget, not two (R-WP-40). A refusal of a
+ * tool goes the same way and for the same reason: the Bestand carries its words as a step of that turn, so
+ * the red live entry gives way to the read and the account stands once (R-WP-61, UC-WP-98). What
  * arrived behind `mark` is another matter: the read could not know it, so it stays until the next read.
  *
  * `mark` is how many items stood when that read was issued. Everything behind it arrived while the server

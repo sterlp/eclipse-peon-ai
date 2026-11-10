@@ -240,6 +240,37 @@ class SseTurnMonitorTest {
                 .containsExactly("text");
     }
 
+    // UC-WP-98
+    @Test
+    void aProblemIsItsOwnEventWithItsStamp() {
+        RecordingEmitter memberWire = new RecordingEmitter();
+        registry.subscribeAgent(PROJECT, "Dev", memberWire);
+        String denial = "diskWriteFile: Write denied: outside both roots";
+
+        // the core reports a refused tool with its own callback, stamped on the way (core
+        // SmartToolExecutor.reportProblem → OwnerMonitor.onProblem) and handed over as a SimpleMessage of
+        // Type.PROBLEM — the factory must not hide it among the steps any more (R-WP-61)
+        new OwnerMonitor("Jon", monitor).onChatResponse(new SimpleMessage(SimpleMessage.Type.PROBLEM, denial));
+        monitor.onChatResponse(new SimpleMessage(SimpleMessage.Type.PROBLEM, "a report of a producerless tool"));
+        new OwnerMonitor("Dev", monitor).onChatResponse(new SimpleMessage(SimpleMessage.Type.PROBLEM, "his own denial"));
+        endTheTurn();
+
+        assertThat(wire.names())
+                .as("its own event per report and no tool line among them; the tiles ride along as they"
+                        + " always do — the full sequence is what proves nothing else reached this wire")
+                .containsExactly("agents", "problem", "agents", "problem", "agents", "done");
+        assertThat(wire.payload(1).keySet()).as("a stamped report names the agent whose tool was refused (G2)")
+                .containsExactly("text", "origin");
+        assertThat(wire.payload(1)).containsEntry("text", denial).containsEntry("origin", "Jon");
+        assertThat(wire.payload(3).keySet()).as("an unstamped one keeps the payload it always had (R-WP-37)")
+                .containsExactly("text");
+
+        assertThat(memberWire.names())
+                .as("a member's report stays on his own channel (R-WP-53)")
+                .containsExactly("problem");
+        assertThat(memberWire.payload(0)).containsEntry("text", "his own denial").containsEntry("origin", "Dev");
+    }
+
     // UC-WP-72
     @Test
     void theDelegationSpeaksItsOwnStartAndEnd() {

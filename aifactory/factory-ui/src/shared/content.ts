@@ -90,6 +90,9 @@ export const content = {
     /** The word a Think entry names itself with (R-WP-40): the kind of the entry, never an author — the wire
      *  stamps none on a thought, so the screen has no name to show and says what it is instead. */
     thinking: 'Thinking',
+    /** The word a refusal names itself with (R-WP-61) — the plugin's word for the same line. The kind of the
+     *  entry and never an author: where the wire stamped one, the agent's name stands on a line of his own. */
+    problem: 'Problem',
     message: 'Message',
     messageToJon: 'Message to Jon',
     send: 'Send',

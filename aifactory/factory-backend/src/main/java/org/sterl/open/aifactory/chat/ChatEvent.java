@@ -17,7 +17,8 @@ public sealed interface ChatEvent {
     }
 
     /**
-     * One tool or problem line. Live only — the history never holds these (R-WP-11).
+     * One tool line of a turn — a step that worked. Live only, the history never holds these (R-WP-11).
+     * A report about a tool that <b>refused</b> is not here: {@link Problem} is its own event (R-WP-61).
      *
      * <p>{@code origin} is the core's stamp of the agent that produced the line and is null where the core
      * names none: a line it passes unstamped, or one the factory itself wrote whose text already names its
@@ -25,6 +26,18 @@ public sealed interface ChatEvent {
      * (R-WP-37, UC-WP-72).</p>
      */
     record ToolLine(String text, String origin) implements ChatEvent {
+    }
+
+    /**
+     * One problem line: the core's own report that a tool refused or failed
+     * ({@code SmartToolExecutor.reportProblem}), drawn as its own timeline entry and never as a step
+     * (R-WP-61, UC-WP-98). Live only, like a tool line — the history keeps the tool's own answer instead
+     * (R-WP-47).
+     *
+     * <p>{@code origin} follows the same rule as a step's: the core's stamp where it named a producer,
+     * {@code null} where it named none, and the browser then names nobody (R-WP-37).</p>
+     */
+    record Problem(String text, String origin) implements ChatEvent {
     }
 
     /**
