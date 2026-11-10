@@ -22,9 +22,8 @@
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
-  /* roles */
+  /* roles: the voice's colour, carried by its name — never by a background (R-WP-29) */
   --user: #2563eb;
-  --on-user: #ffffff;
   --agent: #16a34a;
   --tool: #6b7280;
   --problem: #dc2626;

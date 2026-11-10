@@ -379,15 +379,16 @@ button {
   background: var(--surface);
 }
 
-/* The person's own input is the reference's blue bubble with its own text colour, and it fills the measure
-   like every other bubble (R-WP-29, UC-WP-55) — the blue says whose voice it was, no side does. No answer
-   reads from this rule: the colour belongs to the voice that spoke it, and only to it. */
+/* The person's own line is the same card as an answer: the page's surface, the app's own border, and the
+   text colour of the page — a colour is an indicator, never a background (R-WP-29). What says whose voice it
+   was is the name above the line, in the role's colour (`.chat-line.user .chat-role`). It fills the measure
+   like every other line (UC-WP-55); no answer reads from this rule. */
 .chat-log .chat-line.user {
   justify-self: stretch;
   padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
   border-radius: var(--radius-surface);
-  background: var(--user);
-  color: var(--on-user);
+  background: var(--surface);
 }
 
 /* A failed turn is a line of the conversation and nobody's speech: the problem's colour says what it is, on
@@ -627,9 +628,10 @@ button {
   color: var(--agent);
 }
 
-/* the name of a person reads in the colour of the bubble it stands in, not in its blue */
+/* the name of a person reads in the colour of its role — the indicator of the voice, while the card behind
+   it stays the page's own surface (R-WP-29) */
 .chat-log .chat-line.user .chat-role {
-  color: var(--on-user);
+  color: var(--user);
 }
 
 /* The floating way back to the end (UC-WP-80) hangs at the bottom edge of a box that takes no part of the
