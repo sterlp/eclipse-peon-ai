@@ -1,9 +1,10 @@
 import type { KeyboardEvent } from 'react'
-import { Button } from 'antd'
+import { CompressOutlined, DeleteOutlined } from '@ant-design/icons'
 
 import type { AgentAction, AgentTile } from './chat.agents.client'
 import { AgentStatus } from './chat.status'
 import { content } from '../shared/content'
+import { IconButton } from '../shared/icon.button'
 
 interface Props {
   /** The current roster snapshot — from the read on mount or from an `agents` event, never merged. */
@@ -76,30 +77,30 @@ export function ChatTiles({ tiles, onAction, onInspect }: Props) {
               </span>
               <span className="chat-tile-actions">
                 {tile.capabilities.includes('CLEAR') && (
-                  <Button
+                  <IconButton
                     size="small"
-                    data-testid={`tile-clear-${tile.name}`}
                     disabled={busy}
+                    icon={<DeleteOutlined />}
+                    label={content.tiles.clear}
                     onClick={event => {
                       event.stopPropagation()
                       onAction(tile.name, 'clear')
                     }}
-                  >
-                    {content.tiles.clear}
-                  </Button>
+                    data-testid={`tile-clear-${tile.name}`}
+                  />
                 )}
                 {tile.capabilities.includes('COMPACT') && (
-                  <Button
+                  <IconButton
                     size="small"
-                    data-testid={`tile-compact-${tile.name}`}
                     disabled={busy}
+                    icon={<CompressOutlined />}
+                    label={content.tiles.compact}
                     onClick={event => {
                       event.stopPropagation()
                       onAction(tile.name, 'compact')
                     }}
-                  >
-                    {content.tiles.compact}
-                  </Button>
+                    data-testid={`tile-compact-${tile.name}`}
+                  />
                 )}
               </span>
             </div>

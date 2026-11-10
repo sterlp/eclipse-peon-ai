@@ -1057,9 +1057,10 @@ button {
   }
 }
 
-/* Stop: der zweite Control des Composers beendet den laufenden Turn — Knopfmaße wie Senden (UC-WP-50). */
+/* Stop: der zweite Control des Composers beendet den laufenden Turn — Knopfmaße wie Senden (UC-WP-50).
+   Seit dem Icon-Widget (R-WP-59) ist `.chat-stop` der äußerste Knoten; der Zustand sitzt am Knopf darin. */
 .chat-stop {
-  &:disabled {
+  button:disabled {
     opacity: 0.5;
     cursor: default;
   }

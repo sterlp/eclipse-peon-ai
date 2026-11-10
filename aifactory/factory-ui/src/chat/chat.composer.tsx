@@ -1,10 +1,12 @@
 import { useEffect, useRef } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
 
-import { Button, Input } from 'antd'
+import { Input } from 'antd'
 import type { GetRef } from 'antd'
+import { SendOutlined, StopOutlined } from '@ant-design/icons'
 
 import { content } from '../shared/content'
+import { IconButton } from '../shared/icon.button'
 
 /** The growth's upper bound (R-WP-41 / UC-WP-74 GIVEN 4): five lines, then the field scrolls. */
 export const MAX_ROWS = 5
@@ -38,7 +40,8 @@ interface Props {
 
 /**
  * The chat's field and its two controls (UC-WP-6, UC-WP-50): one writes into this project's conversation, one
- * ends the turn that runs. Neither names an addressee — there is no agent to choose here — and neither writes
+ * ends the turn that runs. Both controls take their shape from the shared {@link IconButton} — an icon, named
+ * by the catalog (R-WP-59). Neither names an addressee — there is no agent to choose here — and neither writes
  * anything but into the queue: sending stays enabled while Jon works, because his queue takes the input
  * (R-WP-10, R-WP-41).
  *
@@ -111,20 +114,24 @@ export function ChatComposer({ draft, busy, onDraftChange, onSubmit, onStop }: P
         onKeyDown={keys}
       />
       {/* the send stands beside the field, on its right and at its bottom (R-WP-35); the one secondary
-          control keeps the quiet second row, so a long question keeps its width. Both are elements of the
-          basis, like every action of the app (R-WP-43) */}
-      <Button className="chat-send" htmlType="submit" data-testid="chat-send">
-        {content.chat.send}
-      </Button>
+          control keeps the quiet second row, so a long question keeps its width. Both are one icon button of
+          the shared widget — basis elements, named by the catalog, never a text (R-WP-43, R-WP-59) */}
+      <IconButton
+        className="chat-send"
+        htmlType="submit"
+        icon={<SendOutlined />}
+        label={content.chat.send}
+        data-testid="chat-send"
+      />
       <div className="chat-composer-actions">
-        <Button
+        <IconButton
           className="chat-stop"
-          data-testid="chat-stop"
           disabled={!busy}
+          icon={<StopOutlined />}
+          label={content.chat.stop}
           onClick={() => void onStop()}
-        >
-          {content.chat.stop}
-        </Button>
+          data-testid="chat-stop"
+        />
       </div>
     </form>
   )

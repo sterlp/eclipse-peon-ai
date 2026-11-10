@@ -299,10 +299,13 @@ test('oneChatPerProject', async () => {
   const controls = within(opened)
     .queryAllByRole('button')
     .filter(control => control.closest('.chat-tiles') === null)
-    .map(control => control.textContent?.trim() ?? '')
-  expect(controls).toEqual([content.chat.send, content.chat.stop])
+  // an action of the chat is an icon button: the catalog word is its name and its tooltip, no word stands in
+  // the button itself (R-WP-59, UC-WP-96 GIVEN 1)
+  const names = controls.map(control => control.getAttribute('aria-label') ?? '')
+  expect(names).toEqual([content.chat.send, content.chat.stop])
+  expect(controls.map(control => control.textContent?.trim() ?? ''), 'no text button left').toEqual(['', ''])
   expect(
-    controls.filter(label =>
+    names.filter(label =>
       /neue|gespräch|dialog|verlauf|wechseln|öffnen|lösch|new|conversation|history|switch|open|delete|remove|clear/i.test(
         label,
       ),
@@ -313,9 +316,14 @@ test('oneChatPerProject', async () => {
   // thing a tile can address (UC-WP-49 adds a read, not a second conversation). R-WP-32 moved that Blick
   // onto the tile itself, so the door is the tile and no longer a button beside it.
   const tileActions = [...opened.querySelectorAll('.chat-tile-actions button')]
-    .map(control => control.textContent?.trim() ?? '')
-    .filter(label => label !== '')
-  expect([...new Set(tileActions)].sort()).toEqual([content.tiles.clear, content.tiles.compact])
+  expect(
+    [...new Set(tileActions.map(action => action.getAttribute('aria-label') ?? ''))].sort(),
+    'the tile names its actions from the catalog',
+  ).toEqual([content.tiles.clear, content.tiles.compact])
+  expect(
+    tileActions.filter(action => (action.textContent?.trim() ?? '') !== ''),
+    'both tile actions are icon buttons (UC-WP-96 GIVEN 2)',
+  ).toEqual([])
   const tileDoors = [...opened.querySelectorAll('.chat-tile-face[role="button"]')].map(
     door => door.getAttribute('aria-label') ?? '',
   )
