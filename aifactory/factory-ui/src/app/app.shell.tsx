@@ -10,6 +10,7 @@ import { AppUser } from './app.user'
 import {
   chatFilesPath,
   chatPath,
+  chatRoot,
   navKeyOfPathname,
   pageKeyOfPathname,
   projectSegment,
@@ -28,6 +29,10 @@ import '../styles.css'
  * sider beside the view. Both menus are a
  * reading of the URL and hold nothing of their own — an address survives a reload that a component's state
  * would not (UC-WP-43, UC-WP-52), and the two readers of that address live in {@link ./app.paths} together.
+ *
+ * The tree and its handle are drawn on a **chat address** and nowhere else (R-WP-44): the address decides, so
+ * there is no second state to keep in step, and on Projects and Settings a tree would name no project of the
+ * address while its handle would be a dead button.
  *
  * The brand is a word and not a link, and the header names no project: the header answers **which page**,
  * the tree answers **which project** — one question each, so nothing has to be kept in step between them.
@@ -76,24 +81,33 @@ export default function AppShell() {
     openProject,
   } satisfies AppContext
 
+  // the one reading of the address for this render (R-WP-1): it marks the page and it answers whether the
+  // tree stands — a state of its own would be a second answer the URL could disagree with
+  const page = pageKeyOfPathname(pathname)
+  const onChatPage = page === chatRoot
+
   return (
     <Layout className="app">
       <Layout.Header className="app-header">
-        <AppSiderToggle collapsed={collapsed} onToggle={() => setCollapsed(value => !value)} />
+        {onChatPage && (
+          <AppSiderToggle collapsed={collapsed} onToggle={() => setCollapsed(value => !value)} />
+        )}
         <span className="app-title">{content.brand}</span>
-        <AppTop active={pageKeyOfPathname(pathname)} onNavigate={navigate} />
+        <AppTop active={page} onNavigate={navigate} />
         <AppThemeToggle />
         <AppUser user={user} onChange={setUser} />
       </Layout.Header>
       <Layout className="app-body">
-        <AppSider
-          projects={projects}
-          activeKey={navKeyOfPathname(pathname)}
-          collapsed={collapsed}
-          onCollapse={setCollapsed}
-          onOpen={openProject}
-          onFiles={openFiles}
-        />
+        {onChatPage && (
+          <AppSider
+            projects={projects}
+            activeKey={navKeyOfPathname(pathname)}
+            collapsed={collapsed}
+            onCollapse={setCollapsed}
+            onOpen={openProject}
+            onFiles={openFiles}
+          />
+        )}
         <Layout.Content className="app-main">
           <Outlet context={context} />
         </Layout.Content>

@@ -19,6 +19,19 @@ function nav(): HTMLElement {
   return screen.getByRole('navigation', { name: content.nav.views })
 }
 
+/**
+ * The tree, asked whether it stands at all (R-WP-44, UC-WP-78 GIVEN 5): {@link nav} **demands** it and would
+ * throw on a page that shows none, which is a tool crash instead of the red the claim needs.
+ */
+function treeNav(): HTMLElement | null {
+  return screen.queryByRole('navigation', { name: content.nav.views })
+}
+
+/** The one handle of the tree, asked whether it stands — the handle of an absent tree would be a dead button. */
+function treeHandle(): HTMLElement | null {
+  return screen.queryByTestId('sider-toggle')
+}
+
 /** The group titles of the tree — a title is the basis' disclosure and carries `aria-expanded` (R-WP-44). */
 function groups(): HTMLElement[] {
   return within(nav())
@@ -52,7 +65,7 @@ afterEach(async () => {
 // UC-WP-1
 test('theFrameShowsTheProjectTree', async () => {
   stubAppServer()
-  renderApp()
+  renderApp(CHAT_PATH)
 
   // the frame owns the read (D1), so the tree fills in with it
   expect(await within(nav()).findByText(project().name)).toBeInTheDocument()
@@ -61,21 +74,33 @@ test('theFrameShowsTheProjectTree', async () => {
   // page of the header and no entry here anymore
   expect(groups().map(group => group.textContent)).toEqual([project().name])
   expect(within(nav()).queryByRole('menuitem', { name: content.nav.projects })).toBeNull()
+  // a chat address draws the tree with its handle and marks the unit the address names (UC-WP-78)
+  expect(treeHandle(), 'the band offers the handle beside the tree').not.toBeNull()
+  expect(markedEntries().map(entry => entry.textContent)).toEqual([content.nav.chat])
+
+  // and both leave with the address (R-WP-44, UC-WP-78 GIVEN 5): the list is a page of the header, a tree
+  // beside it would name no project of this address, and its handle would be a dead button
+  fireEvent.click(within(topNav()).getByRole('menuitem', { name: content.nav.projects }))
+  await screen.findByLabelText(content.projects.gitUrl)
+  expect(treeNav()).toBeNull()
+  expect(treeHandle(), 'no handle for a tree that does not stand').toBeNull()
 })
 
 // UC-WP-53
 test('theUiSpeaksEnglish', async () => {
   stubAppServer()
-  const { container } = renderApp('/projects')
+  const { container } = renderApp(CHAT_PATH)
 
-  // R-WP-44: the frame's navigation is the tree in the sider — one group per project
+  // R-WP-44: the frame's navigation is the tree in the sider — one group per project, drawn on a chat address
   expect(await within(nav()).findByText(project().name)).toBeInTheDocument()
   expect(groups().map(group => group.textContent)).toEqual([project().name])
   expect(screen.getByLabelText(content.user.name)).toBeInTheDocument()
   // the colour switch of the frame (UC-WP-71) is a control of the basis and speaks the catalog's word
   expect(screen.getByRole('switch', { name: content.theme.toggle('light') })).toBeInTheDocument()
 
-  // the projects view: its form and its empty affordance are the catalog's words
+  // the projects view, reached from the header now that the tree stands on chat addresses only (R-WP-44): its
+  // form and its empty affordance are the catalog's words
+  fireEvent.click(within(topNav()).getByRole('menuitem', { name: content.nav.projects }))
   expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
   expect(screen.getByRole('button', { name: content.projects.add })).toBeInTheDocument()
 
@@ -155,18 +180,18 @@ test('theSettingsEntryIsCurrentOnSettings', async () => {
   renderApp('/settings')
   await screen.findByText(content.config.provider)
 
-  // settings is a page, the tree answers which project (R-WP-38): the header carries the mark, the tree
-  // names nothing because `/settings` names no project
+  // settings is a page, the tree answers which project (R-WP-38): the header carries the mark, and no tree
+  // stands here at all — the address names no chat (R-WP-44, UC-WP-78 GIVEN 5)
   expect(settingsEntry()).toHaveAttribute('aria-current', 'page')
-  expect(markedEntries()).toEqual([])
+  expect(treeNav()).toBeNull()
 
   fireEvent.click(within(topNav()).getByRole('menuitem', { name: content.nav.projects }))
   await screen.findByLabelText(content.projects.gitUrl)
   expect(settingsEntry(), 'the header entry marks nothing where another page shows').not.toHaveAttribute(
     'aria-current',
   )
-  // the list is a page of the header, not a place in the tree (R-WP-44): the tree names nothing here
-  expect(markedEntries()).toEqual([])
+  // still no tree: the list is a page of the header, not a place in the tree (R-WP-44)
+  expect(treeNav()).toBeNull()
   expect(markedTopEntries().map(entry => entry.textContent)).toEqual([content.nav.projects])
 
   // and here the address changes without any click in the tree — the list row opened the chat while the
@@ -182,7 +207,7 @@ test('theSettingsEntryIsCurrentOnSettings', async () => {
   fireEvent.click(settingsEntry())
   await screen.findByText(content.config.provider)
   expect(settingsEntry()).toHaveAttribute('aria-current', 'page')
-  expect(markedEntries()).toEqual([])
+  expect(treeNav(), 'the tree came with the chat address and leaves with it').toBeNull()
 })
 
 // R-WP-43
@@ -281,7 +306,7 @@ test('theChatInputStandsInsideTheContentBesideTheSider', async () => {
 test('theFrameFoldsTheTreeAndTheHandleOfTheBandReachesItAgain', async () => {
   stubAppServer()
   belowTheBreakpoint()
-  const app = renderApp('/projects')
+  const app = renderApp(CHAT_PATH)
   await flush()
 
   const sider = app.container.querySelector('.app-sider') as HTMLElement
@@ -303,7 +328,9 @@ test('theFrameFoldsTheTreeAndTheHandleOfTheBandReachesItAgain', async () => {
   fireEvent.click(handle)
   expect(sider.style.width).toBe('250px')
 
-  // the opened tree is reachable: its entry answers with an address the frame was not already at
-  fireEvent.click(await within(nav()).findByRole('menuitem', { name: content.nav.chat }))
-  expect(await screen.findByRole('region', { name: content.chat.title })).toBeInTheDocument()
+  // the opened tree is reachable: its entry answers with an address the frame was not already at (UC-WP-70) —
+  // the file unit, because the chat unit is the one this address already marks
+  fireEvent.click(await within(nav()).findByRole('menuitem', { name: content.nav.files }))
+  expect(await screen.findByTestId('files-panel')).toBeInTheDocument()
+  expect(app.path()).toBe(`${CHAT_PATH}/files`)
 })

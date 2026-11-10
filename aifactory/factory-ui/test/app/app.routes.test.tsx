@@ -17,6 +17,14 @@ function nav() {
   return screen.getByRole('navigation', { name: content.nav.views })
 }
 
+/**
+ * The tree, asked whether it stands at all (R-WP-44, UC-WP-78 GIVEN 5): a redirect that lands on the list
+ * leaves no tree behind, and {@link nav} would throw there instead of answering the claim in red.
+ */
+function treeNav(): HTMLElement | null {
+  return screen.queryByRole('navigation', { name: content.nav.views })
+}
+
 /** The header's pages (R-WP-43) — a navigation of its own, so the tree's helpers stay unambiguous. */
 function topNav() {
   return screen.getByRole('navigation', { name: content.nav.pages })
@@ -82,18 +90,23 @@ test('theMvpPagesAreReachable', async () => {
   stubAppServer()
   renderApp('/projects')
 
-  // the tree of R-WP-44: one group per project, its units the entries — the counter-probe to a fourth page
+  // the list page stands alone: the tree of R-WP-44 belongs to a chat address and steps aside here
   expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
-  await within(nav()).findByText(project().name)
-  expect(groupTitles()).toEqual([project().name])
-  await within(nav()).findByRole('menuitem', { name: content.nav.chat })
+  expect(treeNav()).toBeNull()
 
+  // settings, a page of the header, likewise
   fireEvent.click(within(topNav()).getByRole('menuitem', { name: content.nav.settings }))
   expect(await screen.findByText(content.config.provider)).toBeInTheDocument()
+  expect(treeNav()).toBeNull()
 
+  // the chat is reached through the list, and with the chat address comes the tree of R-WP-44: one group per
+  // project, its units the entries — the counter-probe to a fourth page
   fireEvent.click(within(topNav()).getByRole('menuitem', { name: content.nav.projects }))
   fireEvent.click(await screen.findByRole('button', { name: project().name }))
   expect(await screen.findByRole('region', { name: content.chat.title })).toBeInTheDocument()
+  await within(nav()).findByText(project().name)
+  expect(groupTitles()).toEqual([project().name])
+  await within(nav()).findByRole('menuitem', { name: content.nav.chat })
 
   // the file area and the tiles are inside the chat, not pages of their own (R-WP-1)
   expect(screen.getByTestId('files-open')).toBeInTheDocument()
@@ -114,10 +127,14 @@ test('openingAProjectChangesTheUrl', async () => {
 
 // UC-WP-70
 test('theChatAddressUsesTheProjectName', async () => {
-  // C-3: the address reads as what the tree shows — a click on the chat entry answers with that project's name
+  // C-3: the address reads as what the tree shows — a click on the chat entry answers with that project's name.
+  // Started on the file unit on purpose: the tree stands on chat addresses only (R-WP-44), and on the chat
+  // address itself the click would ask for the address the frame already has — a dead entry would pass.
   stubAppServer()
-  const app = renderApp('/projects')
-  fireEvent.click(await within(nav()).findByRole('menuitem', { name: content.nav.chat }))
+  const app = renderApp(`${CHAT_PATH}/files`)
+  await screen.findByTestId('files-panel')
+
+  fireEvent.click(within(nav()).getByRole('menuitem', { name: content.nav.chat }))
 
   expect(await screen.findByRole('region', { name: content.chat.title })).toBeInTheDocument()
   expect(app.path()).toBe(`/chat/${project().name}`)
@@ -365,7 +382,7 @@ test('anUnknownAddressShowsTheApp', async () => {
   // the mark follows the address and not the way it was reached: the redirect lands on the list, whose page
   // the header shows, while the tree names no project (R-WP-44) — an address nobody clicked anywhere
   await waitFor(() => expect(markedTopEntry().textContent).toBe(content.nav.projects))
-  expect(markedEntries(), 'the list is a page and not a place in the tree').toEqual([])
+  expect(treeNav(), 'the list is a page and not a place in the tree').toBeNull()
 })
 
 // UC-WP-51
@@ -397,9 +414,9 @@ test('chatWithoutAProjectGoesToProjects', async () => {
   expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
   expect(app.path()).toBe('/projects')
   // and the frame answers the address it landed on, not the one it was called with (R-WP-44): the header
-  // shows the list page, the tree names no project
+  // shows the list page, and a tree stands on chat addresses only
   await waitFor(() => expect(markedTopEntry().textContent).toBe(content.nav.projects))
-  expect(markedEntries()).toEqual([])
+  expect(treeNav()).toBeNull()
 })
 
 test('aProjectThatIsGoneLeadsToTheList', async () => {
@@ -410,10 +427,10 @@ test('aProjectThatIsGoneLeadsToTheList', async () => {
   expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
   expect(app.path()).toBe('/projects')
   expect(screen.queryByRole('region', { name: content.chat.title })).toBeNull()
-  // the redirect left the tree nothing to name — the list it landed on is a page of the header, and the
-  // header answers the address and not the way it was reached (R-WP-44, `navKeyOfPathname`)
+  // the redirect left the tree nothing to name — with R-WP-44 it stands on chat addresses only, and the list
+  // it landed on is a page of the header, which answers the address and not the way it was reached
   await waitFor(() => expect(markedTopEntry().textContent).toBe(content.nav.projects))
-  expect(markedEntries()).toEqual([])
+  expect(treeNav()).toBeNull()
 })
 
 // R-WP-38
@@ -459,12 +476,15 @@ test('aNewProjectAppearsInTheSider', async () => {
   // one owner of the list (D1): the frame reads it once and both the tree and the page show that read
   const registry = [project()]
   stubAppServer(registry)
-  renderApp('/projects')
+  const app = renderApp(CHAT_PATH)
+  await screen.findByRole('region', { name: content.chat.title })
   const added = project({
     id: 'other-9f8e7d6',
     name: 'other',
     gitUrl: 'https://git.example.com/acme/other.git',
   })
+  // the form of the list is the only place a project is added (R-WP-44) — the frame and its one read stay
+  fireEvent.click(within(topNav()).getByRole('menuitem', { name: content.nav.projects }))
   await screen.findByLabelText(content.projects.gitUrl)
 
   fireEvent.change(screen.getByLabelText(content.projects.gitUrl), {
@@ -474,6 +494,9 @@ test('aNewProjectAppearsInTheSider', async () => {
   registry.push(added)
   fireEvent.click(screen.getByRole('button', { name: content.projects.add }))
 
+  // back to a chat address, where the tree of R-WP-44 stands: it shows the added project without a new read
+  fireEvent.click(within(topNav()).getByRole('menuitem', { name: content.nav.chat }))
   expect(await within(nav()).findByText(added.name)).toBeInTheDocument()
   expect(groupTitles()).toEqual([project().name, added.name])
+  expect(app.path()).toBe(CHAT_PATH)
 })
