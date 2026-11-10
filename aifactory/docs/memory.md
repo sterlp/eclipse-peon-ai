@@ -6,7 +6,13 @@ Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwiss
 `peon-plan/review-findings.md` sind das Memory); Docs duplizieren nie Core-Regeln; Plan-Archive werden
 **gelöscht**, nie committet.
 
-## Stand (2026-11-10, Release)
+* **Release durch PAUL selbst** („kein main merge das mache immer ich"): `web-factory-4` → main macht
+  Paul — **Achtung: kein Fast-forward mehr möglich**, main hat `9fa23402` (Plan-Mode-Doku) voraus;
+  Merge oder Rebase entscheidet Paul. Stand `web-factory-4` = `9663a2a9` (Docs-Commit), vorn 73 /
+  hinten 1. Inhalt der Spitze: **API-Fehler ✅** (R-WP-54/55/56 + UC-WP-92/93, UC-WP-91 gefaltet in
+  R-WP-54, 5 Inkremente `e6ca3573`→`b78e59d1` + N1 `c47c9edc`/`d35f7f27`), **R18 Skill-Refresh**
+  `88b81a8c` (Paul), **R6 Skill-Evolution-Loop ✅** `742293c3`. **Backend 274 / UI 268 Tests** grün,
+  missCount=1, tsc/oxlint/antd-lint 0, Core-Suite 1486/0. Kein Core-Eingriff der Story.
 
 * **Released:** `web-factory-4` → **main** (Fast-forward, 2026-11-10, Pauls Order; Branch danach
   gelöscht). Inhalt der Spitze: **API-Fehler ✅** (R-WP-54/55/56 + UC-WP-92/93, UC-WP-91 gefaltet in

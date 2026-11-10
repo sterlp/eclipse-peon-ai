@@ -42,7 +42,6 @@ zurückgenommen.
 **URL-stabil:** jede Navigation (Projekt öffnen, Einheit wählen, View wechseln) ändert die URL
 (**Aktion → URL → UI-Change**) — kein rein funktionierender `useState`-Zustand; ein Reload bleibt auf
 der Seite (UC-WP-43). Die Adresse `/ui/chat` **ohne** Projekt führt auf **Projekte**; war zuletzt ein
-Projekt aktiv, öffnet sich dessen Chat (UC-WP-51) — der Menüeintrag „Chat" führt dorthin
 Projekt aktiv, öffnet sich dessen Chat (UC-WP-51) — der Chat selbst ist nur über den Sider erreichbar
 ([R-WP-43](ui.md)).
 
