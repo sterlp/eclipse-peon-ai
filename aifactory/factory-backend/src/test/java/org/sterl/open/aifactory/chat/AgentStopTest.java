@@ -555,7 +555,9 @@ class AgentStopTest extends FactorySpringTest {
 
         /**
          * The last event of a stopped turn is the roster of its {@code finally} — it follows the
-         * {@code done} and nothing comes after it, so waiting for it cannot pass too early.
+         * {@code done} and nothing comes after it, so waiting for it cannot pass too early. A roster
+         * arrives mid-turn as well (delegation, R-WP-60), which is why the caller awaits the {@code done}
+         * before asking for the last one.
          */
         void awaitRosterAsLastEvent() {
             await(() -> !names.isEmpty() && "agents".equals(names.get(names.size() - 1)),

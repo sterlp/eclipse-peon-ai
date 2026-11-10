@@ -128,7 +128,7 @@ class TeamInternalsTest extends FactorySpringTest {
      */
     @Test
     @Timeout(60)
-    // UC-WP-40
+    // UC-WP-40, UC-WP-97
     void memberLinesAreDroppedByTheirStamp() throws Exception {
         writeFactoryConfig("inc4-two-members");
         CreatedProject project = createProject("two-members");
@@ -195,6 +195,23 @@ class TeamInternalsTest extends FactorySpringTest {
                             + " apart, so no book over which delegation was open is needed (R-WP-40)")
                     .containsExactly(List.of("Plan", true), List.of("Plan", false),
                             List.of("Dev", true), List.of("Dev", false));
+            // UC-WP-97 — each entry carries its own tile snapshot: the member lights with his start and
+            // goes idle with his end, on this connection and in this order (R-WP-60)
+            List<String> order = stream.eventNames();
+            for (int i = 0; i < order.size(); i++) {
+                if (!"delegation".equals(order.get(i))) {
+                    continue;
+                }
+                String member = JsonPath.read(stream.payloadAt(i), "$.member");
+                boolean started = Boolean.TRUE.equals(JsonPath.read(stream.payloadAt(i), "$.working"));
+                assertThat(order.get(i + 1))
+                        .as("the entry of %s at %d is followed by its own snapshot", member, i)
+                        .isEqualTo("agents");
+                assertThat(statesOfTile(stream.payloadAt(i + 1), member))
+                        .as("%s's tile reads %s on the snapshot that follows his entry", member,
+                                started ? "WORKING" : "IDLE")
+                        .containsExactly(started ? "WORKING" : "IDLE");
+            }
 
             assertThat(stream.countOf("done")).as("two members, one turn, one done").isEqualTo(1);
             assertThat(stream.countOf("error")).isZero();
@@ -332,6 +349,16 @@ class TeamInternalsTest extends FactorySpringTest {
         }
     }
 
+    /**
+     * The states one name holds in an {@code agents} payload — the tiles a browser would paint. A list on
+     * purpose: a name missing from the roster is red here, not quietly unreadable.
+     */
+    private static List<String> statesOfTile(String rosterPayload, String name) {
+        List<Map<String, Object>> tiles = JsonPath.read(rosterPayload, "$.tiles");
+        return tiles.stream().filter(tile -> name.equals(tile.get("name")))
+                .map(tile -> String.valueOf(tile.get("state"))).toList();
+    }
+
     private record CreatedProject(String id, Path localPath) {
     }
 
@@ -410,6 +437,11 @@ class TeamInternalsTest extends FactorySpringTest {
         /** Every {@code event:} name seen, in arrival order — duplicates kept, the name set is asserted. */
         List<String> eventNames() {
             return List.copyOf(names);
+        }
+
+        /** The data line at the index of {@link #eventNames()} — the two lists arrive together. */
+        String payloadAt(int index) {
+            return payloads.get(index);
         }
 
         List<String> payloads(String name) {

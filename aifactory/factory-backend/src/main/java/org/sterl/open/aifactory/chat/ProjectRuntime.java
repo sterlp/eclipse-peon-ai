@@ -152,11 +152,14 @@ final class ProjectRuntime {
         delegate.setEndListener(monitor::onDelegationEnd);
     }
 
-    private AgentTileDto tileOf(AiAgent agent, AgentTiles.Seat seat, long budget) {
+    private AgentTileDto tileOf(AiAgent agent, AgentTiles.Seat seat, long budget, String delegated) {
         TurnClaim.Action current = claim.action();
         boolean actingHere = current != null && current.name().equalsIgnoreCase(agent.getName());
-        // the core sets no flag for a clear, so the claimed action is what makes the tile answer at once
-        boolean working = agent.isWorking() || actingHere && current.action() == AgentAction.CLEAR;
+        // the core sets no flag for a clear, so the claimed action is what makes the tile answer at once;
+        // the same holds twice over in the factory's own knowledge — Jon's turn claim (the core sets his
+        // flag only inside call()) and the member a delegation just named (R-WP-60)
+        boolean working = agent.isWorking() || agent == jon && claim.turnInFlight()
+                || actingHere && current.action() == AgentAction.CLEAR || agent.getName().equals(delegated);
         boolean compacting = agent.isCompacting() || actingHere && current.action() == AgentAction.COMPACT;
         long tokens = agent.getMemory().getTotalTokenUsed();
         boolean estimate = agent.getMemory().isTokenEstimate();
@@ -166,22 +169,30 @@ final class ProjectRuntime {
     }
 
     /**
-     * The team's tiles — one snapshot of live core state, read on demand and never stored (R-WP-11).
-     * Safe to call from a monitor callback or the turn thread: every number is a volatile read of an
-     * agent that is already running, nothing here blocks on a turn.
+     * The team's tiles — one snapshot of live core state plus the two facts only the factory knows: his own
+     * turn claim and the member a delegation just named. Read on demand and never stored (R-WP-11). Safe to
+     * call from a monitor callback or the turn thread: every value is a volatile read of a running agent or
+     * one field of {@link TurnClaim}, whose wait releases the monitor, so nothing here blocks on a turn.
      *
      * <p>The order is the product's: Jon, then his team in the core's lifecycle order, then the search
-     * sub-loop. A member the core added later appears without any change here.</p>
+     * sub-loop. A member the core added later appears without any change here. {@code delegated} names the
+     * member a delegation just reported — his core flag is set only once his own call began, so the
+     * delegation itself is what makes his tile answer at once (R-WP-60).</p>
      */
-    List<AgentTileDto> tiles() {
+    List<AgentTileDto> tiles(String delegated) {
         long budget = model.getConfig().getAutoCompactAfter();
         List<AgentTileDto> tiles = new ArrayList<>();
         for (AiAgent agent : jon.getTeam()) {
-            tiles.add(tileOf(agent, seatOf(agent), budget));
+            tiles.add(tileOf(agent, seatOf(agent), budget, delegated));
         }
         tiles.add(AgentTiles.of(SEARCH_AGENT_DISPLAY_NAME, 0L, false, 0, 0L, searchWorking, false, false,
                 AgentTiles.capabilitiesOf(AgentTiles.Seat.SUB_LOOP)));
         return List.copyOf(tiles);
+    }
+
+    /** The roster as a read asks for it: no delegation to answer for. */
+    List<AgentTileDto> tiles() {
+        return tiles(null);
     }
 
     /**
@@ -468,10 +479,10 @@ final class ProjectRuntime {
                 status.publish(workState());
                 if (ranTurn) {
                     searchWorking = false;
-                    // the end snapshot goes out while the turn still owns the project, so a tile never shows
-                    // WORKING to a reader that is already allowed to act again
-                    streams.publish(projectId, new ChatEvent.Agents(tiles()));
+                    // the claim ends before the snapshot, because the claim is part of the answer now
+                    // (R-WP-60): read afterwards it would paint WORKING over the ERROR of a failed turn
                     claim.endTurn();
+                    streams.publish(projectId, new ChatEvent.Agents(tiles()));
                 }
             }
         });

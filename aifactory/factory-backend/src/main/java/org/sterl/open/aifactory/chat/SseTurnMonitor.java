@@ -2,7 +2,7 @@ package org.sterl.open.aifactory.chat;
 
 import java.util.List;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.model.CompactResult;
@@ -64,19 +64,22 @@ class SseTurnMonitor implements AiMonitor {
 
     private final String projectId;
     private final ChatStreamRegistry streams;
-    private final Supplier<List<AgentTileDto>> roster;
+    private final Function<String, List<AgentTileDto>> roster;
     private final Consumer<String> sawOrigin;
 
     /** The stop of UC-WP-50 — read by the core between its model calls, set by {@link ProjectRuntime#stop()}. */
     private volatile boolean canceled;
 
     /**
-     * @param roster    the project's tiles, read again per callback — the monitor keeps no roster of its
-     *                  own, so a snapshot cannot be stale (R-WP-7: snapshot, no accumulation)
+     * @param roster    the project's tiles, asked again per callback — the monitor keeps no roster of its
+     *                  own, so a snapshot cannot be stale (R-WP-7: snapshot, no accumulation). The argument
+     *                  names the member a delegation just started — the core sets his working flag only
+     *                  inside {@code call()}, so the delegation itself is what makes his tile answer
+     *                  (R-WP-60) — or {@code null} for every other callback
      * @param sawOrigin every stamp this monitor sees, also the ones whose lines it drops — the search
      *                  sub-loop owns no agent instance and is known to the tiles only through his lines
      */
-    SseTurnMonitor(String projectId, ChatStreamRegistry streams, Supplier<List<AgentTileDto>> roster,
+    SseTurnMonitor(String projectId, ChatStreamRegistry streams, Function<String, List<AgentTileDto>> roster,
             Consumer<String> sawOrigin) {
         this.projectId = projectId;
         this.streams = streams;
@@ -137,7 +140,7 @@ class SseTurnMonitor implements AiMonitor {
         sawOrigin.accept(message.origin());
         // the tiles ride along before the origin filter: who is working is a fact about the team, and a
         // member's line is exactly the moment his tile lights up — a snapshot, so order never matters
-        streams.publish(projectId, new ChatEvent.Agents(roster.get()));
+        streams.publish(projectId, new ChatEvent.Agents(roster.apply(null)));
         if (message.role() != SimpleMessage.Type.TOOL && message.role() != SimpleMessage.Type.PROBLEM) {
             return;
         }
@@ -187,21 +190,23 @@ class SseTurnMonitor implements AiMonitor {
     /**
      * Both events of a delegation are {@code (CallStats, AiAgent)} — the core hands no order text and no
      * tool-call id, so the member is all the wire can say and the entry says nothing else. A member without
-     * a name is the one reason this translation withholds an event: a line naming nobody states nothing.
-     * No roster is published here — the tiles ride on {@link #onChatResponse} and
-     * {@link #onCompactCompleted} (R-WP-7).
+     * a name is the one reason this translation withholds an event: a line naming nobody states nothing, and
+     * an event naming nobody has no tile to report either. The tile snapshot rides with both directions
+     * (R-WP-60): the member's own flag is set only inside his {@code call()}, so without this his tile would
+     * light on his first line and go out on the next stranger's event.
      */
     private void publishDelegation(AiAgent member, boolean working) {
         if (member == null || !StringUtil.hasValue(member.getName())) {
             return;
         }
         streams.publish(projectId, new ChatEvent.Delegation(member.getName(), working));
+        streams.publish(projectId, new ChatEvent.Agents(roster.apply(working ? member.getName() : null)));
     }
 
     /** The core has released its compacting flag here — the end state of UC-WP-13 goes out on this callback. */
     @Override
     public void onCompactCompleted(String agentName, CompactResult result) {
-        streams.publish(projectId, new ChatEvent.Agents(roster.get()));
+        streams.publish(projectId, new ChatEvent.Agents(roster.apply(null)));
     }
 
     /**

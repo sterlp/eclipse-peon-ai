@@ -59,7 +59,12 @@ class SseTurnMonitorTest {
 
     private final ChatStreamRegistry registry = new ChatStreamRegistry();
     private final RecordingEmitter wire = new RecordingEmitter();
-    private final SseTurnMonitor monitor = new SseTurnMonitor(PROJECT, registry, List::of, origin -> {
+    /** Every name the monitor asked the tiles about — {@code null} is a snapshot with no override. */
+    private final List<String> rosterAsks = new CopyOnWriteArrayList<>();
+    private final SseTurnMonitor monitor = new SseTurnMonitor(PROJECT, registry, askedAbout -> {
+        rosterAsks.add(askedAbout);
+        return List.of();
+    }, origin -> {
     });
 
     @BeforeEach
@@ -240,7 +245,9 @@ class SseTurnMonitorTest {
     void theDelegationSpeaksItsOwnStartAndEnd() {
         // the delegation does not arrive on an AiMonitor callback but on the delegation tool's own listeners,
         // and those carry (CallStats, AiAgent): the member is all the wire gets, so he is all it says
-        // (core PoDelegateTool.java:227-245, CallStats.java:34-45 — start before the run, end in its finally)
+        // (core PoDelegateTool.java:227-245, CallStats.java:34-45 — the start listener runs before
+        // toRun.apply, so before the member's own working flag is set, the end in the finally after it:
+        // his tile answers on this event only because the delegation names him, R-WP-60)
         CallStats stats = CallStats.start();
         monitor.onDelegationStart(stats, memberNamed("Dev"));
         monitor.onDelegationEnd(stats, memberNamed("Dev"));
@@ -249,13 +256,17 @@ class SseTurnMonitorTest {
         monitor.onDelegationEnd(stats, memberNamed("   "));
         endTheTurn();
 
-        assertThat(wire.names()).as("one event per direction, and nothing for a nameless member")
-                .containsExactly("delegation", "delegation", "done");
+        assertThat(wire.names())
+                .as("one entry per direction plus its tile snapshot, and neither for a nameless member")
+                .containsExactly("delegation", "agents", "delegation", "agents", "done");
         assertThat(wire.payload(0).keySet()).as("both fields always — the receiver needs the pair")
                 .containsExactly("member", "working");
         assertThat(wire.payload(0)).containsEntry("member", "Dev").containsEntry("working", true);
-        assertThat(wire.payload(1)).as("the end names the member too, or no entry could be closed")
+        assertThat(wire.payload(2)).as("the end names the member too, or no entry could be closed")
                 .containsEntry("member", "Dev").containsEntry("working", false);
+        assertThat(rosterAsks)
+                .as("the start names the member the delegation knows is working, the end needs no override")
+                .containsExactly("Dev", null);
     }
 
     private static String lines(String name) {

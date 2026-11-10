@@ -190,6 +190,35 @@ class ChatTurnTest extends FactorySpringTest {
     }
 
     @Test
+    // UC-WP-97
+    void tileStateIsPushedNeverPolled() throws Exception {
+        writeFactoryConfig("OPEN_AI", "inc-b5-pushed-tiles", "test-key", MODEL.getUrl());
+        CreatedProject project = createProject("pushed-tiles");
+
+        try (ChatStream stream = new ChatStream(project.id())) {
+            MODEL.queueResponse("die Kachel stand schon vor dieser Zeile");
+            assertThat(send(project.id(), "wie steht die kachel da?").getStatusCode())
+                    .isEqualTo(HttpStatus.ACCEPTED);
+
+            stream.awaitEvent("agents", 1);
+            String firstSnapshot = stream.payloads("agents").get(0);
+            String jon = JsonPath.read(firstSnapshot, "$.tiles[0].name");
+            String stateOfJon = JsonPath.read(firstSnapshot, "$.tiles[0].state");
+            // the first snapshot of a turn is published before the core sets his working flag inside the
+            // model call, so what the factory owns — its own turn claim — is what has to answer here
+            // (R-WP-60). The roster names Jon first: the core's own team order (AiPoAgent.getTeam()).
+            assertThat(jon).as("the first tile of the roster is Jon's").isEqualTo(AiPoAgent.NAME);
+            assertThat(stateOfJon)
+                    .as("his tile already says he works when no line of the core has arrived yet")
+                    .isEqualTo("WORKING");
+
+            // nothing else to wait for: one publish reaches every subscriber of the project, so a second
+            // browser is the same snapshot (ChatStreamRegistry.publish) — this closes the wire cleanly
+            stream.awaitEvent("done", 1);
+        }
+    }
+
+    @Test
     // UC-WP-6
     void chatAlwaysGoesToJon() throws Exception {
         writeFactoryConfig("OPEN_AI", "inc3a-jon", "test-key", MODEL.getUrl());
