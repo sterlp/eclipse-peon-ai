@@ -83,9 +83,10 @@ test('theStreamOpensAfterTheFirstHistoryRead', async () => {
 })
 
 // UC-WP-84
+// UC-WP-94
 test('aTurnEndingBeforeTheStreamStandsLeavesNoWaitingTile', async () => {
-  // the board is asked while no subscription stands yet: a WORKING it read then is a wait this view can
-  // never see end, because the end event goes to subscribers and not to the past (R-WP-48)
+  // the row reads its roster while no subscription stands yet: the WORKING it reads then is a wait this view
+  // only sees end through the fresh read on the stream's answer (R-WP-48, R-WP-57)
   const chat = stubChat({ messages: [QUESTION] })
   chat.setAgents([tile('Jon', 'WORKING')])
   const open = chat.deferNextStreamOpen()
@@ -94,7 +95,10 @@ test('aTurnEndingBeforeTheStreamStandsLeavesNoWaitingTile', async () => {
   await flush()
 
   expect(chat.countOf('/events', 'GET')).toBe(1)
-  expect(chat.countOf('/agents', 'GET'), 'no roster read while the connection does not stand').toBe(0)
+  // UC-WP-94 GIVEN 1: the answer of the stream is still out — and the row already stands. The roster read is
+  // not waiting for a subscription, so a stream that never opens cannot empty the head of the view
+  expect(chat.countOf('/agents', 'GET'), 'the row read its roster while the stream has not answered').toBe(1)
+  expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.WORKING)
 
   // the answer arrives and with it the subscription; the project says: nobody works any more
   chat.setAgents([tile('Jon', 'IDLE')])
@@ -104,7 +108,12 @@ test('aTurnEndingBeforeTheStreamStandsLeavesNoWaitingTile', async () => {
   await waitFor(() =>
     expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.IDLE),
   )
-  expect(chat.countOf('/agents', 'GET'), 'exactly the one roster read the standing connection allows').toBe(1)
+  // UC-WP-94 GIVEN 2 / UC-WP-84 GIVEN 1: the first reading of the view, plus the fresh read the standing
+  // connection answers with — that second stand is what retires the WORKING of the snapshot before it
+  expect(
+    chat.countOf('/agents', 'GET'),
+    'the first reading of the view plus the fresh read of the standing connection',
+  ).toBe(2)
 })
 
 // UC-WP-84
@@ -129,15 +138,18 @@ test('theReconnectReadsTheRosterFresh', async () => {
 
 // UC-WP-84
 test('aStaleRosterAnswerNeverOverwritesTheEndSnapshot', async () => {
-  // the read went out while the turn still worked; the stream's end snapshot overtakes it on the wire, so the
-  // answer that arrives last is the older stand and has to lose (UC-WP-84 GIVEN 3)
+  // the view's first reading is the one still on the wire while the turn worked; the stream's end snapshot
+  // overtakes it, so the answer that arrives last is the older stand and has to lose (UC-WP-84 GIVEN 3)
   const chat = stubChat({ messages: [QUESTION] })
   chat.setAgents([tile('Jon', 'WORKING')])
   const held = chat.deferNextAgentsRead()
 
   render(<ChatPage project={project()} />)
   await flush()
-  expect(chat.countOf('/agents', 'GET')).toBe(1)
+  expect(
+    chat.countOf('/agents', 'GET'),
+    'the held first reading of the view plus the fresh read of the standing connection',
+  ).toBe(2)
 
   await chat.push(event('agents', { tiles: [tile('Jon', 'IDLE')] }))
   expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.IDLE)
@@ -148,7 +160,7 @@ test('aStaleRosterAnswerNeverOverwritesTheEndSnapshot', async () => {
     screen.getByTestId('tile-state-Jon'),
     'the read that began before the snapshot lost',
   ).toHaveTextContent(content.tiles.state.IDLE)
-  expect(chat.countOf('/agents', 'GET'), 'no second read chased the lost answer').toBe(1)
+  expect(chat.countOf('/agents', 'GET'), 'no second read chased the lost answer').toBe(2)
 })
 
 // UC-WP-7

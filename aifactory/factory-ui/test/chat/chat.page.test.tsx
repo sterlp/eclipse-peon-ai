@@ -364,9 +364,10 @@ test('clearOnATileNamesThatTileAndARefusalIsALine', async () => {
   const post = chat.calls.find(call => call.method === 'POST')
   expect(post?.path).toBe('/api/projects/demo-1a2b3c4/agents')
   expect(JSON.parse(post?.body ?? '{}')).toEqual({ name: 'Dev', action: 'clear' })
-  // the refusal changed nothing: no re-read of the chat and no new roster
+  // the refusal changed nothing: no re-read of the chat, and no roster read beyond the two the view always
+  // makes — its own first reading and the fresh read of the standing connection
   expect(chat.countOf('/messages', 'GET')).toBe(1)
-  expect(chat.countOf('/agents', 'GET')).toBe(1)
+  expect(chat.countOf('/agents', 'GET')).toBe(2)
   expect(screen.getByTestId('chat-log')).toBeInTheDocument()
 })
 

@@ -80,9 +80,9 @@ interface Props {
  * place while the answer gives way to the history that carries it (R-WP-28, UC-WP-54).
  *
  * The team's tiles ({@link ChatTiles}) follow the same rule in their own family, kept by {@link useTileBoard}:
- * read once the stream stands, replaced whole by every `agents` snapshot — which stand of the roster is the
- * fresher one is the board's question, not this view's — and re-read after an action, because 202 only said
- * <em>taken</em>. This view knows no agent name: a tile says what it offers (D-14).
+ * read once the view stands and again on every (re)connect, replaced whole by every `agents` snapshot — which
+ * stand is the fresher one is the board's question, not this view's — and re-read after an action, because
+ * 202 only said <em>taken</em>. This view knows no agent name: a tile says what it offers (D-14).
  *
  * A tile offering TRANSCRIPT opens {@link ChatInsight} (UC-WP-49), held by {@link useEdgeInsight}. It shares
  * the right edge with the {@link files} slot and never stands with it: the edge carries exactly one overlay,
@@ -374,7 +374,8 @@ export function ChatPage({
         projectId,
         {
           onEvent: applyEvent,
-          // the board is read on the answer, never before the subscription stands (R-WP-48)
+          // the fresh read once the subscription stands is what puts a finished turn above the view's own
+          // first reading — that one opens the row, it is never the verdict of a turn (R-WP-48, UC-WP-84)
           onOpen: () => void refreshTiles(),
           onEnd: retry => {
             if (!mounted || !retry) {
@@ -393,7 +394,11 @@ export function ChatPage({
     }
 
     // the stream opens only once the history has been read: an event that anchored before it would be drawn
-    // above the whole history (D-E); the board is read on the stream's answer, not here (R-WP-48)
+    // above the whole history (D-E)
+    // the roster is read as soon as the view stands: a stream that never opens may not leave the row empty
+    // (R-WP-57, UC-WP-94). It races the history read on purpose and never waits for `connect` — the fresh
+    // read on the stream's answer stays what retires it after a turn ended (R-WP-48, UC-WP-84)
+    void refreshTiles()
     void refresh().then(() => {
       if (mounted) {
         connect()
