@@ -3,17 +3,28 @@ import type { ChatStreamEvent, ChatStreamHandlers } from './chat.client'
 import type { AgentTile } from './chat.agents.client'
 import { content } from '../shared/content'
 
+/** How long a view waits before it asks again — long enough not to hammer a restarting server. */
+export const RECONNECT_MS = 500
+
 /**
  * Reads the SSE wire with `fetch` + `ReadableStream` instead of `EventSource`: the parsing is what
  * R-WP-5 promises, so it has to be observable in a test, and reconnecting stays the view's single
  * rule instead of a browser feature nobody can see. The protocol itself is `shared/sse.client.ts`.
+ *
+ * `agentName` chooses the wire, not the reading: with a name this is the live channel of that one
+ * member (R-WP-53), without one it is the project's own conversation. Both speak the same events.
  */
 export async function openChatStream(
   projectId: string,
   handlers: ChatStreamHandlers,
   signal: AbortSignal,
+  agentName?: string,
 ): Promise<void> {
-  const path = `/api/projects/${encodeURIComponent(projectId)}/events`
+  const project = `/api/projects/${encodeURIComponent(projectId)}`
+  const path =
+    agentName === undefined
+      ? `${project}/events`
+      : `${project}/agents/${encodeURIComponent(agentName)}/events`
   let response: Response
   try {
     response = await fetch(path, { headers: { accept: 'text/event-stream' }, signal })
@@ -29,6 +40,12 @@ export async function openChatStream(
       handlers.onEnd(false)
     }
     return
+  }
+
+  if (!signal.aborted) {
+    // the answer <em>is</em> the subscription: the server registered this emitter before it answered, so
+    // whatever the view reads now, no event of this connection can have passed it unread (R-WP-48)
+    handlers.onOpen?.()
   }
 
   try {

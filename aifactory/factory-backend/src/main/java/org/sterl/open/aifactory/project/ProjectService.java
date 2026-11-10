@@ -61,6 +61,13 @@ public class ProjectService {
     private static final String HTTPS = "https";
 
     /**
+     * The one sentence for a missing url, told by the wire rule of {@code AddProjectRequest} and by the
+     * registry itself — a body that is absent altogether never reaches a validation, so this line is what
+     * answers it (UC-WP-92). Public and constant for that reason: an annotation value needs both.
+     */
+    public static final String GIT_URL_HINT = "gitUrl must not be empty";
+
+    /**
      * R-WP-20 — v1 clones public repositories over {@code https} only. Static text on purpose: this
      * is what the 400 body, the log line and the UI alert show, so it can never repeat a credential.
      */
@@ -104,7 +111,7 @@ public class ProjectService {
      */
     public AddProjectResult add(String gitUrl) {
         if (gitUrl == null || gitUrl.isBlank()) {
-            throw new IllegalArgumentException("gitUrl must not be empty");
+            throw new IllegalArgumentException(GIT_URL_HINT);
         }
         String url = gitUrl.trim();
         requirePublicHttpsUrl(url); // before any normalization, lock or git call — nothing may be stored
@@ -232,6 +239,9 @@ public class ProjectService {
      * so a rejected url can never reach git, the registry file or a folder (UC-WP-30 / UC-WP-33).
      * The scp-like form ({@code git@host:org/repo.git}) is not a parsable URI and falls into the
      * {@code https} hint as well.
+     *
+     * <p>Called twice on purpose: by the request shape's own constraint ({@code HttpsGitUrl}) before the
+     * body is applied, and by {@link #add} for every other caller — one rule, one answer (R-WP-55).</p>
      */
     static void requirePublicHttpsUrl(String url) {
         URI uri = parseQuietly(url);

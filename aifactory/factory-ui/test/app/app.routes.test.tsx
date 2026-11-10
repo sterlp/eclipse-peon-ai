@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 
-import { closeAppStream, renderApp, stubAppServer } from '../shared/app.harness'
+import { closeAppStream, DEV, renderApp, stubAppServer } from '../shared/app.harness'
 import { content } from '../../src/shared/content'
 import { project } from '../shared/fixtures'
 
@@ -22,18 +22,48 @@ function topNav() {
   return screen.getByRole('navigation', { name: content.nav.pages })
 }
 
+/** The entry the header marks as showing — the same reading of the address, one question higher up. */
+function markedTopEntry(): HTMLElement {
+  const marked = within(topNav())
+    .getAllByRole('menuitem')
+    .filter(entry => entry.className.includes('ant-menu-item-selected'))
+  expect(marked, 'exactly one page of the header shows').toHaveLength(1)
+  return marked[0]
+}
+
 /**
  * The entry the frame marks as showing. ANTD-A1: the design basis states a menu's selection as the item state
  * of its entry (`ant-menu-item-selected`), so the mark is read there — the claim itself is unchanged: exactly
  * one entry shows, and it is the one the address names (R-WP-38). Since UC-WP-77 an address names a **unit**
  * of its project (chat, or files as the last), so the mark is that unit's entry and not the project's.
  */
-function markedEntry(): HTMLElement {
-  const marked = within(nav())
-    .getAllByRole('menuitem')
+function markedEntries(): HTMLElement[] {
+  return within(nav())
+    .queryAllByRole('menuitem')
     .filter(entry => entry.className.includes('ant-menu-item-selected'))
+}
+
+function markedEntry(): HTMLElement {
+  const marked = markedEntries()
   expect(marked, 'exactly one entry of the tree shows').toHaveLength(1)
   return marked[0]
+}
+
+/**
+ * The group an entry hangs in, read from the DOM (R-WP-44): the basis wraps every item in a node of its own
+ * and puts the branch's title first — the entry itself is that node's child, so `closest('li')` would be a
+ * round trip to nowhere.
+ */
+function groupTitleOf(entry: HTMLElement): string | null | undefined {
+  return entry.closest('[role="none"]')?.firstElementChild?.textContent
+}
+
+/** The titles of the tree, one per project (R-WP-44): a branch is the only item that opens and closes. */
+function groupTitles(): string[] {
+  return within(nav())
+    .queryAllByRole('menuitem')
+    .filter(entry => entry.getAttribute('aria-expanded') !== null)
+    .map(entry => entry.textContent ?? '')
 }
 
 beforeEach(() => {
@@ -52,18 +82,16 @@ test('theMvpPagesAreReachable', async () => {
   stubAppServer()
   renderApp('/projects')
 
-  // the tree of R-WP-38: the list first, then one entry per project — the counter-probe to a fourth page
+  // the tree of R-WP-44: one group per project, its units the entries — the counter-probe to a fourth page
   expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
   await within(nav()).findByText(project().name)
-  expect(within(nav()).getAllByRole('menuitem').map(entry => entry.textContent)).toEqual([
-    content.nav.projects,
-    project().name,
-  ])
+  expect(groupTitles()).toEqual([project().name])
+  await within(nav()).findByRole('menuitem', { name: content.nav.chat })
 
   fireEvent.click(within(topNav()).getByRole('menuitem', { name: content.nav.settings }))
   expect(await screen.findByText(content.config.provider)).toBeInTheDocument()
 
-  fireEvent.click(within(nav()).getByRole('menuitem', { name: content.nav.projects }))
+  fireEvent.click(within(topNav()).getByRole('menuitem', { name: content.nav.projects }))
   fireEvent.click(await screen.findByRole('button', { name: project().name }))
   expect(await screen.findByRole('region', { name: content.chat.title })).toBeInTheDocument()
 
@@ -86,10 +114,10 @@ test('openingAProjectChangesTheUrl', async () => {
 
 // UC-WP-70
 test('theChatAddressUsesTheProjectName', async () => {
-  // C-3: the address reads as what the tree shows — a click on an entry answers with that entry's name
+  // C-3: the address reads as what the tree shows — a click on the chat entry answers with that project's name
   stubAppServer()
   const app = renderApp('/projects')
-  fireEvent.click(await within(nav()).findByRole('menuitem', { name: project().name }))
+  fireEvent.click(await within(nav()).findByRole('menuitem', { name: content.nav.chat }))
 
   expect(await screen.findByRole('region', { name: content.chat.title })).toBeInTheDocument()
   expect(app.path()).toBe(`/chat/${project().name}`)
@@ -114,6 +142,15 @@ function historyReads(): number {
   return vi
     .mocked(fetch)
     .mock.calls.filter(([input]) => String(input).endsWith('/messages')).length
+}
+
+/**
+ * The router's own marker for the current entry (`current.path.tsx`): two entries of the same path differ
+ * in it, which is the only way to tell a navigation from a navigation that changed nothing — the path alone
+ * cannot see a push onto itself (R-WP-38).
+ */
+function historyEntry(): string {
+  return screen.getByTestId('current-path').dataset.entry ?? ''
 }
 
 // R-WP-38
@@ -148,10 +185,11 @@ test('theTabOpensTheUnitAddressAndBack', async () => {
   expect(screen.getByTestId('files-open')).toHaveAttribute('aria-expanded', 'true')
   await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.files))
 
-  // the same tab closes it, and the address is the chat again — nothing is left behind to reload into
+  // the same tab closes it, and the address is the chat again — nothing is left behind to reload into. The
+  // drawer of the basis runs its leave to the end before the area is thrown away, hence the wait
   fireEvent.click(screen.getByTestId('files-open'))
   await waitFor(() => expect(app.path()).toBe(CHAT_PATH))
-  expect(screen.queryByTestId('files-panel')).toBeNull()
+  await waitFor(() => expect(screen.queryByTestId('files-panel')).toBeNull())
   expect(screen.getByTestId('files-open')).toHaveAttribute('aria-expanded', 'false')
   await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.chat))
 })
@@ -169,11 +207,62 @@ test('theSiderEntryAndTheTabNameTheSameAddress', async () => {
   expect(app.path()).toBe(`${CHAT_PATH}/files`)
   await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.files))
 
-  // and the project's own entry is the way back to the chat address
-  fireEvent.click(within(nav()).getByRole('menuitem', { name: project().name }))
+  // and the chat child of the same group is the way back to the chat address (R-WP-44: the title only toggles)
+  fireEvent.click(within(nav()).getByRole('menuitem', { name: content.nav.chat }))
   await waitFor(() => expect(app.path()).toBe(CHAT_PATH))
-  expect(screen.queryByTestId('files-panel')).toBeNull()
+  await waitFor(() => expect(screen.queryByTestId('files-panel')).toBeNull())
   await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.chat))
+})
+
+// UC-WP-60
+test('openingTheFilesAreaClosesTheInsight', async () => {
+  // the right edge carries exactly one overlay (R-WP-33): the look into an agent and the file area are the
+  // one or the other, and the insight leaves **without a trace** — nothing of it comes back
+  stubAppServer([project()], [{ ...DEV, capabilities: [...DEV.capabilities, 'TRANSCRIPT'] }])
+  const app = renderApp(CHAT_PATH)
+  await screen.findByRole('region', { name: content.chat.title })
+  fireEvent.click(await screen.findByTestId('tile-open-Dev'))
+  await screen.findByTestId('insight-panel')
+
+  fireEvent.click(screen.getByTestId('files-open'))
+
+  expect(await screen.findByTestId('files-panel')).toBeInTheDocument()
+  expect(app.path()).toBe(`${CHAT_PATH}/files`)
+  expect(screen.queryByTestId('insight-panel'), 'the edge is taken, so the insight is gone').toBeNull()
+
+  // and closing the area does not bring the look back: it was released, not parked
+  fireEvent.click(screen.getByTestId('files-open'))
+  await waitFor(() => expect(app.path()).toBe(CHAT_PATH))
+  await waitFor(() => expect(screen.queryByTestId('files-panel')).toBeNull())
+  expect(screen.queryByTestId('insight-panel'), 'the insight leaves without a trace').toBeNull()
+})
+
+// UC-WP-60
+test('openingTheInsightClosesTheFilesAddress', async () => {
+  // the other direction: a tile opens its look and the frame steps the address back (R-WP-38) — never with
+  // `toggleFiles`, which would open the area again, and never with a replace, which would eat the back step
+  stubAppServer([project()], [{ ...DEV, capabilities: [...DEV.capabilities, 'TRANSCRIPT'] }])
+  const app = renderApp(`${CHAT_PATH}/files`)
+  expect(await screen.findByTestId('files-panel')).toBeInTheDocument()
+
+  fireEvent.click(await screen.findByTestId('tile-open-Dev'))
+
+  expect(await screen.findByTestId('insight-panel')).toBeInTheDocument()
+  expect(app.path(), 'the insight is no address of its own').toBe(CHAT_PATH)
+  await waitFor(() => expect(screen.queryByTestId('files-panel')).toBeNull())
+  expect(screen.getByTestId('files-open')).toHaveAttribute('aria-expanded', 'false')
+
+  // the same tile on a free edge navigates nothing at all: with the edge already free, opening the look is
+  // no reason for a history entry (R-WP-38 wants the back gesture, not litter)
+  fireEvent.click(screen.getByTestId('insight-close'))
+  expect(screen.queryByTestId('insight-panel')).toBeNull()
+  const entry = historyEntry()
+
+  fireEvent.click(screen.getByTestId('tile-open-Dev'))
+
+  await screen.findByTestId('insight-panel')
+  expect(app.path(), 'a tile on the free edge leaves the address alone').toBe(CHAT_PATH)
+  expect(historyEntry(), 'and no entry of the history').toBe(entry)
 })
 
 // R-WP-1
@@ -205,10 +294,10 @@ test('theNameAddressOpensTheProjectItNames', async () => {
   expect(within(chat).getByRole('heading', { name: second.name })).toBeInTheDocument()
   expect(within(chat).queryByRole('heading', { name: project().name })).toBeNull()
   expect(app.path()).toBe(`/chat/${second.name}`)
-  // the chat **unit** of that project shows, hung directly behind its entry (UC-WP-77) — the order is read
-  // from the DOM, because jsdom lays out nothing a mark could hide behind
+  // the chat **unit** of that project shows, hung in the group that names it (UC-WP-77, R-WP-44) — the order
+  // is read from the DOM, because jsdom lays out nothing a mark could hide behind
   expect(markedEntry().textContent).toBe(content.nav.chat)
-  expect(markedEntry().previousElementSibling?.textContent).toBe(second.name)
+  expect(groupTitleOf(markedEntry())).toBe(second.name)
 })
 
 // UC-WP-70
@@ -227,9 +316,9 @@ test('anEscapedNameAddressOpensItsChatAndMarksItsEntry', async () => {
   const chat = await screen.findByRole('region', { name: content.chat.title })
   expect(within(chat).getByRole('heading', { name: spaced.name })).toBeInTheDocument()
   expect(app.path()).toBe('/chat/deep%20dive')
-  // the escaped address marks the chat unit of the decoded name, behind the entry it hangs under (UC-WP-77)
+  // the escaped address marks the chat unit of the decoded name, in the group that names it (UC-WP-77)
   expect(markedEntry().textContent).toBe(content.nav.chat)
-  expect(markedEntry().previousElementSibling?.textContent).toBe(spaced.name)
+  expect(groupTitleOf(markedEntry())).toBe(spaced.name)
 })
 
 // UC-WP-43
@@ -273,9 +362,10 @@ test('anUnknownAddressShowsTheApp', async () => {
   // a page of its own would be a fourth view (R-WP-1)
   expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
   expect(app.path()).toBe('/projects')
-  // the mark follows the address and not the way it was reached: the redirect lands on the list, whose own
-  // entry the tree shows (R-WP-38) — an address nobody clicked in the tree
-  await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.projects))
+  // the mark follows the address and not the way it was reached: the redirect lands on the list, whose page
+  // the header shows, while the tree names no project (R-WP-44) — an address nobody clicked anywhere
+  await waitFor(() => expect(markedTopEntry().textContent).toBe(content.nav.projects))
+  expect(markedEntries(), 'the list is a page and not a place in the tree').toEqual([])
 })
 
 // UC-WP-51
@@ -301,8 +391,10 @@ test('chatWithoutAProjectGoesToProjects', async () => {
 
   expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
   expect(app.path()).toBe('/projects')
-  // and the tree answers the address it landed on, not the one it was called with (R-WP-38)
-  await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.projects))
+  // and the frame answers the address it landed on, not the one it was called with (R-WP-44): the header
+  // shows the list page, the tree names no project
+  await waitFor(() => expect(markedTopEntry().textContent).toBe(content.nav.projects))
+  expect(markedEntries()).toEqual([])
 })
 
 test('aProjectThatIsGoneLeadsToTheList', async () => {
@@ -313,9 +405,10 @@ test('aProjectThatIsGoneLeadsToTheList', async () => {
   expect(await screen.findByLabelText(content.projects.gitUrl)).toBeInTheDocument()
   expect(app.path()).toBe('/projects')
   expect(screen.queryByRole('region', { name: content.chat.title })).toBeNull()
-  // the redirect left the tree nothing to name but the list: an unknown segment marks no project, the address
-  // it landed on marks the list's own entry (R-WP-38, `navKeyOfPathname`)
-  await waitFor(() => expect(markedEntry().textContent).toBe(content.nav.projects))
+  // the redirect left the tree nothing to name — the list it landed on is a page of the header, and the
+  // header answers the address and not the way it was reached (R-WP-44, `navKeyOfPathname`)
+  await waitFor(() => expect(markedTopEntry().textContent).toBe(content.nav.projects))
+  expect(markedEntries()).toEqual([])
 })
 
 // R-WP-38
@@ -377,9 +470,5 @@ test('aNewProjectAppearsInTheSider', async () => {
   fireEvent.click(screen.getByRole('button', { name: content.projects.add }))
 
   expect(await within(nav()).findByText(added.name)).toBeInTheDocument()
-  expect(within(nav()).getAllByRole('menuitem').map(entry => entry.textContent)).toEqual([
-    content.nav.projects,
-    project().name,
-    added.name,
-  ])
+  expect(groupTitles()).toEqual([project().name, added.name])
 })

@@ -56,19 +56,31 @@ MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabi
 * [UI](ui.md) — Rahmen: Top-Menü + Projektbaum im Sider (AntD), URL-stabil, Auslieferung unter `/ui/`, Look. ◐ (Auslieferung,
   **Sider + URL ✅ [R-WP-38/UC-WP-70](ui.md)**, **Look-Restart ✅ [R-WP-43/UC-WP-76/77](ui.md)**,
   **Design-Übernahme ✅ [R-WP-39/UC-WP-71](ui.md)** gebaut+reviewed 2026-11-07 (Inkremente 1–2 auf
-  `web-factory`); **Sider-Baum neu spezifiziert ❌ [R-WP-44/UC-WP-78](ui.md)** (Klapp-Gruppen je
-  Projekt, Chats als Einträge — Paul 2026-11-08), **AntD zuerst + wiederverwendbare Widgets ❌
+  `web-factory`); **Sider-Baum ✅ [R-WP-44/UC-WP-78](ui.md)** (Klapp-Gruppen je
+  Projekt, Chats als Einträge — Paul 2026-11-08), **AntD zuerst + wiederverwendbare Widgets ✅
   [R-WP-46/UC-WP-81](ui.md)**; offen bleiben Look-Reparaturen aus der
-  Browser-Abnahme 2026-11-08 und der Look am Browser; Chat-Aktionen-Buttons folgen
-  ([R-WP-43](ui.md) Aktionen, [chat.md](chat.md) R-WP-7), [open-points](open-points.md) Runde 4b)
+  Browser-Abnahme 2026-11-08 (in Inc 4 gebaut) und der Look am Browser; Chat-Aktionen-Buttons ✅
+([R-WP-43](ui.md) Aktionen inkl. Composer, Inc 4), [open-points](open-points.md) Runde 4b)
 * [Projekte](project.md) — Git-Checkout als Projekt: klonen, eindeutig, entfernen, nie interaktiv, Live-Status. ◐
 * [Jon-Chat](chat.md) — ein Jon, ein Gespräch je Projekt: Streaming, Queue, Neustart, Tools, Kacheln. ◐
   (Herkunft je Zeile ✅ UC-WP-39/40; Kacheln ✅ R-WP-7, Blick je Agent ✅ R-WP-26, **Timeline als AntD-
   Widget inkl. Think ✅ R-WP-40/UC-WP-72** gebaut 2026-11-07; **Warte-Rahmen gelöscht, Arbeit am
-  Status-Indikator ❌ [R-WP-31/45/UC-WP-65/79](chat.md)** — Paul 2026-11-08; **Blasen: volle Breite,
-  Höhe = Text ❌ [R-WP-29](chat.md)**)
+  Status-Indikator ✅ [R-WP-31/45/UC-WP-65/79](chat.md)** gebaut+reviewed 2026-11-08 (Inc 4,
+  Farb-/Maß-Abnahme am Browser steht aus); **Blasen: volle Breite,
+  Höhe = Text ✅ [R-WP-29](chat.md)** + **Scroll/FloatButton ✅ [R-WP-35/UC-WP-80](chat.md)** (Inc 4,
+  Look-Abnahme am Browser steht aus); **Resend am Send-Knopf ✅ [R-WP-30/UC-WP-57](chat.md)** +
+  **Send nie deaktiviert ✅ [R-WP-41/UC-WP-74](chat.md)** (Runde 6, 2026-11-08); **Werkzeug-Schritte
+  im Restore ✅ [R-WP-47/UC-WP-82](chat.md)** (A7, 2026-11-08); **je Turn genau ein Endereignis ✅
+  [R-WP-48/UC-WP-83/84](chat.md)** (Nachtzyklus, 2026-11-09); **Blick im selben Chat-Widget, live ✅
+  [R-WP-53/UC-WP-89/90](chat.md)** (C-7, 2026-11-09))
 * [Dateien](files.md) — Schreiben nur in Projekt + TMP, Datei-Bereich lesend. ◐ (gebaut, reviewed 2026-11-01)
+* [API-Fehler](api-errors.md) — Server-Fehler sichtbar am Feld: generierte API-Typen
+  (typescript-generator), Bean Validation mit `fieldErrors`, ein Standard-Error-Widget (AntD). ✅
+  gebaut+reviewed 2026-11-09 (R-WP-54/55/56 + N1; UC-WP-92/93 mit Tests, R-WP-54 per M1/M2; offen nur
+  die Browser-Abnahme der Feldabstände)
 * [Config](config.md) — eigene Datei der Factory, Config-Seite maskiert, „überschreiben" je Agent. ◐
+  (Plugin-Parität F8 ✅ gebaut+reviewed 2026-11-09: R-WP-49–52 — Think (Default), Modell-AutoComplete
+  mit Server-Liste, Max Tokens, Query-/Header-Params, je Agent Extra-Body + Tools-Allowlist)
 * [Nutzer](user.md) — Name statt Login, `[User Name]:` an Jon und Paco.
   ◐ (Name, Präfix, Anzeige ✅ R-WP-17/R-WP-25; Paco ❌)
 * [Paco](paco.md) — fachlicher PO je Nutzer (grillt Vision/Ziele/SOLL), Stories/Proposals in `stories|proposals/<nutzer>/`,

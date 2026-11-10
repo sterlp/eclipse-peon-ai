@@ -24,7 +24,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * {@code FactoryConfigService} lays the file over the loaded config (D-11); the factory never hands this
  * directory to the core, so "the core reads this file" is <em>not</em> true and nothing may depend on it.
  * What comes from the core is the format: read and write run through {@link PromptYmlParser} and
- * {@link SimplePromptFile}, the five canonical {@link CustomAgent} keys in the frontmatter, the prompt
+ * {@link SimplePromptFile}, the seven canonical {@link CustomAgent} keys in the frontmatter, the prompt
  * body never touched.
  *
  * <p>One consequence to know before the directory is ever wired into the core: it <em>is</em> the core's
@@ -44,12 +44,12 @@ public class AgentConfigFile {
     public static final String AGENT_FILE = "AGENT.md";
 
     /**
-     * The keys this page owns, by the core's canonical frontmatter names — {@code extra_body} is not
-     * among them, and neither is a provider: the provider stays at the base level (D-13).
+     * The keys this page owns, by the core's canonical frontmatter names — {@code extra_body} and
+     * {@code tools} joined them with R-WP-52; a provider is not among them and stays at the base level.
      */
     public static final List<String> CONFIG_KEYS = List.of(
             CustomAgent.MODEL, CustomAgent.URL, CustomAgent.API_KEY, CustomAgent.THINK,
-            CustomAgent.TEMPERATURE);
+            CustomAgent.TEMPERATURE, CustomAgent.EXTRA_BODY, CustomAgent.TOOLS);
 
     /**
      * Serialises the read-modify-write per file, for the same reason {@code FactoryConfigService} locks
@@ -81,10 +81,12 @@ public class AgentConfigFile {
      * What the file carries: {@code null} for every field it does not name. {@link #overridden()} is the
      * whole story of the checkbox — R-WP-23 says it is no stored value, only what the file says.
      */
-    public record Values(String model, String url, String apiKey, String think, String temperature) {
+    public record Values(String model, String url, String apiKey, String think, String temperature,
+            String extraBody, String tools) {
 
         public boolean overridden() {
-            return named(model) || named(url) || named(apiKey) || named(think) || named(temperature);
+            return named(model) || named(url) || named(apiKey) || named(think) || named(temperature)
+                    || named(extraBody) || named(tools);
         }
 
         private static boolean named(String value) {
@@ -95,17 +97,17 @@ public class AgentConfigFile {
     /**
      * One save of one slot, in the three states of R-WP-16: {@code null} leaves a key alone, an empty
      * string removes it, a value writes it trimmed. {@link #clearing()} is the unchecked box — R-WP-23
-     * deletes every config value of the slot, which is deliberately not "five empty strings" because a
+     * deletes every config value of the slot, which is deliberately not "seven empty strings" because a
      * clear must also reach a field the request never named.
      */
     public record Changes(boolean clearAll, String model, String url, String apiKey, String think,
-            String temperature) {
+            String temperature, String extraBody, String tools) {
 
         public static Changes clearing() {
-            return new Changes(true, null, null, null, null, null);
+            return new Changes(true, null, null, null, null, null, null, null);
         }
 
-        /** The five keys in their canonical order, {@code null} meaning "not submitted". */
+        /** The seven keys in their canonical order, {@code null} meaning "not submitted". */
         public Map<String, String> byKey() {
             Map<String, String> fields = new LinkedHashMap<>();
             fields.put(CustomAgent.MODEL, model);
@@ -113,6 +115,8 @@ public class AgentConfigFile {
             fields.put(CustomAgent.API_KEY, apiKey);
             fields.put(CustomAgent.THINK, think);
             fields.put(CustomAgent.TEMPERATURE, temperature);
+            fields.put(CustomAgent.EXTRA_BODY, extraBody);
+            fields.put(CustomAgent.TOOLS, tools);
             return fields;
         }
     }
@@ -124,13 +128,15 @@ public class AgentConfigFile {
         try {
             SimplePromptFile parsed = parse();
             if (parsed == null) {
-                return new Values(null, null, null, null, null);
+                return new Values(null, null, null, null, null, null, null);
             }
             return new Values(parsed.firstOrDefault(CustomAgent.MODEL, null),
                     parsed.firstOrDefault(CustomAgent.URL, null),
                     parsed.firstOrDefault(CustomAgent.API_KEY, null),
                     parsed.firstOrDefault(CustomAgent.THINK, null),
-                    parsed.firstOrDefault(CustomAgent.TEMPERATURE, null));
+                    parsed.firstOrDefault(CustomAgent.TEMPERATURE, null),
+                    parsed.firstOrDefault(CustomAgent.EXTRA_BODY, null),
+                    parsed.firstOrDefault(CustomAgent.TOOLS, null));
         } finally {
             lock.readLock().unlock();
         }
@@ -138,7 +144,7 @@ public class AgentConfigFile {
 
     /**
      * Applies one save to the file and leaves everything else in it alone: the prompt body, the agent's
-     * own keys ({@code tools}, {@code read-only}, …) and the fields another tool wrote. A save that ends
+     * own keys ({@code read-only}, {@code handover}, …) and the fields another tool wrote. A save that ends
      * with nothing to store writes nothing — no file, no directory (UC-WP-45's file is only rewritten
      * when it actually carried something).
      */

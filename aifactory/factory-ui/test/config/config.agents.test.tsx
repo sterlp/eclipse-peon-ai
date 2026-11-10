@@ -1,13 +1,19 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 
-import { Agents } from '../../src/config/config.agents'
 import { content } from '../../src/shared/content'
 import { chooseOption, openChoice, shownChoice } from '../shared/choices'
-import type { AgentSettings } from '../../src/config/config.agents.client'
-import type { ThinkInput } from '../../src/config/config.client'
-
-const KEY = 'sk-agent-secret-0123456789'
+import { refused } from '../shared/refusal'
+import {
+  agent,
+  BASE,
+  FIELDS,
+  KEY,
+  modelQueries,
+  renderAgents,
+  row,
+  stubServer,
+} from '../shared/config.agents.stub'
 
 beforeEach(() => {
   cleanup()
@@ -17,95 +23,6 @@ afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
-
-/** A slot as the file answers it — nothing overridden unless a test says otherwise. */
-function agent(overrides: Partial<AgentSettings> = {}): AgentSettings {
-  return {
-    id: 'dev',
-    name: 'Dev',
-    overridden: false,
-    model: null,
-    url: null,
-    think: null,
-    temperature: null,
-    keySet: false,
-    ...overrides,
-  }
-}
-
-type Call = { method: string; path: string; body?: string }
-
-/**
- * Mutable `fetch` stand-in: the slots for the read, one saved slot for the write, every call recorded with
- * its body. Honest limit, as in `config.page.test.tsx` — the answers are stubbed, so this view cannot go
- * red from a backend mutation; the file itself is proven by `AgentConfigFileTest`.
- */
-function stubServer(initial: {
-  slots: AgentSettings[]
-  saved?: AgentSettings
-  /** set to make every PUT answer as the server refuses it — the 400 path of R-WP-16 */
-  rejectWith?: string
-}): {
-  calls: Call[]
-  body: (method: string) => Record<string, unknown>
-} {
-  const calls: Call[] = []
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const method = (init?.method ?? 'GET').toUpperCase()
-      calls.push({ method, path: String(input), body: init?.body as string | undefined })
-      if (method === 'PUT') {
-        if (initial.rejectWith) {
-          return response(400, { status: 400, error: 'Bad Request', message: initial.rejectWith })
-        }
-        return response(200, initial.saved ?? initial.slots[0])
-      }
-      return response(200, initial.slots)
-    }),
-  )
-  return {
-    calls,
-    // the LAST write — a test that saves twice reads the second intent, not the first
-    body: (method) => {
-      const match = calls.filter((call) => call.method === method).at(-1)
-      expect(match, 'a ' + method + ' call was made').toBeDefined()
-      return JSON.parse(match?.body ?? '{}') as Record<string, unknown>
-    },
-  }
-}
-
-function response(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'content-type': 'application/json' },
-  })
-}
-
-/** One slot's row — every assertion stays inside it, because the page shows the slots side by side. */
-function row(id = 'dev'): HTMLElement {
-  return screen.getByTestId('agent-slot-' + id)
-}
-
-/**
- * The four inheritable fields of a slot — visible only while the slot overrides (R-WP-23).
- * The Dev slot carries the base think value of every other agent (R-THINK-10), so its field is named for
- * that — the labels below are the Dev row's, which is the row both tests below read.
- */
-const FIELDS = [
-  content.agents.model,
-  content.agents.url,
-  content.agents.thinkDefault,
-  content.agents.temperature,
-]
-
-/**
- * The section with the think form of the chosen base provider (UC-WP-67). The default is the core's honest
- * `UNKNOWN` — a text field, which is what every test here that is not about the form always saw.
- */
-function renderAgents(think: ThinkInput = { form: 'UNKNOWN', values: [] }) {
-  return render(<Agents think={think} />)
-}
 
 // UC-WP-44
 test('anAgentWithoutConfigShowsNoFields', async () => {
@@ -397,4 +314,129 @@ test('devThinkIsLabeledAsTheDefault', async () => {
   const jon = within(row('po'))
   expect(jon.getByLabelText(content.agents.think)).toBeTruthy()
   expect(jon.queryByLabelText(content.agents.thinkDefault)).toBeNull()
+})
+
+/**
+ * UC-WP-86 for a slot: the field asks for the slot's own connection. The section hands the slot and its
+ * drafted URL to the loader the page owns, and that is what the wire carries. A slot without a URL of its own
+ * says so by being empty — its own rule (R-WP-23) — and is resolved where the base is known, not here, so the
+ * base travels either way and a key travels never (R-WP-16).
+ */
+// UC-WP-86
+test('agentModelFieldAsksForItsOwnConnection', async () => {
+  const server = stubServer({
+    slots: [
+      agent({ id: 'po', name: 'Jon', overridden: true, url: 'http://slot.example/v1' }),
+      agent({ id: 'plan', name: 'Plan', overridden: true }),
+    ],
+    models: ['gpt-slot'],
+  })
+
+  renderAgents()
+
+  const slot = await waitFor(() => row('po'))
+  expect(await openChoice(content.agents.model, 'agent-po-model')).toEqual(['gpt-slot'])
+  expect(await openChoice(content.agents.model, 'agent-plan-model')).toEqual(['gpt-slot'])
+
+  expect(modelQueries(server)[0]).toEqual({
+    provider: 'OPEN_AI',
+    url: BASE.url,
+    agent: 'po',
+    agentUrl: 'http://slot.example/v1',
+    refresh: false,
+  })
+  expect(modelQueries(server)[1], 'an empty slot URL travels empty').toHaveProperty('agentUrl', '')
+  expect(JSON.stringify(modelQueries(server))).not.toContain('apiKey')
+
+  // a list is an offer and never an answer: the slot's field still holds what it held, and the section
+  // saved nothing of its own on the way
+  expect((within(slot).getByLabelText(content.agents.model) as HTMLInputElement).value).toBe('')
+  expect(server.calls.filter((call) => call.method === 'PUT')).toEqual([])
+})
+
+// UC-WP-93
+test('aRejectedSlotSaveMarksOnlyThatSlotsFieldAndItsOwnCard', async () => {
+  const REASON = 'temperature must be a number'
+  const server = stubServer({
+    slots: [
+      agent({ overridden: true, temperature: 'heiß' }),
+      agent({ id: 'po', name: 'Jon', overridden: true, temperature: '0.2' }),
+    ],
+    refusals: {
+      dev: refused({
+        status: 400,
+        error: 'Bad Request',
+        message: REASON,
+        fieldErrors: [{ field: 'temperature', message: REASON }],
+      }),
+    },
+  })
+
+  renderAgents()
+
+  const dev = await waitFor(() => row('dev'))
+  fireEvent.click(within(dev).getByRole('button', { name: content.agents.save }))
+
+  // the same widget as the two other server forms, inside the card that caused the refusal
+  const help = await within(dev).findByTestId('field-error-temperature')
+  expect(help).toHaveTextContent(REASON)
+  const temperature = within(dev).getByLabelText(content.agents.temperature)
+  expect(help.closest('.api-field')).toBe(temperature.closest('.api-field'))
+  expect(temperature.closest('.api-field')).toHaveClass('api-field-error')
+  expect(temperature).toHaveValue('heiß')
+
+  // the neighbour card holds nothing of it, and the section repeats no field (UC-WP-93 GIVEN 3)
+  const other = row('po')
+  expect(within(other).queryAllByTestId(/^field-error-/)).toEqual([])
+  expect(other.querySelector('.api-field-error')).toBeNull()
+  expect(screen.queryAllByRole('alert')).toEqual([])
+
+  // saving stays a click of the card's own button (D7): the section's form has no submit of its own, so the
+  // enter the viewer makes in a field cannot write a file
+  expect(within(dev).getByRole('button', { name: content.agents.save })).not.toHaveAttribute(
+    'type',
+    'submit',
+  )
+  fireEvent.keyPress(temperature, { key: 'Enter', code: 'Enter', keyCode: 13, charCode: 13 })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(server.calls.filter((call) => call.method === 'PUT')).toHaveLength(1)
+})
+
+// UC-WP-93
+test('eachSlotKeepsItsOwnFieldError', async () => {
+  const TEMPERATURE = 'temperature must be a number'
+  const BODY = 'extraBody must be a JSON object'
+  stubServer({
+    slots: [agent({ overridden: true }), agent({ id: 'po', name: 'Jon', overridden: true })],
+    refusals: {
+      dev: refused({
+        status: 400,
+        error: 'Bad Request',
+        message: TEMPERATURE,
+        fieldErrors: [{ field: 'temperature', message: TEMPERATURE }],
+      }),
+      po: refused({
+        status: 400,
+        error: 'Bad Request',
+        message: BODY,
+        fieldErrors: [{ field: 'extraBody', message: BODY }],
+      }),
+    },
+  })
+
+  renderAgents()
+
+  const dev = await waitFor(() => row('dev'))
+  fireEvent.click(within(dev).getByRole('button', { name: content.agents.save }))
+  await within(dev).findByTestId('field-error-temperature')
+
+  const other = row('po')
+  fireEvent.click(within(other).getByRole('button', { name: content.agents.save }))
+  await within(other).findByTestId('field-error-extraBody')
+
+  // neither refusal overwrites the other: each card holds its own answer
+  expect(within(dev).getByTestId('field-error-temperature')).toHaveTextContent(TEMPERATURE)
+  expect(within(other).getByTestId('field-error-extraBody')).toHaveTextContent(BODY)
+  expect(within(dev).queryAllByTestId(/^field-error-/)).toHaveLength(1)
+  expect(within(other).queryAllByTestId(/^field-error-/)).toHaveLength(1)
 })

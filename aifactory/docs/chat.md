@@ -170,8 +170,9 @@ bleibt. Auf einem **frischen Node** kommen die Projekte aus dem Config-Repo
 Gespräch — es gibt keine Chat-Auswahl und kein zweites Gespräch neben dem einen. Nach dem Neustart
 zeigt der Chat die **Texte von Nutzer und Jon**, die **finalen Antworten des Teams** (Ergebnisse
 der Delegations-Werkzeuge, R-WP-4) und die **Fehlerzeile eines gescheiterten Turns**
-([R-WP-34](chat.md)) aus dem History-Bestand; alle übrigen Werkzeug- und Statuszeilen
-sind live-only — die Factory führt dafür **keinen** zweiten Speicher. Nach dem Neustart
+([R-WP-34](chat.md)) aus dem History-Bestand; **Jons eigene Werkzeug-Schritte** erscheinen
+ebenfalls aus dem Bestand — als Timeline ([R-WP-47](chat.md)). Übrige Statuszeilen sind
+live-only — die Factory führt dafür **keinen** zweiten Speicher. Nach dem Neustart
 ist Jons Gespräch wieder da; **sein Team beginnt leer** (RAM-only-Parität zum Plugin, globales
 ADR-0024) — ⏳ Rückversicherung in [Open Points](open-points.md).
 
@@ -223,7 +224,7 @@ eigene Gespräch ([R-WP-26](chat.md)).
 - GIVEN eine Kachel WHEN **Compact** geklickt wird THEN kompaktiert genau dieser Agent und die
   Kachel zeigt den Compact als eigenen Zustand.
 
-### R-WP-45 — Status-Indikator der Kacheln: blau arbeitet, gelb kompaktiert, grün bereit ❌ (Paul 2026-11-08, Abnahme — „wir nutzen den Status-Indikator, keinen weiteren Status im Chat"; ersetzt den grauen Warte-Rahmen, [R-WP-31](chat.md))
+### R-WP-45 — Status-Indikator der Kacheln: blau arbeitet, gelb kompaktiert, grün bereit ✅ (Paul 2026-11-08, Abnahme — „wir nutzen den Status-Indikator, keinen weiteren Status im Chat"; ersetzt den grauen Warte-Rahmen, [R-WP-31](chat.md); gebaut + reviewed 2026-11-08, Inkrement 4 — **Farb-/Maß-Abnahme am Browser steht aus**)
 
 Der Status-Indikator je Kachel (heute ein schwarzer/grauer Punkt) zeigt den Zustand des Agenten
 in **drei Farben**: **blau** = der Agent arbeitet, **gelb** = er kompaktiert, **bereit** = ein
@@ -238,7 +239,7 @@ Team-Mitglieder, deren Arbeit sonst nur in der Delegations-Zeile sichtbar wäre 
 AntD-Fehler-/Alert-Indikator, **wenn** AntD dafür ein fertiges Widget hat (Widget-vor-eigenbau,
 [R-WP-46](ui.md)).
 
-#### UC-WP-79 — tileStatusIndicatorColors ❌
+#### UC-WP-79 — tileStatusIndicatorColors ✅ (gebaut 2026-11-08, Inkrement 4 — **Farb-Abnahme am Browser steht aus**)
 - GIVEN ein Agent arbeitet WHEN seine Kachel zeichnet THEN zeigt ihr Status-Indikator **Blau**.
 - GIVEN ein Agent kompaktiert WHEN seine Kachel zeichnet THEN zeigt ihr Status-Indikator **Gelb**.
 - GIVEN ein Agent ist bereit WHEN seine Kachel zeichnet THEN zeigt ihr Status-Indikator einen
@@ -256,7 +257,8 @@ eigene Gespräch dieses Agenten (Slide-out). Search ist kein Agent (Sub-Loop von
 Jons Chat; der Nutzer kann in den Chat eines Agenten wechseln und zurück. Interaktion läuft
 weiterhin nur über Jon ([R-WP-4](chat.md)): kein Eingabefeld im Blick. **Stop** im UI stoppt den
 laufenden Turn vollständig (wie bisher) — die Regel selbst und ihre Grenze (Queue-Klausel) stehen in
-[UC-WP-50](chat.md); dieser Absatz behauptet kein Queue-Verhalten. Die Einsicht liest den RAM-Stand des Agenten im Core —
+[UC-WP-50](chat.md); dieser Absatz behauptet kein Queue-Verhalten. Der Blick lebt seit C-7 **im selben Chat-Widget** und
+ist **live** ([R-WP-53](#uc-wp-90)). Die Einsicht liest den RAM-Stand des Agenten im Core —
 **kein** zweiter Speicher; nach einem Neustart ist das Team leer ([R-WP-11](chat.md)), der Blick ist
 leer. **WEIL** „warum hat Dev das gebaut?" sonst nur über die finale Antwort beantwortbar wäre
 (Paul, 2026-11-01).
@@ -269,6 +271,33 @@ leer. **WEIL** „warum hat Dev das gebaut?" sonst nur über die finale Antwort 
   Bedienelement zum Schreiben; Stop stoppt den laufenden Turn (Jon und Team) vollständig.
 - GIVEN ein Neustart WHEN der Blick geöffnet wird THEN ist er leer (R-WP-11) — kein zweiter
   Speicher und kein Mitschnitt im Jon-Chat.
+
+### R-WP-53 — Der Blick lebt im selben Chat-Widget (live) ✅ (C-7, Paul 2026-11-08: „Agenten-Blick = anderes Widget"; gebaut + reviewed 2026-11-09 — Review REJECTED, N1 `984d9e06` mit Kachel-Wechsel-Remount und Reconnect nach fehlgeschlagenem Re-Read; Abnahme am Browser steht aus)
+
+Der Blick ([R-WP-26](#uc-wp-49)) zeigt das Gespräch des Mitglieds **im selben Widget** wie der
+Haupt-Chat — dieselbe Log-Pipeline (Markdown mit Streaming [R-WP-28], Werkzeug-Zeilen als
+Timeline-Einträge [R-WP-40]), nicht eine eigene Markup-Welt. Weiterhin **read-only**: kein Composer,
+kein Senden, kein Stop im Blick — Interaktion läuft nur über Jon ([R-WP-4](chat.md), Stop am
+Haupt-Chat, UC-WP-50). Gespeist wird der Blick aus **zwei Quellen, nur für diesen Agenten**: dem
+RAM-Snapshot seines Gesprächs (R-WP-26) und einem **Live-Stream seiner Zeilen** — der Blick wächst,
+während das Mitglied arbeitet, ohne Reload und ohne etwas anderes neu zu laden. Search bleibt ohne
+Blick (R-WP-26); nach einem Neustart bleibt der Blick leer (R-WP-11).
+
+#### UC-WP-89 — theAgentViewRendersInTheSharedChatWidget ✅
+- GIVEN der Blick auf ein Mitglied ist offen WHEN er gezeichnet wird THEN nutzt er dieselbe
+  Darstellung wie der Haupt-Chat — Markdown, Werkzeug-Zeilen als Timeline-Einträge — und trägt kein
+  Eingabe- oder Bedienelement zum Schreiben.
+- GIVEN ein Mitglied ohne Gesprächsstand WHEN der Blick geöffnet wird THEN zeigt er nur den
+  Hinweis-Head (read-only), keine erfundenen Zeilen.
+- GIVEN ein Neustart WHEN der Blick geöffnet wird THEN ist er leer (R-WP-11).
+
+#### UC-WP-90 — theAgentViewGrowsWhileTheMemberWorks ✅
+- GIVEN ein laufender Turn WHEN das Mitglied (Plan, Dev oder Review) arbeitet THEN wächst der offene
+  Blick **live** — Zwischenschritte und Werkzeug-Zeilen erscheinen ohne Reload.
+- GIVEN der Blick ist geschlossen WHEN das Mitglied arbeitet THEN bleibt der Jon-Chat unverändert bei
+  seinen Delegations-Zeilen und der finalen Antwort (UC-WP-40).
+- GIVEN der Nutzer öffnet den Blick WHEN er geöffnet wird THEN wird nur das Gespräch dieses Agenten
+  geladen (Snapshot plus Stream) — Jons Verlauf und die Kacheln werden nicht neu geladen.
 
 ### R-WP-28 — Markdown der Antworten: GFM, Zeilenumbrüche, Code mit react-shiki ✅ (Paul 2026-11-02; Schärfung 2026-11-06)
 
@@ -303,7 +332,7 @@ Verlauf; kompakt (klein, grau, Tool-Zeilen gemerged wie in `chat.html`) und nach
 - GIVEN eine Nutzer-Eingabe mit Markdown-Zeichen WHEN sie im Verlauf steht THEN erscheint sie als
   Wortlaut, nicht als Markup.
 
-### R-WP-40 — Werkzeug- und Delegationsschritte stehen als Timeline im Verlauf ✅ (Paul 2026-11-06; Optik-Umbau AntD `Timeline` gebaut + reviewed 2026-11-07, Inkrement 3 auf `web-factory` — Look-Abnahme am Browser steht aus)
+### R-WP-40 — Werkzeug- und Delegationsschritte stehen als Timeline im Verlauf ✅ (Paul 2026-11-06; Optik-Umbau AntD `Timeline` gebaut + reviewed 2026-11-07, Inkrement 3 auf `web-factory`; **Lade-Punkt = AntD `Spin`/`LoadingOutlined` small — 2026-11-08-Schärfung — gebaut + reviewed 2026-11-08, Inkrement 4**; Look-Abnahme am Browser steht aus)
 
 Die Schritte eines Turns — Werkzeug, Think-Abschnitt, Delegation — werden als **AntD `Timeline`**
 dargestellt: laufen mehrere Schritte **direkt hintereinander** (unterbrochen von einer LLM-Nachricht,
@@ -389,7 +418,7 @@ Datei-Bereich ([Dateien](files.md)).
   ist im Datei-Bereich sichtbar.
 
 
-### R-WP-29 — Farben und Fließtext der Chat-Zeilen ❌ (Paul 2026-11-07: die **Optik** folgt der Design-Übernahme — [R-WP-39](ui.md); die Fließtext-Grenzen unten bleiben gebaut)
+### R-WP-29 — Farben und Fließtext der Chat-Zeilen ✅ (Paul 2026-11-07: die **Optik** folgt der Design-Übernahme — [R-WP-39](ui.md); die Fließtext-Grenzen unten bleiben gebaut. **Blasen: volle Breite, Höhe = Text** (Paul 2026-11-08) gebaut 2026-11-08, Inkrement 4 — **Abnahme am Browser steht aus**)
 
 **Übernahme 2026-11-07:** die Verlaufs-Optik folgt dem Referenz-Design (`ai-schulung` `MessageList` —
 Nutzer-**Bubble** rechts in Blau, Antworten links im Fluss); die frühere Fassung „Akzent links, keine
@@ -430,23 +459,28 @@ Antwortblocks horizontal, ein **Bild** bleibt innerhalb der Antwortbreite.
   Tabelle **im Antwortblock**, die Seite bleibt ungeändert breit, und das Bild bleibt in der
   Antwortbreite.
 
-### R-WP-41 — Die Eingabe wächst mit und findet ihren Fokus zurück ✅ (Paul 2026-11-06, Muster aus `ai-schulung`)
+### R-WP-41 — Die Eingabe wächst mit und findet ihren Fokus zurück ✅ (Paul 2026-11-06, Muster aus `ai-schulung`; Send-Knopf seit 2026-11-08 **nie deaktiviert**)
 
 Das Eingabefeld ist eine **Auto-Grow-Textarea** (von einer Zeile bis ca. fünf, danach scrollt sie) und
-steht **unten seiner Spalte** ([R-WP-35](chat.md)). **Senden kann nur, wer etwas getippt hat**: bei
-leerer Eingabe ist der Send-Knopf deaktiviert, nicht versteckt. **Während eines laufenden Turns bleibt
+steht **unten seiner Spalte** ([R-WP-35](chat.md)). **Senden kann man immer** (Paul 2026-11-08, BWT:
+„Senden kann man ja immer"): der Send-Knopf ist **nie deaktiviert** — die frühere Fassung „bei leerer
+Eingabe deaktiviert" ist zurückgenommen. Bei **leerer Eingabe** entscheidet der Zustand: **kein
+laufender Turn** + Chat-Nachrichten vorhanden ⇒ **Resend** ([R-WP-30](chat.md)); laufender Turn ⇒
+passiert nichts. **Während eines laufenden Turns bleibt
 die Eingabe benutzbar und der Send-Knopf aktiv** — eine weitere Eingabe geht in die Queue
 ([R-WP-10](chat.md)); die Referenz-App sperrt ihr Feld im Stream, weil sie keine Queue kennt, und
 genau deshalb folgen wir ihr hier **nicht** ([AF-ADR-003](adr/003-reference-ui-is-a-donor-not-a-source.md)).
-Ist der Turn vorbei, **kehrt der Fokus in die Eingabe zurück** (Refocus beim Übergang von deaktiviert
-zu aktiviert) — der Nutzer tippt weiter, ohne zu klicken. Tastatur und Resend bleiben, wie sie sind
+Ist der Turn vorbei, **kehrt der Fokus in die Eingabe zurück** — der Nutzer tippt weiter, ohne zu
+klicken. Tastatur bleibt, wie sie ist
 ([R-WP-30](chat.md)). Sichtbare Texte kommen aus dem String-Catalog ([R-WP-27](ui.md)).
 
-#### UC-WP-74 — inputGrowsAndRefocuses ✅
-- GIVEN eine leere Eingabe WHEN die App zeichnet THEN ist der Send-Knopf deaktiviert; WHEN Text
-  entsteht THEN wird er aktiv.
+#### UC-WP-74 — inputGrowsAndRefocuses ✅ (GIVEN 1 seit 2026-11-08 neu: Send nie deaktiviert)
+- GIVEN eine leere Eingabe WHEN die App zeichnet THEN bleibt der Send-Knopf **aktiv**; WHEN Text
+  entsteht THEN sendet er die Eingabe.
 - GIVEN ein Turn läuft WHEN der Nutzer tippt und sendet THEN ist der Knopf **aktiv** und die Eingabe
   geht in die Queue ([UC-WP-14](chat.md)) — kein Sperren des Feldes, kein Deaktivieren im Turn.
+- GIVEN ein Turn läuft WHEN der Nutzer bei **leerer** Eingabe Senden drückt THEN passiert nichts —
+  keine Leerzeile, keine Queue-Eingabe.
 - GIVEN ein langer Mehrzeiler WHEN der Nutzer tippt THEN wächst das Feld bis zu seiner Obergrenze
   und scrollt danach, statt die Chat-Fläche zu verdrängen.
 - GIVEN ein Turn war läuft und ist jetzt vorbei WHEN die Eingabe wieder aktiv wird THEN steht der
@@ -458,25 +492,59 @@ Im Eingabefeld (Textarea) **sendet Enter**; **Shift+Enter** setzt eine neue Zeil
 Bewegung, die der Nutzer aus jedem Chat-Tool mitbringt (Paul 2026-11-06, nach Blick auf die
 Referenz-App). **`Shift+Enter` UND `Ctrl/Cmd+Enter` setzen eine neue Zeile** (Paul 2026-11-06: am Mac
 ist `Cmd` das `Ctrl`) — die neue Zeile hat damit zwei Wege, das Senden nur einen. Der
-Send-Knopf bleibt die klickbare Alternative und ist bei leerer Eingabe deaktiviert
-([R-WP-41](chat.md)). **Mehrzeilige Eingaben bleiben möglich** — über Shift+Enter, und ein Text mit
-eingebetteten Umbrüchen wird so gesendet, wie er dasteht. Zusätzlich kann der Nutzer die **letzte
-gesendete Nachricht erneut senden**, ohne sie neu zu tippen — etwa nach einem Fehler
-(„Resend"); sie läuft wie jede Eingabe in die Queue ([R-WP-10](chat.md)), wenn ein Turn läuft.
+Send-Knopf bleibt die klickbare Alternative und ist **nie deaktiviert** ([R-WP-41](chat.md)).
+**Mehrzeilige Eingaben bleiben möglich** — über Shift+Enter, und ein Text mit
+eingebetteten Umbrüchen wird so gesendet, wie er dasteht. **Resend ist der Send-Knopf selbst**
+(Paul 2026-11-08, BWT): drückt der Nutzer **Senden mit leerer Eingabe**, während **kein Turn läuft**,
+aber Chat-Nachrichten existieren, geht die **letzte sichtbare Nutzer-Zeile erneut an das LLM** —
+bestätigt oder noch ausstehend (Pending), damit genau Pauls Fall „nach einem Abbruch nochmal senden"
+funktioniert; sonst „passiert einfach nichts". Sie läuft wie eine frische Eingabe in die Queue
+([R-WP-10](chat.md)) und erscheint als neue Nutzer-Zeile. **Läuft ein Turn, tut der Knopf bei leerer
+Eingabe nichts**, und es gibt **keinen eigenen „Resend"-Knopf** (2026-11-08: „der kommt aber ja eh
+raus" — die frühere Knopf-Fassung von UC-WP-57 ist damit ersetzt).
 
 #### UC-WP-56 — enterSendsShiftEnterNewlines ✅ (war `enterNewlinesCtrlEnterSends` ✅, Umkehrung Paul 2026-11-06)
 - GIVEN das Eingabefeld mit Text WHEN der Nutzer Enter drückt THEN wird gesendet und das Feld ist
   danach leer; WHEN er **Shift+Enter** drückt THEN entsteht eine neue Zeile und es wird **nicht**
-  gesendet. GIVEN leere Eingabe WHEN Enter THEN passiert nichts (der Knopf ist deaktiviert, die
-  Eingabe bleibt, kein leerer Turn).
+  gesendet. GIVEN leere Eingabe WHEN Enter THEN passiert nichts (die Eingabe bleibt, kein leerer
+  Turn) — das Resend lebt allein am Send-Knopf ([R-WP-30](chat.md)).
 - GIVEN ein Text mit zwei per Shift+Enter gesetzten Zeilen WHEN der Nutzer Enter drückt THEN kommen
   beide Zeilen **gemeinsam und in der Reihenfolge** in einem Turn an.
 
-#### UC-WP-57 — resendWithoutNewInput ✅
-- GIVEN der Nutzer hat eine Nachricht gesendet WHEN er „Resend" wählt THEN geht dieselbe Nachricht
-  erneut in die Queue (auch nach einem Fehler), ohne dass er sie neu tippt.
+#### UC-WP-57 — resendLastMessageOnEmptySend ✅ (neu gefasst 2026-11-08, Paul BWT — der eigene Resend-Knopf entfällt, das Resend lebt am Send-Knopf; gebaut 2026-11-08, Runde-6-Delta + N1, Mutations-belegt — Look-/Verhaltens-Abnahme am Browser steht aus)
+- GIVEN der Agent arbeitet **nicht** und der Chat hat eine Nutzer-Zeile WHEN der Nutzer **Senden mit
+  leerer Eingabe** drückt THEN geht die **letzte sichtbare Nutzer-Zeile** erneut an das LLM —
+  bestätigt oder noch ausstehend (Pending; der Stop-Fall: die gestoppte Eingabe ist sichtbar und
+  wird wiederholt). Sie erscheint als neue Nutzer-Zeile und der Turn startet.
+- GIVEN ein Turn läuft WHEN der Nutzer bei leerer Eingabe Senden drückt THEN passiert **nichts** —
+  keine Leerzeile, keine Queue-Eingabe.
+- GIVEN der Chat hat keine Nutzer-Zeile WHEN der Nutzer bei leerer Eingabe Senden drückt THEN
+  passiert nichts.
 
-### R-WP-31 — Warte-Indikator während des Turns ✅ (Paul 2026-11-02; **Warte-Rahmen seit 2026-11-08 zurückgenommen** — Paul, Abnahme: „einfach löschen"; der Umbau ist nicht gebaut, UC-WP-65 ❌)
+### R-WP-47 — Der Restore zeigt Jons Werkzeug-Schritte ✅ (Paul 2026-11-08, Runde 5: „warum machen wir das nicht?" — A7; Annahme als ⏳ in [open-points](open-points.md) zurückversichert; gebaut + reviewed 2026-11-08 (A7 `bf3ce6ec`…`227db893`, N1 `9066a149`…`1bf336bd`), Look-/Verhaltens-Abnahme am Browser steht aus)
+
+Jons **eigene** Werkzeug-Nutzung überlebt den Reload: Call und Result stehen bereits vollständig im
+Core-History-Bestand (`<agent>-history.jsonl`) — die Fabrik hält dafür **keinen** zweiten Speicher
+([R-WP-11](chat.md) bleibt, sie liest nur den Bestand). Der Restore bildet sie auf die
+**Timeline** ([R-WP-40](chat.md)) ab: je Werkzeug ein Schritt mit **Werkzeugname** und einem
+ **Auszug des Results** (so `AgentTranscript` es zeigt — gekürzt, kein Wortlaut-Heilen) — Delegationen
+([R-WP-40](chat.md)) nennen ihr **Mitglied**; ihr Auszug ist die **Mitglieds-Antwort**, die als
+eigene Zeile auf sie folgt. **Nicht** wiederhergestellt: der Live-Fortsetzungstext
+und der Diff ([R-WP-36/UC-WP-68](chat.md)), Jons **Think** (kein Eintrag, R-WP-40) und
+Mitglieder-**Innen**-Schritte (liegen in deren RAM-Memory, [R-WP-4](chat.md), ADR-0024). Die
+Mitglieds-**Antwort** überlebt als Delegations-Ergebnis weiter (UC-WP-40 GIVEN 3 bleibt).
+
+#### UC-WP-82 — restoredHistoryShowsToolSteps ✅ (gebaut + reviewed 2026-11-08, A7 + N1; Abnahme am Browser steht aus)
+- GIVEN Jons History enthält Werkzeug-Calls und -Results (Disk, Shell, Web, Delegation) WHEN der
+  Nutzer nach einem Reload denselben Chat öffnet THEN zeigt die Timeline je Werkzeug einen Schritt
+  mit Name und Result-Auszug, Delegationen mit ihrem Mitglied — in der Reihenfolge des Bestands.
+- GIVEN der Bestand enthält einen Tool-Call ohne Result (Turn lief noch) WHEN der Restore liest
+  THEN zeigt der Schritt trotzdem seine Ankunft (Name, ohne Result-Auszug) — kein verschluckter
+  Schritt.
+- GIVEN der Bestand enthält nur eine User-Zeile WHEN der Restore liest THEN ändert sich nichts
+  (keine leere Timeline, kein Platzhalter).
+
+### R-WP-31 — Warte-Indikator während des Turns ✅ (Paul 2026-11-02; **Warte-Rahmen seit 2026-11-08 zurückgenommen** — Paul, Abnahme: „einfach löschen"; gebaut + reviewed 2026-11-08, Inkrement 4, UC-WP-65 ✅)
 
 Während ein Turn läuft, zeigt der Chat eine kompakte **Warte-Leiste** („Waiting for AI…" wie im
 Plugin: dunkel, Mono, blinkender Cursor) mit dem Live-Preview des Streams; sie steht **über der
@@ -493,7 +561,7 @@ eines anderen Nutzers ([UC-WP-22](chat.md)).
 - GIVEN ein laufender Turn WHEN er noch nichts geliefert hat THEN zeigt die Warte-Leiste „Waiting for
   AI…"; WHEN der Stream liefert THEN wechselt sie auf das Live-Preview und endet mit dem Turn.
 
-#### UC-WP-65 — waitingMarkEndsWithTheTurn ❌ (neu gefasst Paul 2026-11-08: der Warte-Rahmen ist gelöscht, die Arbeit zeigt der Status-Indikator — [R-WP-7](chat.md)/[R-WP-45](chat.md))
+#### UC-WP-65 — waitingMarkEndsWithTheTurn ✅ (gebaut 2026-11-08, Inkrement 4: der Rahmen ist gelöscht, die Arbeit zeigt der Status-Indikator — [R-WP-7](chat.md)/[R-WP-45](chat.md))
 - GIVEN ein laufender Turn WHEN die vorläufige Eingabezeile steht THEN trägt **keine** Zeile des
   Verlaufs eine Rahmen-Kontur — der arbeitende Zustand steht im Status-Indikator der Kachel-Reihe.
 - GIVEN ein von diesem Browser gestarteter Turn WHEN `done` eintrifft THEN endet der Arbeits-Status,
@@ -539,8 +607,49 @@ dass sein Turn gescheitert ist). Zwei Fehlschläge sind **zwei** Fehlerzeilen �
 - GIVEN ein gescheiterter Turn WHEN die Seite neu geladen wird THEN sind Nachricht und Fehlerzeile
   weiterhin im Verlauf (derselbe Bestand wie vor dem Reload).
 
+### R-WP-48 — Je Turn genau ein Endereignis auf dem Draht ✅ (Verdacht 2026-11-06, **belegt 2026-11-08** — Runde-6-Diagnose: ein `Error` im Turn-Task schweigt vollständig, keine Log-Zeile, Kachel zurück auf IDLE, Warteschleife stand; Nachtzyklus 2026-11-08; gebaut + reviewed 2026-11-09 — Review REJECTED, N1 `b47126d0`/`76d3e653` mit Besitz-Regel des `error`-Ereignisses und Kachel-Lesefolge; Abnahme am Browser steht aus)
 
-### R-WP-35 — Der Chat scrollt, die Eingabe steht unten ✅ (Runde 2, Inc 3; Scroll-Verhalten geschärft Paul 2026-11-08 — die Schärfungen unten sind ❌, UC-WP-80)
+Jeder Turn, der einen Turn **eröffnet**, endet auf dem Draht mit **genau einem** Endereignis:
+`done` (normal oder nach Stop) oder `error` — **auch** wenn im Turn-Task ein `Error` (oder sonst
+ein `Throwable`) entkommt, der die `RuntimeException`-Zweige passiert: er zählt als gescheiterter
+Turn ([R-WP-34](chat.md) — Verlaufszeile + `error`). Ein Submit, das nur **einreiht** (der Turn
+läuft bereits), sendet **kein** `done` — und sein eigenes Scheitern (z. B. eine abgelehnte Config)
+bleibt eine **Verlaufszeile ohne eigenes Endereignis**: das `error` gehört dem eröffneten Turn, ein
+Fremdes dürfte die Live-Sicht des laufenden Turns nicht abreißen; die Zeile zeigt der nächste
+Refresh nach dessen `done`. Einreihen selbst ist kein Ende — der besitzende Turn endet für beide.
+Die Garantie liegt beim **finally-Pfad der Fabrik** (`ProjectRuntime`), kein Core-Eingriff.
+
+Dazu die Browser-Seite: der Warte-Zustand („busy", [R-WP-31](chat.md)/[R-WP-45](chat.md)) wird
+**nie** aus einem Schnappschuss abgeleitet, der **vor** dem Verbinden aufgenommen wurde — nach
+jedem (Re)Connect wird der Kachel-Stand **frisch gelesen**, sobald die Verbindung steht — und ein
+Read, der **vor** einem `agents`-Endschnappschuss begann, überschreibt ihn nicht (der frischeste
+Stand gewinnt, wie beim Verlauf über seine Lesefolge). Sonst bleibt ein Turn, der zwischen
+Kachel-Read und Stream-Abonnement endete, für immer als „arbeitet" stehen.
+
+#### UC-WP-83 — everyOpenedTurnEndsOnTheWireExactlyOnce ✅ (gebaut + reviewed 2026-11-09, Inkrement 1 + N1 `430343f2`/`b47126d0`)
+- GIVEN ein Turn-Task, in dem ein `Error` entkommt (kein `RuntimeException`-Zweig) WHEN der Task
+  durchläuft THEN **genau ein** `error`-Ereignis mit Verlaufszeile nach [R-WP-34](chat.md), danach
+  der `agents`-Endschnappschuss und der Turn-Claim ist frei.
+- GIVEN ein Turn scheitert mit `RuntimeException` (nicht Canceled) WHEN der Task durchläuft THEN
+  **genau ein** `error` (Bestand, nicht neu).
+- GIVEN ein Turn wird gestoppt WHEN der Task durchläuft THEN **genau ein** `done`, kein `error`
+  (Bestand, [UC-WP-50](chat.md)).
+- GIVEN ein einreiender Submit (Turn läuft bereits) WHEN der Task durchläuft THEN sendet **er**
+  kein Endereignis; scheitert er (z. B. abgelehnte Config), stehen seine Verlaufszeilen im Verlauf,
+  **ohne** eigenes `error` auf dem Draht — der besitzende Turn sendet seines.
+
+#### UC-WP-84 — theWaitStateIsDerivedFromAFreshReadAfterConnect ✅ (gebaut + reviewed 2026-11-09, Inkrement 2 + N1 `e72c6c76`/`76d3e653` — Kachel-Lesefolge in `chat.board.ts`)
+- GIVEN ein Turn endet **zwischen** Kachel-Read und Stream-Verbindung WHEN die Seite (neu) verbindet
+  THEN wird der Kachel-Stand nach dem Verbinden frisch gelesen und die Kachel-Reihe zeigt **bereit** —
+  kein Warte-Zustand aus dem alten Schnappschuss.
+- GIVEN der Stream fällt während eines laufenden Turns weg WHEN der Reconnect durchläuft THEN wird
+  der Kachel-Stand ebenfalls frisch gelesen (derselbe Beweis wie beim ersten Verbinden).
+- GIVEN eine Kachel-Lesung beginnt, bevor der `agents`-Endschnappschuss eintrifft WHEN ihre Antwort
+  **nach** dem Schnappschuss ankommt THEN überschreibt sie ihn **nicht** — der frischeste Stand
+  gewinnt, die Kachel zeigt bereit.
+
+
+### R-WP-35 — Der Chat scrollt, die Eingabe steht unten ✅ (Runde 2, Inc 3; Scroll-Verhalten geschärft Paul 2026-11-08 — Schärfungen + FloatButton gebaut + reviewed 2026-11-08, Inkrement 4, UC-WP-80 ✅; die **Look-Anteile** — volle Bildschirmbreite, weißer Composer, Senden rechts — nehmen wir am Browser ab)
 
 Der Chat ist eine **Fläche mit eigenem Scroll**: der Verlauf scrollt in seiner **eigenen** Fläche,
 während die **Kachel-Reihe oben** und die **Eingabe unten** stehen bleiben — die Warte-Leiste
@@ -563,7 +672,7 @@ steht ein schwebender Knopf** — Pfeil nach unten, „Scroll bottom" (AntD `Flo
 - GIVEN der Nutzer hat nach oben gelesen WHEN eine neue Zeile erscheint THEN bleibt der Verlauf an
   seiner Position stehen.
 
-#### UC-WP-80 — scrollBottomButtonReArmsAutoScroll ❌ (Paul 2026-11-08, Abnahme)
+#### UC-WP-80 — scrollBottomButtonReArmsAutoScroll ✅ (gebaut + reviewed 2026-11-08, Inkrement 4)
 - GIVEN der Nutzer ist vom Ende entfernt WHEN neue Zeilen erscheinen THEN bleibt der Verlauf an seiner
   Position und ein schwebender Knopf (Pfeil nach unten, „Scroll bottom", AntD `FloatButton`) ist
   sichtbar.

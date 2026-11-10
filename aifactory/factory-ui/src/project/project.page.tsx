@@ -1,34 +1,41 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Alert, Button, Card, Input, Popconfirm } from 'antd'
+import { Alert, Button, Card, Form, Input, Popconfirm } from 'antd'
 
 import { addProject, removeProject } from './project.client'
 import { openProjectStatusStream } from './project.status.client'
-import { errorMessage } from '../shared/api.client'
+import { fieldErrorsOf } from '../shared/api.client'
+import { ApiField, ApiFormErrors } from '../shared/api.error'
 import { content } from '../shared/content'
-import type { Project, ProjectWork } from '../shared/dto'
+import type { ProjectDto, ProjectWorkDto } from '../shared/server-api'
 
 /** The same pause the conversation uses: long enough not to hammer, short enough to be noticed. */
 const RECONNECT_MS = 500
 
+/**
+ * The fields this form wraps with `ApiField` — a name the answer carries besides these still reaches the
+ * screen as a line, so a rule added on the server can never be lost between the two display paths (R8).
+ */
+const ADD_ERROR_FIELDS = ['gitUrl']
+
 interface Props {
   /** The registry as the frame read it — this page owns no copy of it (D1, R-WP-38). */
-  projects: Project[]
+  projects: ProjectDto[]
   /** Why the tree beside this page is empty, when the registry could not be read. */
   listError?: string | null
-  onOpen: (project: Project) => void
+  onOpen: (project: ProjectDto) => void
   /** Asks the frame to read the registry again: what this page added or removed has to show in the tree. */
   onReload: () => Promise<void>
 }
 
 export function ProjectPage({ projects, listError, onOpen, onReload }: Props) {
-  const [work, setWork] = useState<Record<string, ProjectWork>>({})
+  const [work, setWork] = useState<Record<string, ProjectWorkDto>>({})
   const [gitUrl, setGitUrl] = useState('')
   const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<unknown>(null)
 
   const showError = useCallback((error: unknown) => {
     // the reason belongs next to the input; a swallowed error would read as "nothing happened"
-    setMessage(errorMessage(error))
+    setSaveError(error)
   }, [])
 
   useEffect(() => {
@@ -71,13 +78,12 @@ export function ProjectPage({ projects, listError, onOpen, onReload }: Props) {
     }
   }, [])
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault()
+  async function submit() {
     if (busy || gitUrl.trim() === '') {
       return
     }
     setBusy(true)
-    setMessage(null)
+    setSaveError(null)
     try {
       await addProject(gitUrl.trim())
       setGitUrl('')
@@ -90,8 +96,8 @@ export function ProjectPage({ projects, listError, onOpen, onReload }: Props) {
     }
   }
 
-  async function remove(project: Project) {
-    setMessage(null)
+  async function remove(project: ProjectDto) {
+    setSaveError(null)
     try {
       await removeProject(project.id)
       await onReload()
@@ -100,25 +106,29 @@ export function ProjectPage({ projects, listError, onOpen, onReload }: Props) {
     }
   }
 
-  // this page's own refusal reads before the frame's: the viewer just caused it (UC-WP-4)
-  const problem = message ?? listError
+  // what the widget cannot put on a field, and nothing else — the frame's own read of the registry is the
+  // other line, and this page's refusal reads before it (UC-WP-4)
+  const errors = fieldErrorsOf(saveError)
 
   return (
     <section className="view" aria-label={content.projects.title}>
       <h1>{content.projects.title}</h1>
-      <form className="add-project" onSubmit={event => void submit(event)}>
-        <Input
-          type="url"
-          placeholder={content.projects.gitUrlSample}
-          aria-label={content.projects.gitUrl}
-          value={gitUrl}
-          onChange={event => setGitUrl(event.target.value)}
-        />
+      <Form className="add-project" layout="inline" onFinish={() => void submit()}>
+        <ApiField field="gitUrl" errors={errors}>
+          <Input
+            type="url"
+            placeholder={content.projects.gitUrlSample}
+            aria-label={content.projects.gitUrl}
+            value={gitUrl}
+            onChange={event => setGitUrl(event.target.value)}
+          />
+        </ApiField>
         <Button type="primary" htmlType="submit" disabled={busy}>
           {busy ? content.projects.cloning : content.projects.add}
         </Button>
-      </form>
-      {problem && <Alert type="error" title={problem} />}
+      </Form>
+      <ApiFormErrors error={saveError} fields={ADD_ERROR_FIELDS} />
+      {saveError === null && listError && <Alert type="error" title={listError} />}
       {projects.length === 0 ? (
         <p className="empty-state">{content.projects.empty}</p>
       ) : (

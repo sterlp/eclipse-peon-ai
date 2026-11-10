@@ -104,6 +104,16 @@ public class ProjectRuntimeRegistry {
     }
 
     /**
+     * The live view of one tile's own chat (R-WP-53) — same edge, same gate as {@link #transcript}: a name
+     * that is no tile of this project and a tile that offers no insight are
+     * {@link IllegalArgumentException} (400), an unknown project {@link ProjectNotFoundException} (404).
+     * It grows a read that was already there; it opens, chooses and starts nothing.
+     */
+    public SseEmitter subscribeAgent(String projectId, String name) {
+        return runtime(projectId).subscribeAgent(name);
+    }
+
+    /**
      * Stop the turn that is running (UC-WP-50). No turn is {@link IllegalStateException} (409), an unknown
      * project 404 — and nothing else: the stop ends a conversation, it never opens one.
      */

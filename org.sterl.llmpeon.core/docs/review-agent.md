@@ -39,7 +39,12 @@ Delegation über [PoDelegateTool](../../docs/adr/0020-po-agent-orchestration.md)
   Docs↔Plan-Konflikt (Docs sind Maßstab) · überflüssige Kommentare statt Doc-Verweis · schlechte
   Testbarkeit · schlechte Kapselung, Wiederholung (≥3×), Modul-Zyklen · verschmierte Struktur
   (Änderung braucht viele Module). Diese sind **BUG** (→ REJECTED); Überkomplexes ist **LOW** mit
-  einfacherer Lösung; Nitpicks/Stil werden ignoriert. Ein Durchgang meldet **alle** BUGs (kein
+  einfacherer Lösung; Nitpicks/Stil werden ignoriert. **Test-Policy (2026-11-10, Paul):** gleiche
+  6 Punkte in `developer.md` und `review-agent.md` (Fachlichkeit treibt Tests m:n, High-Level vor
+  Low-Level, Testdaten statt Kopien, Mocks nur für komplexe Logik, keine unerreichbaren Zustände,
+  Happy + Rand oben + Rand unten). Mock-only-Test = BUG; Redundanz ab 3 Kopien bzw.
+  zusammenlegbare Gruppe und Test unerreichbarer Zustände = **MEDIUM** (→ CONCERNS, eigene Zeile
+  „Redundant tests" in der Chat-Summary); Mutations-Check nur, wo kein Negativtest die Regel belegt. Ein Durchgang meldet **alle** BUGs (kein
   Abbruch beim ersten); BUG nur für geänderten/neuen Code, Altlast als nicht-blockierende Liste
   „Pre-existing"; Verhaltens-BUG nur mit Beleg (sonst „Verdacht"), Tests des Moduls laufen mit
   Befehl + Zahlen; BUGs nach Wirkung sortiert (Verhalten/Daten vor Struktur). Inhalt: Prompt

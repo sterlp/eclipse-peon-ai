@@ -16,13 +16,20 @@ export const content = {
     views: 'Views',
     /** The name of the header's menu, for the screen reader (R-WP-43): its three pages. */
     pages: 'Pages',
-    /** The sider's first entry: the list itself, where projects are added and removed (R-WP-38). */
+    /** The list of projects: a page of the header, no place in the tree (R-WP-43, R-WP-44). */
     projects: 'Projects',
     /** The chat as one of the header's pages (R-WP-43, UC-WP-76) — the same word as `chat.title` (M15). */
     chat: 'Chat',
     /** The one unit a project has (R-WP-38): the file area, hung under its project in the tree. */
     files: 'Files',
     settings: 'Settings',
+    /**
+     * The handle that folds the tree away and brings it back (R-WP-44): the button of the header is two
+     * glyphs and carries no word of its own, so the name says what pressing it will do — the same reading
+     * as `theme.toggle`.
+     */
+    toggleSider: (collapsed: boolean): string =>
+      collapsed ? 'Show the project tree' : 'Hide the project tree',
   },
 
   user: {
@@ -87,10 +94,10 @@ export const content = {
     messageToJon: 'Message to Jon',
     send: 'Send',
     stop: 'Stop',
-    /** The second send of R-WP-30: the same text again, without typing it again (UC-WP-57). */
-    resend: 'Resend',
     /** The wait of a turn that has delivered nothing yet — the words of the plugin (R-WP-31). */
     waitingForAi: 'Waiting for AI…',
+    /** The one label of the way back to the end of the log (R-WP-35, UC-WP-80). */
+    scrollBottom: 'Scroll bottom',
     /** The fallback of an `error` event that carries no reason — better than an empty line. */
     unknownError: 'unknown error',
   },
@@ -114,12 +121,6 @@ export const content = {
   insight: {
     title: (name: string): string => `Insight into ${name}`,
     readOnly: 'read-only',
-    kind: {
-      user: 'Input',
-      agent: 'Answer',
-      tool: 'Tool',
-    },
-    empty: 'No conversation — this agent has none in this run.',
     truncated: 'Older lines fall away — the edge returns only the last ones.',
   },
 
@@ -147,12 +148,23 @@ export const content = {
     title: 'Settings',
     provider: 'Provider',
     model: 'Model',
+    /** R-WP-50: the one word of the button that asks the connection again — the plugin's button says the same. */
+    modelRefresh: 'Refresh',
     url: 'URL',
     tokenWindow: 'Token window',
     timeout: 'Timeout',
     sendThinking: 'Send thinking',
     yes: 'Yes',
     no: 'No',
+    /**
+     * R-WP-51: the advanced trio of the base level. The labels are the field names the server's refusal
+     * repeats, so the message and the row on the screen name the same thing.
+     */
+    maxTokens: 'Max Tokens',
+    queryParams: 'Query Params',
+    headerParams: 'Header Params',
+    /** The shape of both CSV fields — one rule, one sentence (R-WP-51). */
+    paramsPlaceholder: 'k=v, k2=v2',
     key: 'Key',
     keySet: 'set',
     keyMissing: 'not set',
@@ -193,6 +205,19 @@ export const content = {
     /** R-WP-23: the base provider has no per-request think input, so no field could do anything. */
     thinkUnsupported: 'the base provider has no thinking input',
     temperature: 'Temperature',
+    /**
+     * R-WP-52: the two slot fields of the provider's body and of the tool allowlist. The label of the
+     * body is the core's own name for the field, as the server's refusal repeats it.
+     */
+    extraBody: 'Extra Body',
+    tools: 'Tools',
+    /** The shape of the allowlist — the entry the core interprets, names and negations (D9). */
+    toolsPlaceholder: 'read, grep, -write',
+    /** UC-WP-88: the offer of what runs with the typed entry — it never saves and never warns. */
+    preview: 'Preview',
+    previewCount: (count: number): string => `${count} tools`,
+    previewEmpty: 'no tool runs with that entry',
+    previewHint: 'empty = every tool the agent has',
     save: 'Save',
     /** UC-WP-44 "ein leeres Feld erbt den Default-Feld für Feld" — the empty state of these fields. */
     inherits: 'empty = inherits the default',

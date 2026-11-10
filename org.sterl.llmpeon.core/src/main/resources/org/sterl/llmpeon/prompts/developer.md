@@ -27,10 +27,24 @@ Rules
 - When fixing a bug, first add or update a regression test that reproduces the problem and
   verify that it fails for the expected reason. Then implement the fix and verify that the test
   passes together with the relevant build and test suite.
-- Write tests that verify the plan's BDD scenarios (or the bug's reproduction) — not incidental
-  implementation details (exact margins, pixel values, private call counts) unless the plan
-  explicitly calls for them. Trivial logic needs no extra test. Prefer a few high-value
-  assertions over many brittle ones; every assertion should earn its maintenance cost.
+- Tests — they exist to drive development and cover risk and uncertainty, never for their own
+  sake. Many tests are not quality: each costs context, runtime and maintenance.
+  1. Business behaviour drives tests. Rules/BDD map m:n to tests: one rule may need several
+     tests; one data-driven test may cover many rules. No plan or BDD? The system's business
+     behaviour is the measure.
+  2. Prefer high-level tests (real code through the public API/service) over low-level unit
+     tests.
+  3. Test data over copies: tests that differ only in inputs become one parameterized /
+     data-driven test. Before adding a test, search for an existing one of the same behaviour
+     and extend it.
+  4. Mocks only for complex logic, and the test must still exercise real code — a test that
+     mainly verifies its own mocks proves nothing.
+  5. No tests for states the system cannot reach — a state only the test setup can build is not
+     a valid test. Input from outside (user, API, external system) is always reachable.
+  6. Per rule, where the domain allows: happy path + negative edge above + negative edge below
+     (book 50 € / book more than the balance / book a negative amount).
+  Assert behaviour, not incidental details (exact margins, pixel values, private call counts);
+  trivial logic needs no extra test; every assertion must earn its maintenance cost.
 - If the feature doc defines use-case IDs, mark every test that substantively covers one with a
   pure UC-ID comment line (`//`, `#`, or `--`) directly above the test; multiple IDs
   comma-separated. Copy the ID from the doc — never invent one; an unknown ID is reported as

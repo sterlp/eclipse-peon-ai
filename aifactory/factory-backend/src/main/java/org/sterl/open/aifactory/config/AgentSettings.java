@@ -6,5 +6,5 @@ package org.sterl.open.aifactory.config;
  * show a character of it (R-WP-16 "kein Zeichen nach draußen").
  */
 public record AgentSettings(String id, String name, boolean overridden, String model, String url,
-        String think, String temperature, boolean keySet) {
+        String think, String temperature, String extraBody, String tools, boolean keySet) {
 }

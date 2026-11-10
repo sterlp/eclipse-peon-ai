@@ -3,21 +3,18 @@ import type { ReactNode } from 'react'
 import { Timeline, type TimelineItemProps } from 'antd'
 
 import { content } from '../shared/content'
-import {
-  arrivalTime,
-  MAX_TOOL_LINES,
-  type DelegationItem,
-  type ThinkItem,
-  type ToolItem,
-  type TraceItem,
-} from './chat.live'
+import { WorkingIndicator } from './chat.status'
+import { arrivalTime, MAX_TOOL_LINES, type TimelineEntry } from './chat.live'
+
+/** One entry of one kind — what `entryOf` narrows a `TimelineEntry` to, anchor-free like all of them. */
+type EntryOf<K extends TimelineEntry['kind']> = Extract<TimelineEntry, { kind: K }>
 
 interface Props {
   /** The entries of one place of the trace, in the order they arrived. */
-  items: TraceItem[]
+  items: TimelineEntry[]
   /** The one entry the open turn works on, or none (R-WP-40). Identity and not index: the cap may have
    *  trimmed this run, and the entry that works belongs to ONE turn — not to whichever turn works. */
-  open: TraceItem | null
+  open: TimelineEntry | null
 }
 
 /**
@@ -44,22 +41,30 @@ export function ChatTraceTimeline({ items, open }: Props) {
  * so dropping one would silently drop a fact (UC-WP-72 GIVEN 5). Keyed by the place in the run, so the cut
  * shifts no entry's identity.
  */
-function timelineItems(items: TraceItem[], open: TraceItem | null): TimelineItemProps[] {
-  const steps = items.filter((item): item is ToolItem => item.kind === 'tool')
-  const hidden: Set<TraceItem> = new Set(steps.slice(0, Math.max(0, steps.length - MAX_TOOL_LINES)))
+function timelineItems(items: TimelineEntry[], open: TimelineEntry | null): TimelineItemProps[] {
+  const steps = items.filter((item): item is EntryOf<'tool'> => item.kind === 'tool')
+  const hidden: Set<TimelineEntry> = new Set(steps.slice(0, Math.max(0, steps.length - MAX_TOOL_LINES)))
   const shown: TimelineItemProps[] = []
   items.forEach((item, index) => {
     if (hidden.has(item)) {
       return
     }
     const working = item === open
-    shown.push({ key: index, loading: working, content: entryOf(item, working) })
+    shown.push({
+      key: index,
+      // both and not one: without `loading` the basis answers `status: finish` and without `icon` its own
+      // loading glyph, which carries no handle of ours — the working dot is our widget (R-WP-40, UC-WP-72).
+      // `icon` and not the deprecated `dot` (`useItems.js`: `mergedIcon = icon ?? dot`)
+      loading: working,
+      icon: working ? <WorkingIndicator size="small" /> : undefined,
+      content: entryOf(item, working),
+    })
   })
   return shown
 }
 
 /** The entry of one link, by its kind — a new kind of the trace is a branch here and no edit of the others. */
-function entryOf(item: TraceItem, working: boolean) {
+function entryOf(item: TimelineEntry, working: boolean) {
   if (item.kind === 'delegation') {
     return <DelegationEntry item={item} working={working} />
   }
@@ -70,7 +75,7 @@ function entryOf(item: TraceItem, working: boolean) {
 }
 
 /** One step of the run: the agent the core stamped above his report, and nothing the wire left unsaid. */
-function StepEntry({ item, working }: { item: ToolItem; working: boolean }) {
+function StepEntry({ item, working }: { item: EntryOf<'tool'>; working: boolean }) {
   return (
     <TraceEntry kind="tool" working={working} at={item.at}>
       {item.origin !== null && <span className="chat-step-name">{item.origin}</span>}
@@ -85,7 +90,7 @@ function StepEntry({ item, working }: { item: ToolItem; working: boolean }) {
  * one would be the invention UC-WP-72 GIVEN 1 forbids. The wording shows as typed and not as Markdown: an
  * answer is speech, a thought is a link of the account (R-WP-28).
  */
-function ThinkEntry({ item, working }: { item: ThinkItem; working: boolean }) {
+function ThinkEntry({ item, working }: { item: EntryOf<'think'>; working: boolean }) {
   return (
     <TraceEntry kind="think" working={working} at={item.at}>
       <span className="chat-step-name">{content.chat.thinking}</span>
@@ -97,9 +102,11 @@ function ThinkEntry({ item, working }: { item: ThinkItem; working: boolean }) {
 /**
  * One delegation: the member the order went to and, while his turn is the open one, the word that he works.
  * The order itself stays the wording of the step above — the wire carries no task text, so this entry parses
- * nothing out of anybody (UC-WP-72 GIVEN 3). The basis' loading dot is the indicator; the word needs none.
+ * nothing out of anybody (UC-WP-72 GIVEN 3). What says <em>he works</em> is the point of the open entry, and
+ * that point is our own `WorkingIndicator` — `timelineItems` hands it as `icon`, because the basis' loading
+ * glyph would paint a second mark of the same answer (R-WP-46); the word beside the name carries no mark.
  */
-function DelegationEntry({ item, working }: { item: DelegationItem; working: boolean }) {
+function DelegationEntry({ item, working }: { item: EntryOf<'delegation'>; working: boolean }) {
   return (
     <TraceEntry kind="delegation" working={working} at={item.at}>
       <span className="chat-delegation-name">{item.member}</span>
@@ -122,7 +129,7 @@ function TraceEntry({
   at,
   children,
 }: {
-  kind: TraceItem['kind']
+  kind: TimelineEntry['kind']
   working: boolean
   at: number | null
   children: ReactNode

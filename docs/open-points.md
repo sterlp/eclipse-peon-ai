@@ -475,3 +475,11 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 - ❓ **`PoDelegateTool.dispatch` fängt nur `IllegalStateException`** (`PoDelegateTool.java:267`):
   andere RuntimeExceptions schlagen als roher Stacktrace-Dump zum PO durch statt als ehrliche
   Meldung „Delegation nicht möglich: <Grund>". Beide im nächsten Bug-Zyklus triagen.
+
+## 2026-11-09 — R18 Skill-Refresh-Hotfix (aifactory, Jon)
+
+- ⏳ **R18-Zusage „eigene Schreib-Änderung wird sofort sichtbar" gilt nur außerhalb der
+  10-min-Ruhezeit** (skillRead liefert in der Ruhezeit stale Inhalte) — die gepatchte Lösung ist
+  bewusst nur ein **Hotfix**. Pauls Idee (2026-11-09): „später erweitern wir die Tools, Skill-Writes
+  gehen an den Scaffold, das Refresh kommt ins Tool" — Proper fix = eigenes Tool-Extension-Inkrement
+  (Refresh ins Tool / Skill-Writes an den Scaffold). Kein Core-Bug-Fix jetzt.

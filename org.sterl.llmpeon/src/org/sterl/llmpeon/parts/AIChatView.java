@@ -707,7 +707,9 @@ public class AIChatView implements EclipseAiMonitor {
     private Exception handleChatException(Exception e) {
         if (e == null) return null;
         if (isCanceled()) return null;
-        if (ExceptionUtil.isCanceled(e)) return null;
+        if (ExceptionUtil.isCanceled(e)) {
+            return null;
+        }
         if (ExceptionUtil.isRateLimit(e)) {
             onChatResponse(new SimpleMessage(Type.PROBLEM, "API rate limit! " + e.getMessage()));
             return null;

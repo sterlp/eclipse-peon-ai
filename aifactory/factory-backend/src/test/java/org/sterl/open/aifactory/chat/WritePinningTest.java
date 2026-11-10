@@ -170,8 +170,9 @@ class WritePinningTest extends FactorySpringTest {
                     .as("UC-WP-8: ein Team-Mitglied schreibt innerhalb der Projekt-Root wie im Plugin")
                     .isEqualTo("team-text");
             assertThat(messages(project.id()))
-                    .as("die Delegation antwortet Jon, das ist ihre eigene Zeile — im Verlauf, nicht auf dem Draht")
-                    .filteredOn(line -> "Dev".equals(line.origin()))
+                    .as("die Delegation antwortet Jon, das ist ihre eigene Zeile — im Verlauf, nicht auf"
+                            + " dem Draht; Jons Schritt zu ihr ist eine tool-Zeile, keine Antwort")
+                    .filteredOn(line -> "Dev".equals(line.origin()) && "jon".equals(line.role()))
                     .singleElement()
                     .satisfies(line -> assertThat(line.text())
                             .startsWith(MEMBER_ANSWER + System.lineSeparator()));
@@ -220,7 +221,10 @@ class WritePinningTest extends FactorySpringTest {
             assertThat(Files.exists(escape)).as("UC-WP-9: die Datei entsteht nicht").isFalse();
 
             assertThat(messages(project.id()))
-                    .as("UC-WP-9/R-WP-11: eine Werkzeug-Zeile ist live — nach dem Reload steht sie nicht im Verlauf")
+                    .as("UC-WP-9/R-WP-11: die Ablehnung bleibt aus dem Gespraech verbannt — als Antwort"
+                            + " steht sie nicht im Verlauf; ihr Wortlaut darf seit R-WP-47 im Auszug"
+                            + " seines Schritts stehen, denn der ist der Bestand und keine Erfindung")
+                    .filteredOn(message -> !"tool".equals(message.role()))
                     .noneMatch(message -> message.text() != null && message.text().contains("Write denied"));
         }
     }
@@ -262,13 +266,16 @@ class WritePinningTest extends FactorySpringTest {
             assertThat(messages(project.id()))
                     .as("die Delegation selbst laeuft weiter — ihr Ergebnis ist ihre eigene Zeile im"
                             + " Verlauf, nicht ihre Ablehnung")
-                    .filteredOn(line -> "Dev".equals(line.origin()))
+                    .filteredOn(line -> "Dev".equals(line.origin()) && "jon".equals(line.role()))
                     .singleElement()
                     .satisfies(line -> assertThat(line.text())
                             .startsWith(MEMBER_ANSWER + System.lineSeparator()));
 
             assertThat(messages(project.id()))
-                    .as("UC-WP-9 zweiter GIVEN/R-WP-11: auch im wiederhergestellten Verlauf steht keine Ablehnung")
+                    .as("UC-WP-9 zweiter GIVEN/R-WP-11: auch im wiederhergestellten Verlauf steht keine"
+                            + " Ablehnung — als Antwort nicht; der Auszug seines Schritts ist Bestand"
+                            + " (R-WP-47)")
+                    .filteredOn(message -> !"tool".equals(message.role()))
                     .noneMatch(message -> message.text() != null && message.text().contains("Write denied"));
         }
     }

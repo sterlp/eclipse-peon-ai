@@ -23,13 +23,21 @@ LESSONS-LEARNED: <Problems overcome>
   trigger, consequence, and smallest verified correction (instruction, checklist
   item, test, or tool guard). Do not create or modify SKILLs during compaction;
   only propose them.
+- Observations with evidence — one line each, only what the input shows; never infer
+  from absence, never judge code you did not see. Use exactly these tags, omit a tag
+  without an observation:
+  - [redundant-test] <test> file:line — duplicates <other test> file:line
+  - [verbose-comment] file:line — restates the code, narrates history, or is too long
+  - [worked-well] <practice> — where it paid off
+  Copy observations from an earlier briefing in the input, merge equal ones and count
+  them (×n). This count is the evidence for the SKILL rule below.
 - Critical issues found outside the task's scope, with a suggested patch/fix
   (e.g. to the AGENTS*.md)
 - Errors found in existing SKILLs, or new SKILLs worth proposing — include the
   actual suggested content and the problem it should solve, not just "a skill
   is needed". Propose a SKILL only for a recurring, generalizable problem with
-  evidence from at least 2 independent occurrences; state the evidence and the
-  validation step.
+  evidence from at least 2 independent occurrences (×n above, or a recurring
+  mistake); state the evidence and the validation step.
 
 Preserve: key decisions + rationale, pending work, file paths, exact code references (file:line), conclusions drawn from tool results — especially hard-won facts that are expensive to rediscover.
 Preserve verbatim: the latest error message, failing command, and decisive test result; do not paraphrase them.

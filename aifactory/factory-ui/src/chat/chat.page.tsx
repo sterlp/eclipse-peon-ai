@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 
 import {
+  isTraceLine,
   listMessages,
   sendMessage,
   senderName,
@@ -9,8 +10,10 @@ import {
   type ChatMessage,
   type ChatStreamEvent,
 } from './chat.client'
-import { agentAction, listAgents, type AgentAction, type AgentTile } from './chat.agents.client'
+import { agentAction, type AgentAction } from './chat.agents.client'
+import { useTileBoard } from './chat.board'
 import { ChatComposer } from './chat.composer'
+import { useEdgeInsight } from './chat.edge'
 import { ChatInsight } from './chat.insight'
 import { ChatLog } from './chat.log'
 import {
@@ -25,22 +28,31 @@ import {
   livePreview,
   type LiveItem,
 } from './chat.live'
-import { withoutConfirmed, type PendingLine } from './chat.pending'
+import { lastVisibleUserText, withoutConfirmed, type PendingLine } from './chat.pending'
+import { useFollowBottom } from './chat.scroll'
+import { ScrollBottomButton } from './chat.scroll.bottom'
 import { ChatTiles } from './chat.tiles'
 import { ChatWaiting } from './chat.waiting'
-import { openChatStream } from './chat.stream'
+import { openChatStream, RECONNECT_MS } from './chat.stream'
 import { ApiRequestError, errorMessage } from '../shared/api.client'
 import { content } from '../shared/content'
-import type { Project } from '../shared/dto'
+import type { ProjectDto } from '../shared/server-api'
 
 interface Props {
-  project: Project | null
+  project: ProjectDto | null
   /**
-   * Anything the shell wants beside the chat — today the file area of `project`. It is drawn outside
-   * the chat region and this component knows nothing about it, so `chat` keeps not importing
-   * `project` (§4.3.4 of the increment).
+   * Anything the shell wants beside the chat — today the file area of `project`. It is drawn outside the
+   * chat region and this component knows nothing about it: `chat` keeps not importing `project`, so no word
+   * of the file area appears here (§4.3.4 of the increment).
    */
   files?: ReactNode
+  /**
+   * The frame's reading of the right edge — whether the address holds it for {@link files}, and the way back
+   * from it (R-WP-38). No second "open" lives here and this view never navigates: it has no path of the file
+   * area to name. Both are read by {@link useEdgeInsight} alone (R-WP-33, UC-WP-60 G3).
+   */
+  filesOpen?: boolean
+  onCloseFiles?(): void
   /**
    * The name of this browser (R-WP-25), given by the shell that holds it — identity is not per project,
    * so this component neither stores nor interprets it: it labels the sends and stamps the own pending
@@ -48,12 +60,6 @@ interface Props {
    */
   user?: string | null
 }
-
-/** How long the view waits before it asks again — long enough not to hammer a restarting server. */
-const RECONNECT_MS = 500
-
-/** How far from the end of the log still counts as "the user reads the newest line" (R-WP-35). */
-const SCROLL_END_SLOP = 24
 
 /**
  * The chat of one project (R-WP-4, R-WP-5): the history is the only truth for finished text, the
@@ -73,43 +79,48 @@ const SCROLL_END_SLOP = 24
  * mid-turn does not move the answer that is still streaming, and the trace of a finished turn keeps its
  * place while the answer gives way to the history that carries it (R-WP-28, UC-WP-54).
  *
- * The team's tiles ({@link ChatTiles}) follow the same rule in their own family: read on mount, replaced
- * by every `agents` snapshot, never merged — and re-read after an action, because 202 only said
- * <em>taken</em>. This component holds the state of both, and it knows no agent name: a tile says what it
- * offers (D-14).
+ * The team's tiles ({@link ChatTiles}) follow the same rule in their own family, kept by {@link useTileBoard}:
+ * read once the stream stands, replaced whole by every `agents` snapshot — which stand of the roster is the
+ * fresher one is the board's question, not this view's — and re-read after an action, because 202 only said
+ * <em>taken</em>. This view knows no agent name: a tile says what it offers (D-14).
  *
- * A tile offering TRANSCRIPT opens {@link ChatInsight}, the read-only look into that agent's own
- * conversation (UC-WP-49). It is drawn after the {@link files} slot and so lies above the file area, and
- * it stays a region of this view — no fourth tab and no route of its own, whatever the address shows (R-WP-1).
+ * A tile offering TRANSCRIPT opens {@link ChatInsight} (UC-WP-49), held by {@link useEdgeInsight}. It shares
+ * the right edge with the {@link files} slot and never stands with it: the edge carries exactly one overlay,
+ * so opening one releases the other (R-WP-33, UC-WP-60 G3) — the drawer by its address, the insight without
+ * a trace of its own. Either way it stays a region of this view: no fourth tab and no route, whatever the
+ * address shows (R-WP-1).
  *
  * The composer's second control ends the running turn (UC-WP-50). After an accepted stop this view does
  * <em>not</em> re-read the history: the live lines the user was already shown are all that exists of the
  * stopped turn, and there is no second store to read them back from (R-WP-11).
  *
- * Two things follow the turn itself: the text of an <em>accepted</em> send is kept for "Resend" (UC-WP-57),
- * and {@link ChatWaiting} sits above the composer while a turn works and shows what the stream last
- * reported (R-WP-31). Neither is a second memory: the first is one string of this browser's session, the
- * second reads the live list the log already holds.
+ * The send way of the composer is decided here and nowhere else (UC-WP-57): a text goes out as it stands, an
+ * empty field repeats the last user line of the <em>loaded</em> history while no turn works, and does nothing
+ * while one works or when the history holds no line. The keyboard keeps its pure text way — an empty Enter
+ * never reaches this page (UC-WP-56). {@link ChatWaiting} sits above the composer while a turn works and
+ * shows what the stream last reported (R-WP-31); it reads the live list the log already holds and is no
+ * second memory.
  *
  * The page holds the state; {@link ChatLog} and {@link ChatComposer} only draw it.
  *
  * The head of the view names the project and nothing else: a second "Chat" heading would repeat the tab
  * the chat already sits in (R-WP-1).
  */
-export function ChatPage({ project, files, user }: Props) {
+export function ChatPage({
+  project,
+  files,
+  user,
+  filesOpen = false,
+  onCloseFiles = () => undefined,
+}: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [tiles, setTiles] = useState<AgentTile[]>([])
   const [outgoing, setOutgoing] = useState<PendingLine[]>([])
   const [live, setLive] = useState<LiveItem[]>([])
   const [draft, setDraft] = useState('')
-  /**
-   * The last text the server took (202) — the one "Resend" sends again (UC-WP-57). Held only after an
-   * accepted send: a text that never got through is not something the user should be offering twice.
-   */
-  const [lastSent, setLastSent] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  /** The tile whose insight is open — a name, not a conversation: there is still exactly one of those. */
-  const [insight, setInsight] = useState<string | null>(null)
+  // the one overlay this view may put on the right edge, held to one with the file area (R-WP-33,
+  // UC-WP-60 G3); the rule and its measured reason live beside the state they write
+  const { shown: insight, openInsight, closeInsight } = useEdgeInsight(filesOpen, onCloseFiles)
   /**
    * The project whose turn we started and have not seen end — held by id, so switching the project ends it
    * here without an effect writing state (UC-WP-50).
@@ -118,11 +129,12 @@ export function ChatPage({ project, files, user }: Props) {
   /** The project whose turn the user asked to end, so its `done` must not read over his lines (D-16). */
   const stoppedTurn = useRef<string | null>(null)
   /**
-   * The rows the history carries — the coordinates every live line anchors in. A ref because the event
-   * handler has to read the count <em>now</em>: the state of a render is one render behind, and an anchor
-   * that is one render behind is an anchor that names the wrong place (D-B, UC-WP-54).
+   * What the last read holds, in the two units that read it: `lines` indexes a pending line's own position
+   * (chat.pending.ts), `voices` is what a live anchor counts — a step of the trace is a line the read may add
+   * at any place, so counting it would move every surviving entry of the turn above it (R-WP-47, A7-N1). A
+   * ref because the handler reads the count <em>now</em>: a render's state is one render behind (D-B).
    */
-  const historyRows = useRef(0)
+  const historyCount = useRef({ lines: 0, voices: 0 })
   /**
    * The own inputs the history does not carry yet, each remembering how many history lines stood when it
    * was sent — the position its own line cannot precede, which is what confirms it (R-WP-37). Their count
@@ -157,27 +169,24 @@ export function ChatPage({ project, files, user }: Props) {
   /** The number of the read whose content is on the screen. An older answer never overwrites a newer one. */
   const appliedRead = useRef(0)
   /**
-   * The scroll area of the chat and whether the user stands at its end (R-WP-35): a new line follows him
-   * while he does, and leaves him reading while he does not. A ref and not a state, because the answer to
-   * "where is he" must not decide whether the log re-renders.
+   * The scroll area of the chat. Where the user reads and what a new line owes him — follow him to its end,
+   * or leave him reading (R-WP-35) — is `useFollowBottom`'s question; this view only says when the log has
+   * new content, because that is the only thing here that knows it.
    */
   const log = useRef<HTMLUListElement>(null)
-  const atBottom = useRef(true)
+  const { following, onLogScroll, followNow, followIfFollowing } = useFollowBottom(log)
   const projectId = project?.id ?? null
+  const showBoardFailure = useCallback((message: string) => setError(message), [])
+  const { tiles, refreshTiles, applySnapshot } = useTileBoard(projectId, showBoardFailure)
 
   useEffect(() => {
-    const area = log.current
-    if (area !== null && atBottom.current) {
-      area.scrollTop = area.scrollHeight
-    }
-  }, [messages, live, outgoing])
+    followIfFollowing()
+  }, [messages, live, outgoing, followIfFollowing])
 
-  /**
-   * One write place per list: the ref and the state of a fact change together and nowhere else. The screen
-   * reads the state, the event handler reads the ref, so the two can never disagree about a row count (D-B).
-   */
+  /** One write place per list: the ref and the state of a fact change together and nowhere else — the screen
+   *  reads the state, the handler the ref, so the two never disagree about a count (D-B). */
   const writeHistory = useCallback((loaded: ChatMessage[]) => {
-    historyRows.current = loaded.length
+    historyCount.current = { lines: loaded.length, voices: loaded.filter(line => !isTraceLine(line)).length }
     setMessages(loaded)
   }, [])
 
@@ -197,17 +206,17 @@ export function ChatPage({ project, files, user }: Props) {
   }, [])
 
   /**
-   * The open turn, opened by the first live line that needs it and frozen from then on. Its anchor is frozen
-   * <em>including</em> the own pending lines, because the history read turns exactly those into history lines
-   * at the same indices — so the same number names the same place before and after the read, which is what
-   * keeps one answer one block (D-A, UC-WP-54). Its identity is what a working step belongs to: a step of
-   * this turn can work, a step of one that ended cannot (R-WP-40, UC-WP-72 GIVEN 2).
+   * The open turn, opened by the first live line that needs it and frozen from then on. Its anchor counts
+   * <em>voices</em> — the history lines a read cannot move, plus the own pending lines, which that read
+   * turns into exactly those voices at the same indices — so the same number names the same place before
+   * and after the read, which is what keeps one answer one block (D-A, UC-WP-54, R-WP-47). Its identity is
+   * what a working step belongs to: a step of this turn can work, one of a finished turn cannot.
    */
   const beginTurn = useCallback(() => {
     if (turn.current !== null) {
       return turn.current
     }
-    const started = { anchor: historyRows.current + pendingLines.current.length, id: ++turnSeq.current }
+    const started = { anchor: historyCount.current.voices + pendingLines.current.length, id: ++turnSeq.current }
     writeTurn(started)
     return started
   }, [writeTurn])
@@ -253,16 +262,6 @@ export function ChatPage({ project, files, user }: Props) {
       .then(loaded => applyHistory(loaded, mark, read))
       .catch(reason => setError(errorMessage(reason)))
   }, [applyHistory, projectId])
-
-  /** The roster of tiles is read, not kept: an `agents` snapshot may have been dropped by a slow reader. */
-  const refreshTiles = useCallback((): Promise<void> => {
-    if (projectId === null) {
-      return Promise.resolve()
-    }
-    return listAgents(projectId)
-      .then(setTiles)
-      .catch(reason => setError(errorMessage(reason)))
-  }, [projectId])
 
   const applyEvent = useCallback(
     (event: ChatStreamEvent) => {
@@ -353,12 +352,13 @@ export function ChatPage({ project, files, user }: Props) {
           break
         }
         case 'agents':
-          // replace, never merge — a snapshot that accumulated would become a second history (R-WP-7)
-          setTiles(event.tiles)
+          // replace, never merge — a snapshot that accumulated would become a second history (R-WP-7); as the
+          // freshest stand it retires every roster read that began before it (UC-WP-84 GIVEN 3)
+          applySnapshot(event.tiles)
           break
       }
     },
-    [beginTurn, projectId, refresh, refreshTiles, writeLive, writeTurn],
+    [applySnapshot, beginTurn, projectId, refresh, refreshTiles, writeLive, writeTurn],
   )
 
   useEffect(() => {
@@ -374,6 +374,8 @@ export function ChatPage({ project, files, user }: Props) {
         projectId,
         {
           onEvent: applyEvent,
+          // the board is read on the answer, never before the subscription stands (R-WP-48)
+          onOpen: () => void refreshTiles(),
           onEnd: retry => {
             if (!mounted || !retry) {
               return
@@ -390,15 +392,13 @@ export function ChatPage({ project, files, user }: Props) {
       )
     }
 
-    // the stream opens only once the history has been read: the anchor of the first live line is a
-    // statement about the rows that stand, and an event that anchored in front of the read would later be
-    // drawn above the whole conversation (D-E)
+    // the stream opens only once the history has been read: an event that anchored before it would be drawn
+    // above the whole history (D-E); the board is read on the stream's answer, not here (R-WP-48)
     void refresh().then(() => {
       if (mounted) {
         connect()
       }
     })
-    void refreshTiles()
     return () => {
       mounted = false
       controller.abort()
@@ -409,20 +409,34 @@ export function ChatPage({ project, files, user }: Props) {
   }, [applyEvent, projectId, refresh, refreshTiles, writeLive, writeTurn])
 
   /**
-   * One text into this project's conversation — whether it came from the field or from "Resend" makes no
-   * difference on the wire (UC-WP-57): the same edge, the same queue while a turn runs (R-WP-10).
+   * A turn is running when we started one that has not ended, or when the roster shows an agent working —
+   * another user's turn on the same project is a turn the user here may stop (UC-WP-22). COMPACTING is
+   * deliberately not one of them: a half Compact is not something a turn's stop may cut (D-17). Read above
+   * `send` as well: the empty send way asks it before anything goes out (UC-WP-57 GIVEN 2).
+   */
+  const busy =
+    (runningTurn !== null && runningTurn === projectId) || tiles.some(tile => tile.state === 'WORKING')
+
+  /**
+   * One text into this project's conversation — whether the field wrote it or an empty send repeated the last
+   * line the screen shows makes no difference on the wire (UC-WP-57): the same edge, the same queue while a
+   * turn runs (R-WP-10). Never reached with a blank text: the backend answers 400, so the empty way ends in
+   * `submit` before any request.
    */
   async function send(text: string) {
     if (projectId === null) {
       return
     }
+    // his own input is always shown, wherever he had read up to (UC-WP-80) — before the line is written, so
+    // the follow is re-armed when the effect that carries the new line runs
+    followNow()
     // shown before the server has it: a turn writes the user line into the memory only when it starts,
     // so a queued input would vanish from the screen until the next history read. The number of history
     // lines standing now and this browser's sender name are what confirm the line later — the name is
     // normalised exactly as the wire carries it, or the history would never confirm it (R-WP-37, D-H)
     writePending([
       ...pendingLines.current,
-      { text, afterHistory: historyRows.current, origin: senderName(user) },
+      { text, afterHistory: historyCount.current.lines, origin: senderName(user) },
     ])
     setError(null)
     // the send is what opens the turn, so the flag follows the intent and not the answer (D-13): 202 only
@@ -432,8 +446,6 @@ export function ChatPage({ project, files, user }: Props) {
     try {
       // the name of this browser goes with it, and only when there is one (R-WP-25, UC-WP-48)
       await sendMessage(projectId, text, user)
-      // 202 is the moment this text becomes "the last one": a refusal never earns the Resend button
-      setLastSent(text)
     } catch (reason) {
       writePending(pendingLines.current.slice(0, -1))
       setRunningTurn(null)
@@ -441,25 +453,28 @@ export function ChatPage({ project, files, user }: Props) {
     }
   }
 
+  /**
+   * The one decider of the send way (UC-WP-57), because the composer answers nothing on its own (UC-WP-74):
+   * a text goes out as it stands; an empty field repeats the last user line the screen shows — the history's
+   * or this browser's pending one, which is what makes "send it again after a stop" work — and does nothing
+   * while a turn works or when no line has been shown at all. A repeat is not a second way on the wire — it
+   * is `send` with the text the screen kept. The field keeps what he typed in the meantime: an empty send had
+   * nothing to clear.
+   */
   function submit(event: FormEvent) {
     event.preventDefault()
     const text = draft.trim()
-    // "only a text sends" stands twice on purpose: Enter asks the form, and requestSubmit does not ask the
-    // disabled button — without this guard the keystroke would open the turn the button refuses (R-WP-41)
-    if (text === '') {
+    if (text !== '') {
+      setDraft('')
+      void send(text)
       return
     }
-    setDraft('')
-    void send(text)
-  }
-
-  /**
-   * The last accepted text again, without the user typing it (UC-WP-57). What he has typed in the meantime
-   * stays in the field — a resend answers the failed turn, it does not empty what he is writing now.
-   */
-  function resend() {
-    if (lastSent !== null) {
-      void send(lastSent)
+    if (busy) {
+      return // no empty turn and no queue line behind a running one (UC-WP-57 GIVEN 2)
+    }
+    const repeated = lastVisibleUserText(messages, pendingLines.current)
+    if (repeated !== null) {
+      void send(repeated)
     }
   }
 
@@ -483,26 +498,11 @@ export function ChatPage({ project, files, user }: Props) {
         return
       }
     }
-    // the end he asked for has been taken: the frame goes now, without waiting for a `done` that will not
-    // read anything over it — the lines on the screen stay (R-WP-31, UC-WP-65, D-16)
+    // the end he asked for has been taken: the wait ends now, without waiting for a `done` that will not
+    // read anything over it — the lines on the screen stay (R-WP-31, UC-WP-50, D-16)
     setRunningTurn(null)
     void refreshTiles()
   }
-
-  /**
-   * A turn is running when we started one that has not ended, or when the roster shows an agent working —
-   * another user's turn on the same project is a turn the user here may stop (UC-WP-22). COMPACTING is
-   * deliberately not one of them: a half Compact is not something a turn's stop may cut (D-17).
-   */
-  const busy =
-    (runningTurn !== null && runningTurn === projectId) || tiles.some(tile => tile.state === 'WORKING')
-
-  /**
-   * The waiting frame of the log — ours alone, never another browser's turn: `done`, `error` and an accepted
-   * stop each clear `runningTurn`, so no line carries the frame once this browser's turn is over while the
-   * lines it showed stay (R-WP-31, UC-WP-65).
-   */
-  const pending = runningTurn !== null && runningTurn === projectId
 
   /**
    * Clear or Compact one tile. 202 says <em>taken</em>, so both reads follow; a refusal (409 while a turn
@@ -526,17 +526,6 @@ export function ChatPage({ project, files, user }: Props) {
     void refresh()
   }
 
-  /**
-   * Where the user reads (R-WP-35): the slop keeps a line whose last pixels still touch the bottom from
-   * counting as "reading up" — a log that stops following a hair too early is the worse failure.
-   */
-  function onLogScroll() {
-    const area = log.current
-    if (area !== null) {
-      atBottom.current = area.scrollHeight - area.scrollTop - area.clientHeight < SCROLL_END_SLOP
-    }
-  }
-
   if (project === null) {
     return (
       <section className="view" aria-label={content.chat.title}>
@@ -551,18 +540,23 @@ export function ChatPage({ project, files, user }: Props) {
         <header className="chat-head">
           <h1 className="chat-title">{project.name}</h1>
         </header>
-        <ChatTiles tiles={tiles} onAction={act} onInspect={setInsight} />
+        <ChatTiles tiles={tiles} onAction={act} onInspect={openInsight} />
         <ChatLog
           messages={messages}
           outgoing={outgoing}
           live={live}
-          pending={pending}
           // the turn this view holds open — another browser's included, because its steps arrive on this
           // stream too: the indicator belongs to a step of THIS turn and to none that has ended (R-WP-40)
           openTurn={openTurn}
           logRef={log}
           onScroll={onLogScroll}
         />
+        {/* the way back to the end, on the screen exactly while he reads away from it (UC-WP-80). The box
+            carries no height of the column: the button hangs at its bottom edge, which is the top edge of
+            whatever stands below — the wait, the notice, the input — and never on them. */}
+        <div className="chat-scroll-bottom">
+          {!following && <ScrollBottomButton onFollow={followNow} />}
+        </div>
         {/* this notice is the page's own trouble only — a request that failed here: a send refused, a
             refused stop, a tile action that did not run. A failed turn is not announced here: it is a
             line of the log, read from the conversation like every other line (R-WP-34, UC-WP-64) */}
@@ -574,20 +568,12 @@ export function ChatPage({ project, files, user }: Props) {
         {/* one rule with the stop button: while a turn works on this project, the wait is on the screen
             (R-WP-31) — another browser's turn included, because this stream carries its lines anyway */}
         {busy && <ChatWaiting preview={livePreview(live)} />}
-        <ChatComposer
-          draft={draft}
-          busy={busy}
-          lastSent={lastSent}
-          onDraftChange={setDraft}
-          onSubmit={submit}
-          onResend={resend}
-          onStop={stop}
-        />
+        <ChatComposer draft={draft} busy={busy} onDraftChange={setDraft} onSubmit={submit} onStop={stop} />
       </section>
       {files}
-      {insight !== null && (
-        <ChatInsight projectId={project.id} name={insight} onClose={() => setInsight(null)} />
-      )}
+      {/* the look stands on the right edge only while the address leaves it free (R-WP-33, UC-WP-60 G3);
+          the member is its identity: another tile is another look and carries no line of the first one */}
+      {insight !== null && <ChatInsight key={insight} projectId={project.id} name={insight} onClose={closeInsight} />}
     </>
   )
 }

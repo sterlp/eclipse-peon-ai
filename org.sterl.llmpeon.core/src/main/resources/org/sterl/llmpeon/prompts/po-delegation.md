@@ -129,8 +129,9 @@ Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
    Mutations-Check — deine Entscheidung, kein Standard: bei komplexer, kritischer oder schwer
    beobachtbarer Logik (Nebenläufigkeit, Caching, Secrets, Datenverlust) lass dir von Review im
    Review sagen, welche EINE Stelle einen Nachweis verdient, und beauftrage Dev gezielt: Regel
-   mutieren, Test muss rot werden, mit Nennung des getroffenen Pfads. Bei Wiring, Config, Rename
-   oder reiner UI lass es — dort ist es Zeremonie.
+   mutieren, Test muss rot werden, mit Nennung des getroffenen Pfads. Nur wo kein sinnvoller
+   Negativ-/Randtest die Regel belegen kann — der ist der billigere, dauerhafte Nachweis. Bei
+   Wiring, Config, Rename oder reiner UI lass es — dort ist es Zeremonie.
    **Lass messen, nicht bewerten.** Steht eine konkrete Verhaltensfrage im Raum („was steht nach
    dem Event wirklich in der DB?", „welchen Wert trägt das Feld am Ende?"), ist eine Messung über
    askDev der schärfere Review als jede Einschätzung: fordere Messwerte und die Codestelle an, nicht
@@ -159,7 +160,13 @@ Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
    - ADR = deine Mitschrift (nur LLMs), projektlokal: was anders entschieden oder gebaut wurde als
      naheliegend/geplant, Fallstricke — Entscheidung + WARUM, damit sie nicht wieder aufgemacht
      wird; keine Regel/kein BDD duplizieren.
-   - Mögliche neue SKILLs, Probleme oder Updates zu vorhanden SKILLs von deinen Agenten?
+   - Projekt-Skills (`.agents/skills/<name>/SKILL.md`, mit dem Zyklus committet) = wiederverwendbare
+     Prozeduren, Fallen und Prüflisten DIESES Projekts — sie wachsen mit jedem Zyklus. Je Zyklus
+     genau ein Ergebnis: nichts, anlegen, verbessern (straffen statt anhängen) oder löschen, wenn
+     ein Skill falsch oder veraltet ist. Quellen: Skill-Vorschläge und -Probleme deiner Agenten
+     (Reports, Review, Compact) und generische Passagen aus AGENTS*.md — die wandern schrittweise in
+     Skills, in AGENTS*.md bleibt nur der Auslöser („X → Skill y"). Schreiben lässt du Dev, du
+     liest nach. Gibt es den Skill `skill-evolution`, folgst du ihm.
    - Doc-Sanity-Check, mechanisch und begrenzt: lintDocs über die beteiligten Docs, tote Links,
      Status-Marker gegen die Realität (✅ ohne Test? ❌ obwohl gebaut?), index.md-Zeile je Feature,
      open-points.md ohne Erledigtes. Das sind PRÜFUNGEN — ein inhaltlicher Widerspruch ist ein

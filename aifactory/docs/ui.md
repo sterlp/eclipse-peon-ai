@@ -15,8 +15,9 @@ Eine schlanke Browser-App mit **Top-Menü und Projektbaum im Sider** ([R-WP-43](
 Basis bleibt **AntD 6** — Palette, Layout und Element-Optik werden aus der Referenz
 `ai-schulung/app/frontend` (`App.css`/`index.css` + Komponenten-Struktur) und dem Mockup
 (`factory-ui-mockup.tsx`) **übernommen, nicht nachgebaut**: dunkles Top-Band mit Menü, **Sider mit
-fester Breite** (200 px, `Menu mode="inline"` — der Seitenmenü-Defekt der bisherigen Fassung ist damit
-gestellt), Chat-Fläche zentriert über `--content-max`, Element-Optik wie dort. **Defekte der Referenz
+fester Breite** (250 px, `Menu mode="inline"` — der Seitenmenü-Defekt der bisherigen Fassung ist damit
+gestellt; Paul 2026-11-08, Abnahme: „etwas breiter, der Projektname passt nicht sauber rein" — statt
+der ursprünglichen 200 px), Chat-Fläche zentriert über `--content-max`, Element-Optik wie dort. **Defekte der Referenz
 werden nicht mitkopiert** — bekannt: das `Select`, das das Top-Menü überlappt (CSS-Fehler). Was die
 Referenz nicht löst, wird eigen gebaut (wie das Tool-Zeit-Ding dort, nicht final) — bei Zweifeln
 entscheidet die **Referenz-Optik** (hell); das `chat.html` des Plugins bleibt nur Herkunfts-Hinweis
@@ -41,7 +42,7 @@ zurückgenommen.
 **URL-stabil:** jede Navigation (Projekt öffnen, Einheit wählen, View wechseln) ändert die URL
 (**Aktion → URL → UI-Change**) — kein rein funktionierender `useState`-Zustand; ein Reload bleibt auf
 der Seite (UC-WP-43). Die Adresse `/ui/chat` **ohne** Projekt führt auf **Projekte**; war zuletzt ein
-Projekt aktiv, öffnet sich dessen Chat (UC-WP-51) — der Menüeintrag „Chat" führt dorthin
+Projekt aktiv, öffnet sich dessen Chat (UC-WP-51) — der Chat selbst ist nur über den Sider erreichbar
 ([R-WP-43](ui.md)).
 
 #### UC-WP-1 — pagesOfTheMvpApp ✅ (früher „showsExactlyTheseFourPages", umgebaut Paul 2026-11-02)
@@ -58,7 +59,7 @@ Projekt aktiv, öffnet sich dessen Chat (UC-WP-51) — der Menüeintrag „Chat"
 
 #### UC-WP-51 — chatOpensLastActiveProject ✅
 - GIVEN mehrere Projekte WHEN `/ui/chat` **ohne** Projekt geöffnet wird (Adresse, Lesezeichen,
-  Weiterleitung oder der Menüeintrag „Chat", [R-WP-43](ui.md)) THEN öffnet der Chat des
+  Weiterleitung, [R-WP-43](ui.md)) THEN öffnet der Chat des
   zuletzt aktiven Projekts; ohne zuletzt aktives Projekt führt die Adresse auf die Projektliste.
 
 #### UC-WP-52 — everyNavigationChangesTheUrl ✅
@@ -151,14 +152,18 @@ String-Catalog ([R-WP-27](ui.md)), ein Weg je Verantwortung.
   Startwert wird nie zurückgeschrieben, Klick schreibt die Auswahl) sitzt im bestehenden
   `appRootSetsTheDocumentTheme`, Klick und Reload am Browser abnehmen (Design-Tests-Regel oben).
 
-### R-WP-43 — Rahmen: Top-Menü, Einheiten im Sider, Aktionen als Elemente ✅ (Paul 2026-11-07 — Mockup `factory-ui-mockup.tsx` + Referenz `ai-schulung`; gebaut als Inkrement 1a/1b+N1 auf `web-factory`, 2026-11-07 — die Verdrahtung ist bewiesen, der Pinselstrich wird am Browser abgenommen)
+### R-WP-43 — Rahmen: Top-Menü, Einheiten im Sider, Aktionen als Elemente ✅ (Paul 2026-11-07 — Mockup `factory-ui-mockup.tsx` + Referenz `ai-schulung`; gebaut als Inkrement 1a/1b+N1 auf `web-factory`, 2026-11-07 — die Verdrahtung ist bewiesen, der Pinselstrich wird am Browser abgenommen; Menü seit 2026-11-08 **ohne „Chat"**)
 
 Der **Header** trägt Marke, das horizontale **Top-Menü** (AntD `Menu`, `mode="horizontal"`, dunkel —
-wie die erste Version der App und wie im Mockup), den gewählten Nutzernamen und **Settings**. Die
-Menü-Einträge sind die globalen Seiten **Projekte · Chat · Settings** (Config, [R-WP-16](config.md)):
-„Chat" öffnet den Chat des zuletzt aktiven Projekts (UC-WP-51), „Projekte" die Projektliste. Die
+wie die erste Version der App und wie im Mockup), den gewählten Nutzernamen und **Settings**. Das
+dunkle Band liegt **ohne Spalt** direkt auf Sider und Inhalt — es gibt keinen Rand zwischen Band und
+Fläche (Paul 2026-11-08, Abnahme: „das Menü oben ist nicht verbunden mit dem Header"). Die
+Menü-Einträge sind die globalen Seiten **Projekte · Settings** (Config, [R-WP-16](config.md)) —
+**„Chat" steht nicht im Top-Menü**: der Chat ist nur über den Sider erreichbar (Paul 2026-11-08,
+Abnahme: „das muss weg — chat ist nur an der Seite"). Die
 **Markierung im Menü folgt der Adresse** ([R-WP-1](ui.md)) — Menü und Sider markieren dieselbe
-Adresse einig.
+Adresse einig; auf einer **Chat-Adresse** bleibt der Kopf unmarkiert („Chat" steht dort nicht mehr,
+der Sider markiert allein — „Projekte" zu markieren wäre falsch).
 
 Der **Sider** bleibt der Projektbaum ([R-WP-44](ui.md) — seit 2026-11-08 Klapp-Gruppen je Projekt
 mit den Chats als Einträgen); darunter stehen die **Einheiten in dieser Ordnung: Chat, Paco (sobald
@@ -169,11 +174,11 @@ untere Zeile der Chat-Spalte ([R-WP-35](chat.md)) — sie ist die Footer-Zeile d
 Text-Link, `Select`/`Dropdown` statt Textliste — auch an den Kacheln ([R-WP-7](chat.md)); die
 Chat-Optionen (Clear/Compact je Chat) sind ein eigener Punkt (⏳ [open-points](open-points.md)).
 
-#### UC-WP-76 — topMenuNavigates ✅ (Verdrahtung bewiesen, Look am Browser abzunehmen)
+#### UC-WP-76 — topMenuNavigates ✅ (Verdrahtung bewiesen, Look am Browser abzunehmen; Menü seit 2026-11-08 ohne „Chat")
 - GIVEN die App WHEN sie zeichnet THEN trägt der Header ein dunkles horizontales Menü mit genau
-  **Projekte · Chat · Settings**.
-- GIVEN der Nutzer wählt „Chat" WHEN kein Projekt aktiv ist THEN öffnet sich die Projektliste; mit
-  zuletzt aktivem Projekt dessen Chat (UC-WP-51).
+  **Projekte · Settings**.
+- GIVEN die Adresse `/ui/chat` ohne Projekt WHEN sie geöffnet wird THEN öffnet sich die
+  Projektliste; mit zuletzt aktivem Projekt dessen Chat (UC-WP-51).
 - GIVEN die Adresse wechselt WHEN der Rahmen zeichnet THEN folgt die Menü-Markierung der Adresse —
   Menü- und Sider-Markierung sind einig.
 
@@ -195,14 +200,14 @@ nachbauen: so ist sie unabhängig testbar (Funktions-Tests gegen das Widget, nic
 und die gleiche Optik steht nicht zweimal. Nachgebaut wird nie — ein zweiter Pfad für dieselbe
 Anzeige ist ein Defekt ([AF-ADR-003](adr/003-reference-ui-is-a-donor-not-a-source.md)).
 
-#### UC-WP-81 — uiFunctionsAreReusableWidgets ❌
+#### UC-WP-81 — uiFunctionsAreReusableWidgets ✅ (gebaut 2026-11-08, Inkrement 4: `WorkingIndicator`/`AgentStatus` (`chat.status.tsx`), `useFollowBottom` (`chat.scroll.ts`), `FloatButton` (`chat.scroll.bottom.tsx`) — die einzigen drei neuen Widgets, Beweis-Marker an den zwei Oberflächen)
 - GIVEN eine UI-Funktion (Status-Indikator, Blase, Timeline, Scroll-Knopf) WHEN die App zeichnet
   THEN kommt sie aus **einem** wiederverwendbaren Widget — keine Seite baut dieselbe Anzeige ein
   zweites Mal nach.
 - GIVEN das Widget braucht eine Optik, die AntD nicht mitbringt WHEN es entsteht THEN ist es trotzdem
   ein Widget (AntD-Pendant oder eigene Komponente), kein Inline-Markup in der Seite.
 
-### R-WP-44 — Sider-Baum: Klapp-Gruppen je Projekt, Chats als Einträge ❌ (Paul 2026-11-08: „in der Sidebar links sind nur die Projekt-Chats, nicht die Projects selbst — das ist doppelt"; ersetzt den ersten Eintrag „Projects" und die „kein Jon-Eintrag"-Fassung von [R-WP-38](ui.md))
+### R-WP-44 — Sider-Baum: Klapp-Gruppen je Projekt, Chats als Einträge ✅ (Paul 2026-11-08: „in der Sidebar links sind nur die Projekt-Chats, nicht die Projects selbst — das ist doppelt"; ersetzt den ersten Eintrag „Projects" und die „kein Jon-Eintrag"-Fassung von [R-WP-38](ui.md); gebaut + reviewed 2026-11-08, Inkrement 4 auf `web-factory-4` — **Look-Abnahme am Browser steht aus**: bündiger Rand, 250 px, Griff oben links im Header)
 
 Der Sider ist ein AntD-`Menu` (`mode="inline"`) mit **einer Klapp-Gruppe je Projekt** — der
 Gruppen-Titel ist der Projektname, seine **Kinder sind die Chats und Einheiten des Projekts**: der
@@ -213,13 +218,23 @@ Gruppen-Überschrift, kein Platzhalter. Der Klick auf einen **Chat-Eintrag** öf
 der Gruppen-Titel klappt die Gruppe auf und zu (die alte Abkürzung „Klick aufs Projekt öffnet den
 Chat" entfällt, [R-WP-38](ui.md)). Damit zeigt jedes ausgeklappte Projekt seine Einträge — die
 Einschränkung „Einheiten nur unter dem geöffneten Projekt" (⏳ 2026-11-07) ist zurückgenommen. Der
-Sider ist **einklappbar** mit eigenem Griff (`trigger` = `MenuUnfoldOutlined`/`MenuFoldOutlined`,
-Slide in/out wie in der AntD-Layout-Referenz); Markierung und URL bleiben einig ([R-WP-1](ui.md)).
+Sider ist **einklappbar** — der Griff ist ein **Text-Button oben links im Header** (`MenuUnfoldOutlined`/
+`MenuFoldOutlined`, AntD-Referenzmuster; Paul 2026-11-08: „das Menü braucht man nur kurz, der Chat
+soll die Fläche nutzen"; schöner ist der Button **im Header links** statt unten am Menü — direkt am
+Menü ist er auch okay), der Sider selbst hat keinen eigenen Trigger (`trigger={null}`); unterhalb
+des Breakpoints klappt er automatisch zu, Slide in/out wie in der AntD-Layout-Referenz; Markierung
+und URL bleiben einig ([R-WP-1](ui.md)).
+Der Sider klebt **bündig an der Fensterkante** — links, oben und unten **ohne Rand** (A2, Paul
+2026-11-08, Abnahme: „er soll direkt links oben und unten ohne Rand dran kleben"); das App-Padding
+hält ihn nicht von der Kante.
 **Voreingestellt aufgeklappt** (Paul 2026-11-08): gibt es **weniger als vier** Projekte, stehen
-**alle** Gruppen offen; bei vier oder mehr ist nur die **erste** Gruppe offen — mehrere Chats je
-Agent kommen **nicht** ins MVP (PR-5 hält, Paul 2026-11-08: „es ging mir ums Layout").
+**alle** Gruppen offen; bei vier oder mehr ist nur die **erste** Gruppe offen. **Die Gruppe der
+Adresse steht darüber hinaus immer offen:** navigiert die Adresse (Projektliste, Browser-Zurück,
+Deep-Link) in eine andere Gruppe, klappt diese auf, auch wenn der Nutzer vorher eine Gruppe
+zugeklappt hat — Markierung und URL bleiben einig ([R-WP-1](ui.md)). Mehrere Chats je Agent kommen
+**nicht** ins MVP (PR-5 hält, Paul 2026-11-08: „es ging mir ums Layout").
 
-#### UC-WP-78 — siderGroupsPerProjectWithChatsAsEntries ❌
+#### UC-WP-78 — siderGroupsPerProjectWithChatsAsEntries ✅
 - GIVEN Projekte existieren WHEN der Sider zeichnet THEN steht je Projekt eine Klapp-Gruppe mit dem
   Projektnamen als Titel, deren Kinder die Chats und Einheiten des Projekts sind (Jon; Paco, sobald
   gebaut; Files als letztes) — **kein „Projects"-Eintrag**; ein Klick auf den Chat-Eintrag öffnet

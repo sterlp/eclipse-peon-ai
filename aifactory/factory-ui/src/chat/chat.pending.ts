@@ -38,3 +38,23 @@ export function withoutConfirmed(pending: PendingLine[], history: ChatMessage[])
   })
   return rest.length === pending.length ? pending : rest
 }
+
+/**
+ * The last user line the screen shows — what an empty send repeats (R-WP-30, UC-WP-57 GIVEN 1).
+ *
+ * The order is the log's, not the wire's: `chat.log.tsx` draws the history rows and this browser's pending
+ * ones after them, so an outstanding pending line wins — it is the one at the bottom, and the one a stop left
+ * behind (the page keeps the history after an accepted stop, D-16, so the last line of the history would be
+ * the older question). A line of another sender can be younger and still stand above it; the visible place is
+ * the rule, not the timestamp.
+ *
+ * The text goes out as it stands, sender prefix and queue marker included: `ProjectRuntime.history()` parses
+ * the sender out of the text again and `submit` of the same class puts the prefix back (factory-backend
+ * `src/main/java/org/sterl/open/aifactory/chat/ProjectRuntime.java:519-541`), so a copy of it cannot double
+ * it. No read here, and no marker is parsed. A blank line answers `null`: the edge refuses a blank with 400,
+ * so the empty way has to end before any request.
+ */
+export function lastVisibleUserText(history: ChatMessage[], pending: PendingLine[]): string | null {
+  const line = pending.at(-1)?.text ?? history.findLast(message => message.role === 'user')?.text
+  return line === undefined || line.trim() === '' ? null : line
+}

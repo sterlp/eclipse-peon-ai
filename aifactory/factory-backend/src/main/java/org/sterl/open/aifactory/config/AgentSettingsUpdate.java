@@ -6,5 +6,5 @@ package org.sterl.open.aifactory.config;
  * stay apart — {@code null} keeps, {@code ""} deletes, a value sets. Not the inbound JSON model.
  */
 public record AgentSettingsUpdate(boolean overridden, String model, String url, String think,
-        String temperature, String apiKey, boolean removeApiKey) {
+        String temperature, String extraBody, String tools, String apiKey, boolean removeApiKey) {
 }

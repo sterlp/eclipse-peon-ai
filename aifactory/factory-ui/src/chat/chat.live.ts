@@ -2,15 +2,14 @@
  * The live lines of the running turn (D-7): one list instead of the old streaming text plus a separate
  * tool list, because the order in which the two arrive IS the conversation.
  *
- * An item carries its anchor: the number of rows the log showed when its <em>turn</em> reported its first
- * line — one number for every item of one turn, not one per item. The anchor is a count and not a text, so
- * it survives the history read that `done` triggers: the finished line lands in the log, the tool lines of
- * that turn stay where they happened, and an input the user queues mid-turn cannot move the answer that is
- * still streaming (UC-WP-54).
+ * An item carries its anchor: the number of <em>voices</em> the log held when its turn reported its first
+ * line — one number for every item of one turn, not one per item. A count of voices and never of steps, so
+ * it survives the history read that `done` triggers: that read may hand a step back at any place, and a step
+ * counted here would let a surviving entry lift itself over its own turn's account (UC-WP-54, R-WP-47).
  */
 export type LiveItem =
-  /** `afterLines` — the anchor of the item's turn: rows of the log (history plus the own, unconfirmed
-   *  inputs) that stood when that turn reported its first line. Same number for every item of one turn. */
+  /** `afterLines` — the anchor of the item's turn: the VOICES (history lines plus the own, unconfirmed
+   *  inputs) that stood when that turn reported its first line; a step of the trace is not one. */
   | { kind: 'text' | 'error'; text: string; afterLines: number }
   /** One step of the turn's tool activity. `origin` is the wire's stamp of the agent that worked and `at`
    *  the moment this browser received it — both per item, so the cap of a long run keeps the times of what
@@ -60,6 +59,16 @@ export type DelegationItem = Extract<LiveItem, { kind: 'delegation' }>
  * block of its own (R-WP-36), the second is a voice.
  */
 export type TraceItem = ToolItem | ThinkItem | DelegationItem
+
+/**
+ * One entry of the timeline as the log **draws** it: a `TraceItem` without the anchor, which the log has
+ * already used up to place its widget. A live item satisfies this as it stands — nothing is copied, so the
+ * entry the open turn works on stays the very object (`chat.timeline.tsx` compares by identity).
+ */
+export type TimelineEntry =
+  | Omit<ToolItem, 'afterLines'>
+  | Omit<ThinkItem, 'afterLines'>
+  | Omit<DelegationItem, 'afterLines'>
 
 /** What `chat.html` keeps of a tool block: the tail, so a chatty turn cannot push the answer away. */
 export const MAX_TOOL_LINES = 10
@@ -220,9 +229,13 @@ export function endLiveDelegation(items: LiveItem[], member: string, turn: numbe
 
 /**
  * What a history read leaves of the live list: the answer has become a line of the history and would
- * stand there twice, while tool lines, Think sections, diff blocks and delegation entries exist on the wire
- * only — losing them at `done` is exactly what UC-WP-54 forbids, and R-WP-36 puts its block in the same
- * family, as does R-WP-40 its delegation and its thinking.
+ * stand there twice, while a Think section, a diff block and a delegation entry exist on the wire only —
+ * losing them at `done` is exactly what UC-WP-54 forbids, and R-WP-36 puts its block in the same family,
+ * as does R-WP-40 its delegation and its thinking.
+ *
+ * A tool step belongs to the history's family since R-WP-47: the read carries it as a line of its own, so
+ * a live step that stayed would stand twice under one answer — one widget, not two (R-WP-40). What
+ * arrived behind `mark` is another matter: the read could not know it, so it stays until the next read.
  *
  * `mark` is how many items stood when that read was issued. Everything behind it arrived while the server
  * was already answering, so the read cannot carry it and it stays on the screen: a read may only give up
@@ -233,7 +246,6 @@ export function endLiveDelegation(items: LiveItem[], member: string, turn: numbe
 export function liveLinesAfterHistory(items: LiveItem[], mark = items.length): LiveItem[] {
   return items.filter(
     (item, index) =>
-      item.kind === 'tool' ||
       item.kind === 'think' ||
       item.kind === 'diff' ||
       item.kind === 'delegation' ||

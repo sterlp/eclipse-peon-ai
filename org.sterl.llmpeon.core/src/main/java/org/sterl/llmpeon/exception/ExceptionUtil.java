@@ -6,6 +6,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 
 import org.jspecify.annotations.Nullable;
+import org.sterl.llmpeon.streaming.AiCancellationException;
 
 import dev.langchain4j.exception.RateLimitException;
 
@@ -53,9 +54,10 @@ public final class ExceptionUtil {
 
     /**
      * Returns {@code true} when the given throwable or any of its nested causes
-     * is a {@link CancellationException}.
+     * is a {@link CancellationException} or {@link AiCancellationException}.
      */
     public static boolean isCanceled(Throwable throwable) {
+        if (findCause(throwable, AiCancellationException.class) != null) return true; 
         return findCause(throwable, CancellationException.class) != null;
     }
 

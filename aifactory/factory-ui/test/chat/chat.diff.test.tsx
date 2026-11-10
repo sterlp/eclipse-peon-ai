@@ -50,7 +50,6 @@ test('aChangeIsABlockWithItsFileAndItsColouredLines', () => {
       messages={[QUESTION]}
       outgoing={[]}
       live={appendLiveDiff([], FILE, DIFF, 1)}
-      pending={false}
     />,
   )
 
@@ -92,7 +91,7 @@ test('aDiffStandsBesideTheTraceAndNotInsideIt', () => {
     'read it back',
     1,
   )
-  render(<ChatLog messages={[QUESTION]} outgoing={[]} live={trace} pending={false} />)
+  render(<ChatLog messages={[QUESTION]} outgoing={[]} live={trace} />)
 
   // the diff interrupts the trace run: one timeline before it, one after, because a timeline is one place
   // of the trace and the block beside it is not a link of it
@@ -112,7 +111,7 @@ test('aDiffStandsBesideTheTraceAndNotInsideIt', () => {
 test('aDiffEventWithoutItsFieldsIsDropped', async () => {
   const half = await readWire(`event:diff\ndata:{"file":"${FILE}"}\n\n`)
   expect(half, 'a block without its diff would promise a change nobody showed').toEqual([])
-  render(<ChatLog messages={[QUESTION]} outgoing={[]} live={[]} pending={false} />)
+  render(<ChatLog messages={[QUESTION]} outgoing={[]} live={[]} />)
   expect(screen.queryByTestId('chat-diff')).toBeNull()
 
   expect(await readWire(`event:diff\ndata:{"file":"${FILE}","diff":"--- a/${FILE}"}\n\n`)).toEqual([

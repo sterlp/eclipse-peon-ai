@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 class FileLinesTest {
 
@@ -60,6 +62,12 @@ class FileLinesTest {
     @Test
     void testInsertNullAfterLineAppendsAtEnd() {
         assertEquals("a\nb\nx", FileLines.insertLines("a\nb", null, "x"));
+    }
+
+    @ParameterizedTest
+    @CsvSource(nullValues = "null", value = { "null", "2", "3" })
+    void insertAtEndOfFileEndingWithLineBreakAppendsAfterLastContentLine(Integer afterLine) {
+        assertEquals("a\nb\nx\n", FileLines.insertLines("a\nb\n", afterLine, "x"));
     }
 
     @Test

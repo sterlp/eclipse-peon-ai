@@ -1,12 +1,18 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
 import { ConfigPage } from '../../src/config/config.page'
 import { content } from '../../src/shared/content'
 import { chooseOption, openChoice, shownChoice } from '../shared/choices'
-import type { Settings } from '../../src/config/config.client'
-
-const KEY = 'sk-file-secret-0123456789'
+import { refused } from '../shared/refusal'
+import {
+  KEY,
+  controlValues,
+  sentBodies,
+  settingsAnswer,
+  stubServer,
+  valueOf,
+} from '../shared/config.stub'
 
 beforeEach(() => {
   cleanup()
@@ -16,141 +22,6 @@ afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
-
-type Script = { GET: unknown; PUT: unknown; PROVIDERS: unknown; AGENTS: unknown }
-type Call = { method: string; path: string; body?: string }
-
-/**
- * The provider list as the core answers it (UC-WP-62): one provider with a URL default, one without a
- * think input. The values are stubs on purpose — which URL and which think values the core really
- * carries is pinned by `SettingsControllerTest`, the page only has to follow what the server says
- * (UC-WP-67: the same answer also builds the agent think field).
- */
-const PROVIDER_ANSWER = [
-  {
-    name: 'OPEN_AI',
-    defaultUrl: null,
-    thinkSupported: true,
-    thinkForm: 'VALUES',
-    thinkValues: ['minimal', 'low', 'medium', 'high'],
-  },
-  {
-    name: 'OLLAMA',
-    defaultUrl: 'https://ollama.example',
-    thinkSupported: true,
-    thinkForm: 'TOGGLE',
-    thinkValues: [],
-  },
-  { name: 'GOOGLE_GEMINI', defaultUrl: null, thinkSupported: false, thinkForm: 'NONE', thinkValues: [] },
-]
-
-/**
- * Mutable `fetch` stand-in: one answer per endpoint, every call recorded with its body. Honest limit,
- * same as the Projects tests — the answers are stubbed, so this view cannot go red from a backend
- * mutation; the wire contract itself is proven by `SettingsControllerTest`.
- */
-function stubServer(initial: Partial<Script>): {
-  script: Script
-  calls: Call[]
-} {
-  const server: { script: Script; calls: Call[] } = {
-    script: {
-      GET: undefined,
-      PUT: undefined,
-      PROVIDERS: PROVIDER_ANSWER,
-      // the page mounts the agent section too (R-WP-23); its own tests are in config.agents.test.tsx
-      AGENTS: [],
-      ...initial,
-    },
-    calls: [],
-  }
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const method = (init?.method ?? 'GET').toUpperCase()
-      const path = String(input)
-      server.calls.push({
-        method,
-        path,
-        body: init?.body as string | undefined,
-      })
-      const answer = path.endsWith('/providers')
-        ? server.script.PROVIDERS
-        : path === '/api/settings/agents'
-          ? server.script.AGENTS
-          : server.script[method as keyof Script]
-      if (answer instanceof Error) {
-        return response(400, {
-          status: 400,
-          error: 'Bad Request',
-          message: answer.message,
-        })
-      }
-      if (answer === undefined) {
-        return response(404, {
-          status: 404,
-          error: 'Not Found',
-          message: 'nope',
-        })
-      }
-      return response(200, answer)
-    }),
-  )
-  return server
-}
-
-function response(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'content-type': 'application/json' },
-  })
-}
-
-/**
- * The masked answer of the factory. It carries an `apiKey` on purpose: if a server ever leaked one,
- * the view still must not print a character of it (R-WP-16 "kein Zeichen nach draußen").
- */
-function settingsAnswer(overrides: Partial<Settings> = {}): Record<string, unknown> {
-  return {
-    provider: 'OPEN_AI',
-    model: 'gpt-demo',
-    url: 'https://api.example.com/v1',
-    tokenWindow: 64000,
-    timeoutSeconds: 45,
-    sendThinking: false,
-    keySet: true,
-    keySource: 'FILE',
-    apiKey: KEY,
-    ...overrides,
-  }
-}
-
-/**
- * The value as it sits at the documented field — the field is the contract, not the markup. An
- * editable row shows what its control holds, a status row shows its text.
- */
-async function valueOf(label: string): Promise<string> {
-  const field = await screen.findByText(label)
-  const row = field.parentElement?.querySelector('dd')
-  // ANTD-A3 (AntD 6): a choice shows itself in the base's display, not in a `<select>`. What stands there is the
-  // catalog label — the wire value is pinned in the body by `theChoiceSendsItsWireValue`.
-  const choice = row?.querySelector('.ant-select-content')
-  if (choice) {
-    return choice.getAttribute('title') ?? choice.textContent ?? ''
-  }
-  const value = row?.querySelector('input, select')
-  if (value) {
-    return (value as HTMLInputElement).value
-  }
-  return row?.textContent ?? ''
-}
-
-/** What really sits in the form — text content cannot see the value of an input. */
-function controlValues(container: HTMLElement): string[] {
-  return Array.from(container.querySelectorAll('input, select')).map(
-    (el) => (el as HTMLInputElement).value,
-  )
-}
 
 // UC-WP-23
 test('settingsShowsMaskedConfig', async () => {
@@ -175,7 +46,8 @@ test('settingsShowsMaskedConfig', async () => {
   expect(container.textContent).not.toContain(KEY)
   expect(controlValues(container).some((value) => value.includes('sk-'))).toBe(false)
   // opening the settings reads the config, the provider defaults and the agent slots, and writes none of
-  // them — the third read is Inc 7b's: a slot's state lives in its own file, not in the config
+  // them — the third read is Inc 7b's: a slot's state lives in its own file, not in the config. These three
+  // reads are also the guard of R-WP-50: a model field must not ask a provider when the page mounts.
   expect(server.calls.map((call) => call.method)).toEqual(['GET', 'GET', 'GET'])
   expect(server.calls.map((call) => call.path).sort()).toEqual([
     '/api/settings',
@@ -233,6 +105,9 @@ test('settingsOverrideNeverWritesSharedStore', async () => {
   })
   fireEvent.click(screen.getByRole('button', { name: content.config.save }))
 
+  // the submit chain of the `Form` carries the save and answers one microtask later — read the body once it
+  // is on the wire, and read that it is on the wire exactly once
+  await waitFor(() => expect(sentBodies(server)).toHaveLength(1))
   const put = server.calls.find((call) => call.method === 'PUT')
   expect(put?.path).toBe('/api/settings')
   const sent = JSON.parse(put?.body ?? '{}') as Record<string, unknown>
@@ -267,16 +142,6 @@ test('settingsOverrideNeverWritesSharedStore', async () => {
 })
 
 /**
- * The bodies the page saved, in the order it sent them. A choice shows its catalog label on the screen and
- * its wire value in the request — the value only exists here, so this is where it has to be pinned.
- */
-function sentBodies(server: { calls: Call[] }): Record<string, unknown>[] {
-  return server
-    .calls.filter((call) => call.method === 'PUT')
-    .map((call) => JSON.parse(call.body ?? '{}') as Record<string, unknown>)
-}
-
-/**
  * UC-WP-24 over the basis' choice: the think row is the one field whose label and value differ by contract
  * (`docs/config.md`: the file holds text, the core reads a boolean). Reading the displayed label would let a
  * swapped option pass — the body is the contract.
@@ -305,7 +170,6 @@ test('theChoiceSendsItsWireValue', async () => {
     'true',
   )
 })
-
 
 // UC-WP-62
 test('changingTheProviderUpdatesTheUrl', async () => {
@@ -390,24 +254,75 @@ test('agentThinkFollowsTheProviderOfTheForm', async () => {
   render(<ConfigPage />)
 
   // OPEN_AI answers a fixed list, so the agent field is that list and not a text box. ANTD-A3 (AntD 6): the list
-  // is the dropdown of the base — opened and read there, since a choice renders no `<option>`s.
-  await screen.findByLabelText(content.agents.thinkDefault)
-  expect(await openChoice(content.agents.thinkDefault)).toEqual([
+  // is the dropdown of the base — opened and read there, since a choice renders no `<option>`s. Since R-WP-49
+  // the page shows the label twice — the default form edits the same value — so the handle is the Dev slot's
+  // own field id, and the reading stays inside the slot's card.
+  const devSlot = await screen.findByTestId('agent-slot-dev')
+  await within(devSlot).findByLabelText(content.agents.thinkDefault)
+  expect(await openChoice(content.agents.thinkDefault, 'agent-dev-think')).toEqual([
     content.agents.inheritOption,
     'minimal',
     'low',
     'medium',
     'high',
   ])
-  expect(shownChoice(content.agents.thinkDefault)).toBe('medium')
+  expect(shownChoice(content.agents.thinkDefault, 'agent-dev-think')).toBe('medium')
 
   // the provider chosen on the page decides, at once and without a save in between (as R-WP-16 does for the URL)
   await chooseOption(content.config.provider, 'GOOGLE_GEMINI')
+  // neither place keeps a control it cannot use: the label is gone from the whole page
   expect(screen.queryByLabelText(content.agents.thinkDefault)).toBeNull()
   expect(screen.getByTestId('agent-dev-think-unsupported')).toBeInTheDocument()
 
   // one provider answer serves both areas — a second read would be a second opinion on one question
   expect(server.calls.filter((call) => call.path === '/api/settings/providers')).toHaveLength(1)
+})
+
+/**
+ * R-WP-49: the default form and the Dev slot edit one and the same value — so a save on one side has
+ * to refresh the other. Without the re-read the slot keeps its old draft and its next save silently
+ * writes the superseded value back: the second store R-WP-49 rules out.
+ */
+// UC-WP-85
+test('savingTheDefaultThinkShowsTheNewValueInTheDevSlot', async () => {
+  const devFile = (think: string) => ({
+    id: 'dev',
+    name: 'Dev',
+    overridden: true,
+    model: null,
+    url: null,
+    think,
+    temperature: null,
+    keySet: false,
+  })
+  const server = stubServer({
+    GET: settingsAnswer(),
+    PUT: settingsAnswer({ think: 'high' }),
+    AGENTS: [devFile('low')],
+  })
+  render(<ConfigPage />)
+
+  const devSlot = await screen.findByTestId('agent-slot-dev')
+  await within(devSlot).findByLabelText(content.agents.thinkDefault)
+  expect(shownChoice(content.agents.thinkDefault, 'agent-dev-think')).toBe('low')
+
+  // what the dev file holds once the default form has saved: the value the PUT below writes
+  server.script.AGENTS = [devFile('high')]
+
+  await chooseOption(content.agents.thinkDefault, 'high', 'settings-think')
+  // the slot card has a save of its own — the default form's is the one being pressed here
+  const form = document.querySelector('form') as HTMLElement
+  fireEvent.click(within(form).getByRole('button', { name: content.config.save }))
+
+  // the section reads its files again and the card shows the saved value — while only the settings
+  // were written: the slot itself was not saved (the PUT to /api/settings is the page's only write)
+  await waitFor(() =>
+    expect(server.calls.filter((call) => call.path === '/api/settings/agents')).toHaveLength(2),
+  )
+  await waitFor(() =>
+    expect(shownChoice(content.agents.thinkDefault, 'agent-dev-think')).toBe('high'),
+  )
+  expect(server.calls.filter((call) => call.method === 'PUT')).toHaveLength(1)
 })
 
 
@@ -430,8 +345,9 @@ test('removeKeyDeletesItAndRefreshesTheStatus', async () => {
 
   fireEvent.click(screen.getByRole('button', { name: content.config.save }))
 
-  const put = server.calls.find((call) => call.method === 'PUT')
-  const sent = JSON.parse(put?.body ?? '{}') as Record<string, unknown>
+  // the submit chain of the `Form` answers one microtask later — once, which is what this counts
+  await waitFor(() => expect(sentBodies(server)).toHaveLength(1))
+  const sent = sentBodies(server)[0]
   expect(sent).toHaveProperty('removeApiKey', true)
   // the key field itself stays out of the body: the removal is said by its own flag, never by a blank
   expect(Object.keys(sent)).not.toContain('apiKey')
@@ -525,8 +441,9 @@ test('theUnchangedHintIsGoneFromVisibleFields', async () => {
   })
   fireEvent.click(screen.getByRole('button', { name: content.config.save }))
 
-  const put = server.calls.find((call) => call.method === 'PUT')
-  const sent = JSON.parse(put?.body ?? '{}') as Record<string, unknown>
+  // the submit chain of the `Form` answers one microtask later — once, which is what this counts
+  await waitFor(() => expect(sentBodies(server)).toHaveLength(1))
+  const sent = sentBodies(server)[0]
   expect(sent).toHaveProperty('model', '')
   expect(Object.keys(sent)).not.toContain('apiKey')
 })
@@ -536,4 +453,89 @@ test('showsErrorMessageWhenSettingsCannotLoad', async () => {
   render(<ConfigPage />)
 
   expect(await screen.findByRole('alert')).toHaveTextContent('config.properties')
+})
+
+// UC-WP-93
+test('aRejectedSaveMarksTheMaxTokensFieldAndKeepsTheTypedValue', async () => {
+  const REASON = 'maxTokens must be a whole number of tokens, or 0 for the provider default'
+  const server = stubServer({
+    GET: settingsAnswer(),
+    PUT: refused({
+      status: 400,
+      error: 'Bad Request',
+      message: REASON,
+      fieldErrors: [{ field: 'maxTokens', message: REASON }],
+    }),
+  })
+  render(<ConfigPage />)
+  await screen.findByDisplayValue('gpt-demo')
+
+  fireEvent.change(screen.getByLabelText(content.config.maxTokens), { target: { value: 'abc' } })
+  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
+
+  // the server's sentence stands at the field it named, and only there (UC-WP-93 GIVEN 1)
+  const help = await screen.findByTestId('field-error-maxTokens')
+  expect(help).toHaveTextContent(REASON)
+  const field = screen.getByLabelText(content.config.maxTokens).closest('.api-field')
+  expect(field).not.toBeNull()
+  expect(help.closest('.api-field')).toBe(field)
+  expect(field).toHaveClass('api-field-error')
+  expect(field?.closest('dd')).not.toBeNull()
+  // what the viewer typed stays — the reason says which field to fix, it does not throw the answer away
+  expect(screen.getByLabelText(content.config.maxTokens)).toHaveValue('abc')
+  expect(screen.queryAllByTestId(/^field-error-/)).toHaveLength(1)
+  expect(screen.queryByRole('alert')).toBeNull()
+  expect(server.calls.filter((call) => call.method === 'PUT')).toHaveLength(1)
+})
+
+// UC-WP-93
+test('aConflictWithoutFieldStillShowsTheAlert', async () => {
+  stubServer({
+    GET: settingsAnswer(),
+    PUT: refused({ status: 409, error: 'Conflict', message: 'a turn is running on this project' }),
+  })
+  render(<ConfigPage />)
+  await screen.findByDisplayValue('gpt-demo')
+
+  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('a turn is running on this project')
+  expect(screen.queryAllByTestId(/^field-error-/)).toEqual([])
+})
+
+// UC-WP-93
+test('anUnwrappedFieldErrorStillReachesTheScreen', async () => {
+  const REASON = 'think is not offered by this provider'
+  stubServer({
+    GET: settingsAnswer(),
+    PUT: refused({
+      status: 400,
+      error: 'Bad Request',
+      message: REASON,
+      fieldErrors: [{ field: 'think', message: REASON }],
+    }),
+  })
+  render(<ConfigPage />)
+  await screen.findByDisplayValue('gpt-demo')
+
+  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
+
+  // the page wraps no `think` field — a name it does not draw must still be readable, never lost between
+  // the two display paths (R8)
+  expect(await screen.findByRole('alert')).toHaveTextContent(REASON)
+  expect(screen.queryAllByTestId(/^field-error-/)).toEqual([])
+  expect(screen.getByLabelText(content.config.model)).toHaveValue('gpt-demo')
+})
+
+// UC-WP-93
+test('theSettingsFormIsOneAntdForm', async () => {
+  stubServer({ GET: settingsAnswer() })
+  const { container } = render(<ConfigPage />)
+  await screen.findByDisplayValue('gpt-demo')
+
+  // the native envelope was replaced, not nested (E2), and the fields stayed where their ids say
+  const forms = container.querySelectorAll('form')
+  expect(forms).toHaveLength(1)
+  expect(forms[0]).toHaveClass('settings-form', 'ant-form')
+  expect(forms[0].contains(document.getElementById('settings-provider'))).toBe(true)
 })

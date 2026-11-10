@@ -123,7 +123,7 @@ class DelegatedAnswerTest extends FactorySpringTest {
 
     @Test
     @Timeout(60)
-    // UC-WP-40
+    // UC-WP-40, UC-WP-82
     void onlyFinalAnswersFromTheTeam() throws Exception {
         writeFactoryConfig("inc3f3-live");
         CreatedProject project = createProject("delegated-answer");
@@ -180,13 +180,15 @@ class DelegatedAnswerTest extends FactorySpringTest {
             List<ChatMessageDto> history = messages(project.id());
             assertThat(history)
                     .as("with the read that done causes, the member's line stands in the history: its own"
-                            + " name as author, Jon's answer behind it, the typed input nameless")
+                            + " name as author, Jon's answer behind it, the typed input nameless — and"
+                            + " Jon's step names the member it went to, never the tool askDev (R-WP-47)")
                     .extracting(ChatMessageDto::role, ChatMessageDto::origin)
                     .containsExactly(
                             tuple("user", null),
+                            tuple("tool", "Dev"),
                             tuple("jon", "Dev"),
                             tuple("jon", AiPoAgent.NAME));
-            assertThat(history.get(1).text())
+            assertThat(history.get(2).text())
                     .as("the tool result verbatim — answer and statistics line, nothing shortened")
                     .startsWith(MEMBER_ANSWER + System.lineSeparator())
                     .contains("Dev done.");
@@ -262,24 +264,27 @@ class DelegatedAnswerTest extends FactorySpringTest {
 
         List<ChatMessageDto> history = messages(project.id());
         assertThat(history)
-                .as("the history holds both team lines in the order of Jon's memory, his own answer last")
+                .as("the history holds both team lines in the order of Jon's memory, his own answer last;"
+                        + " his two steps stand where he asked for them (R-WP-47)")
                 .extracting(ChatMessageDto::role, ChatMessageDto::origin)
                 .containsExactly(
                         tuple("user", null),
+                        tuple("tool", "Dev"),
+                        tuple("tool", "Dev"),
                         tuple("jon", "Dev"),
                         tuple("jon", "Dev"),
                         tuple("jon", AiPoAgent.NAME));
-        assertThat(history.get(1).text())
+        assertThat(history.get(3).text())
                 .as("the first answer kept its own line — the second did not take it over")
                 .startsWith(MEMBER_ANSWER_FIRST + System.lineSeparator());
-        assertThat(history.get(2).text())
+        assertThat(history.get(4).text())
                 .as("and the second is its own line, not a repeat of the first")
                 .startsWith(MEMBER_ANSWER_SECOND + System.lineSeparator());
     }
 
     @Test
     @Timeout(60)
-    // UC-WP-40
+    // UC-WP-40, UC-WP-82
     void delegationWithoutAnswerStillProducesALine() throws Exception {
         writeFactoryConfig("inc3f3-noanswer");
         CreatedProject project = createProject("delegated-empty");
@@ -303,10 +308,10 @@ class DelegatedAnswerTest extends FactorySpringTest {
         List<ChatMessageDto> history = messages(project.id());
         assertThat(history)
                 .as("the empty result is a line with an author like any other — an author is a fact, not"
-                        + " a verdict over the text (UC-WP-40)")
+                        + " a verdict over the text (UC-WP-40); his step names the same member")
                 .extracting(ChatMessageDto::origin)
-                .containsExactly(null, "Dev", AiPoAgent.NAME);
-        assertThat(history.get(1).text())
+                .containsExactly(null, "Dev", "Dev", AiPoAgent.NAME);
+        assertThat(history.get(2).text())
                 .as("and it says so in the member's own words, not in a reworded form")
                 .startsWith("Dev returned no result");
     }

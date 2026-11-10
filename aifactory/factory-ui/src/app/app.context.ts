@@ -1,6 +1,6 @@
 import { useOutletContext } from 'react-router-dom'
 
-import type { Project } from '../shared/dto'
+import type { ProjectDto } from '../shared/server-api'
 
 /**
  * What the frame hands to the view inside it: this browser's name (R-WP-17) and the project list the frame
@@ -9,14 +9,14 @@ import type { Project } from '../shared/dto'
  */
 export interface AppContext {
   user: string | null
-  projects: Project[]
+  projects: ProjectDto[]
   /** Why the tree is empty, when it is empty because the registry could not be read. */
   listError: string | null
   /** The frame's read is over — an answer, refused or not. Until then a view knows nothing (R-WP-38). */
   loaded: boolean
   reloadProjects: () => Promise<void>
   /** Remembers the project as this browser's last one and opens its chat (UC-WP-51, UC-WP-52). */
-  openProject: (project: Project) => void
+  openProject: (project: ProjectDto) => void
 }
 
 /** The frame's state as the view reads it. */

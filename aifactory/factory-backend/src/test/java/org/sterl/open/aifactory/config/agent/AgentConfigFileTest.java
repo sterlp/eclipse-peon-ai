@@ -71,7 +71,7 @@ class AgentConfigFileTest {
     @Test
     // UC-WP-44
     void onlyTheSubmittedFieldIsWritten() {
-        file("dev").write(new Changes(false, "gpt-5", null, null, null, null));
+        file("dev").write(new Changes(false, "gpt-5", null, null, null, null, null, null));
 
         assertThat(text("dev")).isEqualTo("""
                 ---
@@ -93,7 +93,7 @@ class AgentConfigFileTest {
                 ---
                 """);
 
-        file("dev").write(new Changes(false, "", null, null, null, null));
+        file("dev").write(new Changes(false, "", null, null, null, null, null, null));
 
         Values values = file("dev").read();
         assertThat(values.model()).isNull();
@@ -103,8 +103,8 @@ class AgentConfigFileTest {
     }
 
     /**
-     * UC-WP-45: the unchecked box is not "five empty strings" — it reaches every config value of the file,
-     * including keys this page never shows, and leaves the prompt body and the agent's own keys alone.
+     * UC-WP-45: the unchecked box is not "seven empty strings" — it reaches every config value of the
+     * file, leaves the prompt body alone, and keeps only what the page never shows.
      */
     @Test
     // UC-WP-45
@@ -117,6 +117,7 @@ class AgentConfigFileTest {
                 think: high
                 temperature: 0.1
                 tools: read, grep
+                read-only: true
                 ---
                 """ + BODY);
 
@@ -125,8 +126,10 @@ class AgentConfigFileTest {
         assertThat(file("review").read().overridden()).isFalse();
         String stored = text("review");
         assertThat(stored).doesNotContain("model", "url", "api_key", "think", "temperature");
-        // the body and what another tool wrote stay verbatim; the file is only rewritten in its head
-        assertThat(stored).contains("tools: read, grep").contains("This is the slot's own prompt.")
+        // R-WP-52 made tools a page field, so a clear removes it too; what the page still never shows —
+        // read-only and the body — stays verbatim, the file is only rewritten in its head
+        assertThat(stored).doesNotContain("tools").contains("read-only: true")
+                .contains("This is the slot's own prompt.")
                 .contains("Never rewrite it.");
         // parseYml names a nameless file after its directory — writing that back would add a field
         assertThat(stored).doesNotContain("name:");
@@ -151,7 +154,7 @@ class AgentConfigFileTest {
     void aClearedCompactFieldLeavesTheOthers() {
         write("compact", "---\nmodel: gpt-5\nthink: medium\n---\n");
 
-        file("compact").write(new Changes(false, "", null, null, null, null));
+        file("compact").write(new Changes(false, "", null, null, null, null, null, null));
 
         Values values = file("compact").read();
         assertThat(values.model()).isNull();
@@ -174,7 +177,7 @@ class AgentConfigFileTest {
     /** A save that ends with nothing to store is the same case: no file, no folder (UC-WP-45's opposite). */
     @Test
     void anEmptySaveWritesNoFileAndNoFolder() {
-        file("search").write(new Changes(false, null, "", null, null, null));
+        file("search").write(new Changes(false, null, "", null, null, null, null, null));
 
         assertThat(home.resolve("agents")).doesNotExist();
     }
@@ -185,7 +188,7 @@ class AgentConfigFileTest {
         Assumptions.assumeTrue(home.getFileSystem().supportedFileAttributeViews().contains("posix"),
                 "no posix view on this file system — the mode is the operating system's promise there");
 
-        file("po").write(new Changes(false, null, null, "sk-secret-0123456789", null, null));
+        file("po").write(new Changes(false, null, null, "sk-secret-0123456789", null, null, null, null));
 
         assertThat(Files.getPosixFilePermissions(file("po").file()))
                 .isEqualTo(EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
@@ -201,8 +204,8 @@ class AgentConfigFileTest {
     void twoConcurrentSavesBothLeaveTheirField() throws Exception {
         for (int round = 0; round < ROUNDS; round++) {
             race(
-                    () -> file("dev").write(new Changes(false, "gpt-5", null, null, null, null)),
-                    () -> file("dev").write(new Changes(false, null, null, null, "high", null)));
+                    () -> file("dev").write(new Changes(false, "gpt-5", null, null, null, null, null, null)),
+                    () -> file("dev").write(new Changes(false, null, null, null, "high", null, null, null)));
 
             Values values = file("dev").read();
             assertThat(values.model()).as("round " + round + " kept the model").isEqualTo("gpt-5");
@@ -223,8 +226,8 @@ class AgentConfigFileTest {
 
         for (int round = 0; round < ROUNDS; round++) {
             race(
-                    () -> file("dev").write(new Changes(false, "gpt-4", null, null, null, null)),
-                    () -> file("dev").write(new Changes(false, null, null, null, "high", null)),
+                    () -> file("dev").write(new Changes(false, "gpt-4", null, null, null, null, null, null)),
+                    () -> file("dev").write(new Changes(false, null, null, null, "high", null, null, null)),
                     () -> {
                         if (!file("dev").read().overridden()) {
                             sawAnEmptyHead.set(true);

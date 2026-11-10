@@ -3,13 +3,11 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
 
 import { ChatComposer, MAX_ROWS } from '../../src/chat/chat.composer'
-import { content } from '../../src/shared/content'
 import { block } from '../shared/sheets'
 
 interface Over {
   draft?: string
   busy?: boolean
-  lastSent?: string | null
 }
 
 /** The composer with everything off: a test names only what its scenario cares about. */
@@ -17,17 +15,15 @@ function renderComposer(over: Over = {}) {
   const props = {
     draft: over.draft ?? '',
     busy: over.busy ?? false,
-    lastSent: over.lastSent ?? null,
     onDraftChange: vi.fn(),
     // the page prevents the browser's own submission, and the test double has to: jsdom would otherwise
     // report the form submission it does not implement
     onSubmit: vi.fn(event => event.preventDefault()),
-    onResend: vi.fn(),
     onStop: vi.fn(),
   }
   const view = render(<ChatComposer {...props} />)
 
-  /** The page's next render, the doubles kept — a call count has to survive it (UC-WP-74 GIVEN 4). */
+  /** The page's next render, the doubles kept — a call count has to survive it (UC-WP-74 GIVEN 5). */
   function rerender(next: Over): void {
     Object.assign(props, next)
     view.rerender(<ChatComposer {...props} />)
@@ -51,10 +47,8 @@ function renderOwnedComposer(): HTMLTextAreaElement {
       <ChatComposer
         draft={draft}
         busy={false}
-        lastSent={null}
         onDraftChange={setDraft}
         onSubmit={() => undefined}
-        onResend={() => undefined}
         onStop={() => undefined}
       />
     )
@@ -96,6 +90,17 @@ test('enterSends', () => {
 })
 
 // UC-WP-56
+test('emptyEnterSendsNothing', () => {
+  const props = renderComposer()
+
+  // an empty Enter is neither a send nor a line break (UC-WP-56 GIVEN 1): no default is left to the browser,
+  // and the page is never asked — the repeat of UC-WP-57 lives on the click alone
+  expect(fireEvent.keyDown(screen.getByTestId('chat-input'), { key: 'Enter' })).toBe(false)
+  expect(props.onSubmit).not.toHaveBeenCalled()
+  expect(props.onDraftChange).not.toHaveBeenCalled()
+})
+
+// UC-WP-56
 // ANTD-A7
 test('shiftEnterAndCtrlEnterBreakTheLine', () => {
   // Shift is the browser's own line break: the default survives and no send happens
@@ -130,37 +135,21 @@ test('theSendButtonStaysTheClickableAlternative', () => {
   expect(props.onSubmit).toHaveBeenCalledTimes(1)
 })
 
-// UC-WP-57
-test('resendSendsTheLastMessageAgain', () => {
-  const props = renderComposer({ lastSent: 'zähl die Dateien' })
-
-  const resend = screen.getByTestId('chat-resend')
-  expect(resend).toBeEnabled()
-  expect(resend).toHaveTextContent(content.chat.resend)
-
-  fireEvent.click(resend)
-  expect(props.onResend).toHaveBeenCalledTimes(1)
-})
-
-// UC-WP-57
-test('nothingCanBeResentBeforeTheFirstSend', () => {
-  renderComposer()
-
-  // the button exists from the first moment — but it offers nothing until a send was accepted
-  expect(screen.getByTestId('chat-resend')).toBeDisabled()
-})
-
 // UC-WP-74
-test('onlyTextEnablesTheSendButton', () => {
+test('theSendButtonIsNeverDisabled', () => {
   const page = renderComposer()
   const field = screen.getByTestId('chat-input')
 
-  // an empty draft: the button is there and refuses, it is not hidden (R-WP-41)
-  expect(screen.getByTestId('chat-send')).toBeDisabled()
+  // an empty draft is no reason to refuse the button (R-WP-41, UC-WP-74 GIVEN 1) — and the composer decides
+  // nothing on the way out: the click reaches the page even with nothing typed (UC-WP-57)
+  expect(screen.getByTestId('chat-send')).toBeEnabled()
+  fireEvent.click(screen.getByTestId('chat-send'))
+  expect(page.onSubmit).toHaveBeenCalledTimes(1)
 
-  // whitespace is not something to send, and the field itself never locks — not here, not in a turn
+  // whitespace and text leave the button as they found it, and the field itself never locks — not here, not
+  // in a turn
   page.rerender({ draft: '   ' })
-  expect(screen.getByTestId('chat-send')).toBeDisabled()
+  expect(screen.getByTestId('chat-send')).toBeEnabled()
   page.rerender({ draft: 'x' })
   expect(screen.getByTestId('chat-send')).toBeEnabled()
   expect(field).toBeEnabled()
@@ -187,7 +176,7 @@ test('theFieldGrowsWithItsText', () => {
   // the smoke test looks at.
   const page = renderComposer({ draft: 'erste\nzweite' })
 
-  expect(MAX_ROWS, 'the bound of the growth is a named constant (UC-WP-74 GIVEN 3)').toBe(5)
+  expect(MAX_ROWS, 'the bound of the growth is a named constant (UC-WP-74 GIVEN 4)').toBe(5)
 
   const fields = page.container.querySelectorAll('textarea.chat-composer-field')
   expect(fields, 'one field, and it is the basis own').toHaveLength(1)

@@ -1,9 +1,4 @@
-/** The single error body of the factory API (`ApiError` on the server side). */
-export interface ApiError {
-  status: number
-  error: string
-  message: string
-}
+import type { ApiError, ApiFieldError } from './server-api'
 
 /**
  * Thin fetch wrapper — a non-2xx answer always throws with the server's `message`, because that is
@@ -58,4 +53,15 @@ export function errorMessage(error: unknown): string {
     return error.apiError?.message ?? error.message
   }
   return error instanceof Error ? error.message : String(error)
+}
+
+/**
+ * The fields the server named, so a page can mark exactly those (UC-WP-93). A body that names none — a 409,
+ * the git output of a failed clone, or a `fieldErrors: null` — is the empty answer, not a missing one.
+ */
+export function fieldErrorsOf(error: unknown): ApiFieldError[] {
+  if (error instanceof ApiRequestError) {
+    return error.apiError?.fieldErrors ?? []
+  }
+  return []
 }

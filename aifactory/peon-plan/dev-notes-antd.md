@@ -1192,6 +1192,206 @@ Drei Punkte, **kein Verhalten** — zwei Nachweislücken und ein Kommentar mit w
 - **Toter Zweig ist ein Befund, kein Schmuck:** `activeKey === key` an der Projekt-Marke war seit D6
   unerreichbar (der Deuter antwortet nie `project:<seg>`; `AppSider` hat nur `app.shell.tsx` als Producer; kein
   Test setzt den Key) ⇒ **nur-löschend** entfernt. `projectKeyOf` bleibt Item-Key und Klick-Griff.
+- **`Menu`-Baum (rc-menu 1.6.1) ist nur über Rollen beweisbar, nie über Klassen:** Gruppentitel =
+  `div[role=menuitem]` **mit** `aria-expanded`+`aria-haspopup`, Kind = `li[role=menuitem]` **ohne** sie;
+  Kinder einer geschlossenen Gruppe fehlen im DOM ganz. Das Einrück des Titels steht **inline**
+  (`hooks/useDirectionStyle.js:24`) ⇒ eine eigene CSS-Regel für die Kinderstufe trifft keinen Knoten.
+  Ein Icon im Kind gehört `aria-hidden`, sonst hängt sein `aria-label` am Accessible Name („folder Files").
+- **Gesteuerte `openKeys` + responsive Basis = leere Keyliste:** überscheitet `Layout.Sider` seinen
+  `breakpoint`, meldet `Menu` `onOpenChange([])` (`hooks/index.js:55-58`, Umschalten inline ↔ popup) ⇒ alle
+  Gruppen zu, ohne Nutzeraktion. Eigene Ableitung nur bis `touched === null` tragen lassen, oder — S1b — den
+  Sider unter dem Breakpoint durch einen `Drawer` ersetzen, dann gibt es keinen Umschalt-Punkt mehr.
+- **`Layout.Sider` mit `collapsedWidth={0}`:** den `zeroWidthTrigger` gibt es in **beiden** Zuständen, und
+  `onCollapse(value,'responsive')` feuert auch bei **gesteuertem** `collapsed` (`layout/Sider.js` ruft
+  `handleSetCollapsed(mql.matches,'responsive')`) — gesteuertes Ein- und Ausklappen und automatisches
+  Ansprechen vertragen sich; der alte Glaube „gesteuertes `collapsed` schaltet den Breakpoint ab" ist falsch.
+- **`antd`-CLI ist der billige Vorgeschmack:** `npm i -D antd` liefert `antd info <Komponente>` (Props, Import,
+  statische Methoden), `antd list`, `antd lint ./src` (Regeln A001–A099) und `antd migrate`. `antd usage` ist in
+  6.4.1 weg. `antd env <pfad>` **schreibt** in das Projekt (main.tsx, vite.config.ts, …; Backup nach
+  `.antd-backups/`) — für eine Demo-Seite also nur nutzen, wenn dieser Überschreib-Plan gewollt ist.
+- **`Layout.Sider` ohne eigenen Griff:** `trigger={null}` nimmt **beide** Auslöser (Text-Pille
+  `…-sider-trigger`, Null-Breiten-Auslöser `…-sider-zero-width-trigger`, Default-Glyphe `BarsOutlined`) —
+  `layout/Sider.js`: `triggerDom = trigger !== null ? zeroWidthTrigger || <div …> : null`; die Klasse
+  `…-has-trigger` gibt es nur mit eigenem Griff. Ein `getByText(/menu.?fold/)` sieht davon **nie** etwas:
+  die Griffe sind `span`/`div` ohne Rolle, ihre Zeichen sind Icons.
+- **`Menu` im gefalteten Sider verliert seine offenen Gruppen:** `menu.js:88` rechnet
+  `inlineCollapsed ?? siderCollapsed`, die Basis schaltet also auf die Popup-Form und meldet beim Umschalten
+  `onOpenChange([])` ⇒ alle Gruppen zu, ohne Klick. `inlineCollapsed={false}` hält die Inline-Form (bei
+  `collapsedWidth={0}` ohnehin nichtsichtbar) und rettet die offenen Gruppen. **Weder `antd info Menu` noch
+  `antd lint` sagen dazu etwas** — Maß ist `node_modules/antd/es/**`.
+- **Ein Text-`Button` auf dem dunklen Band malt seine eigene Farbe:** `Layout.headerColor` gilt dem Text im
+  Band, nicht der Button-Oberfläche — darum eine Zeile im eigenen Blatt (`color: var(--top-text)`),
+  `:hover` nicht vergessen, sonst blinkt das Zeichen beim Draufzeigen dunkel.
+
+## Inkrement 4 UI — Datei-Bereich als `Drawer` (2026-11-08)
+
+- **`getContainer={false}` ist Inline, nicht „irgendwohin":** rc setzt `inline: getContainer === false`
+  (`@rc-component/drawer/es/Drawer.js:102`), die Basis hängt `&-inline { position: absolute }` an den
+  sonst `fixed; inset:0; pointer-events:none` stehenden Root
+  (`antd/es/drawer/style/index.js:38-43, 63-65`). Der Root sucht sich den nächsten positionierten
+  Vorfahren — hier `.chat-workspace` —, damit bleiben Kopfzeile und Baum frei, und Tab und Fläche teilen
+  sich die Oberkante `top: 0`, ohne dass eine Kopfzeilenbreite kompensiert werden muss. Nebenbei: die
+  eigenen Tokens (`--files-width`, `--files-wide`) bleiben auflösbar, und der Focus-Trap ist in dieser
+  Kombination per Default **aus** (`antd/es/drawer/Drawer.js:122-125`).
+- **`aria-modal` ist ein getyptes Prop, kein JSX-Trick nötig:** der Drawer nimmt
+  `Pick<DialogHTMLAttributes, …>`; `pickAttrs(aria)` (`@rc-component/drawer/es/DrawerPopup.js:226`) legt
+  aria-Sachen aufs `div[role=dialog]`, und die eigenen `restProps` werden **danach** gespreizt
+  (`DrawerPanel.js`) — `aria-modal={false}` gewinnt also gegen das harte `"true"` der Basis.
+- **Breite: `size` wird inline auf den Content-Wrapper geschrieben, die Klemme ist `max-width`.**
+  `size` geht unverändert durch (`DrawerPopup.js:140-164, 229-236`), ein Blatt-`width` verliert gegen
+  inline; `max-width` ist ein anderes Property und klemmt — muss aber die Basis-Regel
+  `max-width: 100vw` auf demselben Element überstimmen, die unter `:where(.css-hash).ant-drawer …`
+  (0,2,0) **nach** dem eigenen Blatt injiziert ⇒ drei eigene Klassen nötig. Die Übergangsregel lebt von
+  `transition: all` genau dieses Wrappers (`style/index.js:78-86`), der Wechsel der Breite animiert mit.
+- **Der Body der Basis scrollt:** `ant-drawer-body` = `flex:1; min-width:0; min-height:0; overflow:auto`
+  (`style/index.js:192-197`). Wer den Inhalt selbst scrollen lassen will, muss ihm eine Höhe geben —
+  sonst wächst der Inhalt und der Body trägt den Balken. Polster der Basis (`padding: paddingLG`) mit
+  `classNames.body` + drei Klassen wegnehmen, nicht per `styles={{body:…}}` (dann wandert Aussehen aus
+  dem Blatt).
+- **Ohne Maske ist der Schirm bedienbar — und zwar wirklich:** Maske hätte `pointer-events:auto`
+  (`style/index.js:67-76`), ohne sie bleibt der Root bei `pointer-events:none` während die Sektion `auto`
+  bekommt (`:42, :124`); der Scroll-Lock ist an die Maske gehängt (`autoLock: mask && …`,
+  rc `Drawer.js:123`), fällt also mit ihr weg. `push` braucht keine Konfiguration: `pushed` kommt aus dem
+  Context einer Darüber-Ebene (`DrawerPopup.js:68-99`) und ist bei einer Ebene immer `false`.
+- **Esc ist eine window-Abfrage, kein Fokus-Test:** `useEscKeyDown`
+  (`@rc-component/portal/es/useEscKeyDown.js:17-31`) hängt am `window` und ist IME-geschützt —
+  `fireEvent.keyDown(window, { key: 'Escape' })` schließt von jeder Fokusstelle, auch aus dem Chat-Feld.
+- **`destroyOnHidden` baut in jsdom sofort ab** (rc `Drawer.js:77-79`, gemessen: Klick auf Zu ⇒ Knoten
+  weg in 27 ms). Die Leave-Animation der **Hülle** läuft über `motionDeadline: 500`, darum müssen Tests,
+  die „nichts bleibt zurück" behaupten, in `waitFor` — sonst gewinnen sie nur, weil die Animation noch
+  läuft.
+- **jsdom zahlt jede Rollen-Abfrage mit der Regelzahl des Dokuments — der teuerste Fund dieses
+  Inkrements:** der Drawer injiziert beim Mount **+92 Regeln** (+18 KB; 983/38 Sheets statt 891/36), die erste
+  `getAllByRole('button')` danach 494 ms statt 49 ms, und jede DOM-Änderung nimmt das Geld erneut —
+  eine Datei von 7,22 s auf 48,6 s, ein Einzelfall über das 5-s-Timeout. Der Preis hängt an den Regeln,
+  nicht am Mount (Mount/Unmount selbst: 15/27 ms) und nicht an `:has()` (ersetzt ⇒ keine Änderung).
+  `test/shared/setup.ts` verschiebt `style[data-css-hash]` per `MutationObserver` aus dem Dokument;
+  danach 216 Tests / 22 Dateien in 8,2 s. `StyleProvider container` aus `@ant-design/cssinjs` wäre der
+  vorgesehene Weg, ist aber **nicht lösbar** (pnpm: `node_modules/@ant-design/` enthält nur `icons`, antd
+  re-exportiert nichts davon) — er bräuchte einen eigenen devDependency.
+- **`--ant-*`-Variablen sind nicht `:root`:** die Basis legt sie auf eine generierte Klasse
+  (`.css-var-_r_0_`, `cssVar`-Modus), ein Blatt außerhalb dieser Klasse liest sie nicht — Bewegungen im
+  Blatt bleiben darum Literal (hier `0.3s`).
+
+## Inkrement 4 UI — N1 Delta: zwei rechte Overlays, ein Render-Pass (2026-11-09)
+
+- **React wendet den eigenen State der View an, bevor die neue Adresse sie erreicht** (gemessen, Drawer +
+  Insight in derselben Zeile): Klick auf eine Kachel, die den Insight öffnet, während die Adresse den Drawer
+  hält, liefert einen Pass mit `insight` gesetzt **und** `filesOpen === true` — die Adresse kommt erst im
+  nächsten Pass an. Die Freigabe-Regel „Kante besetzt ⇒ kein Insight" löscht in diesem Pass genau den
+  Wunsch, der gerade entstanden ist. Lösung: Ask und Faktenlage in **einem** State-Objekt
+  (`{ name, edgeAsked }`), Konsum im Pass der Ankunft; Sichtbarkeit zusätzlich über `shown` (solange die
+  Adresse die Kante hält, `null`) ⇒ zwei Overlays in einem Frame sind nicht „verhindert", sondern unmöglich.
+- **`flushSync(() => navigate(…))` dreht diese Reihenfolge nicht** — und `flushSync` ist in diesem Stand
+  **nicht** aus `react` exportiert (react 19.3.1, gemessen über `node -e require('react')`; nur `react-dom`
+  hat es), der Trick würde also einen DOM-Import in eine Seite ziehen. Beides verworfen.
+- **Remount war hier die Fährte, nicht der Befund:** gleicher Heading-Knoten per `isSameNode` **und**
+  `historyReads() === 1` scheiden „die Route hat die Seite neu gebaut" sauber aus, bevor an State-Designs
+  gedreht wird.
+- **`oxlint`-Grenzen, die die Form erzwungen haben:** `react(refs)` meldet Ref-Zugriff **im Render**
+  (4 warnings) ⇒ kein Ref-Marker über die Pässe; `set-state-in-render` existiert als Regel **nicht**, ein
+  guarded `setState` im Render bleibt also der erlaubte Weg (`set-state-in-effect` bleibt verboten).
+- **`useLocation().key` ist der einzige History-Beweis für „geändert" oder „nur neu gemalt":** ein Push auf
+  die gezeigte Adresse lässt `pathname` unverändert, der Key wechselt. Der Test-Harness trägt ihn als
+  `data-entry` am `current-path`-Knoten.
+- **Zwei Drähte enden auf `/agents`:** `/api/projects/<id>/agents` (Roster) und
+  `/api/projects/<id>/agents/<name>` (Transcript eines Mitglieds) — ein `endsWith('/agents')`-Zweig frisst den
+  zweiten, also Transcript-Zweig **per Regex vorher** (`/api/settings/agents` wird noch früher abgefangen).
+  Roster ist jetzt Parameter von `stubAppServer(projects, roster = [DEV])`; der Default hat kein `TRANSCRIPT`,
+  damit keine Kachel eine Tür bekommt, die kein Fall bestellt.
 
 
 
+## Inkrement A7 — Werkzeug-Schritte im Restore (2026-11-09, R-WP-47 / UC-WP-82)
+
+- **Ein restaurierter Schritt ist eine Zeile des Bestands, keine live-only Zeile** — das ist der ganze Umbau,
+  und das ist der Satz, der acht UI-Pinnen bewegt hat: (a) ein **Clear** nimmt die Spur mit (vorher: sie
+  blieb), (b) nach dem Read trägt **kein** Schritt ein `title` (UC-WP-72 G5 — der Bestand kennt keinen
+  Moment; die Ankunfts-Uhr gilt nur, solange der Schritt live ist), (c) nach dem Reconnect bleibt die **Spur
+  stehen**, der **Diff** nicht (UC-WP-68 bleibt). Die Kappung `MAX_TOOL_LINES` gilt für eine restaurierte
+  Gruppe genauso — gleiches Widget, kein zweiter Pfad.
+- **Misch-Gruppe: restaurierte Schritte führen, live-Items folgen** (gemessen). `entriesOf` schiebt erst die
+  Rows bis zum Anker, dann den Live-Run; der Read liefert die Schritt-Zeile **vor** der live gesehenen
+  Position. Anhängen (`[...previous.items, ...items]`) gab `think` vor `step` — verkehrt.
+  `pushTrace` kehrt darum für eine restaurierte Gruppe um.
+- **`liveLinesAfterHistory` lässt nur noch live eintreffende Schritte durch** (`index >= mark`): was vor dem
+  Read da war, liefert der Read jetzt selbst. Der einzige Fall, in dem ein live gesehener Schritt einen Read
+  überlebt, ist also ein Schritt **hinter** dem Mark — vorher war jeder Schritt ein Immer-Bleiber.
+- **Backend-Messwerte, die der Plan offen ließ:** ein **gestoppter** Turn hinterlässt den Schritt **mit
+  Auszug** (das Result ist vor dem Stopp schon im Bestand), nicht nur als Ankunft. Die Schreib-Ablehnung
+  (`WritePinningTest`) und der `!`-Block (`ChatQueueTest`) stehen **im Auszug** des Schritts — der Kern legt
+  gequeueuerte Texte aufs Werkzeug-Ergebnis (`ToolService`), also verbannen die Tests sie aus dem
+  **Gespräch** (`filteredOn(role != "tool")`), nicht aus dem Verlauf.
+- **Zahlen:** Backend 227 → **231** Tests (4 neue, keiner gelöscht), UI 218 → **221** (2 neu in
+  `chat.log.test.tsx`, 1 neu in `chat.page.test.tsx`, `aReloadedLogInventsNoTimes` um einen restaurierten
+  Schritt erweitert). `ProjectRuntime.java` 589 → **523**, `ConversationRestore.java` **153**,
+  `chat.log.tsx` **310** — alle unter 600.
+- **Kein zweites Maß, kein zweiter Speicher, kein neues CSS-Wort:** der Auszug kommt aus `AgentTranscript.cut`
+  (jetzt paketprivat, geteiltes Maß mit dem Insight), non-Text-Payload ⇒ **leerer** Auszug (das `[no text]`
+  gehört in die Insight-Zeile, nicht in den Chat).
+
+
+
+## A7-N1 — Der Anker zählt Stimmen (Delta auf A7, 2026-11-09)
+
+Review REJECTED (1 BUG, 3 LOWs) → vier Commits, **kein Backend-Eingriff**, kein Core-Write, kein CSS.
+
+- **BUG-1 (Anker-Maß).** Ein Live-Eintrag wurde beim `done`-Read über die Schritte **seines eigenen Turns**
+  gehoben (`user · diff · timeline · answer` statt `user · timeline · diff · answer`). Ursache: der Anker wurde
+  in **Zeilen** eingefroren (`historyRows + pendingLines`), der Read setzt restaurierte `tool`-Rows aber
+  **mitten** in die Liste ⇒ dieselbe Zahl nennt jetzt eine frühere Stelle. Fix: **ein Zählmaß** — der Anker
+  zählt Stimmen (`user`/`jon`/`error` plus eigene Pending-Zeilen), nie Schritte. Eine Definition, beide Enden:
+  `isTraceLine(line)` in `chat.client.ts` benutzt von `chat.log.tsx` (`Row.trace`) **und** `chat.page.tsx`.
+- **Zwei Einheiten, ein Fakt.** `historyRows` → `historyCount { lines, voices }`: `lines` bleibt der Index für
+  `PendingLine.afterHistory` (R-WP-37), `voices` ist das Ankermaß. Ein zweiter Ref wäre über die 600er-Grenze
+  gegangen (`chat.page.tsx` gemessen 597/600) — darum Tausch statt Ergänzung, JavaDoc umgeschrieben.
+- **Der Read-Übersetzer steht an einer Stelle:** `pushRows` läuft bis `until` **Stimmen** und schiebt die
+  Trace-Gruppe, die an genau dieser Stelle steht, **vor** dem Live-Lauf (R-WP-40: der Diff-Block beendet die
+  Gruppe, die vor ihm liegt).
+- **LOW-1 (Ordnung im Widget).** Messung statt Ratens: der Sonderzweig „restored führt" in `pushTrace` war
+  **tot** (Entfernung ließ die Suite bei 221 grün) ⇒ jetzt immer `[...previous.items, ...items]` — **der
+  Bestand führt, was nur der Draht trug, folgt** (R-WP-11/R-WP-25, R-WP-47). Guard gegen Merge zweier
+  Live-Läufe bleibt. Der Think-Fall ist neu gepinnt:
+  `aThinkStreamedBeforeTheCallStandsBehindTheStepTheHistoryHandsBack`.
+- **LOW-2 (Doc).** R-WP-47 in `docs/chat.md` von Jon formuliert, von uns nur committet.
+- **LOW-3 (erfundener Wert).** `TimelineEntry = Omit<ToolItem|ThinkItem|DelegationItem,'afterLines'>` —
+  restaurierte Schritte tragen keinen Anker mehr (`tsc -b` 0, Identität von `open` unverändert, kein Fallback
+  nötig). Typ ⇒ kein Test.
+- **Zahlen:** UI 221 → **222** (`tsc -b` 0, `oxlint` 0/0, `antd lint` 0 Findings, `vite build` ok),
+  **Backend Suite nicht gefahren** (231 aus A7, keine Datei geändert). Größen: `chat.page.tsx` **597**
+  (JavaDoc-Kürzung hielt Nettonull), `chat.log.tsx` **319**, `chat.live.ts` **295**, `chat.client.ts` **111**,
+  `chat.timeline.tsx` **148**.
+- **Abweichung, benannt:** `streamingUpdatesChatWithoutReload` galt im Plan als „grün ohne Änderung" — die
+  Behauptung „beide Worte in **einem** Widget" gilt nur mit der gewählten Ordnung (Bestand führt); Assertions
+  unverändert, Kommentar begründet jetzt die Begründung.
+- **Werkzeug-Notiz:** `npm test -- test/chat/<datei>.test.tsx` bricht in diesem Projekt mit
+  `Could not parse CSS stylesheet` (jsdom-Einzel Datei-Lauf) — einzelne Fälle über `npm test -- -t '<name>'`
+  filtern, nie über den Dateipfad.
+
+
+### A7-N1 Zusatz — Test-Split der Chat-Seite (AGENTS.md:10-12)
+
+`test/chat/chat.page.test.tsx` war **2231** Zeilen (> 1000 = Blocker). Geteilt **nach dem, was eine Datei
+beweist**, und die geteilte Draht-Attrappe in ein Modul:
+
+- `test/chat/chat.page.stub.ts` (**294**) — `fetch`-Attrappe (`stubChat`, `event`, `json`, `flush`,
+  `KEEP_ALIVE`, `tile`), die Konstanten-Paare des Gesprächs, die Zähler-Helfer (`sentTexts`, `userLineTexts`,
+  `agentLinesSaying`, `authorsOfLines`, `framedLines`, `mockScrollOf`) und die Stub-Lebensdauer
+  (`resetChatStub` im `beforeEach`, `closeChatStub` im `afterEach` — der Hooks-Rumpf steckt jetzt dort, die
+  Aufrufe bleiben je Testdatei, sonst fehlt einer, wenn eine dritte Datei dazukommt).
+- `test/chat/chat.page.test.tsx` (**797**) — Projekt öffnen, Composer, Senden, Kacheln/Steuerung, Leer-Send,
+  Warten, Scroll.
+- `test/chat/chat.read.page.test.tsx` (**459**) — was der **Read** bringt: Races, Reconnect, Bestand,
+  Autoren/Team/Rollen.
+- `test/chat/chat.trace.page.test.tsx` (**758**) — die **Spur**: Timeline, Anker, Delegation, Diff.
+
+Beweis der Verlustfreiheit: 64 `test(`, 60 `// UC-`-Marker, 338 `expect(`-Aufrufe — vor und nachher gleich;
+Suite **222 grün** (24 Dateien), `tsc -b` 0, `oxlint` 0/0 (86 Dateien), `antd lint ./src` 0. **Keine**
+Assertion geändert.
+
+- **Warum drei Dateien statt zwei:** die Testmasse ist 1930 Zeilen; jede Zwei-Teilung hätte eine Datei über
+  1000 gehalten oder einen Test-Block zerschnitten. Die Grenze „Seite / Read / Spur" ist die einzige, die
+  zusammenhängende Blöcke hält.
+- **Werkzeug-Notiz:** die Bereiche wurden per `sed` aus der Originaldatei geschnitten (byte-treu), nicht
+  abgeschrieben. Die Blockanfänge müssen an der **Kommentarzone** sitzen, nicht an der `test(`-Zeile — ein
+  Schnitt bei einer Testnummer trennte JavaDoc und Rumpf (TS1109).

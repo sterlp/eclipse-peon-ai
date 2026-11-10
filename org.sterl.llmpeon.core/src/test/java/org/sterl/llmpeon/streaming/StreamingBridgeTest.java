@@ -13,7 +13,6 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CancellationException;
 
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.shared.AiMonitor;
@@ -243,7 +242,7 @@ class StreamingBridgeTest {
 
         // WHEN + THEN — the documented contract: a canceled call surfaces as CancellationException
         assertThatThrownBy(() -> bridge.call(cm, request("hi"), monitor, T0))
-                .isInstanceOf(CancellationException.class);
+                .isInstanceOf(AiCancellationException.class);
     }
 
     // -------------------------------------------------------------------------

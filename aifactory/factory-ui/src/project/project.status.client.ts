@@ -1,13 +1,13 @@
 import { readSseStream } from '../shared/sse.client'
-import type { ProjectWork } from '../shared/dto'
+import type { ProjectWorkDto } from '../shared/server-api'
 
 /**
  * The two words of the work-state edge (R-WP-24): the whole picture when a viewer connects, one project
  * whenever one of them changes.
  */
 export type ProjectStatusEvent =
-  | { kind: 'snapshot'; work: ProjectWork[] }
-  | { kind: 'delta'; work: ProjectWork }
+  | { kind: 'snapshot'; work: ProjectWorkDto[] }
+  | { kind: 'delta'; work: ProjectWorkDto }
 
 export interface ProjectStatusHandlers {
   onEvent(event: ProjectStatusEvent): void
@@ -75,11 +75,11 @@ function toEvent(name: string, payload: string): ProjectStatusEvent | null {
     // a snapshot replaces what the view holds and never adds to it — the states are a picture, and a
     // picture that accumulated would become a second store (R-WP-24)
     return Array.isArray(fields.projects)
-      ? { kind: 'snapshot', work: fields.projects as ProjectWork[] }
+      ? { kind: 'snapshot', work: fields.projects as ProjectWorkDto[] }
       : null
   }
   if (name === 'project') {
-    return typeof fields.projectId === 'string' ? { kind: 'delta', work: fields as unknown as ProjectWork } : null
+    return typeof fields.projectId === 'string' ? { kind: 'delta', work: fields as unknown as ProjectWorkDto } : null
   }
   return null
 }

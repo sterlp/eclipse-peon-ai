@@ -11,6 +11,9 @@ const FAILURE: ChatMessage = { role: 'error', text: 'turn needs a model — set 
 /** The input the trace belongs to, read back from the history — the anchor of the trace counts it (D-A). */
 const SENTENCE: ChatMessage = { role: 'user', text: 'zähl die Dateien', origin: 'Paul' }
 const ANSWER: ChatMessage = { role: 'jon', text: 'Zwei: pom.xml und README.md' }
+/** A step of the trace as the history hands it back: the tool's name in `origin`, its result as the excerpt (R-WP-47). */
+const STEP_LS: ChatMessage = { role: 'tool', text: 'pom.xml README.md', origin: 'shellRunCommand' }
+const STEP_WC: ChatMessage = { role: 'tool', text: '3 pom.xml', origin: 'shellRunCommand' }
 
 /**
  * A change of voice draws no line of its own (R-WP-29): the two rows are separated by the form each voice is
@@ -21,7 +24,7 @@ const ANSWER: ChatMessage = { role: 'jon', text: 'Zwei: pom.xml und README.md' }
 // UC-WP-55
 // R-WP-29
 test('roleChangeDrawsNoRule', () => {
-  render(<ChatLog messages={[QUESTION, FAILURE]} outgoing={[]} live={[]} pending={false} />)
+  render(<ChatLog messages={[QUESTION, FAILURE]} outgoing={[]} live={[]} />)
 
   const log = screen.getByTestId('chat-log')
   expect(separatorsOf(log), 'no line of the log separates two voices').toEqual([])
@@ -40,7 +43,7 @@ test('roleChangeDrawsNoRule', () => {
 // R-WP-29
 test('theLogNeverCountsAnAnswersRuleAsItsSeparator', () => {
   const separating: ChatMessage = { role: 'jon', text: 'zuerst\n\n---\n\nzuletzt' }
-  render(<ChatLog messages={[QUESTION, separating, SENTENCE]} outgoing={[]} live={[]} pending={false} />)
+  render(<ChatLog messages={[QUESTION, separating, SENTENCE]} outgoing={[]} live={[]} />)
 
   const log = screen.getByTestId('chat-log')
   expect(separatorsOf(log), 'the answer is the only line on the screen, and it is no separator').toEqual([])
@@ -51,22 +54,14 @@ test('theLogNeverCountsAnAnswersRuleAsItsSeparator', () => {
 })
 
 /** The other half of the same rule: the failure shows the moment the stream reports it, in the log. */
-// UC-WP-64, UC-WP-65
-test('aLiveFailureIsALineAndNotAWaitingFrame', () => {
+// UC-WP-64
+test('aLiveFailureIsALineOfTheHistory', () => {
   render(
-    <ChatLog
-      messages={[QUESTION]}
-      outgoing={[]}
-      live={appendLiveError([], 'no model configured', 1)}
-      // the page's frame is on for the rest of the log, and the failure still carries none of it
-      pending
-    />,
+    <ChatLog messages={[QUESTION]} outgoing={[]} live={appendLiveError([], 'no model configured', 1)} />,
   )
 
   const failure = screen.getByTestId('chat-line-error')
   expect(failure).toHaveTextContent('no model configured')
-  // the turn is over, so nothing about this line is "not a fact yet"
-  expect(failure.className).not.toContain('pending')
   expect(screen.queryByTestId('chat-live')).toBeNull()
 })
 
@@ -83,7 +78,6 @@ test('aLiveTraceStaysBetweenItsInputAndTheAnswer', () => {
       messages={[QUESTION, SENTENCE, ANSWER]}
       outgoing={[]}
       live={appendLiveTool(appendLiveTool([], 'ls in the checkout', 2), 'wc -l', 2)}
-      pending={false}
     />,
   )
 
@@ -95,6 +89,65 @@ test('aLiveTraceStaysBetweenItsInputAndTheAnswer', () => {
   expect([
     ...screen.getByTestId('chat-timeline').querySelectorAll('.chat-trace-item'),
   ]).toHaveLength(2)
+})
+
+/**
+ * The same account, read back instead of streamed (R-WP-47, UC-WP-82): the steps the history carries are the
+ * trace of their place, so consecutive steps draw ONE timeline at the place of the first, between the input
+ * they belong to and the answer that followed them — and the voice between two steps ends the group, which
+ * is the same rule R-WP-40 states for a live run. A step is never a line of the conversation: the log has
+ * exactly one drawing path for it.
+ */
+// UC-WP-82
+// UC-WP-72
+test('restoredToolLinesStandAsOneTimelineBetweenTheirInputAndTheAnswer', () => {
+  const shape = () =>
+    [...screen.getByTestId('chat-log').children].map(line => line.getAttribute('data-testid'))
+
+  const view = render(
+    <ChatLog messages={[QUESTION, SENTENCE, STEP_LS, STEP_WC, ANSWER]} outgoing={[]} live={[]} />,
+  )
+
+  expect(shape(), 'one group of steps is one widget, where the first of them stands').toEqual([
+    'chat-line-user',
+    'chat-line-user',
+    'chat-timeline',
+    'chat-line-jon',
+  ])
+  const widget = screen.getByTestId('chat-timeline')
+  expect([...widget.querySelectorAll('.chat-trace-item')], 'both steps are links of it').toHaveLength(2)
+  expect(widget.textContent).toContain('pom.xml README.md')
+  expect(widget.textContent).toContain('3 pom.xml')
+  expect(
+    screen.queryAllByTestId('chat-line-tool'),
+    'a step is no voice, so the log draws no line of one',
+  ).toEqual([])
+
+  // a voice between two steps ends the account of one place and opens the next (R-WP-40)
+  view.rerender(
+    <ChatLog messages={[QUESTION, SENTENCE, STEP_LS, ANSWER, STEP_WC]} outgoing={[]} live={[]} />,
+  )
+  expect(shape(), 'an answer ends the group, so the step behind it is a widget of its own').toEqual([
+    'chat-line-user',
+    'chat-line-user',
+    'chat-timeline',
+    'chat-line-jon',
+    'chat-timeline',
+  ])
+})
+
+/**
+ * UC-WP-82 GIVEN 3: a conversation the model answered without a tool gains no step and no placeholder —
+ * the log of a chat with no tool activity is the conversation and nothing else.
+ */
+// UC-WP-82
+test('aConversationWithoutStepsDrawsNoTimeline', () => {
+  render(<ChatLog messages={[QUESTION, ANSWER]} outgoing={[]} live={[]} />)
+
+  expect(screen.queryByTestId('chat-timeline'), 'no step, no widget').toBeNull()
+  expect(
+    [...screen.getByTestId('chat-log').children].map(line => line.getAttribute('data-testid')),
+  ).toEqual(['chat-line-user', 'chat-line-jon'])
 })
 
 /**
@@ -113,7 +166,6 @@ test('onlyAnswersAreMarkdown', () => {
       messages={[quoted, marked, failure]}
       outgoing={[]}
       live={appendLiveError(appendLiveTool([], 'ls **fett**', 3), 'model **nicht** erreichbar', 3)}
-      pending={false}
     />,
   )
 
@@ -140,4 +192,35 @@ test('onlyAnswersAreMarkdown', () => {
   expect(answer.querySelector('strong')?.textContent).toBe('Datei')
   expect(answer.querySelector('del')?.textContent).toBe('alt')
   expect(answer.textContent, 'the markers are gone from an answer').not.toContain('**')
+})
+
+/**
+ * The look into one member draws through this log (R-WP-53), so the log answers to the name of the widget it
+ * stands in, and a `user` line the history leaves unnamed stays unnamed where no author may be lent. Both are
+ * the caller's choice and neither needs a test of its own, so one test asks both.
+ */
+// R-WP-53
+test('theLogTakesAnotherTestIdAndNoUserAuthor', () => {
+  render(
+    <ChatLog
+      messages={[
+        { role: 'user', text: 'baue die Kachel' },
+        { role: 'jon', text: 'sie steht', origin: 'Dev' },
+      ]}
+      outgoing={[]}
+      live={[]}
+      testId="insight-log"
+      userAuthor={null}
+    />,
+  )
+
+  expect(screen.queryByTestId('chat-log'), 'one page, two logs, two handles').toBeNull()
+  const log = screen.getByTestId('insight-log')
+  expect(log).toHaveClass('chat-log')
+  expect(
+    screen.getByTestId('chat-line-user').querySelector('[data-testid="chat-line-author"]'),
+    'a task nobody typed into this widget names no author',
+  ).toBeNull()
+  // the member's name on his own answer is the line's and not a label this view lends
+  expect(log.textContent).toContain('Dev')
 })

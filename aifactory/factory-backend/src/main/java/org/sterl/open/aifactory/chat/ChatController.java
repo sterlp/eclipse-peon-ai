@@ -24,7 +24,8 @@ import jakarta.servlet.http.HttpServletResponse;
 /**
  * The HTTP edges of the chat, and the only class here that knows HTTP and JSON. <b>Three conversation
  * edges</b> — {@code GET/POST …/messages} and {@code GET …/events} — and the <b>tile family</b>
- * {@code GET/POST …/agents} with {@code GET …/agents/{name}} (architecture doc "Die drei Gesprächs-Kanten
+ * {@code GET/POST …/agents} with {@code GET …/agents/{name}} and that same tile's own wire
+ * {@code GET …/agents/{name}/events} (architecture doc "Die drei Gesprächs-Kanten
  * bleiben drei"). The edge {@code …/messages} answers as two routes: sending starts a turn,
  * {@code POST …/messages/stop} ends the one that runs, so an edge is one place of the conversation and not
  * one HTTP method (UC-WP-50).
@@ -50,8 +51,9 @@ public class ChatController {
     }
 
     /**
-     * The conversation as the core's memory has it — the single truth, no live line in it (D4). Three
-     * roles cross here: {@code user}, {@code jon} and the {@code error} line of a failed turn (R-WP-34).
+     * The conversation as the core's memory has it — the single truth, no live line in it (D4). Four
+     * roles cross here: {@code user}, {@code jon}, the {@code error} line of a failed turn (R-WP-34) and
+     * the {@code tool} step of Jon's own work (R-WP-47).
      */
     @GetMapping("/api/projects/{id}/messages")
     public List<ChatMessageDto> messages(@PathVariable("id") String projectId) {
@@ -136,5 +138,21 @@ public class ChatController {
     public AgentTranscriptDto transcript(@PathVariable("id") String projectId,
             @PathVariable("name") String name) {
         return runtimes.transcript(projectId, name);
+    }
+
+    /**
+     * The live wire of one tile's own conversation (R-WP-53, UC-WP-90) — the read above, only growing.
+     * Same gate as {@link #transcript(String, String)} and the same headers as
+     * {@link #events(String, HttpServletResponse)}: a line the user is watching has to arrive while it is
+     * written, and an unknown name or project is refused before an emitter exists.
+     */
+    @GetMapping(value = "/api/projects/{id}/agents/{name}/events",
+            produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter agentEvents(@PathVariable("id") String projectId, @PathVariable("name") String name,
+            HttpServletResponse response) {
+        SseEmitter emitter = runtimes.subscribeAgent(projectId, name);
+        response.setHeader("Cache-Control", "no-cache");
+        response.setHeader("X-Accel-Buffering", "no");
+        return emitter;
     }
 }

@@ -13,6 +13,7 @@ import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.jdt.core.IJavaModelMarker;
 import org.junit.After;
 import org.junit.Test;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
@@ -78,6 +79,28 @@ public class EclipseBuildToolTest extends AbstractIntegrationTest {
             assertTrue("expected A marker:\n" + result, result.contains("alpha problem"));
             assertFalse("B marker must not leak into the filtered result:\n" + result,
                     result.contains("beta problem"));
+        } finally {
+            deleteTestMarkers();
+        }
+    }
+
+    // UC-PP-1
+    @Test
+    public void problemsForSingleFileIncludesJdtProblemMarkers() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        try {
+            // GIVEN a JDT compile problem — a subtype of IMarker.PROBLEM
+            IFile file = file(FILE_A);
+            file.createMarker(IJavaModelMarker.JAVA_MODEL_PROBLEM_MARKER, Map.of(
+                    IMarker.MESSAGE, "jdt alpha problem",
+                    IMarker.SEVERITY, IMarker.SEVERITY_ERROR,
+                    IMarker.LINE_NUMBER, 5));
+            markerFiles.add(file);
+
+            String result = tool.eclipseReadProjectProblems(PeonTestFixture.PROJECT_NAME, FILE_A, null);
+
+            // THEN the filtered call reports it, not "No problems"
+            assertTrue("expected JDT marker:\n" + result, result.contains("jdt alpha problem"));
         } finally {
             deleteTestMarkers();
         }

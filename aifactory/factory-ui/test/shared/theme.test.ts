@@ -40,6 +40,8 @@ test('theHeaderRowHoldsTheMenuAndNoSecondSettingsEntry', () => {
   const header = declarations('.app-header')
   expect(header).toMatch(/display:\s*flex/)
   expect(header).toMatch(/align-items:\s*center/)
+  // the band keeps no gap of its own to the page — the air below a page is the view's own padding (A2)
+  expect(header, 'the band sits flush on the content').toMatch(/margin:\s*0;/)
   const top = declarations('.app-top')
   expect(top).toMatch(/flex:\s*1/)
   expect(top, 'the menu shrinks instead of stretching the header').toMatch(/min-width:\s*0/)
@@ -98,11 +100,20 @@ test('theBasisIsTheOnlyDesignLibraryOfTheApp', () => {
     'buttons, cards, fields, choices and icons come from the basis',
   ).toBeGreaterThanOrEqual(6)
   // R-WP-39 / UC-WP-71 GIVEN 4 draws the line where the basis stops: the conversation keeps our classes.
-  // So the ban is the whole chat folder and the exception is the two surfaces the docs hand to the basis —
-  // R-WP-39 names `Input`, R-WP-41 its auto-grow, and R-WP-40 the timeline the trace is drawn with. A new
-  // file of the conversation arrives inside the ban, which is exactly GIVEN 1 — the same mistake a second
-  // time makes the suite red, not the file list.
-  const basisOwnSurface = ['chat.composer.tsx', 'chat.timeline.tsx']
+  // So the ban is the whole chat folder and the exception is the surfaces **the docs** hand to the basis —
+  // R-WP-39 names `Input`, R-WP-41 its auto-grow, R-WP-40 the timeline the trace is drawn with, R-WP-43 the
+  // actions ("echte AntD-Elemente … auch an den Kacheln", ui.md), R-WP-45 the working spin ("AntD `Spin`
+  // mit `LoadingOutlined` … keine eigene CSS-Rotation") and R-WP-35 the way back to the end ("ein schwebender
+  // Knopf … AntD `FloatButton`, wie `BackTop`, nur umgekehrt", chat.md). A new file of the conversation
+  // arrives inside the ban, which is exactly GIVEN 1 — the same mistake a second time makes the suite red, not
+  // the file list. A voice of the conversation is in none of them and stays ours (below).
+  const basisOwnSurface = [
+    'chat.composer.tsx',
+    'chat.scroll.bottom.tsx',
+    'chat.status.tsx',
+    'chat.tiles.tsx',
+    'chat.timeline.tsx',
+  ]
   const basisInsideTheChat = builtWithBasis
     .map(([path]) => path)
     .filter((path) => path.includes('/chat/') && !basisOwnSurface.some((name) => path.endsWith(`/${name}`)))

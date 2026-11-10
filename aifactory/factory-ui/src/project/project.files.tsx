@@ -7,6 +7,7 @@ import {
   LeftOutlined,
   RightOutlined,
 } from '@ant-design/icons'
+import { Drawer } from 'antd'
 
 
 
@@ -15,7 +16,7 @@ import { errorMessage } from '../shared/api.client'
 import { CodeView } from '../shared/code'
 import { languageOf } from '../shared/code.language'
 import { content } from '../shared/content'
-import type { Project } from '../shared/dto'
+import type { ProjectDto } from '../shared/server-api'
 
 interface Props {
   /**
@@ -24,10 +25,10 @@ interface Props {
    * caller keys this component per project (`key={project.id}`): unkeyed, the second project would open
    * inside the tree of the one before it.
    */
-  project: Project
+  project: ProjectDto
   /** Whether the address names this area (`chat/:project/files`). Read by the route, never kept here. */
   open: boolean
-  /** The one toggle of the tab and of the icon inside the panel — its owner navigates. */
+  /** The one toggle there is: tab and the drawer's own close both go through it, and its owner navigates. */
   onToggle(): void
 }
 
@@ -212,18 +213,42 @@ function FileViewer({ viewed, onClose }: ViewerProps) {
 }
 
 /**
- * The file area (R-WP-33, R-WP-14, UC-WP-60/61): a vertical tab at the right edge that slides a panel of
- * the same edge open. The panel is a column beside the chat and not an overlay over it — reading a file
- * never hides the conversation, which is why `app.routes.tsx` puts both in one row.
+ * The file area (R-WP-33, R-WP-14, UC-WP-60/61): the vertical tab at the right edge, and the basis'
+ * `Drawer` lying over that edge instead of pushing a column into the row. The chat stays on the screen
+ * beside it and stays typable in — which is why the drawer renders inline (`getContainer={false}`: header
+ * and tree keep their place, and tab and panel share one top edge) and carries neither mask nor focus trap.
  *
- * The tab is always mounted, so it keeps its identity across an open and a close. The panel is mounted
- * only while the address names it and unmounted the moment it does not — that is how closing forgets the
- * position in it, with no reset state of its own (R-WP-38).
+ * The tab is always mounted, so it keeps its identity across an open and a close. The area goes away with
+ * the drawer — `destroyOnHidden` of the basis, no guard of ours — which is how closing forgets the position
+ * in it, with no reset state of its own (R-WP-38).
  */
 export function ProjectFiles({ project, open, onToggle }: Props) {
   return (
     <>
-      {open && <FilesArea project={project} onClose={onToggle} />}
+      <Drawer
+        // the tab already says what this is, so the panel gets its name without a second visible word
+        aria-label={content.files.title}
+        // not modal: no mask, no trap, the chat beside it stays reachable — the basis states `true` on its
+        // own, so this is the one place that has to say otherwise
+        aria-modal={false}
+        classNames={{ root: 'files-drawer', wrapper: 'files-drawer-wrapper', body: 'files-drawer-body' }}
+        closeIcon={<CloseOutlined data-testid="files-close" aria-label={content.files.collapseArea} />}
+        destroyOnHidden
+        getContainer={false}
+        mask={false}
+        // closing is the address stepping back: the area keeps no "open" of its own (R-WP-38)
+        onClose={onToggle}
+        open={open}
+        placement="right"
+        // the wide measure, clamped by the sheet while no file is open: `wide` is the area's own state and a
+        // copy of it up here would outlive the close
+        size="var(--files-wide)"
+        // its layer is the line "file drawer" in the list over `.chat-workspace` (`styles.css`): under the
+        // tab, above the content of the row, which carries no number of its own
+        zIndex={2}
+      >
+        <FilesArea project={project} />
+      </Drawer>
       <button
         type="button"
         className="files-tab"
@@ -246,7 +271,7 @@ export function ProjectFiles({ project, open, onToggle }: Props) {
  * upload or create, because the edge behind it has no such method. It is born with the address that names
  * it and dies with the one that does not, so its own state never has to be reset.
  */
-function FilesArea({ project, onClose }: { project: Project; onClose(): void }) {
+function FilesArea({ project }: { project: ProjectDto }) {
   const [shownRoot, setShownRoot] = useState<FileRoot>('checkout')
   const [branches, setBranches] = useState<Record<string, Branch>>({})
   const [expanded, setExpanded] = useState<string[]>([])
@@ -352,15 +377,6 @@ function FilesArea({ project, onClose }: { project: Project; onClose(): void }) 
             </button>
           ))}
         </div>
-        <button
-          type="button"
-          className="files-collapse"
-          data-testid="files-close"
-          aria-label={content.files.collapseArea}
-          onClick={onClose}
-        >
-          <Icon name="chevron-right" />
-        </button>
       </header>
       <div className="files-tree" data-testid="files-tree">
         <p className="files-path" data-testid="files-path">

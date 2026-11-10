@@ -99,6 +99,15 @@ export function factoryTheme(dark: boolean): ThemeConfig {
         darkSubMenuItemBg: read('--top-bg'),
       },
       /**
+       * The one mark that says <em>work is happening</em> (R-WP-45): the basis answers with 12 px
+       * (`controlHeightLG / 2`) and that read smaller than the word beside it (Paul 2026-11-08). 16 px is
+       * 1 rem on the 4-px grid. Only `medium` moves — `dotSizeSM` stays the basis' own, so the trace of the
+       * log keeps its smaller mark and the two places stay distinguishable (R-WP-46).
+       */
+      Spin: {
+        dotSize: 16,
+      },
+      /**
        * The trace of a turn is read beside the answer and not as a list of its own: its dots carry the line
        * and its gaps stay small, which is the measure R-WP-40 of `docs/chat.md` asks for and not this
        * file's taste. The dots are tokens and stay tokens. The GAPS are not: the basis builds the timeline

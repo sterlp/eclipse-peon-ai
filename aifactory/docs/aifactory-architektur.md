@@ -44,7 +44,7 @@ flowchart LR
 |---|---|---|
 | `ProjectService` (Package `project`) | Projektliste, Klonen, Entfernen, Pfad je Projekt | den Core kennen |
 | `ProjectRuntime` | Jon + Team je Projekt, Serialisierung der Turns, Clear/Compact je Agent, Tool- und Write-Roots | HTTP, JSON, Browser-Formate |
-| `ChatStreamRegistry` | Events des `AiMonitor` als SSE je Projekt verteilen, tote Zuschauer abmelden | eigene Nachrichten halten (Memory ist im Core), **kein** Replay des Verlaufs, kein Emitter-I/O unter dem Projekt-Lock (ein langsamer Leser darf den Turn nicht bremsen, UC-WP-41) |
+| `ChatStreamRegistry` | Events des `AiMonitor` als SSE je Projekt verteilen, tote Zuschauer abmelden; **zwei Kanäle je Projekt** (seit C-7, [R-WP-53](chat.md)): Jon-Kanal (`channel == null`, nur Jon + namenlose Zeilen — UC-WP-40) und je Mitglied ein Agenten-Kanal (`publishAgent`, nur `partial`/`tool` dieses Mitglieds) | eigene Nachrichten halten (Memory ist im Core), **kein** Replay des Verlaufs, kein Emitter-I/O unter dem Projekt-Lock (ein langsamer Leser darf den Turn nicht bremsen, UC-WP-41) |
 | `FactoryConfig` (Package `config`) | Lesen/Schreiben der Factory-Config, Maskierung der Keys, Auflösung pro Turn | den geteilten Config-Bestand des Plugins schreiben **oder lesen** |
 | `PacoRuntime` | ein Paco je Nutzer und Projekt, Write-Liste `stories/<nutzer>/` + `proposals/<nutzer>/`, nur `searchAgent` | Team Plan/Dev/Review, Projekt-Jon-Memory |
 | Core (`AiPoAgent` …) | Agent-Logik, Tools, Memory, History-Store | Eclipse, HTTP, Factory-Klassen |
@@ -269,7 +269,12 @@ flowchart LR
   Adresse geboren und stirbt mit ihr („Schließen vergisst die Position" gilt damit **per Konstruktion**,
   nicht durch einen Reset-Effekt); der „Files"-Tab bleibt außen gemountet, weil er die sichtbare Öffnung
   ist. Der Tab im Chat ([R-WP-33](files.md)) und der Sider-Eintrag sind zwei Griffe auf dieselbe
-  Adressänderung, kein zweiter Mechanismus.
+  Adressänderung, kein zweiter Mechanismus. **Seit Runde 6 (2026-11-08) ist das Panel ein AntD
+  `Drawer`** (von rechts, [R-WP-33](files.md)): die eigene Slide-Mechanik weicht. Der Drawer läuft mit
+  `getContainer={false}` **inline im Chat-Layout** (nicht als body-Portal) — nur so sitzt die
+  Panel-Oberkante bündig am „Files"-Tab und die Panel-Breite bleibt an unsere CSS-Variablen gebunden.
+  Die alte Geschwister-Nähe (`+`/`~`) entfällt damit trotzdem: Tab-zu-Panel-Nähe wird über
+  Positionierung bewiesen, nicht über DOM-Geschwisterlichkeit.
 * **Gemessen, nicht geglaubt (5b-1):** die Kind-Route ist die **klare Grammatik** (die Einheit ist ein
   Unterpfad der Chat-Adresse), aber sie ist **nicht** der Grund, warum die Chat-Seite gemountet bleibt —
   eine Schwesterroute mit demselben Element an derselben Stelle mountet `chat/:project` ebenfalls **nicht**

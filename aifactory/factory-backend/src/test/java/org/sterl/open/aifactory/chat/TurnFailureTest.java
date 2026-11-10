@@ -176,8 +176,40 @@ class TurnFailureTest {
     }
 
     @Test
+    // UC-WP-83
+    void anErrorThatEscapesTheTurnEndsItAsOneFailedTurn() {
+        // an Error is no RuntimeException, so it passed every catch of the turn: the tile fell back to IDLE
+        // and the turn was handed back, while the browser waited for an end event that never came (R-WP-48)
+        ChatStreamRegistry streams = new ChatStreamRegistry();
+        RecordedWire wire = new RecordedWire();
+        streams.subscribe(PROJECT, wire);
+        ProjectRuntime runtime = runtime(() -> {
+            throw new LinkageError("the config class is gone");
+        }, streams);
+
+        runtime.submit(INPUT, "Paul");
+
+        awaitUntil(() -> wire.countOf("agents") == 2, 20_000, "the failed turn sent its end snapshot");
+        assertThat(wire.names())
+                .as("one opened turn ends with exactly one ending event, a Throwable included, and its end"
+                        + " snapshot follows behind it (R-WP-48)")
+                .containsExactly("agents", "error", "agents");
+        assertThat(runtime.history())
+                .as("the escaped Error counts as a failed turn, so its pair stands in the conversation")
+                .containsExactly(
+                        ChatLine.user(INPUT, "Paul"),
+                        ChatLine.error(MID_MODEL_REASON));
+        assertThatThrownBy(runtime::stop)
+                .as("the turn that escaped is over — a stop after it addresses nothing")
+                .isInstanceOf(IllegalStateException.class);
+        assertThatCode(() -> runtime.act(AiPoAgent.NAME, AgentAction.CLEAR))
+                .as("and its project is taken again: the escaped Error gave it back")
+                .doesNotThrowAnyException();
+    }
+
+    @Test
     @Timeout(60)
-    // UC-WP-14, UC-WP-50
+    // UC-WP-14, UC-WP-50, UC-WP-83
     void aQueuedSubmitThatFailsOwnsNothingOfTheRunningTurn() {
         MockLlmServer model = new MockLlmServer(0);
         model.start();
@@ -207,6 +239,15 @@ class TurnFailureTest {
                     .anyMatch(line -> ChatLine.ROLE_ERROR.equals(line.role())),
                     20_000, "the waited submit reported its own failure");
 
+            // its number left the row, so everything this submit could send has been sent — the wire is
+            // readable here without racing its failure branch
+            awaitUntil(() -> runtime.workState().queued() == 0, 20_000,
+                    "the waited submit gave its number back to the row");
+            assertThat(wire.countOf("error"))
+                    .as("a submit that only queued tells the conversation, never the live view of the turn"
+                            + " that is still running (UC-WP-83 GIVEN 4)")
+                    .isZero();
+
             assertThatCode(runtime::stop)
                     .as("the turn that is running is still the turn this project has — a submit that "
                             + "only waited may not end it, and its end belongs to its own task alone")
@@ -218,6 +259,14 @@ class TurnFailureTest {
             // the waited submit has told its own failure, so the tool may end and take the turn with it
             TurnGate.release(checkout);
             awaitUntil(() -> !runtime.jon().isWorking(), 30_000, "the running turn ended on that stop");
+            awaitUntil(() -> wire.countOf("done") >= 1, 20_000, "the turn that was opened told its own end");
+
+            assertThat(wire.countOf("done"))
+                    .as("one turn, one ending event — the waited submit sent none of its own (UC-WP-83)")
+                    .isEqualTo(1);
+            assertThat(wire.countOf("error"))
+                    .as("and the failure it told stays a line of the conversation")
+                    .isZero();
         } finally {
             model.stop();
         }
@@ -226,7 +275,7 @@ class TurnFailureTest {
 
     @Test
     @Timeout(60)
-    // UC-WP-64
+    // UC-WP-64, UC-WP-83
     void stopIsNoFailure() {
         MockLlmServer model = new MockLlmServer(0);
         model.start();
@@ -246,13 +295,36 @@ class TurnFailureTest {
             // the stop is given while the tool still runs; only its end lets the turn leave the loop
             TurnGate.release(checkout);
             awaitUntil(() -> !runtime.jon().isWorking(), 30_000, "the turn ended on the stop");
+            // waits for whichever end arrives, so the two pins below are the ones deciding which it was
+            awaitUntil(() -> wire.countOf("done") + wire.countOf("error") >= 1, 20_000,
+                    "an end came on the wire");
+
+            assertThat(wire.countOf("done"))
+                    .as("a stopped turn ends on the wire exactly once (UC-WP-83 GIVEN 3)")
+                    .isEqualTo(1);
+            assertThat(wire.countOf("error"))
+                    .as("and his own end crosses the wire under no other name")
+                    .isZero();
 
             assertThat(runtime.history())
                     .as("his own end is not a failure — no line of it enters the conversation")
                     .noneMatch(line -> ChatLine.ROLE_ERROR.equals(line.role()));
             assertThat(runtime.history())
-                    .as("what he typed stays, and the answer he canceled is never asked for again")
-                    .containsExactly(ChatLine.user(SLOW_INPUT, "Paul"));
+                    .as("what he typed stays, and the answer he canceled is never asked for again — the"
+                            + " step of the tool he stopped stays with it: the memory holds his call and"
+                            + " its result (R-WP-47)")
+                    .extracting(ChatLine::role)
+                    .containsExactly(ChatLine.ROLE_USER, ChatLine.ROLE_TOOL);
+            assertThat(runtime.history().get(0))
+                    .as("what he typed is the first line, unchanged")
+                    .isEqualTo(ChatLine.user(SLOW_INPUT, "Paul"));
+            assertThat(runtime.history().get(1))
+                    .as("gemessen: the shell ran to its end before the stop released the turn, so the"
+                            + " step carries its excerpt and not only its arrival")
+                    .satisfies(step -> {
+                        assertThat(step.origin()).isEqualTo("shellRunCommand");
+                        assertThat(step.text()).isNotBlank();
+                    });
         } finally {
             model.stop();
         }
@@ -296,6 +368,22 @@ class TurnFailureTest {
 
         boolean reportsToolLine() {
             return events.stream().anyMatch(event -> event.contains("Running:"));
+        }
+
+        /** The events this wire was given, in the order the server named them — {@code done} and {@code error}
+         *  are the two endings of a turn (R-WP-48). A failure crosses the wire under the name {@code error}. */
+        List<String> names() {
+            return events.stream().map(RecordedWire::nameOf).toList();
+        }
+
+        long countOf(String eventName) {
+            return names().stream().filter(eventName::equals).count();
+        }
+
+        private static String nameOf(String event) {
+            int from = event.indexOf("event:");
+            int to = from < 0 ? -1 : event.indexOf('\n', from);
+            return to < 0 ? "" : event.substring(from + "event:".length(), to);
         }
     }
 

@@ -29,9 +29,6 @@
   --tool: #6b7280;
   --problem: #dc2626;
   --question: #d97706;
-  /* the contour of a line the history has not confirmed yet (R-WP-29): a frame says "waiting", only a voice
-     says "said" — so this is the neutral grey, never an accent */
-  --frame-pending: #9ca3af;
 
   --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, 'Cascadia Code', 'Fira Code', Menlo, Consolas, monospace;
@@ -40,6 +37,10 @@
      itself, so its scrollbar stays at the edge of the surface (`padding-inline` of `.view`) */
   --content-max: 1100px;
   --content-gutter: max(1rem, calc((100% - var(--content-max)) / 2));
+  /* the chat's own edge (R-WP-35): its surface takes the screen's full width and keeps one edge, so it must
+     not ride the centring measure above — that one grows with the window and, with the file panel standing
+     beside the column, reads as two different edges */
+  --chat-gutter: 1rem;
 
   /* the measures of the design sheet: two voices of type (body-md, code) with a mini label, a 4px grid and
      one radius for surfaces — a rule that needs a length reads one of these, never a number of its own */
@@ -83,7 +84,6 @@
   --tool: #9ca3af;
   --problem: #f87171;
   --question: #fbbf24;
-  --frame-pending: #6b7280;
 
   color-scheme: dark;
 }
@@ -98,8 +98,9 @@ body {
 }
 
 /* The app fills the window: no column of its own, no side borders (R-WP-1) — every scroll area reaches the
-   edge and centres its content inside itself with `--content-gutter`. The shell is the fixed frame and each
-   view carries its own scroll area, so nothing here scrolls as a whole (R-WP-35). */
+   edge and centres its content inside itself with `--content-gutter`, the chat alone excepted: it takes the
+   width it is given and keeps one edge of its own (R-WP-35). The shell is the fixed frame and each view
+   carries its own scroll area, so nothing here scrolls as a whole. */
 #root {
   height: 100dvh;
   min-height: 0;

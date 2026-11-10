@@ -49,14 +49,6 @@ public class SimplePromptFile {
         return PromptYmlParser.getDescription(frontmatter);
     }
 
-    private String readFullContent() {
-        try {
-            return Files.readString(promptFile);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to read " + promptFile, e);
-        }
-    }
-
     @Override
     public String toString() {
         return getClass().getSimpleName() + "[name=" + getName() + ", enabled: "

@@ -22,10 +22,10 @@ import org.sterl.open.aifactory.chat.dto.AgentTileDto;
  * second input.
  *
  * <p><b>What reaches the browser</b> (R-WP-4): the core stamps every callback with the agent that produced
- * it, and this class decides who is <em>shown</em> — the lines stamped with the conversation's own agent,
- * plus the lines carrying no stamp. A team member's thinking, tool lines and half answers are its
- * conversation with itself and are dropped here <b>by their stamp</b>, while the delegation's own trace
- * lines stay because Jon's tool emitted them under Jon's name. The rule is policy and therefore lives in
+ * it, and this class decides <em>which wire</em> a line takes — the lines stamped with the conversation's
+ * agent, plus the lines carrying no stamp. A member's thinking, tool lines and half answers are his own
+ * conversation and go <b>by their stamp</b> to his own wire, never into Jon's chat (R-WP-53). The
+ * delegation's trace lines stay: Jon's tool emitted them under his own name. The rule is policy and so lives
  * the factory, not in the core: the Eclipse plugin hands the same callback stream to its views and goes on
  * showing every member line.</p>
  *
@@ -111,16 +111,25 @@ class SseTurnMonitor implements AiMonitor {
 
     @Override
     public void onStreamingChunk(OnPartialAiResponse chunk) {
-        if (!isJon(chunk.origin())) {
+        ChatEvent.Partial partial = partialOf(chunk);
+        if (partial == null) {
             return;
         }
-        switch (chunk.type()) {
-            case THINK -> streams.publish(projectId, new ChatEvent.Partial("think", chunk.value()));
-            case ANSWER -> streams.publish(projectId, new ChatEvent.Partial("answer", chunk.value()));
-            case START, TOOL, END -> {
-                // no value to show — see the class doc
-            }
+        if (isJon(chunk.origin())) {
+            streams.publish(projectId, partial);
+        } else {
+            // his stamp sends his thinking and his half answers to his own wire (R-WP-53, UC-WP-90)
+            streams.publishAgent(projectId, chunk.origin(), partial);
         }
+    }
+
+    /** The live line of one chunk, or {@code null} when the chunk carries no text to show (see the class doc). */
+    private static ChatEvent.Partial partialOf(OnPartialAiResponse chunk) {
+        return switch (chunk.type()) {
+            case THINK -> new ChatEvent.Partial("think", chunk.value());
+            case ANSWER -> new ChatEvent.Partial("answer", chunk.value());
+            case START, TOOL, END -> null;
+        };
     }
 
     @Override
@@ -129,12 +138,15 @@ class SseTurnMonitor implements AiMonitor {
         // the tiles ride along before the origin filter: who is working is a fact about the team, and a
         // member's line is exactly the moment his tile lights up — a snapshot, so order never matters
         streams.publish(projectId, new ChatEvent.Agents(roster.get()));
-        if (!isJon(message.origin())) {
+        if (message.role() != SimpleMessage.Type.TOOL && message.role() != SimpleMessage.Type.PROBLEM) {
             return;
         }
-        if (message.role() == SimpleMessage.Type.TOOL || message.role() == SimpleMessage.Type.PROBLEM) {
-            // the stamp rides along: a step names its agent only where the core stamped one (R-WP-40, UC-WP-72)
-            streams.publish(projectId, new ChatEvent.ToolLine(message.message(), message.origin()));
+        // the stamp rides along: a step names its agent only where the core stamped one (R-WP-40, UC-WP-72)
+        ChatEvent.ToolLine step = new ChatEvent.ToolLine(message.message(), message.origin());
+        if (isJon(message.origin())) {
+            streams.publish(projectId, step);
+        } else {
+            streams.publishAgent(projectId, message.origin(), step);
         }
     }
 

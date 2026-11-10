@@ -12,6 +12,7 @@ import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
@@ -37,10 +38,6 @@ import org.sterl.open.aifactory.project.ProjectStatusStream;
 import org.sterl.open.aifactory.project.ProjectWork;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.Content;
-import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
@@ -76,7 +73,7 @@ final class ProjectRuntime {
     private final ProjectStatusStream status;
     private final ExecutorService turns;
     private final SseTurnMonitor monitor;
-    private final AgentNames names;
+    private final ConversationRestore restore;
 
     /**
      * Who holds this project right now — a turn or one tile action, decided in one place so the two can
@@ -146,7 +143,8 @@ final class ProjectRuntime {
         this.jon.setStaticContext(List.of(ContextItem.of(UserName.promptLine())));
         // keyed by the core's tool names, filled with the names this factory built, so the product names
         // a member in exactly one place (D1) and a history line needs no second record of its author
-        this.names = authorTable(plan.getName(), dev.getName(), review.getName());
+        AgentNames authors = authorTable(plan.getName(), dev.getName(), review.getName());
+        this.restore = new ConversationRestore(authors, jon.getName());
         this.monitor = new SseTurnMonitor(projectId, streams, this::tiles, this::sawOrigin);
         // the delegation events of the wire (R-WP-40, UC-WP-72): hung on the tool the moment the monitor
         // exists to answer them — the tool itself stays registered where it was, before the agent was built
@@ -250,11 +248,30 @@ final class ProjectRuntime {
      * anything, so the chat stays the one conversation a project has (UC-WP-16).</p>
      */
     AgentTranscriptDto transcript(String name) {
+        AiAgent agent = insightTileOf(name);
+        return AgentTranscript.of(agent.getName(), agent.getMemory().getCopy());
+    }
+
+    /**
+     * The live view of one tile's own conversation (R-WP-53, UC-WP-90): the very same gate as
+     * {@link #transcript}, so the read and the wire of a tile answer exactly the same names, and an emitter
+     * exists only once the name is allowed — a refusal leaves no subscription behind.
+     */
+    SseEmitter subscribeAgent(String name) {
+        AiAgent agent = insightTileOf(name);
+        return streams.subscribeAgent(projectId, agent.getName());
+    }
+
+    /**
+     * The one gate both insight edges share (R-WP-26, R-WP-53); what it refuses is said at
+     * {@link #transcript(String)}. Deliberately one copy: a gate that is read twice drifts apart.
+     */
+    private AiAgent insightTileOf(String name) {
         AiAgent agent = tileNamed(name);
         if (!AgentTiles.capabilitiesOf(seatOf(agent)).contains(TileCapability.TRANSCRIPT)) {
             throw new IllegalArgumentException(agent.getName() + " offers no insight");
         }
-        return AgentTranscript.of(agent.getName(), agent.getMemory().getCopy());
+        return agent;
     }
 
     /** The team member a tile names — the roster is the only address space, so no name is a free path. */
@@ -350,10 +367,15 @@ final class ProjectRuntime {
      * in while he worked is answered by that turn and by its {@code done}, so it sends none of its
      * own.</p>
      *
+     * <p>A turn that was opened ends with <b>exactly one</b> ending event — {@code done} or {@code error},
+     * a {@code Throwable} that escapes the model call included (R-WP-48, UC-WP-83): the branches own that
+     * event, the {@code finally} owns the counter, the end snapshot and the claim.</p>
+     *
      * <p>A task of a queued input therefore also <b>owns nothing</b>: it frees no project, resets no cancel
-     * flag and ends no turn — its {@code call()} answers {@code null} precisely because another turn is
-     * running, and a task that cleared the project there would hand out a turn the project still has
-     * (UC-WP-50: the stop of that turn must still be accepted).</p>
+     * flag, ends no turn and sends no ending event of its own — its failure stays a line of the
+     * conversation (R-WP-48, UC-WP-83 GIVEN 4). Its {@code call()} answers {@code null} precisely because
+     * another turn is running, and a task that cleared the project there would hand out a turn the project
+     * still has (UC-WP-50: the stop of that turn must still be accepted).</p>
      */
     void submit(String text, String user) {
         var urgent = urgentTextOf(text, jon.isWorking());
@@ -413,24 +435,31 @@ final class ProjectRuntime {
                 LOG.error("turn of project {} never got the project back from a claimed action", projectId,
                         neverReleased);
                 fail(message, "the project is still held by an action — this turn ended, "
-                        + "the server log names the reason");
+                        + "the server log names the reason", opensTurn);
             } catch (TurnNotConfiguredException notConfigured) {
                 // the turn never started, the input was real: both lines belong to the conversation (R-WP-34)
                 ranTurn = opensTurn;
                 failedAgent = jon.getName();
-                fail(message, notConfigured.getMessage());
-            } catch (RuntimeException failure) {
+                fail(message, notConfigured.getMessage(), opensTurn);
+            } catch (Throwable failure) {
+                // nothing passes this catch: an opened turn owes exactly one ending event, an Error
+                // included (R-WP-48) — before it the tile fell IDLE while every browser waited for nothing
                 ranTurn = opensTurn;
                 if (TurnOutcome.of(failure) == TurnOutcome.CANCELED) {
                     // the user ended this turn himself: done, no error, no failed tile — and the lines he
                     // already saw stay, because nothing here is re-read (UC-WP-50, D-16). A stop is no
                     // failure, so the memory gains no line of its own (R-WP-34)
-                    streams.publish(projectId,
-                            new ChatEvent.Done(Duration.ofNanos(System.nanoTime() - startedAt).toMillis()));
+                    if (opensTurn) {
+                        // the stop ends the turn this submit opened; a queued task that cancels inside the
+                        // running turn tells no end of its own (R-WP-48, UC-WP-50)
+                        streams.publish(projectId,
+                                new ChatEvent.Done(Duration.ofNanos(System.nanoTime() - startedAt).toMillis()));
+                    }
                 } else {
+                    // both halves of the end: the log for the server, the history line for every reader
                     failedAgent = jon.getName();
                     LOG.error("chat turn of project {} failed", projectId, failure);
-                    fail(message, "the turn failed — the server log names the reason");
+                    fail(message, "the turn failed — the server log names the reason", opensTurn);
                 }
             } finally {
                 // the number of this submit is the last thing it owes: with the last one the row goes
@@ -449,12 +478,16 @@ final class ProjectRuntime {
     }
 
     /**
-     * The one way a turn says it failed: the two lines go into the memory <b>before</b> the event, because a
+     * The one way a submit says it failed: both lines go into the memory <b>before</b> the event, because a
      * browser answers the event by reading the history — by then the failure has to be in it (R-WP-34).
+     * The event itself belongs to the submit that <b>opened</b> the turn: one that only queued tells the
+     * conversation and never the live view of the turn still running (R-WP-48, UC-WP-83 GIVEN 4).
      */
-    private void fail(String message, String reason) {
+    private void fail(String message, String reason, boolean ownsTheEnd) {
         recordFailure(message, reason);
-        streams.publish(projectId, new ChatEvent.Failed(reason));
+        if (ownsTheEnd) {
+            streams.publish(projectId, new ChatEvent.Failed(reason));
+        }
     }
 
     /**
@@ -504,60 +537,11 @@ final class ProjectRuntime {
     }
 
     /**
-     * The chat as the memory has it: user text, Jon's answers, the final answer of a team member, and the
-     * failure line of a turn that did not run — everything else skipped, so a system prompt, a tool call,
-     * an ordinary tool result and an empty message are not chat lines (D4). A queued input keeps the core's
-     * {@code [Queued Message]} marker, it is reality and not the factory's to hide (Q6).
-     *
-     * <p>Every line states its author (R-WP-4, UC-WP-39): Jon by name, the member by name, the typed
-     * input by the name his message carries (R-WP-25). So the team's answer is read back out of the one
-     * history file the core already keeps — no second store, and nothing read out of a text that is not
-     * the factory's own: the single thing parsed here is the prefix this component wrote in front of a
-     * send, by {@link UserName}, at the two positions that one writes it at (D-6-3). The failure line is
-     * the one line that names no one — nothing in the team spoke it (R-WP-34).</p>
+     * The conversation as the core's memory has it — {@link ConversationRestore} holds the one rule of
+     * which message becomes which line, and of why no second store is involved (R-WP-11, R-WP-4).
      */
     List<ChatLine> history() {
-        List<ChatLine> lines = new ArrayList<>();
-        for (ChatMessage message : jon.getMemory().getCopy()) {
-            if (message instanceof UserMessage typed) {
-                UserName.Parsed sender = UserName.parse(textOf(typed));
-                if (!sender.text().isBlank()) {
-                    lines.add(ChatLine.user(sender.text(), sender.name()));
-                }
-            } else if (message instanceof ToolExecutionResultMessage result) {
-                ChatLine memberAnswer = finalTeamAnswerOf(result);
-                if (memberAnswer != null) {
-                    lines.add(memberAnswer);
-                }
-            } else if (message instanceof AiMessage answer && TurnFailure.isFailure(answer.text())) {
-                // ahead of the Jon-branch: a failure is an AiMessage as well, and it is not his answer
-                lines.add(ChatLine.error(TurnFailure.reason(answer.text())));
-            } else if (message instanceof AiMessage answer && !answer.hasToolExecutionRequests()
-                    && answer.text() != null && !answer.text().isBlank()) {
-                lines.add(ChatLine.jon(answer.text(), jon.getName()));
-            }
-        }
-        return List.copyOf(lines);
-    }
-
-    /**
-     * The final answer a member handed Jon: the result of the tool that is its delegation, told apart
-     * from an ordinary tool result by its <b>tool name</b> alone. Two delegations in one answer of Jon's
-     * are two result messages, each carrying its own tool name — which is why reading them back needs
-     * neither the tool-call id nor a place to remember an order (ADR-0078 Decision 6).
-     *
-     * <p>The text is the result <b>verbatim</b>, statistics line included: it is the same text the model
-     * reads, and shortening it would be the factory's guess about what matters. That includes a failed
-     * tool — a failure is a line with an author like any other (UC-WP-40), so nothing here filters by
-     * text. A tool this table does not know stays no line, and neither does a result that is not one
-     * text ({@code text()} would throw on it).</p>
-     */
-    private ChatLine finalTeamAnswerOf(ToolExecutionResultMessage result) {
-        String author = names.authorOf(result.toolName());
-        if (author == null || !result.hasSingleText()) {
-            return null;
-        }
-        return ChatLine.jon(result.text(), author);
+        return restore.linesOf(jon.getMemory().getCopy());
     }
 
     /** Jon himself — reachable without a rebuild for the team view and {@code clear()} of Inc 5. */
@@ -571,19 +555,5 @@ final class ProjectRuntime {
      */
     ConfiguredChatModel model() {
         return model;
-    }
-
-    /** Only the text parts of a user message, joined as the core joins them; image parts are no chat line. */
-    private static String textOf(UserMessage user) {
-        StringBuilder text = new StringBuilder();
-        for (Content content : user.contents()) {
-            if (content instanceof TextContent txt && !txt.text().isBlank()) {
-                if (!text.isEmpty()) {
-                    text.append(System.lineSeparator());
-                }
-                text.append(txt.text());
-            }
-        }
-        return text.toString();
     }
 }
