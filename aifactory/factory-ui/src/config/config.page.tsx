@@ -102,6 +102,7 @@ function patchOf(draft: Draft, removeKey: boolean): SettingsUpdateRequest {
  * came from.
  * The form behaves like the provider dialog of the plugin (UC-WP-62) — a provider change updates the
  * fields that depend on it at once — and it can remove a key (UC-WP-63).
+ * No page heading: the top menu names this page, the named `view` region keeps it for the screen (R-WP-43).
  */
 export function ConfigPage() {
   const [settings, setSettings] = useState<SettingsDto | null>(null)
@@ -218,7 +219,6 @@ export function ConfigPage() {
 
   return (
     <section className="view" aria-label={content.config.title}>
-      <h1>{content.config.title}</h1>
       {message && <Alert type="error" title={message} />}
       {settings && draft && (
         <Card size="small" className="settings-card">

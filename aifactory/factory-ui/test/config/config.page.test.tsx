@@ -41,6 +41,11 @@ test('settingsShowsMaskedConfig', async () => {
     screen.getByText(`${content.config.keySource}: ${content.config.source.FILE}`),
   ).toBeInTheDocument()
 
+  // the page names itself once — in the region, which is how the screen finds it — and never as a heading of
+  // its own beside the top menu that already says it (R-WP-43)
+  expect(screen.getByRole('region', { name: content.config.title })).toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: content.config.title })).toBeNull()
+
   expect(screen.queryByText(/sk-/)).toBeNull()
   expect(container.textContent).not.toContain('sk-')
   expect(container.textContent).not.toContain(KEY)

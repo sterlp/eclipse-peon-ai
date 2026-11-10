@@ -27,6 +27,10 @@ interface Props {
   onReload: () => Promise<void>
 }
 
+/**
+ * The registry list and its add form. No page heading: the top menu already says which page this is, and the
+ * named `view` region keeps that name for the screen (R-WP-43).
+ */
 export function ProjectPage({ projects, listError, onOpen, onReload }: Props) {
   const [work, setWork] = useState<Record<string, ProjectWorkDto>>({})
   const [gitUrl, setGitUrl] = useState('')
@@ -112,7 +116,6 @@ export function ProjectPage({ projects, listError, onOpen, onReload }: Props) {
 
   return (
     <section className="view" aria-label={content.projects.title}>
-      <h1>{content.projects.title}</h1>
       <Form className="add-project" layout="inline" onFinish={() => void submit()}>
         <ApiField field="gitUrl" errors={errors}>
           <Input

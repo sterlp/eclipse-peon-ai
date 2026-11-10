@@ -1,317 +1,269 @@
-# Delta N3 — UC-WP-94 GIVEN 3: gescheiterter Roster-Read sagt warum, der zuletzt gelesene Stand bleibt stehen
+# Look-Story Runde 7 — Punkte 1–3 (UI-only), Branch `web-factory-5`
 
-**Status: GBAUT — Erstlauf auf dem Bestand grün (Stoppschild §5: kein Stopp), Bühnen-Beweis beider Hälften
-gefahren, 268/29 grün, Lint 28 ohne `UC-WP-94` (§12). Ein Inkrement, nur `factory-ui`/Tests — kein
-Produktionscode.**
-Grundlage: Review von N2 (Commit `4a607d11`, Branch `web-factory-5`), Verdict REJECTED, Befunde B1/B2/L1/L2 —
-Wortlaut in §13 dieses Plans (und nach Step 0 in `peon-plan/review-findings.md`). **Gebaut wird nur B2.**
-B1 hat Jon in den Docs gelöst (`docs/chat.md:622-630` R-WP-48 neu gefasst; `:669-671` UC-WP-94 GIVEN 3 neu).
-Regel/UC: `docs/chat.md` **R-WP-57 / UC-WP-94** — Status ❌ bleibt; **nur Jon** fragt danach neu ab / flippt.
+Quelle der drei Punkte: `aifactory/docs/open-points.md:12-21` (Runde 7, Pauls Wortlaut).
+Punkt 4 („Send/Clear/Compact nur als Icons", `docs/open-points.md:27-31`) ist von Paul geparkt — **nicht geplant, nicht gebaut** (§14).
 
-## 0. Spielregeln (bindend, erster Schritt im Dev-Lauf)
+Repo `/Users/sterlp/dev/workset/peon-ai/aifactory`, Branch **web-factory-5**, Stand `ccd62bd4`.
+Baseline (gemessen, `docs/memory.md:17-18`, `peon-plan/review-findings.md:13-14`): **UI 268 Tests / 29 Dateien**, `npx tsc -b` 0, `npx oxlint` 0/0, `npx antd lint ./src` 0.
 
-- `git log --oneline -5` + `git status --porcelain`. Gearbeitet wird auf **`web-factory-5`** nach `4a607d11`.
-- **Step 0 vor allem anderen:** §13 dieses Plans **unverändert** nach `peon-plan/review-findings.md` überführen
-  (Datei neu anlegen, Inhalt = Review-Block, Titelzeile der Delta voran), dann in overview.md durch den Verweis
-  `Review-Findings: peon-plan/review-findings.md` ersetzen. Grund: Memory-Regel 12 — Findings dürfen nicht nur
-  in der Plan-Datei stehen, und der nächste Plan überschreibt sie. (Der Planner hat darauf keinen
-  Schreibzugriff, siehe §15.) Commitbar: `aifactory/peon-plan/**`.
-- Commitbar: `aifactory/factory-ui/**`, `aifactory/peon-plan/**`. **Niemals** `docs/**` (Jons Seite), nie
-  `aifactory/pom.xml`, nie `main`, kein amend/rebase, kein Modell-/Tool-Name, kein `Assisted-by`-Trailer,
-  **kein `git add -A`** — nur die Pfade aus §7.
-- **Nur-UI-Änderung ⇒ nur UI-Tests.** Kein Maven. Kein Produktionscode, kein Behavior-Wechsel (§5 Stoppschild).
-- UI-Gate (exakt): `cd factory-ui`, PATH-Export Node 22.12 (nvm `default`), **vor** dem Gate `node -v` (≥ 22) und
-  `pnpm -v` belegen; `COREPACK_ENABLE_PROJECT_SPEC=0 pnpm test`; einzelne Fälle
-  `pnpm test -t '<name>'` — **niemals** `pnpm test -- <datei>`; `npx tsc -b` 0; `npx oxlint` 0/0;
-  `npx antd lint ./src` 0 findings.
-- Seed/Rückweg nur über `cp`-Backup + `diff` (leer), **nie** `git checkout -- <datei>`; keine Datei aus dem
-  Kontext neu schreiben (Regel 14) — Anker-Edits; `git diff` nur für §7.
-- Keine neuen UI-Wörter, keine neuen IDs (UC-WP-94 ist gesetzt), keine neue `.ant-*`-Assertion, keine
-  Farb-/Layout-Behauptungen (R1).
-- **Jons Sparvorgabe:** **kein neuer Test, keine neue Test-Datei, keine neue Datei in `src/`** —
-  Zahl bleibt **268 Tests / 29 Dateien**.
+---
 
-## 1. Befund → Entscheidung
+## 0. Kontext / Ziel
 
-| # | Befund (Review N2) | Entscheidung in N3 |
-| --- | --- | --- |
-| **B2** | Die Fehlerpfade des geänderten Codes sind unbewiesen: kein Test bindet UC-WP-94 GIVEN 3, weil der Stub `GET …/agents` nicht ablehnen kann (`chat.page.stub.ts` antwortet immer 200; Refuse-Helfer nur für `POST`). Ein scheiternder frischer Read nach `onOpen`/Reconnect ist damit ungesehen | **N3** — Stub-Helfer `refuseRosterRead(status, message)` (one-shot) + Beweis **im bestehenden Board-Test** `theReconnectReadsTheRosterFresh`; Produktionscode unverändert |
-| B1 | (Doc-Widerspruch Mount-Read vs. R-WP-48) | **nicht gebaut** — von Jon in `docs/chat.md` gelöst (R-WP-48 `:622-630`: erste Lesung = Live-Read, frischer Read der stehenden Verbindung maßgeblich). B1-Szene `chat.read.page.test.tsx.aTurnEndingBeforeTheStreamStandsLeavesNoWaitingTile` bleibt **unangetastet** |
-| L1/L2 | Kommentar-Duplikation `chat.page.tsx:395-400` und JavaDoc `:82-84`; Datei 589 → 593 (Schwelle 600) | **nicht gebaut** — N3 fasst `src/` nicht an. Vorgemerkt für ein reines Kommentar-Delta (Jons Entscheidung) |
-| Pre-existing | Banner wird von einem erfolgreichen Read nicht gelöscht; leere Liste hat kein sichtbares Signal | **nicht gebaut**, **nicht behauptet** (§9: nach dem korrigierenden Read wird bewusst *nichts* ans Banner gefordert) |
+Drei Look-Befunde aus Pauls Browser-Runde 7, alle Fabrik-UI, kein Backend, kein Core:
 
-**Warum dieser Wirt und kein neuer Test.** `theReconnectReadsTheRosterFresh`
-(`test/chat/chat.read.page.test.tsx:111-128`) ist der bestehende Board-Test, in dem genau die geforderte Szene
-schon steht: Mount-Read antwortet **WORKING** (`:112`, `:115` — der „zuletzt gelesene Stand"), und der frische
-Read einer **stehenden Verbindung** (`onOpen` nach Reconnect, `chat.page.tsx:379`) ist der zweite Lesevorgang.
-Es fehlt nur sein Scheitern. Alles andere (eigene Datei, zweiter Test) wäre ein 269. Test und gegen die
-Sparvorgabe. **Verworfen:** Wirt `chat.page.test.tsx.stopOnAFinishedTurnIsSilent` (gleicher `catch`-Pfad, aber
-der abgelehnte Read hinge am Stop statt an `onOpen` — Jons Szene nennt den frischen Read der Verbindung);
-Wirt `clearOnATileNamesThatTileAndARefusalIsALine` (Reihe steht dort auf IDLE, „Stand bleibt" wäre nur schwach
-beweisbar); neuer Helfer `acceptRosterRead()` (one-shot macht den Fehler alleinlesbar, kein zweiter Zustand).
+1. **Überschriften im Main-Panel raus** — „die Überschriften kleben open, können raus im main panel — wir haben es ja im Top-Menü." (`docs/open-points.md:12-14`)
+2. **„Chats" zurück ins Top-Menü** — Top-Menü wieder **Projekte · Chat · Settings**; der Sider bleibt, ist aber **nur bei Chats sichtbar** (`docs/open-points.md:15-18`). Widerspricht R-WP-43 — Regel wird umgeschrieben (Jons Doc-Arbeit), **nicht still**.
+3. **Reasoning-Effort-Feld (Think) ist ein Select ohne eigene Eingabe** — „ich kann nichts selber eingeben" (`docs/open-points.md:19-21`).
 
-**One-shot statt sticky.** `refuseRosterRead` lehnt **genau den nächsten** `GET …/agents` ab (Vorbild:
-`chat.insight.test.tsx:141-143` `failTranscriptRead`, das ebenfalls abzählt). Nur so ist im selben Test die
-zweite, *erfolgreiche* Lesung möglich — und die braucht der Doc-Halbsatz „die nächste Lesung … korrigiert ihn".
+Wert für den Nutzer: eine Fläche, die den Seitenamen nicht zweimal sagt; ein Weg zurück in den Chat ohne Umweg über die Projektliste; ein Think-Feld, das auch einen Wert bekommt, den die Provider-Liste nicht kennt.
 
-## 2. Was die Docs verlangen (maßgeblich, nicht nachgeschrieben)
+**Harte Rahmen:** `docs/**` ist Jons Eigentum — Planner und Dev fassen es **nie** an. Der Plan nennt pro Inkrement, welche Doc-Regeln **vor dem Bau** auf ❌ gehören (§6). Browser-Abnahme ist **Jons Schritt** (§11). Kein neuer Test, keine neue Testdatei: **268 Tests / 29 Dateien bleiben es in allen vier Inkrementen** (Ersetzen/Umbauen statt Anhäufen, Pauls Sparvorgabe).
 
-- `docs/chat.md:669-671` (UC-WP-94 GIVEN 3, neu): scheiternder Roster-Read ⇒ **Seiten-Fehler** + **der zuletzt
-  gelesene Stand der Reihe bleibt stehen** — kein Zurückfallen auf leer; die nächste Lesung (done, Stop, Aktion)
-  korrigiert ihn.
-- `docs/chat.md:622-630` (R-WP-48, neu gefasst): die erste Lesung ist ein Live-Read; der frische Read der
-  stehenden Verbindung ist maßgeblich; ein Read vor einem `agents`-Schnappschuss überschreibt ihn nicht.
+## 1. Was die Docs verlangen (wörtlich, mit Fundstelle)
 
-## 3. Architektur / Verantwortlichkeit (unverändert — das ist der Punkt)
+| Doc-Stelle | Wortlaut (relevant) | Folge für diese Story |
+|---|---|---|
+| `docs/ui.md:157-163` (R-WP-43) | „Das **Header** trägt Marke, das horizontale **Top-Menü** … Die Menü-Einträge sind die globalen Seiten **Projekte · Settings** … **„Chat" steht nicht im Top-Menü**: der Chat ist nur über den Sider erreichbar" | Punkt 2 dreht diese Regel — **Jon schreibt sie um**, bevor L2 gebaut wird |
+| `docs/ui.md:164-166` | „auf einer **Chat-Adresse** bleibt der Kopf unmarkiert (… der Sider markiert allein)" | UC-WP-76 GIVEN 3 ist die Gegenprobe zu L2 — muss umgeschrieben werden |
+| `docs/ui.md:177-183` (UC-WP-76) | GIVEN 1 „… Menü mit genau **Projekte · Settings**"; GIVEN 3 „… Menü-Markierung folgt der Adresse" | beide GIVENs betroffen |
+| `docs/ui.md:44-46` (R-WP-1) | „Der Chat selbst ist nur über den Sider erreichbar" | Gegenprobe zu L2 (Chat im Top-Menü) — umschreiben |
+| `docs/ui.md:98-105` (R-WP-38) | „Die Navigation besteht aus dem **Top-Menü im Header** und einem **Sider** links." | L3 macht den Sider adressabhängig — Regel muss das hergeben |
+| `docs/ui.md:210-235` (R-WP-44 / UC-WP-78) | Sider = Projektbaum mit Klapp-Gruppen, **Griff ist der Text-Button oben links im Header**, „ein Sider ohne Projekte ist **leer**" | L3: auf Nicht-Chat-Adressen kein Sider **und** kein Griff — Regel ergänzen |
+| `docs/ui.md:14-30` (Look-Absatz) | „Design-Änderungen ändern **keine** UI-Tests … Abgenommen wird **am Browser** — jsdom beweist nur Verhalten" | L1/L2/L3 sind Look/Verdrahtung: **keine neuen Tests**, nur umbauen + je eine Negativ-Assertion in bestehenden Tests (§8) |
+| `docs/config.md:143-150` (R-WP-23) | „**Think ist die Form des Basis-Providers**, nie Freitext: Toggle · Values · FreeString · None … Ein gespeicherter Wert außerhalb der Liste **bleibt verbatim** (ADR-0064); leer erbt den Default (R-THINK-10)" | L4 macht Values/Toggle editierbar — „nie Freitext" muss umgeschrieben werden |
+| `docs/config.md:171-180` (UC-WP-67) | GIVEN 1 „THEN ist Think eine Auswahl aus leer / `true` / `false` — **kein Freitext-Feld**"; GIVEN 2 verbatim | GIVEN 1 + 2 betreffen L4 |
+| `docs/config.md:189-201` (R-WP-49) | „Think (Default) … **dieselbe Form des Basis-Providers** … ein gespeicherter Wert außerhalb der Liste bleibt verbatim" | gilt auch für das Default-Feld in L4 |
+| `docs/config.md:203-211` (UC-WP-85) | GIVEN 1 „THEN ist „Think (Default)" eine Auswahl aus der Werte-Liste des Providers — **kein Freitext**" | GIVEN 1 betrifft L4 |
+| `docs/config.md:213-234` (R-WP-50/UC-WP-86) | „Die Modell-Felder … sind **AutoComplete** — Auswahl … **oder freie Eingabe**" | Vorbild und Paritätsanker für L4 |
+| `docs/chat.md` (Kopf des Chats) | **keine** Regel, die einen `h1` im Chat-Kopf verlangt; `chat.md:31` „Plugin zeigt sie als Überschrift" betrifft das **Plugin**, nicht unsere Fläche | L1 ist chat-seitig regelfrei — bleibt trotzdem stehen (§2 D2) |
 
-- **`chat.board.ts`** entscheidet, *welcher Stand gewinnt* und **was ein Fehler mit dem Board tut**: `:30-37` —
-  `claim` wird **vor** der Anfrage genommen, `setTiles` wird **nur im Erfolgszweig** gerufen, der
-  `catch` ruft **ausschließlich** `onFailure`. Ein Fehler schreibt das Board also nie leer ⇒ der zuletzt
-  gelesene Stand bleibt stehen. Genau das ist die neue GIVEN-3-Formulierung.
-- **`chat.page.tsx`** entscheidet *wann* gelesen wird (`:401` Mount, `:379` `onOpen`, `:338` `done`,
-  `:509` Stop, `:530` Aktion) und *was ein Fehler wird* (`:179 showBoardFailure` → `chat-error`-Banner).
-- **Stub** ist Bühne, nicht Verhalten: er darf ablehnen, was der echte Server ablehnt (503 auf `GET …/agents`),
-  aber keine neue Semantik erfinden.
-- N3 führt **keine** Komponente, keinen Hook, keine Abstraktion ein. Datenfluss: `fetch → request()
-  (nicht 2xx ⇒ ApiRequestError, `api.client.ts:12-14`) → refreshTiles().catch → onFailure(errorMessage)
-  → setError → chat-error`. Board-Zweig: kein `setTiles`.
+**Fundstellen-Konflikt (gemeldet, nicht entschieden):** `docs/open-points.md:21` zitiert für Punkt 3 „F8, **R-WP-51**". Die Regel, die das Feld tatsächlich beschreibt, ist **R-WP-23 (`:143-150`) + R-WP-49 (`:189-201`)** mit **UC-WP-67 / UC-WP-85**; R-WP-51 (`:236-253`) handelt Max Tokens/Query-/Header-Params. Der Plan baut gegen R-WP-23/49 und nennt Jon diese Zeilen zur Umschreibung (§6) — keine eigene Regel-Umdeutung.
 
-## 4. Der Bau (zwei Test-Dateien, Signatur-Ebene — kein Produktivcode)
+## 2. Entscheidungen
 
-### 4.1 `factory-ui/test/chat/chat.page.stub.ts` — Helfer `refuseRosterRead`
+**D1 — L1 umfasst genau die zwei Seiten-`h1` des Main-Panels.** `project.page.tsx:115` (`<h1>{content.projects.title}</h1>` = „Projects") und `config.page.tsx:221` (`<h1>{content.config.title}</h1>` = „Settings"). Beide sagen dasselbe wie der Top-Menü-Eintrag, den der Nutzer gerade geklickt hat. **Verworfen:** auch den Chat-Kopf leeren (D2), auch den `h2` „Agents" (`config.agents.tsx:215`) entfernen — der ist Abschnittsüberschrift **innerhalb** einer Seite und steht in keinem Menü.
 
-- `interface Chat` (bei `refuseActions` `:35-40`), eine Signatur + JavaDoc:
+**D2 — Der Chat-Kopf bleibt (`chat.page.tsx:545-547`).** Er zeigt den **Projektnamen**, und den sagt das Top-Menü gerade **nicht** (es sagt nur „Chat"); der Sider kann zugeklappt sein (§ R-WP-44) und fällt unter dem Breakpoint ganz weg. Zudem beweisen fünf bestehende Assertionen den Namen als Anker (`app.routes.test.tsx:134,165,294,317,335`, `chat.page.test.tsx:65`, `project.files.test.tsx:391` „the name stands once, in the chat head"). Ihn zu entfernen wäre ein Behavior-Wechsel mit Test-Rodung — **Annahme ⏳, §13 Q1**, von Jon am Browser abzusegnen.
 
-  ```ts
-  /**
-   * The next `GET …/agents` answers this instead of 200 — the roster read that fails while the board already
-   * stands (UC-WP-94 GIVEN 3: said as a page failure, last read stand kept). Consumed by exactly that one read.
-   */
-  refuseRosterRead(status: number, message: string): void
-  ```
+**D3 — Die Region behält ihren Namen.** `project.page.tsx:114` / `config.page.tsx:220` (`<section className="view" aria-label=…>`) bleiben unverändert: die Seite heißt weiterhin so viel wie das Menü sagt, nur ohne Sicht-Duplikat. existing pattern: der Chat wird über genau diesen Mechanismus gefunden (`getByRole('region', { name })`, 25 Stellen in `factory-ui/test/app|chat|project`).
 
-- State neben `refusal`/`sendRefusal` (`:93-99`): `let rosterRefusal: { status: number; message: string } | undefined`
-- **vor** der Held-Logik im GET-Zweig `:143-152` (Ablehnung gewinnt und verbraucht **keinen** gehaltenen Read):
+**D4 — „Chat"-Eintrag = `chatRoot` als Schlüssel, Klick führt auf `/chat`.** `app.menu.ts:25-27` (`entry(key,label,active)`) unverändert benutzen; `app.paths.ts:121-131` (`pageKeyOfPathname`) liefert für **jede** Chat-Adresse `chatRoot` — **keine Änderung in `app.paths.ts`**. Der Klick landet auf `/chat` → `LastChatRoute` (`app.routes.tsx:96-99`) entscheidet schon heute: letztes Projekt, sonst Projektliste (UC-WP-51, UC-WP-76 GIVEN 2). Kein neuer String: `content.nav.chat = 'Chat'` existiert (`content.ts:21-22`).
 
-  ```ts
-        if (path.endsWith('/agents')) {
-          if (rosterRefusal !== undefined) {
-            const refused = rosterRefusal
-            rosterRefusal = undefined
-            return json(refused.status, { status: refused.status, error: 'unavailable', message: refused.message })
-          }
-          const [held, ...rest] = heldAgentReads
-          …
-  ```
+**D5 — Sider-Sichtbarkeit hängt an der Adresse, nicht an einem Zustand.** `app.shell.tsx` rechnet **einmal** `const page = pageKeyOfPathname(pathname)` und entscheidet damit beides: `AppTop active={page}` und `{page === chatRoot && (<AppSider …/>)}`; der Griff `AppSiderToggle` (`app.shell.tsx:82`) verschwindet mit dem Sider — ein Griff für einen Baum, den es nicht gibt, ist ein toter Knopf. **Abgewichen:** eigener Zustand / Menü-Zustand (wäre eine zweite Antwort neben der URL, widerspricht R-WP-1/UC-WP-52); `navKeyOfPathname(pathname) !== null` (funktioniert ebenfalls, wäre aber ein zweiter Lesevorgang für dieselbe Frage — `pageKeyOfPathname` ist schon der Lesevorgang des Headers). `/chat/x/files` ist Chat-Seite → Sider bleibt (UC-WP-70: Einheiten wechseln, Baum bleibt).
 
-- Helfer beim `refuseActions`-Eintrag (`:232-241`): `refuseRosterRead: (status, message) => { rosterRefusal = { status, message } },`
+**D6 — L4: `AutoComplete` statt `Select` in **beiden** Choose-Formen.** Begründung ist die Plugin-Entscheidung (memory-Regel: Grundsatzentscheidungen stehen im Plugin), belegt:
+- `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/provider/ThinkValueSupport.java:15-19` — „Toggle → **editable combo** `[\"\", \"true\", \"false\"]` … Values → **combo** of the provider's actual values … stored value = displayed value (verbatim)".
+- `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/config/widgets/AgentModelConfigSection.java:183-188` — `new Combo(this, SWT.BORDER)` für Toggle, `buildThink()` für Values ebenso.
+- `…/ModelConfigWidget.java:300-302` — `readThink(): … return thinkCombo.getText(); // both render in the (editable) combo`.
+⇒ Web-Äquivalent = **ein** editierbares Feld mit Angebot: **VALUES und TOGGLE**, an **beiden** Orten (Default-Seite `config.page.tsx:271-276`, Agent-Sektionen `config.agents.tsx:261-266`). FREE/UNKNOWN bleibt `Input`, NONE bleibt Hinweis (`config.think.tsx:35-41,62-70`) — unverändert.
 
-Körper ≈ 5 Zeilen (+ JavaDoc), exakt analog `refuseActions`; `json()` (`:263`) wird mitbenutzt. **Nichts** anderes
-im Stub ändern (kein `refuseRosterRead` für `POST`, kein Umbau von `heldAgentReads`).
+**D7 — Leeres Feld heißt weiter „erbt" (R-THINK-10).** Angebot bleibt ersten Eintrag `{ value: '', label: content.agents.inheritOption }`; zusätzlich `allowClear` und `placeholder = content.agents.inheritOption`. Freie Eingabe geht **verbatim** durch die Basis (R-WP-50/UC-WP-86 „kein Anhängen" gilt für die *Liste*, ADR-0064 für den *Wert*); **kein** `canonicalModel`-Äquivalent (Denkstufen sind keine Server-Ids). Fallback gemessen in §9/L4-Schritt 1: sollte AntDs `AutoComplete` die Option mit leerem Wert nicht wählbar machen, bleibt `allowClear` + Platzhalter als Leer-Weg und `defaultThinkClearsIndependentlyOfSendThinking` liest dann den Clear-Knopf — benannte Abweichung, weiter 0 neue Tests.
 
-### 4.2 `factory-ui/test/chat/chat.read.page.test.tsx` — `theReconnectReadsTheRosterFresh` (`:111-128`)
+**D8 — Kein neuer Test, keine neue Datei, Zahl bleibt 268/29.** L1 ergänzt **zwei** Negativ-Assertions in bestehenden Tests (`showsEmptyStateWhenRegistryIsEmpty`, `settingsShowsMaskedConfig`) — nötig für Rot-vor-grün und um die Entscheidung dauerhaft zu pinsen; der Look-Absatz (`docs/ui.md:27-29`) verbietet *neue* Look-Tests, nicht eine Behauptung im bestehenden Test. L2–L4 bauen bestehende Tests um (`§8`), ohne einen hinzuzufügen.
 
-Bestehender Kopf bleibt **wortgleich** (`:112-116`: WORKING-Roster, Mount+Flush, `tile-state-Jon` WORKING,
-`rosterReads`), `setAgents([IDLE])` (`:120`) bleibt die Prämisse „der Turn endete ungesehen". Neu ist, dass die
-**erste** frische Lesung danach ablehnt und die Korrektur an die **zweite** Lesung hängt:
+**Verworfen (gesamt):** neuer Test/neue Datei; `Select mode="tags"` (mehrwertig, falsches Modell für ein Einzelwert-Feld); `Select` + `showSearch` (kann keine eigene Eingabe übernehmen); Sider nur per CSS verstecken (`aria`-Landmarke bliebe im Baum, Tests würden ihn weiter finden — und R-WP-44 will keinen leeren Baum); `docs/open-points.md` punktuell abarbeiten (Docs sind Jons Seite).
 
-```tsx
-  // UC-WP-94 GIVEN 3: the fresh read of the standing connection fails. The page says why and the board keeps
-  // the stand it read last — it never falls back to an empty row; the next reading is what corrects it
-  chat.refuseRosterRead(503, ROSTER_FAILURE)
-  await chat.closeStream()
-  await waitFor(() => expect(chat.countOf('/events', 'GET')).toBe(2), { timeout: 1500 })
-  expect(await screen.findByTestId('chat-error')).toHaveTextContent(ROSTER_FAILURE)
-  expect(screen.getByTestId('chat-tiles'), 'no fall back to an empty row').toBeInTheDocument()
-  expect(screen.getByTestId('tile-state-Jon'), 'the last read stand stays').toHaveTextContent(
-    content.tiles.state.WORKING,
-  )
-  expect(chat.countOf('/agents', 'GET'), 'the refused read is the fresh read of the connection').toBe(
-    rosterReads + 1,
-  )
+## 3. Architektur / Verantwortungen
 
-  // the positive replacement: the next reading lands, and the row moves with it (no second store, UC-WP-84)
-  await chat.closeStream()
-  await waitFor(() => expect(chat.countOf('/events', 'GET')).toBe(3), { timeout: 1500 })
-  await waitFor(() =>
-    expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.IDLE),
-  )
-  expect(chat.countOf('/agents', 'GET'), 'the next reading corrected the board').toBe(rosterReads + 2)
+```mermaid
+graph LR
+  P[app.paths.ts<br/>liest die Adresse] --> S[app.shell.tsx<br/>entscheidet die Chrome]
+  S --> T[app.top.tsx<br/>Seiten-Menü, hält nichts]
+  S --> D[app.sider.tsx<br/>Projektbaum, hält nichts]
+  S --> C[Content: Outlet<br/>keine Seiten-Überschrift]
+  CP[config.page.tsx / config.agents.tsx<br/>halten den Entwurf] --> TC[config.think.tsx ThinkControl<br/>kennt die vier Provider-Formen]
 ```
 
-- `const ROSTER_FAILURE = 'the roster is not reachable'` **in diesem Test** (kein `content.ts`-Wort, kein Modul-Wort — der Wortlaut kommt aus dem Stub, nicht aus der UI).
-- Die **beiden ursprünglichen Schluss-Assertions** (`waitFor(IDLE)` `:124-126`, `countOf === rosterReads + 1`
-  `:127`) wandern wörtlich in den zweiten Block (Zähler `+ 2`, eigener Grund-Text); der erste Block erhält `+ 1`.
-  UC-WP-84 GIVEN 2 bleibt damit **scharf** (eine Reconnect-Lesung bringt den frischen Stand auf die Reihe) —
-  nichts wird gelockert oder gestrichen (Memory-Regel 4: eingrenzen **und** positiven Ersatz im selben Test).
-- ID-Kommentare: `// UC-WP-84` bleibt, `// UC-WP-94` davor (Mehrzeilen-Muster existiert, z. B. `:488-489`).
-  Testname bleibt (`theReconnectReadsTheRosterFresh` wird in Review/N1/N2-Texten referenziert; die ID-Zeilen
-  machen die neue Abdeckung auffindbar).
-- **Keine** Assertion an das Banner *nach* dem korrigierenden Read (es bleibt stehen — vorbestehendes Verhalten,
-  nicht unsere Aussage), **keine** an `ChatWaiting`/Farben (R1).
+* **`app.paths.ts`** = einziger Leser der Adresse (`pageKeyOfPathname` für die Seite, `navKeyOfPathname` für die Einheit). **Unverändert** in L2 und L3 — die neue Polarisierung ist eine *Entscheidung*, keine neue Lesung.
+* **`app.shell.tsx`** = besitzt die einzige Antwort „welche Chrome zeigt diese Adresse" (Seite → Menü-Markierung, Sider + Sichtbarkeit des Griffs). `collapsed` bleibt hier (R-WP-44). Kein Kind erhält einen Zustand, den die Adresse schon sagt.
+* **`app.top.tsx`** = zeigt drei Seiten, hält keine Auswahl (Signatur bleibt `Props { active: string|null; onNavigate }`).
+* **`app.sider.tsx`** = unverändert; er weiß nichts davon, *wann* er gezeigt wird — das ist ausschließlich Sache der Shell.
+* **Seiten (`project.page.tsx`, `config.page.tsx`)** = tragen keinen Seitentitel mehr, aber weiter die benannte `view`-Region (D3). Der Chat-Kopf behält den Projektnamen (D2).
+* **`config.think.tsx`** = bleibt der **einzige** Ort, der die Provider-Form kennt (R-WP-46: ein Widget, zwei Ebenen). Die Ebenen ändern nichts an ihrer Benutzung (`config.page.tsx:271`, `config.agents.tsx:261`).
+* **Tests** = Bühne (`test/shared/*`), keine Produktionslogik in Tests.
 
-## 5. Stoppschild (Jons „ganz wichtig") — Verhalten zuerst messen, dann entscheiden
+Skizze der neuen Shell-Entscheidung (Signaturebene, keine Implementierung):
 
-Der erste Lauf des fertigen Tests **ist** die Messung gegen die neue GIVEN-3-Formulierung:
+```tsx
+// app.shell.tsx
+const page = pageKeyOfPathname(pathname)      // bereits vorhanden, jetzt einmal
+const onChatPage = page === chatRoot          // neu: eine Zeile, die einzige Entscheidung
+// Header: {onChatPage && <AppSiderToggle … />}      → <AppTop active={page} …/>
+// Body:   {onChatPage && <AppSider … />}
+```
 
-- **Erwartet GRÜN auf dem Bestand** (`chat.board.ts:30-37` schreibt im Fehlerfall kein `setTiles`;
-  vorgeprüft, §3). Dann ist B2 geschlossen: Verhalten = Doc, Nachweis = Test.
-- **STOPP und melden, wenn** der Test rot wird mit
-  (a) fehlendem `tile-state-Jon` / fehlendem `chat-tiles` (Reihe fällt auf leer zurück),
-  (b) fehlendem `chat-error` (Fehler wird verschluckt),
-  (c) `IDLE` statt `WORKING` nach der abgelehnten Lesung, oder
-  (d) `/events`- oder `/agents`-Zählern, die nicht aufgehen (Reconnect/Read folgt einer anderen Folge als hier
-  beschrieben).
-  In keinem dieser Fälle wird Produktionscode geändert, ein Test gelöst oder eine Erwartung „angepasst" —
-  Report an Jon mit Fehlerwortlaut und Trace, Entscheidung bleibt bei ihm.
+## 4. Betroffene Dateien
 
-## 6. Reihenfolge und Rotation (rot → grün, ohne Produktionscode)
+**L1 — Überschriften raus**
+| Datei | Änderung |
+|---|---|
+| `factory-ui/src/project/project.page.tsx` | Zeile 115 löschen (`<h1>{content.projects.title}</h1>`); JavaDoc der Seite um eine Zeile ergänzen (kein Seitentitel, Region trägt den Namen, R-WP-43) |
+| `factory-ui/src/config/config.page.tsx` | Zeile 221 löschen (`<h1>{content.config.title}</h1>`); JavaDoc wie oben |
+| `factory-ui/test/project/project.page.test.tsx` | in `showsEmptyStateWhenRegistryIsEmpty` (:127): Region vorhanden, `heading` „Projects" **nicht** |
+| `factory-ui/test/config/config.page.test.tsx` | in `settingsShowsMaskedConfig` (:27): Region vorhanden, `heading` „Settings" **nicht** |
+| unverändert | `chat.page.tsx` (Kopf), `config.agents.tsx:215` (`h2` „Agents"), `index.css:113-121` (globale `h1`-Regel, weiter für Markdown/Agents nötig), `styles.css:224-239` (`.chat-head`/`.chat-title`, weiter benutzt) |
 
-1. **Step 0** (§0): Findings nach `peon-plan/review-findings.md` überführen.
-2. **Soll-Aussage messen:** §4 schreiben (Stub + Test).
-   `pnpm test -t 'theReconnectReadsTheRosterFresh'` → **erwartet grün** (§5). Dieser grüne Erstlauf ist die
-   Antwort auf „zeigt der Code die neue GIVEN-3-Form exakt?" und wird im Report protokolliert.
-   (Eine Rot-vor-grün-Stufe an Produktionscode gibt es hier bewusst **nicht**: N3 ändert kein Verhalten —
-   der negative Test gegen die neu gefasste Doc-Zeile ist der Beweis.)
-3. **Bühnen-Beweis (ersetzt die Mutation, wie von Jon gesetzt):** `cp`-Backup der Testdatei; in einer
-   **geseedeten** Variante den Aufruf `chat.refuseRosterRead(503, ROSTER_FAILURE)` **weglassen** — die frische
-   Lesung antwortet dann 200 mit `IDLE`. Lauf → erwartet **rot, beide Hälften**:
-   `tile-state-Jon` erwartet `WORKING`, erhalten `Idle`, **und** `Unable to find [data-testid="chat-error"]`.
-   Zurück per `cp`, `diff` gegen das Backup **leer**, Backup löschen. Beweist: die Assertions beißen an der
-   Ablehnung und nicht an der Fixture.
-4. **Gates:** `COREPACK_ENABLE_PROJECT_SPEC=0 pnpm test` → **268 Tests / 29 Dateien** (Zahl unverändert),
-   `npx tsc -b` Exit 0, `npx oxlint` 0/0, `npx antd lint ./src` 0 findings.
-5. **Doc-/ID-Lint:** `lintDocsAndTests` mit `docRoots: ["docs"]`,
-   `testRoots: ["factory-ui/test","factory-ui/src","factory-backend/src/test"]`, **ohne** `idPattern`.
-   Erwartung: **28 findings**, `UC-WP-94` **nicht** auf der Liste (Rest `UC-CR-1..14`, `UC-PC-1..14`).
-6. **Commit + Push** auf `web-factory-5`, nur §7-Pfade, Message ohne AI-Namen, mit UC-WP-94, z. B.:
-   `UC-WP-94: a refused roster read is said and keeps the last read stand (UI test + stub)` —
-   `peon-plan/overview.md` + `review-findings.md` im selben oder einem zweiten Commit.
-7. **Jon** fragt danach neu ab (Doc-Flip ❌ → ✅ und Browser-Abnahme N2-A8 bleiben bei ihm).
+**L2 — „Chat" ins Top-Menü**
+| Datei | Änderung |
+|---|---|
+| `factory-ui/src/app/app.top.tsx` | Eintrag `entry(chatRoot, content.nav.chat, active === chatRoot)` zwischen Projects und Settings (:27-30); `chatRoot` importieren; JavaDoc :13-24 neu fassen (drei Seiten, Kopf markiert auf Chat-Adresse) |
+| `factory-ui/src/app/app.shell.tsx` | JavaDoc :26-27 („the two pages" → drei) |
+| `factory-ui/test/app/app.shell.test.tsx` | `theHeaderCarriesTheBrandThePagesAndTheName` (:102), `theTopMarkFollowsAnAddressNobodyClicked` (:189), `theTopMarkAndTheTreeMarkAgreeInOneRender` (:221) — polarity ersetzt |
+| `factory-ui/test/app/app.routes.test.tsx` | `chatOpensTheLastActiveProject` (:374) — Klick auf den neuen Eintrag statt Direktadresse als erster Schritt |
+| unverändert | `app.paths.ts`, `app.menu.ts`, `content.ts`, `app.sider.tsx`, `theme.test.ts` (CSS-Wache, liest nur `.app-header`/`.app-top`-Deklarationen), `app.sider.test.tsx` (mountet den Sider ohne Router) |
 
-## 7. Betroffene Dateien
+**L3 — Sider nur auf Chat-Adressen**
+| Datei | Änderung |
+|---|---|
+| `factory-ui/src/app/app.shell.tsx` | `page`/`onChatPage` (§3), Bedingtes Rendern von `AppSider` (:89-96) **und** `AppSiderToggle` (:82); JavaDoc :25-38 (Chrome folgt der Adresse); `chatRoot`-Import |
+| `factory-ui/test/app/app.shell.test.tsx` | Helfer `treeNav()` (`queryByRole`), dann: `theFrameShowsTheProjectTree` (:53), `theUiSpeaksEnglish` (:67), `theSettingsEntryIsCurrentOnSettings` (:150), `theFrameFoldsTheTreeAndTheHandleOfTheBandReachesItAgain` (:280, jetzt `CHAT_PATH`) |
+| `factory-ui/test/app/app.routes.test.tsx` | Helfer `treeNav()`; `theMvpPagesAreReachable` (:81), `anUnknownAddressShowsTheApp` (:357), `chatWithoutAProjectGoesToProjects` (:388), `aProjectThatIsGoneLeadsToTheList` (:400) — `markedEntries()).toEqual([])` wird zu `treeNav()).toBeNull()` (stärker: kein Baum, nichts zu markieren) |
+| unverändert | `app.sider.tsx`, `app.sider.toggle.tsx`, `app.paths.ts`, `styles.css`/`index.css` (kein Selektor entfällt: `.app-sider` bleibt auf Chat-Seiten), `chat.page.test.tsx:169,209` und `chat.read.page.test.tsx:328` (arbeiten auf Chat-Adressen bzw. Settings-Eintrag) |
 
-- neu: `aifactory/peon-plan/review-findings.md` (Step 0, Inhalt = §13 unverändert)
-- ändern: `factory-ui/test/chat/chat.page.stub.ts` (Signatur + State + GET-Zweig + Helfer),
-  `factory-ui/test/chat/chat.read.page.test.tsx` (nur `theReconnectReadsTheRosterFresh` `:111-128`),
-  `peon-plan/overview.md` (§12 Messergebnisse; Findings-Block durch Verweis ersetzt)
-- **nicht** geändert: **alles** unter `factory-ui/src/**` (insb. `chat.board.ts`, `chat.page.tsx`, `content.ts`,
-  `chat.tiles.tsx`), `chat.page.test.tsx`, `chat.read.page.test.tsx` im Übrigen (B1-Szene `:86-108`
-  unangetastet), `app.harness.tsx`, `docs/**` (inkl. `memory.md`, `open-points.md`), `AGENTS*.md`,
-  `.agents/**`, `factory-backend/**`, `aifactory/pom.xml`
+**L4 — Think-Feld: Auswahl und Eingabe**
+| Datei | Änderung |
+|---|---|
+| `factory-ui/src/config/config.think.tsx` | VALUES/TOGGLE-Zweig (:43-60): `Select` → `AutoComplete` (Optionen wie bisher: Erbe-Eintrag + Liste + gespeicherter Wert verbatim, `:44-47` bleibt), `allowClear`, `placeholder={content.agents.inheritOption}`, `onChange(value ?? '')`; JavaDoc :21-31 und :73-76 neu (editierbar, Parität zum Plugin-Combo) |
+| `factory-ui/test/config/config.agents.test.tsx` | `thinkFieldFollowsProviderForm`-Test `thinkFieldFollowsTheProviderForm` (:219): `shownChoice` → `toHaveValue`, **freie Eingabe `ultra`** ergänzt; `storedThinkStaysVerbatim` (:277, :291) Lesart angepasst |
+| `factory-ui/test/config/config.page.fields.test.tsx` | `defaultThinkShowsTheProviderFormAndSaves` (:31, :47), `defaultThinkClearsIndependentlyOfSendThinking` (:64, :71), `defaultThinkIsDisabledForAProviderWithoutThinking` (:88, :95) — Lesart `toHaveValue` |
+| `factory-ui/test/config/config.page.test.tsx` | `agentThinkFollowsTheProviderOfTheForm` (:238, :269), `savingTheDefaultThinkShowsTheNewValueInTheDevSlot` (:287, :307, :323) — Lesart `toHaveValue` |
+| unverändert | `config.client.ts:12-23` (`ThinkInput`), `shared/server-api.ts:41-42,106` (`ThinkForm`), `config.model.tsx` (Vorbild), `test/shared/choices.ts` (`openChoice`/`chooseOption` funktionieren für `AutoComplete` — belegt durch `config.page.model.test.tsx:37,56`), `test/shared/config.stub.ts` (`valueOf` wird für Think **nicht** benutzt; `PROVIDER_ANSWER:28-53` liefert `VALUES [minimal,low,medium,high]`, `TOGGLE []`, `NONE`), Backend (Feld und Wire unverändert) |
 
-## 8. Regeln & Grenzen
+## 5. Regeln und Constraints
 
-- Test-Änderungen nur per Anker-Edit; vor dem Testlauf `git diff` gegen §7 zeigen (Regel 14).
-- Der Stub lehnt ab, was ein Server ablehnen kann (Status + `message`-Body wie `refuseActions`); er erfindet
-  kein Protokoll, keine Zeit, keinen Retry.
-- One-shot-Semantik ist Teil der Bühne und wird im JavaDoc genannt (Consumed by exactly that one read).
-- `chat.read.page.test.tsx` wächst um ≈ 12 Zeilen (Bestand ≈ 535) — unter der 600er-Schwelle (AGENTS.md:8-10);
-  kein zweiter Test, keine neue Datei.
-- Timelines: die zwei `waitFor(..., { timeout: 1500 })` folgen dem bestehenden Muster (`:123`); keine
-  `sleep`-Erfindung, keine neuen Timer (RECONNECT_MS = 500 bleibt).
+* **Docs:** kein Edit an `docs/**` (Jon), `docs/open-points.md` bleibt uncommittet (Paul). Doc-Vorarbeit je Inkrement: §6.
+* **Kein Backend, kein Core, kein `src/`-Zugriff in L1–L3 über die genannten Dateien hinaus.** Kommentar-Deltas aus dem letzten Review (`chat.page.tsx:395-400`, `:82-84`) sind **nicht** Teil dieser Story (§14).
+* **Testbudget:** 0 neue Testdateien, 0 neue Tests, Zahl bleibt **268 / 29** in jedem Inkrement.
+* **Rot-vor-grün** je Inkrement (§9). **Mutation nur** wo es keinen sinnvollen Negativ-Test gibt — hier: **in keinem der vier Inkrete nötig**, weil jede Änderung eine Behauptung hat, die vorher rot ist (§9).
+* **Gates je Inkrement** (`docs/memory.md:49-54`, Node-Pflicht): `cd factory-ui` → PATH-Export nvm-`default` 22.12 → `node -v` (≥22) und `pnpm -v` belegen → `COREPACK_ENABLE_PROJECT_SPEC=0 pnpm test` (**268/29**) → `npx tsc -b` 0 → `npx oxlint` 0/0 → `npx antd lint ./src` 0 (Skill `~/.agents/skills/antd`, AntD nie aus dem Gedächtnis: `antd info` zu `AutoComplete` vor L4). Kein Einzel-Datei-Lauf (`pnpm test -- file`), nur `pnpm test -t '<name>'` (`docs/memory.md:72`).
+* **Doc-Lint:** `lintDocsAndTests` mit `docRoots:["docs"]`, `testRoots:["factory-backend/src/test","factory-ui/test","factory-ui/src"]`, **ohne** `idPattern` → Baseline **28 Findings**; in L1–L4 darf **keine** der behandelten IDs (`UC-WP-76/77/78`, `UC-WP-67`, `UC-WP-85`) neu auf der Liste erscheinen.
+* **Dateigröße:** alle vier Inkrete bleiben weit unter 600 Zeilen/Datei (`app.shell.tsx` 103, `app.top.tsx` 43, `config.think.tsx` 85 Zeilen).
+* **Git:** Commit je Inkrement auf `web-factory-5`, push; **kein** `git add -A`; keine Modell-/Tool-Namen, keine `Assisted-by`-Trailer; nie `docs/**`; nie amend/rebase auf Pauls Commits; Restore nur per `cp` + `diff -q`.
+* **Comments/Code:** englisch, Docs deutsch (`AGENTS.md:12-15`); Kommentare knapp — Regelverweis `(R-WP-43)` statt Regeltext (Letztes Review: L1/L2-Fundstellen waren Duplikat-Kommentare).
 
-## 9. Abnahmekriterien (jede Zeile ein benannter, laufbarer Test)
+## 6. Reihenfolge + Jons Doc-Vorarbeit (❌ **vor** dem jeweiligen Bau)
 
-| # | GIVEN | WHEN | THEN | Nachweis |
-| --- | --- | --- | --- | --- |
-| **N3-A1** (UC-WP-94 GIVEN 3, Seiten-Fehler) | Reihe steht auf WORKING (Mount-Read), der frische Read der wiederstehenden Verbindung antwortet 503 mit `ROSTER_FAILURE` | Reconnect durchläuft | `chat-error` nennt **wörtlich** `ROSTER_FAILURE` | `chat.read.page.test.tsx.theReconnectReadsTheRosterFresh` (erweiterter Block 1) |
-| **N3-A2** (UC-WP-94 GIVEN 3, Stand bleibt) | dito | View zeichnet | `chat-tiles` steht, `tile-state-Jon` weiter **WORKING** — kein Zurückfallen auf leer | derselbe Block (Assertionen 2 und 3) |
-| **N3-A3** (keine Jagd nach dem Fehler) | dito | nach dem Fehler | genau **ein** Roster-Read mehr (`rosterReads + 1`): die abgelehnte Lesung *ist* der frische Read | derselbe Block (Zähler-Assertion) |
-| **N3-A4** (Doc-Halbsatz „nächste Lesung korrigiert"; UC-WP-84 GIVEN 2 bleibt scharf) | Stand WORKING, die abgelehnte Lesung ist verbraucht | zweiter Reconnect liest frisch (Roster jetzt IDLE) | `tile-state-Jon` wechselt auf **IDLE**, Roster-Reads `rosterReads + 2` | derselbe Block (Schluss-Assertions, wörtlich aus `:124-127` übernommen) |
-| **N3-A5** (Biss der Assertions) | seeded: `refuseRosterRead`-Aufruf entfernt (frische Lesung antwortet 200 IDLE) | Test laufen | **rot, beide Hälften** (`WORKING`≠`Idle`, `chat-error` fehlt) | §6 Schritt 3, Protokoll in §12 |
-| **N3-A6** (Bestand) | Suite + Statische | Gates | **268** Tests / 29 Dateien grün (unverändert), `tsc -b` 0, `oxlint` 0/0, `antd lint` 0, `lintDocsAndTests` 28 ohne `UC-WP-94` | §6 Schritt 4-5 |
-| **N3-A7** (B1-Szene unberührt) | — | Diff prüfen | `aTurnEndingBeforeTheStreamStandsLeavesNoWaitingTile` (`:86-108`) unverändert; kein `src/`-Hunk | `git diff` gegen §7 |
-| **N3-A8** (Verhalten = Doc) | erster Lauf auf dem Bestand | — | **grün** wie §5 erwartet; andernfalls STOPP + Report | §6 Schritt 2 |
-| N3-A9 | Pauls Fall im Browser (Server neu gestartet, Reihe steht, ein Read scheitert) | Chat offen | Banner + Reihe bleibt sichtbar | **Jon (R1)** — kein Test, nur Jon fragt danach neu ab |
+| # | Inkrement | Was Jon vorher setzt | danach |
+|---|---|---|---|
+| — | **L1** Überschriften raus | `docs/ui.md` R-WP-43 (:157-175): ein Satz „Das Main-Panel trägt **keine Seiten-Überschrift**; der Name der Seite steht im Top-Menü, die `view`-Region bleibt benannt." Auf **❌** (Regelteil). **Kein neuer UC-id** — reines Look-Delta an einer bestehenden Regel, Beweise laufen in bestehenden UC-getaggten Tests | nach Browser-Abnahme ✅ |
+| — | **L2** Chat ins Top-Menü | R-WP-43 (:155-166 incl. Klammer „Menü seit 2026-11-08 **ohne „Chat"**"): Menü = **Projekte · Chat · Settings**, Markierung folgt der Adresse **auch auf der Chat-Adresse**; **UC-WP-76** GIVEN 1 + GIVEN 3; **R-WP-1** (`:44-46` „nur über den Sider erreichbar") | ✅ nach L2 + Browser |
+| — | **L3** Sider nur bei Chats | R-WP-43 + **R-WP-44** (:210-235: Sider **und** sein Header-Griff existieren nur auf Chat-Adressen; auf `/projects` und `/settings` kein Baum) + **R-WP-38** (:98-105 „Top-Menü **und** Sider") + **UC-WP-77/UC-WP-78** (Sider-Zeichen nur auf Chat-Adressen) | ✅ nach L3 + Browser |
+| — | **L4** Think editierbar | **R-WP-23** Think-Aufzählung (:143-150), **UC-WP-67** GIVEN 1 (+ GIVEN 2 Wortlaut „Auswahl"), **R-WP-49** (:192-196), **UC-WP-85** GIVEN 1: Values/Toggle = **Auswahl aus der Provider-Liste oder eigene Eingabe** (Parität: editierbares Combo im Plugin), Wert immer verbatim, leer = erbt. Wortlaut „nie Freitext"/“kein Freitext-Feld" muss weg | ✅ nach L4 + Browser |
 
-## 10. Annahmen
+Reihenfolge L1 → L2 → L3 → L4: kleinste Wirkung zuerst; L2 vor L3, weil L2 die Kopf-Polarität setzt, die L3 in den Tests mitliest; L4 ist unabhängig (nur `config.*`) und kann bei Jons Zuruf auch zuerst oder allein laufen.
 
-- **A18** — Head nach `4a607d11` auf `web-factory-5` trägt keine weiteren Änderungen an
-  `chat.read.page.test.tsx`/`chat.page.stub.ts` (Dev prüft per `git log`/`git status`).
-- **A19** — `refuseRosterRead` wird nur von diesem einen Test benutzt; kein anderer Test ruft ihn auf, alle
-  übrigen `/agents`-Antworten bleiben unverändert (grep vor dem Commit: eine Aufrufstelle).
-- **A20** — der Reconnect-Lesepfad ist unverändert (`onEnd(true)` → `refresh()` + `setTimeout(connect, 500)`,
-  `onOpen` → `refreshTiles()`), deshalb ist die abgelehnte Lesung deterministisch die des neuen Streams;
-  zwischen `closeStream()` und `onOpen` liegt kein weiterer Roster-Read.
-- **A21** — `request()` wirft bei 503 mit `apiError.message` (`api.client.ts:12-14`), `errorMessage` liefert den
-  Server-Wortlaut (`:51-56`) — deshalb darf der Test den Stub-Wortlaut wörtlich erwarten.
+## 7. Acceptance-Kriterien (je Kriterium ein laufbarer Test)
 
-## 11. Risiken
+**L1**
+* **L1-A1** — GEGEN die Projektliste WHEN sie zeichnet THEN trägt die `view`-Region den Namen „Projects" **und** es gibt **keine** Überschrift „Projects". → `project.page.test.tsx::showsEmptyStateWhenRegistryIsEmpty`
+* **L1-A2** — GIVEN die Settings-Seite WHEN sie zeichnet THEN Region „Settings", **keine** Überschrift „Settings". → `config.page.test.tsx::settingsShowsMaskedConfig`
+* **L1-A3** — GIVEN der Chat WHEN er öffnet THEN bleibt der Projektname als Überschrift stehen (unveränderte Behauptung). → `chat.page.test.tsx` (:65) + `app.routes.test.tsx::aDeepLinkShowsTheSameState`
+* **L1-A4** — Bestand: 268/29 grün, `tsc -b` 0, `oxlint` 0/0, `antd lint` 0, Doc-Lint 28.
 
-- **R14 (Zeit/Zwei-Reconnect-Test)** — der Wirt fährt jetzt zwei Reconnects (≈ 1 s im ungünstigsten Fall).
-  Gegenmaßnahme: ausschließlich `waitFor` mit 1500 ms wie im Bestand, keine fixen Sleeps. Wird er flatterhaft,
-  ist die **Alternative entschieden**: Korrektur über `chat-stop` (Read über `chat.page.tsx:509`) statt zweiter
-  Reconnect — dann bleibt UC-WP-84 GIVEN 2 beim abgelehnten Read nur durch den Zähler belegt; in diesem Fall
-  **vor** der Umstellung an Jon melden, nicht still umbauen.
-- **R15 (Banner bleibt stehen)** — das Banner löscht erst Sende-/Stop-/Aktionserfolg (`chat.page.tsx:446/:495/:521`),
-  ein erfolgreicher Read räumt es nicht (Review-Befund, vorbestehend). Deshalb **keine** N3-Assertion, die ein
-  Verschwinden behauptet; R15 bleibt als bekannter Zustand stehen, bis Jon entscheidet.
-- **R16 (einseitige Bühne)** — der Stub lehnt ab, der echte Server kann auch hängen; der hängende Fall ist
-  durch `deferNextAgentsRead` bereits anderweitig abgedeckt (`aStaleRosterAnswerNeverOverwritesTheEndSnapshot`).
-- **R1** bleibt: Look/Verhalten am Browser nimmt Jon ab (N3-A9).
+**L2**
+* **L2-A1** — GIVEN die App WHEN sie zeichnet THEN trägt der Header das dunkle horizontale Menü mit genau **Projekte · Chat · Settings** (Reihenfolge). → `app.shell.test.tsx::theHeaderCarriesTheBrandThePagesAndTheName`
+* **L2-A2** — GIVEN eine Chat-Adresse, die niemand klickt WHEN der Rahmen zeichnet THEN markiert der Header **Chat** und der Baum die Chat-Einheit. → `app.shell.test.tsx::theTopMarkFollowsAnAddressNobodyClicked` + `::theTopMarkAndTheTreeMarkAgreeInOneRender`
+* **L2-A3** — GIVEN der Nutzer klickt **Chat** im Top-Menü WHEN ein Projekt zuletzt aktiv war THEN öffnet dessen Chat-Adresse; ohne letztes Projekt die Projektliste. → `app.routes.test.tsx::chatOpensTheLastActiveProject` (Klick-Bein) + `::chatWithoutAProjectGoesToProjects`
+* **L2-A4** — GIVEN `/settings` WHEN die Seite lädt THEN markiert der Header **Settings** und genau ein Eintrag trägt `aria-current`. → `app.shell.test.tsx::theSettingsEntryIsCurrentOnSettings`
+* **L2-A5** — Bestand + Gates wie L1-A4.
 
-## 12. Ergebnis (Dev, gebaut 2026-11-10)
+**L3**
+* **L3-A1** — GIVEN eine Chat-Adresse WHEN der Rahmen zeichnet THEN stehen Baum **und** Griff auf der Bühne, ein Projekt als Gruppe, die Chat-Einheit markiert. → `app.shell.test.tsx::theFrameShowsTheProjectTree`
+* **L3-A2** — GIVEN dieselbe Mount, der Nutzer wechselt auf **Projekte** (oder **Settings**) WHEN der Rahmen zeichnet THEN gibt es **keine** `navigation` „Views" **und keinen** `sider-toggle`. → `app.shell.test.tsx::theFrameShowsTheProjectTree` (zweiter Addresschritt) + `::theSettingsEntryIsCurrentOnSettings`
+* **L3-A3** — GIVEN `/projects` mit Projekten WHEN die Liste zeigt THEN ist der Chat über die Liste erreichbar (ein Klick, Chat-Region da, Baum erst danach da). → `app.routes.test.tsx::theMvpPagesAreReachable`
+* **L3-A4** — GIVEN eine Adresse, die ins Leere läuft (unbekannte Route, unbekanntes Projekt, `/chat` ohne Projekt) WHEN die Umleitung auf der Liste landet THEN ist der Baum nicht auf der Bühne. → `app.routes.test.tsx::anUnknownAddressShowsTheApp`, `::aProjectThatIsGoneLeadsToTheList`, `::chatWithoutAProjectGoesToProjects`
+* **L3-A5** — GIVEN ein Fenster unter dem Breakpoint auf einer Chat-Adresse WHEN der Rahmen zeichnet THEN faltet der Griff den Baum zu (250 px ↔ 0 px) und wieder auf. → `app.shell.test.tsx::theFrameFoldsTheTreeAndTheHandleOfTheBandReachesItAgain`
+* **L3-A6** — Bestand + Gates wie L1-A4.
 
-- **Step 0 erledigt:** `peon-plan/review-findings.md` **neu angelegt** — Inhalt = der N2-Review-Block
-  (Commit `4a607d11`) **unverändert**, eine Titelzeile vorangestellt; §13 dieses Plans ist durch den Verweis
-  `Review-Findings: peon-plan/review-findings.md` ersetzt. **Werkzeug-Lücke gemeldet:** die Edit-Werkzeuge
-  können keinen Zeilenbereich löschen (nur Ersetzen/Setzen), der 97-Zeilen-Block war darüber nicht entfernen —
-  Löschung mit `sed -i '' '261,357d'` nach `cp`-Backup, `diff` gegen das Backup zeigte **nur** den gelöschten
-  Block, die neue §13-Sektion kam per Anker-Edit vor §14. (Ein Range-Delete im Workspace-Editor wäre das, was
-  der Dev hier brauchen würde.)
-- **Erstlauf auf dem Bestand (N3-A8 / Stoppschild §5): GRÜN — kein Stopp, kein Produktionscode.** Der
-  gescheiterte frische Read der wiederstehenden Verbindung zeigt genau die neue GIVEN-3-Form: Banner
-  **wörtlich** `the roster is not reachable`, `chat-tiles` steht, `tile-state-Jon` bleibt `working`,
-  `/agents` = `rosterReads + 1` (kein Jagd-Read); zweiter Reconnect → `ready`, `/agents` = `rosterReads + 2`
-  (UC-WP-84 GIVEN 2 bleibt scharf). 3× wiederholt, jedes Mal grün (Test ≈ 0,2 s) — R14 (Zwei-Reconnect-Zeit)
-  flattert nicht. Keine Abweichung gegen §5: weder (a) leere Reihe noch (b) verschluckter Fehler noch (c) `IDLE`
-  statt `WORKING` noch (d) falsche Zähler.
-- **Bühnen-Beweis statt Mutation (§6 Schritt 3, N3-A5):** Backup per `cp`, dann
-  (1) `chat.refuseRosterRead(503, ROSTER_FAILURE)` entfernt → **rot**:
-  `Unable to find [data-testid="chat-error"]` (`findByTestId`, `chat.read.page.test.tsx:137`) — die Hälfte
-  „Fehler wird gesagt" beißt an der Ablehnung;
-  (2) zusätzlich die Banner-Assertion entfernt, um die zweite Hälfte überhaupt zu erreichen → **rot**:
-  `the last read stand stays` — *Expected `working`, Received `ready`* (`:138`) — die Hälfte „Stand bleibt"
-  beißt ebenfalls an der Ablehnung, nicht an der Fixture. Zurück per `cp`, `diff` gegen das Backup **leer**,
-  Backup gelöscht.
-- **Zahlen:** `pnpm test` → **268 Tests / 29 Dateien** grün (unverändert, kein Test hinzu/weg),
-  `npx tsc -b` Exit 0, `npx oxlint` **0/0** (98 Dateien), `npx antd lint ./src` **0 findings** (55 Dateien),
-  `lintDocsAndTests` → **28 findings**, **`UC-WP-94` nicht auf der Liste** (Rest `UC-CR-1..14`, `UC-PC-1..14`;
-  test IDs 446 → **447** — die neue ID-Zeile, keine neue ID-Erfindung).
-- **Größen / Grenzen:** `chat.read.page.test.tsx` 539 → **557** Zeilen (+18, Schwelle 600 gehalten),
-  `chat.page.stub.ts` 353 → 370. **Kein `src/`-Hunk** im Diff (N3-A7); B1-Szene
-  `aTurnEndingBeforeTheStreamStandsLeavesNoWaitingTile` (`:87-118`) unangetastet; `refuseRosterRead` hat genau
-  **eine** Aufrufstelle (A19) — `chat.read.page.test.tsx:132` — plus Signatur und Implementierung im Stub.
-- **Diff / Commit:** `git diff --stat` = `factory-ui/test/chat/chat.page.stub.ts`,
-  `factory-ui/test/chat/chat.read.page.test.tsx`, `peon-plan/overview.md`, neu `peon-plan/review-findings.md`
-  — genau §7, `docs/**` unangetastet (Jons Hand, unstageändert gelassen).
-  **Commit:** siehe Git-Log auf `web-factory-5` (`UC-WP-94: a refused roster read is said and keeps the last
-  read stand …`); **Push auf `origin/web-factory-5`:** gefahren.
-- **Offen bei Jon:** N3-A9 / N2-A8 (Browser-Abnahme), Doc-Flip ❌ → ✅, L1/L2 (Kommentar-Delta in `src/`),
-  R15 (Banner räumt ein erfolgreicher Read nicht), der unbaubar bleibende **Stream-Open**-Fehler.
+**L4**
+* **L4-A1** — GIVEN ein `VALUES`-Provider WHEN das Think-Feld geöffnet wird THEN bleibt die Liste des Providers Angebot (Erbe-Eintrag zuerst), und die gespeicherte Stufe steht im Feld. → `config.agents.test.tsx::thinkFieldFollowsTheProviderForm`, `config.page.fields.test.tsx::defaultThinkShowsTheProviderFormAndSaves`
+* **L4-A2** — GIVEN dasselbe Feld WHEN der Nutzer **`ultra` eintippt** THEN zeigt das Feld `ultra` (keine Ablehnung, keine Auswahl erzwungen). → `config.agents.test.tsx::thinkFieldFollowsTheProviderForm` (neue Assertion im bestehenden Test)
+* **L4-A3** — GIVEN ein gespeicherter Wert außerhalb der Liste WHEN die Seite lädt THEN bleibt er verbatim stehen und wird verbatim gespeichert. → `config.agents.test.tsx::storedThinkStaysVerbatim`
+* **L4-A4** — GIVEN `TOGGLE`-Provider WHEN das Feld geöffnet wird THEN Angebot `true`/`false`, und eigene Eingabe bleibt möglich. → `config.agents.test.tsx::thinkFieldFollowsTheProviderForm` (zweiter Block)
+* **L4-A5** — GIVEN ein leer gewähltes Think-Feld und „Send thinking" an WHEN gespeichert wird THEN geht `think: ''` und `sendThinking: 'true'` unabhängig. → `config.page.fields.test.tsx::defaultThinkClearsIndependentlyOfSendThinking`
+* **L4-A6** — GIVEN ein Provider ohne Think-Eingang WHEN die Seite lädt THEN bleibt es beim Hinweis, kein Feld, gespeicherter Wert wird mitgesendet. → `config.page.fields.test.tsx::defaultThinkIsDisabledForAProviderWithoutThinking`, `config.agents.test.tsx::thinkFieldFollowsTheProviderForm`-Nachbar `::thinkFieldIsHiddenForNone`
+* **L4-A7** — GIVEN das Default-Feld WHEN es speichert THEN liest die Dev-Slot-Zeile den neuen Wert (ein Wert, zwei Orte). → `config.page.test.tsx::savingTheDefaultThinkShowsTheNewValueInTheDevSlot`
+* **L4-A8** — Bestand + Gates wie L1-A4.
 
-## 13. Review-Findings
+## 8. Teststrategie
 
-Review-Findings: `peon-plan/review-findings.md` — N2 (Commit `4a607d11`, Branch `web-factory-5`, Verdict
-REJECTED, B1/B2/L1/L2). Step 0 (2026-11-10) hat den Block **unverändert** dorthin überführt; dieser Plan hält
-Findings nicht mehr, weil der nächste Plan ihn überschreibt (Memory-Regel 12). Gefallen sind B1 (Jons Docs) und
-B2 (dieses Inkrement N3); L1/L2 und die vorbestehenden Punkte stehen unverändert dort.
+* **Ersetzen statt anhäufen:** jeder umbaute Test behält **seinen Namen** und seine UC-Tags; nur die Behauptung folgt der neuen Regel. Kein Test wird gelöscht, keiner kommt hinzu (268/29 in allen vier Inkreten).
+* **Zwei Helfer** (in den bestehenden Dateien, keine neue Datei): `treeNav()` in `app.shell.test.tsx` und `app.routes.test.tsx` = `screen.queryByRole('navigation', { name: content.nav.views })`. Nötig, weil `nav()` (:16-18/:18-20) eine Landmarke **verlangt** und dort, wo der Baum bewusst fehlt, wirft statt rot zu behaupten.
+* **Lesart des editierbaren Think-Felds:** `toHaveValue` am Feld (Muster `config.page.model.test.tsx:75,102`), `openChoice`/`chooseOption` bleiben für das Angebot (`test/shared/choices.ts:22-46`; `<id>_list` + `.ant-select-dropdown` stellt die Basis auch beim `AutoComplete` bereit — belegt durch die grünen Modell-Tests). Betrifft 10 `shownChoice(...think...)`-Lesarten: `config.agents.test.tsx:234,237,246,291`; `config.page.test.tsx:269,307,323`; `config.page.fields.test.tsx:47,71,95`.
+* **Keine Mutation** in L1–L4: jedes Inkrement hat eine Behauptung, die vorher rot ist (§9). Der Negativ-Test ist jeweils selbst der Beweis.
+* **Timeouts:** keine neuen Wartezeiten; bestehende `waitFor`-Fristen bleiben. Kein `act()`-Rauschen wegstubs (`docs/memory.md:70-71`).
+* **Was der Test nicht beweist** (in den Commit-Text/§12): Reihenfolge und Farben des Menüs, ob der Kopf „zu leer" wirkt, ob 250 px passen, ob der `AutoComplete`-Dropdown im echten Browser gut aussieht — alles Browser-Abnahme (§11).
 
-## 14. N2-Kurzfassung (das Nötige zum Lesen; Einzelheiten: `git log -- peon-plan/overview.md`, Commit `4a607d11`)
+## 9. Rot-vor-grün je Inkrement (Dev führt es so aus)
 
-Gebaut 2026-11-10: `void refreshTiles()` beim Mount (`chat.page.tsx:401`), `onOpen` unverändert; drei Tests
-rot→grün (`aTurnEndingBeforeTheStreamStandsLeavesNoWaitingTile`, `aStaleRosterAnswerNeverOverwritesTheEndSnapshot`,
-`clearOnATileNamesThatTileAndARefusalIsALine`), M8 gefahren (ohne die Zeile: dieselben drei rot, gleicher
-Wortlaut), 268/29 grün, `tsc`/`oxlint`/`antd lint` 0, `lintDocsAndTests` 28 ohne `UC-WP-94`.
-**Commit-Biologie bestätigt:** `e72c6c76` „R-WP-48: the roster is read once the stream stands, not beside the
-mount (UC-WP-84)" hat den Mount-Read durch den `onOpen`-Read ersetzt; `76d3e653` (N1) ergänzte den Stale-Fall;
-`742293c3` unbeteiligt. Offen bei Jon: Browser-Abnahme N2-A8, Doc-Flip ❌ → ✅, L1/L2 (Kommentar-Delta).
+* **L1:** Assertions zuerst schreiben → `pnpm test -t 'showsEmptyStateWhenRegistryIsEmpty'` und `-t 'settingsShowsMaskedConfig'` sind **rot** („Found a multiple elements"/heading exists, konkret: `heading "Projects"` wird gefunden). Dann die zwei `<h1>` löschen → grün. **Stopp + Report**, falls eine *andere* Testdatei die Überschrift behauptet (ist beim Stand dieses Plans nirgends der Fall; Grep über `getByRole('heading'` traf nur Chat-Kopf-Stellen).
+* **L2:** Tests zuerst umstellen → `theHeaderCarriesTheBrandThePagesAndTheName` rot (Eintragsliste hat zwei statt drei), `theTopMarkFollowsAnAddressNobodyClicked` und `theTopMarkAndTheTreeMarkAgreeInOneRender` rot (nichts markiert auf Chat-Adresse). Dann `app.top.tsx` ändern → grün. **Stopp + Report** bei einem rot bleibenden Test, der die Dreiheit nicht durchlässt (z. B. `[aria-current]`-Zähler): erst melden, dann entscheiden — keine Erwartung „anpassen".
+* **L3:** Tests + `treeNav()` zuerst → die vier `app.routes`-Tests und die vier `app.shell`-Tests sind rot, solange der Baum auf jeder Adresse steht (`treeNav()` nicht null). Dann die zwei Bedschaltungen in `app.shell.tsx` → grün. **Stopp + Report** mit der exakten Liste weiterer Rotfälle, falls ein hier nicht genannter Test `nav()` auf einer Nicht-Chat-Adresse benutzt.
+* **L4:** Think-Tests zuerst umstellen (Lesart + `ultra`-Eingabe) → `thinkFieldFollowsTheProviderForm` rot (ein `Select` nimmt keine Eingabe an: `toHaveValue('ultra')` schlägt fehl), Clear-/Verbatim-Tests rot über die Lesart. Dann `config.think.tsx` → grün. **Zusatzmessung vor dem Umbau:** `antd info AutoComplete` + ein Lauf, der belegt (a) `document.getElementById('settings-think')` ist das `<input>` (sonst Fallback: Leseart über `..._list`-Combobox, Meldung an Jon), (b) die leere Erbe-Option wählbar bleibt (sonst Fallback D7).
 
-## 15. Was der Planner nicht konnte (notiert für Jon)
+## 10. Risiken / Annahmen
 
-Kein Schreibzugriff auf andere Dateien als `peon-plan/overview.md`: **`peon-plan/review-findings.md` konnte ich
-nicht anlegen.** Die N2-Findings stehen deshalb unverändert in §13 dieses Plans, und Step 0 (§0) überträgt sie
-dorthin — bitte Jon oder der Dev (mit Schreibzugriff) vor dem nächsten Planüberschreiben.
-**Erledigt 2026-11-10 (Dev, Step 0):** `peon-plan/review-findings.md` angelegt (Findings unverändert), §13 durch
-den Verweis ersetzt.
+* **R1 (L1):** Das Weglassen von Überschriften ist Optik — jsdom beweist nur die Abwesenheit; ob der Kopf „zu leer" wirkt, entscheidet Jon am Browser.
+* **R2 (L3, am größten):** `nav()`-Helfer werfen, statt rot zu behaupten. Alle bekannten Stellen sind in §4 benannt; bleibt ein unbekannter Rotfall, gilt: **melden, nicht umbiegen** (Arbeitsregel: Assertions nur da ändern, wo die Regel sich ändert).
+* **R3:** Auf `/chat` (ohne Projekt) rendert die Shell einen Frame mit Baum, bevor die Umleitung greift (`LastChatRoute`, `app.routes.tsx:96-99`). Bewusst hingenommen: ein Redirect ist kein Ziel-Zustand, und die Markierung folgt in dem Frame korrekt „Chat".
+* **R4 (L4):** `AutoComplete`-Eigenheiten (leere Option, `id`-Ziel, Filterung) sind nicht aus dem Gedächtnis zu behandeln — Messung vor Umbau (§9), Fallback definiert (D7).
+* **R5:** Kein Test abgedeckt: Back-End-Verhalten des Think-Werts (unverändert, R-WP-49/`SettingsControllerTest`) — diese Story ändert nur das Feld.
+* **Annahme ⏳ (an Jon, Q1):** Chat-Kopf und `h2` „Agents" bleiben; nur die beiden Seiten-`h1` entfallen.
+
+## 11. Browser-Abnahme (Jons Schritt, am Ende je Inkrement oder gesammelt)
+
+`mvn -o -f aifactory/pom.xml -pl factory-backend spring-boot:run -Dspring-boot.run.arguments=--server.port=8099` → `http://localhost:8099/ui/` (Frischbau-Regel `docs/memory.md:55-59` beachten: UI vorher `pnpm build`, sonst kommt die alte SPA).
+Abzunehmen: (1) Seiten ohne Überschrift, genug Luft oben? (2) Top-Menü Projekte · Chat · Settings — Reihenfolge, Markierung auf Chat-Adresse, Klick auf „Chat" landet im letzten Chat; (3) Sider + Griff nur im Chat (auch `/chat/x/files`), auf Projekten/Settings weg — passt die Fläche ohne Baum? (4) Think-Feld: eigene Eingabe möglich, Vorschlag nutzbar, „leer = erbt" erkennbar?
+
+## 12. Ergebnisfelder (Dev füllt das hier aus, pro Inkrement)
+
+* **L1 — gebaut 2026-11-10:** `pnpm test` = **268 Tests / 29 Dateien** grün, `npx tsc -b` **0**, `npx oxlint`
+  **0 Warnungen / 0 Fehler** (98 Dateien), `npx antd lint ./src` **0 findings** (55 Dateien), Doc-Lint
+  **28 findings** (Baseline gehalten; `UC-WP-76/77/78`, `UC-WP-67`, `UC-WP-85` erscheinen nicht neu).
+  * **Rotation (§9 L1):** beide Negativ-Assertions zuerst — rot mit
+    `AssertionError: expected <h1></h1> to be null` (`project.page.test.tsx::showsEmptyStateWhenRegistryIsEmpty`,
+    `config.page.test.tsx::settingsShowsMaskedConfig`), jeweils nachdem die Region-Assertion schon grün war.
+    Nach dem Löschen der zwei `<h1>` (JavaDoc je eine Zeile) grün. **Kein weiterer Test behauptete eine der
+    beiden Überschriften** — der §9-Stoppunkt ist damit erfüllt; die Chat-Kopf-Überschrift bleibt grün
+    (L1-A3: `chat.page.test.tsx:65`, `app.routes.test.tsx:134,165,294,317,335`, `project.files.test.tsx:391`),
+    `h2` „Agents" und `config.agents.tsx:215` unangetastet. Diff = genau die vier §4-L1-Dateien.
+  * **Beobachtung, gemeldet (nicht geändert, nicht Teil von L1):** ein einzelner Suite-Lauf, direkt nach zwei
+    `pnpm test -t`-Läufen im selben Shell-Befehl, meldete `app.routes.test.tsx::openingAProjectChangesTheUrl`
+    und `chat.page.test.tsx::aRunningTurnSurvivesTheUnitClick` rot. **Vier** folgende Läufe — darunter exakt
+    derselbe Befehlsablauf — sind grün, beide Fälle einzeln ebenfalls; keiner der beiden Tests behauptet eine
+    Überschrift, beide warten zu Beginn auf `findByRole('button', …)` der Projektliste (1-s-Default).
+    Deutung: Last-/Zeitflattern des Bestands (29 Worker), kein L1-Effekt. Der Wortlaut ging in dem Lauf nicht
+    mit — bei Bedarf gezielt nachmessen; hier bewusst **nicht** geändert und **keine** Erwartung angepasst.
+  * **Was der Test nicht beweist (§8):** ob der Kopf ohne Überschrift genug Luft hat / „zu leer" wirkt —
+    Browser-Abnahme (§11.1), Annahme ⏳ Q1 (Chat-Kopf und `h2` bleiben) weiter offen.
+  * **Commit:** siehe `git log` auf `web-factory-5` (`L1: …`), Push auf `origin/web-factory-5` gefahren.
+* L2: dito, plus: Liste der Tests, deren Polarisierung ersetzt wurde (erwartet 4), Rotliste vor dem Umbau: __
+* L3: dito, plus:ROTliste vor dem Umbau (erwartet 8) und etwaige zusätzliche Rotfälle: __
+* L4: dito, plus: `antd info AutoComplete` Messung (a)/(b) und ob der Fallback aus D7 nötig war: __
+* Abweichungen vom Plan (Regel, Grund, Auswirkung): **L1 keine** — Umfang D1/D2/D3 genau so gebaut. Einzige
+  Randnotiz: `project.page.tsx` hatte bisher **kein** JavaDoc am exportierten Baustein (nur `Props`), die
+  JavaDoc-Zeile des Plans (§4 L1) ist dort ein dreizeiliger Block geworden; `config.page.tsx` erhielt genau eine
+  Zeile. Suite-Flattern siehe L1-Beobachtung.
+
+## 13. Offene Fragen (Stand dieses Plans — alle mit Empfehlung)
+
+1. **Umfang Punkt 1:** nur die Seiten-`h1` von Projekten und Settings raus; Chat-Kopf (Projektname) und `h2` „Agents" bleiben? **Empfehlung: ja** (Begründung D2).
+2. **Punkt 2, Achse der Sider-Sichtbarkeit:** Adresse entscheidet (`/chat/…` und `/chat/…/files` = sichtbar), und der Header-Griff verschwindet mit dem Baum? **Empfehlung: ja** (D5).
+3. **Punkt 2, Klick auf „Chat":** führt auf `/chat` → UC-WP-51 (letztes Projekt, sonst Projektliste), keine neue Regel nötig? **Empfehlung: ja** (D4).
+4. **Punkt 3, Umfang:** `AutoComplete` für **beide** Formen (VALUES **und** TOGGLE) an **beiden** Orten, freie Eingabe verbatim, leer = „inherits the default"? **Empfehlung: ja** — Parität zum Plugin (§2 D6, Plugin nutzt für beide ein editierbares Combo).
+5. **Doc-Vorarbeit:** setzt Jon die in §6 genannten Regeln je Inkrement **vor dem Bau** auf ❌ und nach der Browser-Abnahme auf ✅? (Docs sind Jons Seite; Planner/Dev fassen sie nicht an.)
+6. **Testbudget:** 268/29 in allen vier Inkrementen, nur §7-L1 ergänzt zwei Assertions in bestehenden Tests — ok?
+
+## 14. Nicht gebaut (bewusst außerhalb)
+
+* **Punkt 4** der Runde-7-Liste: Send/Clear/Compact nur als Icons (`docs/open-points.md:27-31`) — von Paul geparkt, auf Jons Zuruf eigenes Inkrement.
+* **Kommentar-Deltas** aus dem letzten Review: `chat.page.tsx:395-400` (dreizeiliger Kommentar dupliziert R-WP-57) und `chat.page.tsx:82-84` (JavaDoc dupliziert `chat.board.ts:6-19`) — diese Story fasst `src/chat/` nicht an; bleibt auf Zuruf.
+* **Review-Fundstellen L1/L2 der Kachel-Story** (Banner räumt nicht auf nach erfolgreichem Read; leere Kachel-Liste ohne Signal) — unverändert offen, in `peon-plan/review-findings.md`; nichts davon gehört in eine Look-Story.
+* **„Kachel-Status wirkt verzögert"** (`docs/open-points.md:22-26`) — erst messen, dann Regel; kein Blindfix, nicht Teil dieser Story.
+* **`AGENTS*.md`:** kein Änderungsvorschlag aus dieser Story (kein Dauerwissen neu entstanden; Episodisches gehört in `peon-plan/`).
+* **Kein Doc-Edit, keine Core-/Backend-Änderung, kein neuer String im Catalog** (`content.nav.chat` existiert bereits, `content.agents.inheritOption` wird weiter benutzt).
+
+## 15. Memory-Schutz
+
+`peon-plan/review-findings.md` (Findings der Kachel-Story) bleibt erhalten und wird von diesem Inkrement **nicht** angefasst — Plan-Archive werden gelöscht, nie committet (`docs/memory.md:5-7`). `peon-plan/overview.md` (diese Datei) ist die einzige Schreibstelle des Planners; Dev schreibt seine Messungen in §12.

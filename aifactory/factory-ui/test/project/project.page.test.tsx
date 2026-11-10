@@ -129,6 +129,10 @@ test('showsEmptyStateWhenRegistryIsEmpty', async () => {
   render(<Host />)
 
   expect(await screen.findByText(content.projects.empty)).toBeInTheDocument()
+  // the page names itself once — in the region, which is how the screen finds it — and never as a heading of
+  // its own beside the top menu that already says it (R-WP-43)
+  expect(screen.getByRole('region', { name: content.projects.title })).toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: content.projects.title })).toBeNull()
 })
 
 // UC-WP-2
