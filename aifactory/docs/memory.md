@@ -9,25 +9,18 @@ Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwiss
 ## Stand (2026-11-10, Release)
 
 * **Release durch PAUL selbst** („kein main merge das mache immer ich"): `web-factory-4` → main macht
-  Paul — main hat `9fa23402` (Plan-Mode-Doku) voraus, Paul hat **main in den Branch gemergt** für sein
-  Final-Review, danach merged er den Branch nach main. Stand `web-factory-4` = `de688a32` (vorn 73 /
-  hinten 0). Inhalt der Spitze: **API-Fehler ✅** (R-WP-54/55/56 + UC-WP-92/93, UC-WP-91 gefaltet in
-  R-WP-54, 5 Inkremente `e6ca3573`→`b78e59d1` + N1 `c47c9edc`/`d35f7f27`), **R18 Skill-Refresh**
-  `88b81a8c` (Paul), **R6 Skill-Evolution-Loop ✅** `742293c3`. **Backend 274 / UI 268 Tests** grün,
-  missCount=1, tsc/oxlint/antd-lint 0, Core-Suite 1486/0. Kein Core-Eingriff der Story.
+  Paul. main (`9fa23402`, Plan-Mode-Doku) ist **in den Branch gemergt** (`8bac0386`, konfliktfrei, nur
+  `planner.md`) — der Branch enthält main vollständig, Paul kann das Final-Review fahren und mergt
+  danach. Stand `web-factory-4` = `8bac0386`. Inhalt der Spitze: **API-Fehler ✅** (R-WP-54/55/56 +
+  UC-WP-92/93, UC-WP-91 gefaltet in R-WP-54, 5 Inkremente `e6ca3573`→`b78e59d1` + N1
+  `c47c9edc`/`d35f7f27`), **R18 Skill-Refresh** `88b81a8c` (Paul), **R6 Skill-Evolution-Loop ✅**
+  `742293c3`. **Backend 274 / UI 268 Tests** grün, missCount=1, tsc/oxlint/antd-lint 0, Core-Suite
+  1486/0. Kein Core-Eingriff der Story.
 * **BUG A geparkt:** ⏳ im Root-`docs/open-points.md` (uncommittet — Paul committet ihn selbst mit dem
-  Release) — R18-Zusage „eigene Schreib-Änderung"
-  Merge oder Rebase entscheidet Paul. Stand `web-factory-4` = `9663a2a9` (Docs-Commit), vorn 73 /
-  hinten 1. Inhalt der Spitze: **API-Fehler ✅** (R-WP-54/55/56 + UC-WP-92/93, UC-WP-91 gefaltet in
-  R-WP-54, 5 Inkremente `e6ca3573`→`b78e59d1` + N1 `c47c9edc`/`d35f7f27`), **R18 Skill-Refresh**
-  `88b81a8c` (Paul), **R6 Skill-Evolution-Loop ✅** `742293c3`. **Backend 274 / UI 268 Tests** grün,
-  missCount=1, tsc/oxlint/antd-lint 0, Core-Suite 1486/0. Kein Core-Eingriff der Story.
-
+  Release) — R18-Zusage „eigene Schreib-Änderung" gilt nicht innerhalb der 10-min-Ruhezeit (skillRead
+  stale); Proper fix = Refresh ins Tool / Skill-Writes an Scaffold, späteres Tool-Extension-Inkrement.
 * **Ebenfalls drin:** F8 Config-Plugin-Parität ✅ (R-WP-49–52/UC-WP-85–88), C-7 Blick-live ✅
   (R-WP-53/UC-WP-89/90), R-WP-48 Endereignis ✅ — Details in den Docs.
-* **BUG A geparkt:** ⏳ in `/llmpeon-parent/docs/open-points.md` — R18-Zusage „eigene Schreib-Änderung"
-  gilt nicht innerhalb der 10-min-Ruhezeit (skillRead stale); Proper fix = Refresh ins Tool /
-  Skill-Writes an Scaffold, späteres Tool-Extension-Inkrement.
 * **Nächste Story: Runde-7-Look-Story** (Pauls Browser-Befunde, ⏳/❓ in [open-points.md](open-points.md))
   — **vorher die Kachel-Reihe ❓ messen** (most critical; Regression aus C-7, `chat.tiles.tsx` /
   Kacheln-Read nach `onOpen`). Danach: C-2a, C-1 TurnClaim-Timeout (`ProjectRuntime.java:348`),
@@ -38,17 +31,18 @@ Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwiss
 * **Auf Zuruf:** Skill-Proposal `proposals/antd-skill-cli-rows-update.md` (4 CLI-Zeilen + Hinweis
   „installierte Version prüfen"); leeres Doppelverzeichnis `aifactory/aifactory/factory-ui/test/app`
   (+ `.DS_Store`) löschen.
-* R18-Zusage „generell als done setzen" (Paul) ist geflippt (R6 ✅, `742293c3`); Docs-Commit siehe
-  Release-Commit.
+* Untracked geblieben: `aifactory/.agents/`, Pauls PNGs (`SOLL.png`, Bildschirmfoto) — Pauls Seite.
+  Die `web-factory-4-skill-*.patch`-Dateien sind von der Platte verschwunden (außerhalb unserer
+  Läufe) — irrelevant, der Patch ist längst drin.
 
 ## Fallstricke (gemessen)
 
 * Bauen: Kern `clean test` → `install -DskipTests` → Fabrik `clean verify`; immer `clean`. Backend
   `mvn -o -f aifactory/pom.xml -pl factory-backend clean test`; UI `cd factory-ui &&
-  COREPACK_ENABLE_PROJECT_SPEC=0 pnpm test` (pnpm 10.28.0, Node 22.12). Nur-UI-Änderung ⇒ nur UI-Tests.
-  Smoke: `spring-boot:run -Dspring-boot.run.arguments=--server.port=8099` → `http://localhost:8099/ui/`.
-  Node 22.23.4 installiert, **nvm-`default` bleibt 22.12** ⇒ PATH-Export Pflicht; vor jedem UI-Gate
-  `node -v` ≥22 + `pnpm -v` prüfen.
+  COREPACK_ENABLE_PROJECT_SPEC=0 pnpm test` (pnpm 10.28.0, Node 22.12). Nur-UI-Änderung ⇒ nur
+  UI-Tests. Smoke: `spring-boot:run -Dspring-boot.run.arguments=--server.port=8099` →
+  `http://localhost:8099/ui/`. Node 22.23.4 installiert, **nvm-`default` bleibt 22.12** ⇒ PATH-Export
+  Pflicht; vor jedem UI-Gate `node -v` ≥22 + `pnpm -v` prüfen.
 * **Stale-Fallen Fabrik-UI:** `factory-ui/pom.xml` clean-Filesets zeigen auf `web-app/` (existiert
   nicht) ⇒ `mvn clean` löscht `factory-ui/dist` nie; `copy-resources` ist additiv (mehrere
   Asset-Generationen in `target/classes/static/ui`); ein Eclipse-Bau führt `pnpm run build` nie aus;
