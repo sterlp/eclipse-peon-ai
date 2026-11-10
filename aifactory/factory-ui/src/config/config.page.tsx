@@ -96,10 +96,13 @@ export function ConfigPage() {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [providers, setProviders] = useState<ProviderDefaultsDto[]>([])
   const [removeKey, setRemoveKey] = useState(false)
-  // one page, one error: what a read could not bring and what a save refused are the page's own trouble
-  // either way, and the page has one panel for it (R-WP-62) — the fields a refusal names come out of this
-  // same answer (`fieldErrorsOf`), never out of a second state kept beside it
+  // the page's one band (R-WP-62): what a read could not bring, what this page's own save refused, and what a
+  // slot could not place at one of its cards — one panel says all of it
   const [error, setError] = useState<unknown>(null)
+  // this form's own refusal, written by `save()` alone. A field error belongs to the form whose request was
+  // refused (R-WP-56), and `apiKey` is framed here *and* in a slot card: reading the band's answer here too
+  // would paint a slot's refusal onto the base form
+  const [saveError, setSaveError] = useState<unknown>(null)
   const [busy, setBusy] = useState(false)
   // R-WP-49: the dev slot's file holds the default think value — after a save the section reads again
   const [agentsReload, setAgentsReload] = useState(0)
@@ -154,6 +157,7 @@ export function ConfigPage() {
     }
     setBusy(true)
     setError(null)
+    setSaveError(null)
     try {
       // the answer is the stored state, read back masked — the form is refilled from it, not from the
       // input, which is also what makes the key status fresh after every save (UC-WP-63)
@@ -165,9 +169,11 @@ export function ConfigPage() {
       // draft of a value the page has just changed, its next save would write the old one back
       setAgentsReload((current) => current + 1)
     } catch (reason) {
-      // the typed values stay: the reason names the field to fix, nothing the user wrote is lost — and what
-      // it names besides a field of this form is the panel's to say (R-WP-62)
+      // the typed values stay: the reason names the field to fix, nothing the user wrote is lost. It marks
+      // this form and no other — the answer belongs to the request that was refused (R-WP-56) — and what no
+      // field of it owns is the panel's to say (R-WP-62)
       setError(reason)
+      setSaveError(reason)
     } finally {
       setBusy(false)
     }
@@ -204,8 +210,9 @@ export function ConfigPage() {
     draft !== null && !offered.includes(draft.provider) ? [draft.provider, ...offered] : offered
   ).map((name) => ({ value: name, label: name }))
 
-  // the fields the last refusal named — read off the error, never kept beside it as a second state
-  const errors = fieldErrorsOf(error)
+  // the fields the last refusal of **this form** named — read off its own answer, never off the band's: a
+  // slot's refusal travels upward as text for the panel and must not mark a field of the base form (R-WP-56)
+  const errors = fieldErrorsOf(saveError)
 
   // the page keeps its own element on purpose: R-WP-62 wants the band outside the area that scrolls, and
   // `.view` IS this page's scroll area — the panel above it therefore cannot be its child
@@ -428,7 +435,8 @@ export function ConfigPage() {
   return (
     <>
       {/* R-WP-62: the page's one panel, above the form and outside the area that scrolls it. What a slot
-          could not place at one of its cards arrives here too — the section hands it up (R-WP-56) */}
+          could not place at one of its cards arrives here too — the section hands up the words, never a field
+          mark: each form paints only the refusal it caused itself (R-WP-56) */}
       <ApiErrorPanel error={error} fields={PAGE_ERROR_FIELDS} onClose={() => setError(null)} />
       {view}
     </>

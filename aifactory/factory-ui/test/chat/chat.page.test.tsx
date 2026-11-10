@@ -402,6 +402,15 @@ test('thePageErrorPanelStandsAboveTheTeamAndOutsideTheLog', async () => {
   fireEvent.click(screen.getByTestId('tile-compact-Dev'))
   expect(await screen.findByTestId('error-panel')).toHaveTextContent(REFUSAL)
   expect(chat.countOf('/agents', 'POST')).toBe(2)
+
+  // and a new interaction of this page closes the band by itself, with no click on the X in between
+  // (UC-WP-99 GIVEN 2): the send is accepted here — only the tile action is refused — so the page begins a
+  // fresh request and must not make the viewer dismiss the old answer first
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'noch eine frage' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await waitFor(() => expect(chat.countOf('/messages', 'POST')).toBe(1))
+  expect(screen.queryByTestId('error-panel')).toBeNull()
+  expect(document.querySelectorAll('[role=alert]'), 'a closed band announces nothing').toHaveLength(0)
 })
 
 // UC-WP-50

@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { ConfigPage } from '../../src/config/config.page'
 import { content } from '../../src/shared/content'
 import { chooseOption, inputField, openChoice, shownChoice } from '../shared/choices'
+import { agent } from '../shared/config.agents.stub'
 import { refused } from '../shared/refusal'
 import {
   KEY,
@@ -493,22 +494,53 @@ test('aRejectedSaveMarksTheMaxTokensFieldAndKeepsTheTypedValue', async () => {
   expect(server.calls.filter((call) => call.method === 'PUT')).toHaveLength(1)
 })
 
+// R-WP-56
 // UC-WP-93
-test('aConflictWithoutFieldStillShowsTheAlert', async () => {
-  stubServer({
+test('onlyTheSlotCardOfARefusedSlotSaveIsPainted', async () => {
+  // the class rule `WireKeyIntent` sits on both request bodies, so a refused **slot** save answers with the
+  // field name `apiKey` — the same name the base form frames (R-WP-56: the error belongs to the form whose
+  // request was refused, never to another form of the same page)
+  const KEY_INTENT = 'apiKey and removeApiKey are two answers — send one'
+  const server = stubServer({
     GET: settingsAnswer(),
-    PUT: refused({ status: 409, error: 'Conflict', message: 'a turn is running on this project' }),
+    AGENTS: [agent({ id: 'dev', name: 'Dev', overridden: true, keySet: true })],
+    PUT: refused({
+      status: 400,
+      error: 'Bad Request',
+      message: KEY_INTENT,
+      fieldErrors: [{ field: 'apiKey', message: KEY_INTENT }],
+    }),
   })
-  render(<ConfigPage />)
+  const { container } = render(<ConfigPage />)
   await screen.findByDisplayValue('gpt-demo')
 
-  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
+  const slot = screen.getByTestId('agent-slot-dev')
+  fireEvent.change(within(slot).getByLabelText(content.config.key), {
+    target: { value: 'sk-slot-typed-0123456789' },
+  })
+  fireEvent.click(within(slot).getByRole('button', { name: content.agents.save }))
+  await waitFor(() => expect(server.calls.filter((call) => call.method === 'PUT')).toHaveLength(1))
 
-  expect(await screen.findByRole('alert')).toHaveTextContent('a turn is running on this project')
-  expect(screen.queryAllByTestId(/^field-error-/)).toEqual([])
+  // the card whose save was refused answers it, in the server's own sentence (UC-WP-93 GIVEN 1)
+  const help = within(slot).getByTestId('field-error-apiKey')
+  expect(help).toHaveTextContent(KEY_INTENT)
+  const field = help.closest('.api-field')
+  expect(field).not.toBeNull()
+  expect(field).toHaveClass('api-field-error')
+  // the base form framed no request of this slot — its own key field stays white, although the answer names
+  // a field it also draws
+  const base = container.querySelector('.settings-card') as HTMLElement
+  expect(base).not.toBeNull()
+  expect(within(base).queryByTestId('field-error-apiKey')).toBeNull()
+  expect(within(base).queryAllByTestId(/^field-error-/)).toEqual([])
+  // a field the card owns leaves the page's band shut (UC-WP-99 GIVEN 3)
+  expect(screen.queryByTestId('error-panel')).toBeNull()
+  expect(document.querySelectorAll('[role=alert]')).toHaveLength(0)
+  // what was typed stays: the reason names the field to fix, it throws no answer away
+  expect(within(slot).getByLabelText(content.config.key)).toHaveValue('sk-slot-typed-0123456789')
 })
 
-// UC-WP-99
+// UC-WP-99, UC-WP-93
 test('theSettingsPanelStandsAboveTheForm', async () => {
   stubServer({
     GET: settingsAnswer(),
@@ -527,11 +559,15 @@ test('theSettingsPanelStandsAboveTheForm', async () => {
   expect(panel.nextElementSibling).toBe(document.querySelector('section.view'))
   expect(document.querySelectorAll('[role=alert]'), 'one panel per page').toHaveLength(1)
 
-  fireEvent.click(screen.getByTestId('error-panel-close'))
-  expect(screen.queryByTestId('error-panel')).toBeNull()
+  // while the band stands, no field is painted — the refusal named none, so none may be marked red (GIVEN 2)
   expect(screen.queryAllByTestId(/^field-error-/), 'no field is painted for a fieldless refusal').toEqual(
     [],
   )
+
+  // and its own X closes it, still with no field touched (UC-WP-99 GIVEN 2, R-WP-56)
+  fireEvent.click(screen.getByTestId('error-panel-close'))
+  expect(screen.queryByTestId('error-panel')).toBeNull()
+  expect(screen.queryAllByTestId(/^field-error-/)).toEqual([])
 })
 
 // UC-WP-93
