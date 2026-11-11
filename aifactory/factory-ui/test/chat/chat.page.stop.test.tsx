@@ -158,10 +158,10 @@ test('aCompactingTileOffersNoStop', async () => {
 })
 
 /**
- * R-WP-65: the tile carries the statement „a turn is stoppable" and the button follows <em>it</em> — neither the
- * state nor a guess of this browser. UC-WP-102: a WORKING tile that says nothing leaves the button inert (GIVEN 1),
- * and the statement alone makes it operable even on an IDLE tile — the turn of another browser, which the state
- * would have hidden a moment later (GIVEN 2).
+ * R-WP-65: the tile carries the statement „a turn is stoppable" and the button follows <em>it</em> — never the
+ * colour of the tile. UC-WP-102: a `WORKING` tile that says nothing leaves the button inert (GIVEN 1), and the
+ * statement alone makes it operable on the very same `WORKING` tile — a stoppable turn always reads `WORKING`
+ * on the server (`ProjectRuntime.tileOf`), so only the statement tells the two apart (GIVEN 2).
  */
 // R-WP-65
 // UC-WP-102
@@ -172,7 +172,7 @@ test('stopFollowsTheStoppableStatementOfTheStand', async () => {
 
   expect(screen.getByTestId('chat-stop'), 'a working tile that says nothing has nothing to stop').toBeDisabled()
 
-  await chat.push(event('agents', { tiles: [{ ...tile('Jon', 'IDLE'), stoppable: true }] }))
+  await chat.push(event('agents', { tiles: [{ ...tile('Jon', 'WORKING'), stoppable: true }] }))
 
   expect(screen.getByTestId('chat-stop'), 'the statement decides, the state does not').toBeEnabled()
 })

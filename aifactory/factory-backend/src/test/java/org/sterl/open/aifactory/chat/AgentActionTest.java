@@ -276,6 +276,8 @@ class AgentActionTest extends FactorySpringTest {
      */
     @Test
     @Timeout(60)
+    // R-WP-65
+    // UC-WP-102
     void sendDuringAnActionIsAnsweredNotLost() throws IOException {
         try (HeldModel held = new HeldModel()) {
             writeFactoryConfig("inc5e-held", held.url());
@@ -297,6 +299,11 @@ class AgentActionTest extends FactorySpringTest {
             assertThat(jon.isCompacting())
                     .as("the action still holds the project at the moment the input was taken")
                     .isTrue();
+            // the stand says nothing is stoppable while the action holds, although a turn waits behind it:
+            // an action is not something a turn's stop may cut (R-WP-65, UC-WP-102 GIVEN 1)
+            assertThat(tile(project.id(), AiPoAgent.NAME).stoppable())
+                    .as("a turn waiting behind a running Compact is not stoppable")
+                    .isFalse();
             // letting the Compact go is what lets the turn run — the test never waits for a timeout
             held.close();
 

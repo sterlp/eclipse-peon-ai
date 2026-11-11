@@ -541,8 +541,10 @@ test('onlyTheSlotCardOfARefusedSlotSaveIsPainted', async () => {
 })
 
 // UC-WP-99, UC-WP-93
+// R-WP-66
+// UC-WP-103
 test('theSettingsPanelStandsAboveTheForm', async () => {
-  stubServer({
+  const server = stubServer({
     GET: settingsAnswer(),
     PUT: refused({ status: 409, error: 'Conflict', message: 'a turn is running on this project' }),
   })
@@ -568,6 +570,14 @@ test('theSettingsPanelStandsAboveTheForm', async () => {
   fireEvent.click(screen.getByTestId('error-panel-close'))
   expect(screen.queryByTestId('error-panel')).toBeNull()
   expect(screen.queryAllByTestId(/^field-error-/)).toEqual([])
+
+  // GIVEN 2 (R-WP-66, UC-WP-103): his own next request closes the band — the save of this very form is one
+  server.script.PUT = refused({ status: 409, error: 'Conflict', message: 'a turn is running on this project' })
+  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
+  await screen.findByTestId('error-panel')
+  server.script.PUT = settingsAnswer()
+  fireEvent.click(screen.getByRole('button', { name: content.config.save }))
+  await waitFor(() => expect(screen.queryByTestId('error-panel')).toBeNull())
 })
 
 // UC-WP-93

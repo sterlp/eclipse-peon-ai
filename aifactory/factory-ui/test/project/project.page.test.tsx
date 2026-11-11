@@ -222,8 +222,10 @@ test('credentialUrlRejectedAndNothingStored', async () => {
 })
 
 // UC-WP-99
+// R-WP-66
+// UC-WP-103
 test('theProjectsPanelStandsAboveTheScrollArea', async () => {
-  stubServer({
+  const server = stubServer({
     GET: [],
     POST: refused({ status: 409, error: 'Conflict', message: 'clone is busy' }),
   })
@@ -244,6 +246,14 @@ test('theProjectsPanelStandsAboveTheScrollArea', async () => {
   expect(document.querySelectorAll('[role=alert]'), 'one announcement, not two').toHaveLength(1)
   // a refusal that named no field marks no field (UC-WP-93 GIVEN 2)
   expect(screen.queryAllByTestId(/^field-error-/)).toEqual([])
+
+  // GIVEN 2 (R-WP-66, UC-WP-103): his own next request closes the band — adding a project is one
+  server.script.POST = project()
+  fireEvent.change(screen.getByLabelText(content.projects.gitUrl), {
+    target: { value: 'https://git.example.com/acme/demo.git' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: content.projects.add }))
+  await waitFor(() => expect(screen.queryByTestId('error-panel')).toBeNull())
 })
 
 // UC-WP-99
