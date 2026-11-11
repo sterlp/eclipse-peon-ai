@@ -39,7 +39,7 @@ test('modelFieldListsServerModelsOnOpen', async () => {
   expect(await openChoice(content.config.model, MODEL_FIELD)).toEqual(['gpt-x', 'llama-mock'])
   // R-WP-67: the same arrow the think field carries — one definition, both offer fields (R-WP-46)
   expect(
-    arrowOf(content.config.model, MODEL_FIELD)?.querySelector('svg'),
+    arrowOf(content.config.model, MODEL_FIELD),
     'the model field shows the arrow of its offer',
   ).toBeTruthy()
 

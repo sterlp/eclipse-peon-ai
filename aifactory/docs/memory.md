@@ -6,17 +6,18 @@ Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwiss
 `peon-plan/review-findings.md` sind das Memory); Docs duplizieren nie Core-Regeln; Plan-Archive werden
 **gelöscht**, nie committet.
 
-## Stand (2026-11-11, Zyklus „Auswahlfeld: Pfeil ja, Clearer nein" — geplant, A im Bau)
+## Stand (2026-11-11, Zyklus „Auswahlfeld: Pfeil ja, Clearer nein" — gebaut, Review ACCEPTED, ✅)
 
-* **Neuer Zyklus (Paul freigegeben: „wenn es mit dem bau besser ist dann absegnen")**: SOLL in `ui.md`
-  **R-WP-67/UC-WP-104** (❌) — AntD 6.7.0 malt am `AutoComplete` **keinen** Pfeil (`suffix`/`suffixIcon`
-  ohne Default, gemessen per `antd info` + Quelle `AutoComplete.js:151`), der `allowClear`-Knopf des
-  Think-Feldes saß auf der Klickfläche. **Beide Felder stehen nur auf der Config-Seite**
-  (`config.page.tsx:244/267`, `config.agents.tsx:248/264`) — **nicht im Composer** (das hatte ich Paul
-  falsch gesagt; Plugin-Parität bestätigt: `ModelComboWidget`/`ModelConfigWidget.newCombo()`, SWT-`Combo`
-  hat immer einen Pfeil und **niemals** einen Clear-Button, „leer" = erster Listeneintrag).
-  Plan `peon-plan/overview.md`: **A** nur hinzufügen (Pfeil, eigene Datei `src/config/config.choice.tsx`)
-  → **B** nur löschen (`allowClear`, `config.think.tsx:62`). Doc-Lint-Basis **30** ⇒ Ziel **29**.
+* **B0 erledigt (Paul: „wenn es mit dem bau besser ist dann absegnen")**: [R-WP-67/UC-WP-104](ui.md) **✅**,
+  gebaut `4c1b75fe` (Pfeil) + `39ed1e24` (`allowClear` raus), Review #16 **ACCEPTED** (2 LOWs, beide von Jon
+  nachgebaut: Icon-**Identität** `.anticon-down` statt „irgendein `svg`"; Kommentar „FREE/UNKNOWN share this
+  branch"). Facts: AntD 6.7.0 malt am `AutoComplete` **keinen** Pfeil ⇒ `suffix={<ChoiceArrow />}`, **eine**
+  neue Datei `factory-ui/src/config/config.choice.tsx` (12 Zeilen, Blatt, kein Zyklus); die beiden Felder
+  stehen **nur auf der Config-Seite** — **nicht im Composer** (hatte ich Paul falsch gesagt).
+  Plugin-Parität belegt: SWT-`Combo` hat immer einen Pfeil und **niemals** einen Clear-Button.
+  **⏳ bei Paul:** „Clearer entfällt" (`open-points.md`) · **Browser-Abnahme der Affordanz offen**.
+  Gates: UI **292 / 35 Dateien**, oxlint/tsc/build/`antd lint` je 0, Doc-Lint **29** (UC 131/131, nur
+  `UC-WP-101` fremd/offen). Kein Architektur-Doc nötig (Review §4: zustandslose Präsentationskomponente).
 ### Voriger Zyklus „Grundregeln + Stop-Barkeit + Panel-Lebensdauer" — gebaut, reviewed, gemergt-ready
 
 * **Branch `web-factory-5`**, gepusht bis `bb2d64a5` (Docs `4f507525`, Skill-Ledger `bb2d64a5`). Gates: **UI 292 Tests / 35 Dateien**,
@@ -73,9 +74,11 @@ Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwiss
   Zahl kommt aus meinem Lint-Lauf, nicht aus dem Report.
 * **`toBeNull()`-Fall:** „ist nicht `null`" als `.not.toBeNull()` ist auf **`undefined` wahr** — die
   Pfeil-Aussage war grün, obwohl kein Element da war (von Dev per Temp-Log gemessen). Nachweis immer
-  `toBeTruthy()` am Element. AntD 6.7.0: **`suffixIcon` ist deprecated** (`antd info` zeigt es nicht,
-  `BaseSelect/index.d.ts:98` und `antd lint` schon) ⇒ **`suffix`** am `AutoComplete`; `antd lint` braucht
-  das Pfad-Argument **`src`** — `./src` scannt 0 Dateien und ist ein grüner Nicht-Nachweis.
+  `toBeTruthy()` am Element — und seit LOW-1 des Reviews auf die **Identität** des Icons prüfen
+  (`.anticon-down`), nicht nur auf „irgendein `svg`". AntD 6.7.0: **`suffixIcon` ist deprecated** (`antd info` zeigt es nicht, die Quelle
+  `BaseSelect/index.d.ts:98` und `antd lint` schon) ⇒ **`suffix`** am `AutoComplete`. — Nicht belegt ist die
+  Dev-Notiz „`antd lint ./src` scannt 0 Dateien": der Review maß `src` **und** `./src` = je 62 Dateien. Wer
+  eine Gate-Zahl meldet, nennt den exakten Befehl; eine „0 Dateien"-Aussage nicht ungeprüft weiterschreiben.
 * **Test-Marker: eine ID pro `//`-Zeile, direkt über dem Test** — Mischzeilen (`// R-WP-65, UC-WP-102`)
   zählen nicht, die UC bleibt `UNBELEGT` (2× gemessen; steht jetzt in `AGENTS-DEV.md`). Nach einem
   Marker-Edit den **Lint-Lauf** zeigen, nicht nur die Tests.
@@ -103,7 +106,8 @@ Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwiss
   immer am **Frischbau** messen.
 * AntD 6.7.0: hell malt **`lightSiderBg`**; `matchMedia`+`ResizeObserver` stubben; `collapsed` controlled ⇒
   Effekt ignoriert; `Menu` ohne `navigation`-Landmarke; **Alert** bringt `role="alert"` selbst;
-  **`AutoComplete` setzt `suffix=null`** ⇒ kein Chevron (B0). AntD nie aus dem Gedächtnis:
+  **`AutoComplete` malt keinen Default-Pfeil** ⇒ `suffix={<DownOutlined />}` (`suffixIcon` ist deprecated,
+  R-WP-67). AntD nie aus dem Gedächtnis:
   `antd info`/`antd lint` (Skill `~/.agents/skills/antd`; CLI nur unter v22.23.4). jsdom rechnet **keine
   Farbe** ⇒ Rot-Beweis über DOM-Handle + Sheet-Deklaration; `+`/`~`-CSS braucht den Nestungs-Beweis;
   Vitest ohne `.as()`; `act()`-Rauschen bei AntD+React 19 ist Baseline.

@@ -50,7 +50,7 @@ test('defaultThinkShowsTheProviderFormAndSaves', async () => {
   expect(inputField(content.agents.thinkDefault, DEFAULT_THINK)).toHaveValue('medium')
   // R-WP-67: a field that offers a list says so — the base paints no arrow of its own on an AutoComplete
   expect(
-    arrowOf(content.agents.thinkDefault, DEFAULT_THINK)?.querySelector('svg'),
+    arrowOf(content.agents.thinkDefault, DEFAULT_THINK),
     'the think field shows the arrow of its offer',
   ).toBeTruthy()
 

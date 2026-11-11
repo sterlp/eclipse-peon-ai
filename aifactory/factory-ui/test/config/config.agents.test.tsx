@@ -251,7 +251,7 @@ test('thinkFieldFollowsTheProviderForm', async () => {
   await waitFor(() => row('po'))
   // R-WP-67: a slot's think field offers a list too, so it carries the same arrow
   expect(
-    arrowOf(content.agents.think, 'agent-po-think')?.querySelector('svg'),
+    arrowOf(content.agents.think, 'agent-po-think'),
     'the slot think field shows the arrow of its offer',
   ).toBeTruthy()
   expect(await openChoice(content.agents.think)).toEqual([content.agents.inheritOption, 'true', 'false'])
@@ -330,7 +330,9 @@ test('devThinkIsLabeledAsTheDefault', async () => {
 
   const jon = within(row('po'))
   expect(jon.getByLabelText(content.agents.think)).toBeTruthy()
-  // UC-WP-104 GIVEN 4: this fixture offers no list (FREE) — an arrow would claim one
+  // UC-WP-104 GIVEN 4: this fixture offers no list (FREE) — an arrow would claim one. The core's UNKNOWN
+  // shares that branch (`config.think.tsx` builds one `<Input>` for both) and `NONE` renders no field at
+  // all, so this single absence is the whole clause "no offer, no arrow".
   expect(arrowOf(content.agents.think, 'agent-po-think'), 'a free text field carries no arrow').toBeNull()
   expect(jon.queryByLabelText(content.agents.thinkDefault)).toBeNull()
 })
@@ -360,7 +362,7 @@ test('agentModelFieldAsksForItsOwnConnection', async () => {
   expect(await openChoice(content.agents.model, 'agent-plan-model')).toEqual(['gpt-slot'])
   // R-WP-67: both slot rows build the one model field, so both carry the arrow
   expect(
-    arrowOf(content.agents.model, 'agent-po-model')?.querySelector('svg'),
+    arrowOf(content.agents.model, 'agent-po-model'),
     'the slot model field shows the arrow of its offer',
   ).toBeTruthy()
 

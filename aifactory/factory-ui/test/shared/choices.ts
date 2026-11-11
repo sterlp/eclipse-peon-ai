@@ -62,9 +62,14 @@ export function inputField(label: string, id?: string): HTMLInputElement {
   return fieldOf(label, id) as HTMLInputElement
 }
 
-/** The arrow area of a choice field: the base renders it only when the field is given one (R-WP-67). */
+/**
+ * The arrow of a choice field, named **by its icon** (R-WP-67): the base renders the suffix area only when
+ * the field is given one, and the arrow of an offer is the down icon `ChoiceArrow` hands it — another icon in
+ * that area is not that arrow, so the identity is what a test asks for. A field without a list has no area.
+ */
 export function arrowOf(label: string, id?: string): Element | null {
-  return fieldOf(label, id)?.closest('.ant-select')?.querySelector('.ant-select-suffix') ?? null
+  const area = fieldOf(label, id)?.closest('.ant-select')
+  return area?.querySelector('.ant-select-suffix .anticon-down') ?? null
 }
 
 /** The clear area of a choice field: the button the base adds on `allowClear` — the fabrik wants none. */
