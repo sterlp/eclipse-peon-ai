@@ -129,8 +129,8 @@ export function ChatPage({
    * here without an effect writing state (UC-WP-50).
    */
   const [runningTurn, setRunningTurn] = useState<string | null>(null)
-  /** The project whose turn the user asked to end, so its `done` must not read over his lines (D-16). */
-  const stoppedTurn = useRef<string | null>(null)
+  /** The turn he stopped: its project, whose `done` reads nothing (D-16), and the live row its rows began at. */
+  const stoppedTurn = useRef<{ projectId: string | null; from: number | null }>({ projectId: null, from: null })
   /**
    * What the last read holds, in the two units that read it: `lines` indexes a pending line's own position
    * (chat.pending.ts), `voices` is what a live anchor counts — a step of the trace is a line the read may add
@@ -158,7 +158,7 @@ export function ChatPage({
    * (D-A, UC-WP-54). The identity is what a working step answers to — two turns can anchor at the same
    * number of rows, so the anchor alone cannot say which step is the one being worked on (R-WP-40).
    */
-  const turn = useRef<{ anchor: number; id: number } | null>(null)
+  const turn = useRef<{ anchor: number; id: number; from: number } | null>(null)
   /** Hands out the ids of the turns, ever growing: a step of a past turn can never read as a step of the open one. */
   const turnSeq = useRef(0)
   /** The open turn as the screen sees it — no turn open, no step working (R-WP-40, UC-WP-72 GIVEN 2). */
@@ -179,13 +179,8 @@ export function ChatPage({
   const log = useRef<HTMLUListElement>(null)
   const { following, onLogScroll, followNow, followIfFollowing } = useFollowBottom(log)
   const projectId = project?.id ?? null
-  const showBoardFailure = useCallback((message: string) => setError(message), [])
-  const { tiles, refreshTiles, applySnapshot } = useTileBoard(projectId, showBoardFailure)
-  /**
-   * The action this browser asked for on this conversation's own tile, with the live mark its rebuild keeps:
-   * `202` says <em>taken</em>, so the end is the tile leaving the action's state area (R-WP-63, UC-WP-100).
-   * A ref, because the snapshot handler decides on it and a render's state is one render behind (D-B).
-   */
+  const { tiles, refreshTiles, applySnapshot } = useTileBoard(projectId, setError)
+  /** The action this browser asked for on its own tile, with the live mark its rebuild keeps (R-WP-63, UC-WP-100) */
   const actionWatch = useRef<ActionWatch | null>(null)
 
   useEffect(() => {
@@ -209,7 +204,7 @@ export function ChatPage({
     setLive(next)
   }, [])
 
-  const writeTurn = useCallback((next: { anchor: number; id: number } | null) => {
+  const writeTurn = useCallback((next: { anchor: number; id: number; from: number } | null) => {
     turn.current = next
     setOpenTurn(next?.id ?? null)
   }, [])
@@ -225,7 +220,8 @@ export function ChatPage({
     if (turn.current !== null) {
       return turn.current
     }
-    const started = { anchor: historyCount.current.voices + pendingLines.current.length, id: ++turnSeq.current }
+    const voices = historyCount.current.voices + pendingLines.current.length
+    const started = { anchor: voices, id: ++turnSeq.current, from: liveItems.current.length }
     writeTurn(started)
     return started
   }, [writeTurn])
@@ -239,7 +235,7 @@ export function ChatPage({
    * number this view gave the request, and a read that answers after a newer one has been applied is
    * dropped — reads race, and the slower one would move the log back (R-WP-11). `mark` is how many live
    * lines stood when the request went out; text and error behind it belong to a turn the read never saw and
-   * stay on the screen (UC-WP-7).
+   * stay on the screen (UC-WP-7). The same cut moved the row a stopped turn's rows hang at (R-WP-63).
    */
   const applyHistory = useCallback(
     (loaded: ChatMessage[], mark: number, read: number) => {
@@ -252,14 +248,15 @@ export function ChatPage({
       // input stands in the memory with the core's marker and would never be recognised again (R-WP-37)
       writePending(withoutConfirmed(pendingLines.current, loaded))
       writeLive(liveLinesAfterHistory(liveItems.current, mark))
+      stoppedTurn.current.from = null
     },
     [writeHistory, writePending, writeLive],
   )
 
   /**
    * One read of the conversation, numbered and stamped with the live list it has to meet — by the caller when
-   * the read answers to a moment of its own (the end of a tile action, R-WP-63), and always <em>before</em>
-   * the request: whatever the stream adds while the server answers is not in the answer (D-C, UC-WP-7).
+   * the read answers to a moment of its own (the end of a tile action, R-WP-63), always <em>before</em> the
+   * request: what the stream adds while the server answers is not in the answer (D-C, UC-WP-7).
    */
   const refresh = useCallback((mark = liveItems.current.length): Promise<void> => {
     if (projectId === null) {
@@ -333,12 +330,15 @@ export function ChatPage({
           // the turn is over: the next one anchors at the rows that stand when it reports, not at these, and
           // nothing of this turn works any more — its steps stay on the screen without their indicator
           writeTurn(null)
+          // no watch of a click survives a turn: an action never meets one here, and a stale watch would
+          // read a later core Compact as ours — Grenze 1 of R-WP-63 (a running turn is refused anyway)
+          actionWatch.current = null
           // one reload per turn — the turn that drained a queued input closes that input too, and the
           // history that lands carries every finished line, the team's own answer among them
-          if (stoppedTurn.current === projectId) {
+          if (stoppedTurn.current.projectId === projectId) {
             // UC-WP-50: after an accepted stop the lines he has seen stay on the screen — there is no
             // second store to read them back from, and a history read would throw them away (D-16, R-WP-11)
-            stoppedTurn.current = null
+            stoppedTurn.current.projectId = null
           } else {
             void refresh()
           }
@@ -363,8 +363,7 @@ export function ChatPage({
           // replace, never merge — a snapshot that accumulated would become a second history (R-WP-7); as the
           // freshest stand it retires every roster read that began before it (UC-WP-84 GIVEN 3)
           applySnapshot(event.tiles)
-          // an action this browser asked for ends where its tile leaves the state area: the conversation is
-          // rebuilt, and the action's own lines stand behind the mark as its trace (R-WP-63, UC-WP-100)
+          // the falling edge of the action this browser asked for rebuilds its conversation (R-WP-63)
           actionWatch.current = afterSnapshot(actionWatch.current, event.tiles, mark => {
             writeTurn(null)
             void refresh(mark)
@@ -438,8 +437,7 @@ export function ChatPage({
    * deliberately not one of them: a half Compact is not something a turn's stop may cut (D-17). Read above
    * `send` as well: the empty send way asks it before anything goes out (UC-WP-57 GIVEN 2).
    */
-  const busy =
-    (runningTurn !== null && runningTurn === projectId) || tiles.some(tile => tile.state === 'WORKING')
+  const busy = (runningTurn !== null && runningTurn === projectId) || tiles.some(tile => tile.state === 'WORKING')
 
   /**
    * One text into this project's conversation — whether the field wrote it or an empty send repeated the last
@@ -466,7 +464,7 @@ export function ChatPage({
     // the send is what opens the turn, so the flag follows the intent and not the answer (D-13): 202 only
     // says "taken", and a stop that comes one moment later must already address this turn
     setRunningTurn(projectId)
-    stoppedTurn.current = null
+    stoppedTurn.current.projectId = null
     try {
       // the name of this browser goes with it, and only when there is one (R-WP-25, UC-WP-48)
       await sendMessage(projectId, text, user)
@@ -515,7 +513,7 @@ export function ChatPage({
     try {
       await stopTurn(projectId)
       // remembered for the `done` that follows: his lines stay, the history is not re-read (D-16)
-      stoppedTurn.current = projectId
+      stoppedTurn.current = { projectId, from: turn.current?.from ?? null }
     } catch (reason) {
       if (!isAlreadyOver(reason)) {
         setError(errorMessage(reason))
@@ -529,18 +527,18 @@ export function ChatPage({
   }
 
   /**
-   * Clear or Compact one tile. 202 says <em>taken</em> and nothing more, so <b>no read follows here</b>: the
-   * action runs on the turn executor and a read at this moment answers with the conversation as it stood
-   * before. What reads again is the end of the tile's state area, watched with {@link afterSnapshot} — on
-   * this conversation's tile only, never on a member's (R-WP-63). A refusal (409 while a turn runs, 400 for
-   * a tile that offers nothing) changes nothing, the watch included (UC-WP-12, UC-WP-13).
+   * Clear or Compact one tile — the accepted action reads nothing here, its end is the falling edge of its
+   * state area, watched with {@link afterSnapshot} on this conversation's tile only, never a member's
+   * (R-WP-63, whose moment the module {@link acceptedAction} argues). Its mark is the row a stopped turn
+   * began at, so what only ever lived on the screen stays (R-WP-63). A refusal resets the watch (UC-WP-12, UC-WP-13).
    */
   async function act(name: string, action: AgentAction) {
     if (projectId === null) {
       return
     }
     setError(null)
-    actionWatch.current = acceptedAction(tiles.find(tile => tile.name === name), action, liveItems.current.length)
+    const mark = stoppedTurn.current.from ?? liveItems.current.length
+    actionWatch.current = acceptedAction(tiles.find(tile => tile.name === name), action, mark)
     try {
       await agentAction(projectId, name, action)
     } catch (reason) {

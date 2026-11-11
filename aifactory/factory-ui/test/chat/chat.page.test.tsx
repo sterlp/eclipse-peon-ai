@@ -451,6 +451,49 @@ test('stopKeepsTheShownLines', async () => {
   expect(screen.getByTestId('chat-stop')).toBeDisabled()
 })
 
+/** A stopped turn lives only live (D-16: its `done` reads nothing), so its rows are not in the Bestand — the
+ *  rebuild of the action that follows takes its mark where they began, the rebuild after ends them (R-WP-63). */
+// UC-WP-100
+// UC-WP-50
+test('aCompactAfterAStopKeepsTheLinesOfTheStoppedTurn', async () => {
+  const FIRST = 'Session compacted: zwei Dateien, eine Banane.'
+  const SECOND = 'Session compacted: und wieder.'
+  const chat = stubChat({ messages: [QUESTION], agents: [tile('Jon', 'IDLE')] })
+  render(<ChatPage project={project()} />)
+  await flush()
+  const historyReads = chat.countOf('/messages', 'GET')
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'schlaf drei sekunden' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await chat.push(event('tool', { text: 'sleep 3' }))
+  await chat.push(event('partial', { kind: 'answer', text: 'Ich schlafe gerade' }))
+  fireEvent.click(screen.getByTestId('chat-stop'))
+  await flush()
+  chat.setMessages([QUESTION])
+  await chat.push(event('done', { millis: 5 }))
+  await flush()
+
+  // the conversation's own Compact ends now: its mark is the row the stopped turn started at
+  chat.setMessages([{ role: 'user', text: FIRST }])
+  fireEvent.click(screen.getByTestId('tile-compact-Jon'))
+  await chat.push(event('agents', { tiles: [tile('Jon', 'COMPACTING')] }))
+  await chat.push(event('agents', { tiles: [tile('Jon', 'IDLE')] }))
+  await flush()
+  expect(chat.countOf('/messages', 'GET'), 'one read, on the falling edge').toBe(historyReads + 1)
+  expect(userLineTexts(), 'the Bestand stands, beside his line').toEqual([FIRST, 'schlaf drei sekunden'])
+  expect(screen.getByTestId('chat-live'), 'the stopped answer stays').toHaveTextContent('Ich schlafe gerade')
+  expect(traceSteps().map(step => step.textContent), 'and so is its step').toEqual(['sleep 3'])
+  // R-WP-63's second sentence: from here they are an ordinary live trace — the next rebuild ends them
+  chat.setMessages([{ role: 'user', text: SECOND }])
+  fireEvent.click(screen.getByTestId('tile-compact-Jon'))
+  await chat.push(event('agents', { tiles: [tile('Jon', 'COMPACTING')] }))
+  await chat.push(event('agents', { tiles: [tile('Jon', 'IDLE')] }))
+  await flush()
+  expect(chat.countOf('/messages', 'GET'), 'again exactly one read').toBe(historyReads + 2)
+  expect(userLineTexts(), 'the fresh Bestand stands').toEqual([SECOND, 'schlaf drei sekunden'])
+  expect(screen.queryAllByTestId('chat-live'), 'the stopped turn ends like any live trace').toHaveLength(0)
+  expect(screen.queryAllByTestId('chat-timeline'), 'and its step went with it').toHaveLength(0)
+})
+
 // UC-WP-50
 test('stopOnAFinishedTurnIsSilent', async () => {
   // a roster that says WORKING is enough to offer the stop — another user's turn is stoppable too (UC-WP-22)
