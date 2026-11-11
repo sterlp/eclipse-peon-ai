@@ -105,7 +105,7 @@
   min-height: 0;
   overflow-y: auto;
   min-width: 0;
-  /* R-WP-68 with R-WP-43: the air belongs to the page, the band stays flush */
+  /* R-WP-68 with R-WP-43: AntD's Layout.Content has no padding (layout/style:66-71) — the page's own air */
   padding-block-start: var(--space-4);
   padding-inline: var(--content-gutter);
   /* the room the frame used to carry below the row (A2): a page ends with air, the tree beside it with the
@@ -816,7 +816,7 @@ button {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* its own measures, none inherited from the page rule — the input is the footer row of the window (A2) */
+  /* its own inline and end measures — the start is the page's air (R-WP-68); the input is the footer (A2) */
   padding-inline: 0;
   padding-block-end: 0;
 }

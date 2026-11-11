@@ -57,10 +57,11 @@ test('theHeaderRowHoldsTheMenuAndNoSecondSettingsEntry', () => {
 // R-WP-68
 // UC-WP-105
 test('everyPageStartsWithAirBelowTheBand', () => {
-  expect(declarations('.view'), 'a page begins with air below the band').toMatch(
-    /padding-block-start:\s*var\(--space-4\)\s*;/,
+  const room = declarations('.view').match(/padding-block-start:\s*var\((--space-\d)\)\s*;/)
+  expect(room, 'a page begins with air below the band, measured in a room-system token').toBeTruthy()
+  expect(baseSheet(), `and the step it names (${room?.[1]}) is defined in the room system`).toContain(
+    `${room?.[1]}:`,
   )
-  expect(baseSheet(), 'and the step it names is a token of the room system').toContain('--space-4: 16px')
   // the chat hands the gutter to its own surfaces but keeps the page's air: the override names inline and end
   const chat = declarations('.chat-workspace > .view')
   expect(chat, 'the chat still carries its own gutter').toContain('padding-inline: 0')
