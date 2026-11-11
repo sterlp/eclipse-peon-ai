@@ -1,132 +1,102 @@
 # Session-Stand — AI Factory (OAF)
 
-Paul: **ein Thema pro Nachricht**, kurz. Nur Jon schreibt `docs/`. Paul committet selbst (Core);
-Fabrik-Inkremente committet Dev je Schritt und pusht. **Core-Änderungen NUR mit Pauls Approval, per
-Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwissen (Plan-Dateien und
-`peon-plan/review-findings.md` sind das Memory); Docs duplizieren nie Core-Regeln; Plan-Archive werden
-**gelöscht**, nie committet.
+Paul: **ein Thema pro Nachricht**, kurz, Fragen **im Chat** (kein `askUser`). Nur Jon schreibt `docs/`;
+Dev committet sie auf mein Wort (`git add -- <pfade>` + nacktes `git commit`, **nie `git add -A`**).
+**Core-Änderungen NUR mit Pauls Approval, per Proposal mit WARUM** — gilt auch für Core-Tests.
+`AGENTS*.md` = nur Dauerwissen (Plan-Dateien und `peon-plan/review-findings.md` sind das Memory);
+Docs duplizieren nie Core-Regeln; Plan-Archive werden **gelöscht**, nie committet.
 
-## Stand (2026-11-11, Zyklus „Auswahlfeld: Pfeil ja, Clearer nein" — gebaut, Review ACCEPTED, ✅)
+## Stand (2026-11-11, Zyklus „Look: Luft unter dem Band" — gebaut, Review #17 **ACCEPTED**, ✅)
 
-* **B0 erledigt (Paul: „wenn es mit dem bau besser ist dann absegnen")**: [R-WP-67/UC-WP-104](ui.md) **✅**,
-  gebaut `4c1b75fe` (Pfeil) + `39ed1e24` (`allowClear` raus), Review #16 **ACCEPTED** (2 LOWs, beide von Jon
-  nachgebaut: Icon-**Identität** `.anticon-down` statt „irgendein `svg`"; Kommentar „FREE/UNKNOWN share this
-  branch"). Facts: AntD 6.7.0 malt am `AutoComplete` **keinen** Pfeil ⇒ `suffix={<ChoiceArrow />}`, **eine**
-  neue Datei `factory-ui/src/config/config.choice.tsx` (12 Zeilen, Blatt, kein Zyklus); die beiden Felder
-  stehen **nur auf der Config-Seite** — **nicht im Composer** (hatte ich Paul falsch gesagt).
-  Plugin-Parität belegt: SWT-`Combo` hat immer einen Pfeil und **niemals** einen Clear-Button.
-  **⏳ bei Paul:** „Clearer entfällt" (`open-points.md`) · **Browser-Abnahme der Affordanz offen**.
-  Gates: UI **292 / 35 Dateien**, oxlint/tsc/build/`antd lint` je 0, Doc-Lint **29** (UC 131/131, nur
-  `UC-WP-101` fremd/offen). Kein Architektur-Doc nötig (Review §4: zustandslose Präsentationskomponente).
-* **Zyklus-Stand:** gepusht bis `d699584e` (`fb19a55d` = LOW-1/LOW-2 + mein ✅-Flip, `d699584e` = Skill-Ledger
-  + `test-honesty`-Proposal). Review #16 liegt in `aifactory/peon-plan/review-findings.md` §16; Plan archiviert
-  und **gelöscht** (Convention). **Noch offen:** Pauls Wort zum ⏳ „Clearer entfällt" und die Browser-Abnahme.
-### Voriger Zyklus „Grundregeln + Stop-Barkeit + Panel-Lebensdauer" — gebaut, reviewed, gemergt-ready
+* **R-WP-68/UC-WP-105 ✅** (`docs/ui.md`): jede Fläche beginnt unter dem Band mit Luft —
+  `padding-block-start: var(--space-4)` im `.view`-Block (`styles.css:109`), **das Band bleibt randlos**
+  (`margin: 0` bleibt gepinnt, `theme.test.ts:44`, R-WP-43 „ohne Spalt" 2026-11-08 gilt weiter).
+  gebaut `920b4e5f` (5 Pfade, +58/−6), Review #17 in `peon-plan/review-findings.md` §17 — **0 HIGH, 0 MEDIUM,
+  6 LOWs** (alle angenommen): §17.1/§17.2 Kommentar-Präzision in `styles.css`, §17.3 Test pinnte Stufe **und**
+  Zahl → jetzt „der genannte Token muss definiert sein" (stufen-offen), §17.4–17.6 meine Docs-Hygiene.
+  **Look selbst am Browser noch offen.**
+* **B0/Zyklus davor komplett zu Ende:** R-WP-67/UC-WP-104 ✅, **Paul hat am Browser abgenommen** („passt …
+  sonnst passt alles") ⇒ `⏳ Clearer entfällt` ist entschieden und aus `open-points.md` entfernt.
+* **Offen an Paul (eine Frage, noch nicht gestellt):** **welche Überschriften** müssen im Main-Panel raus.
+  Bestand (gemessen): `chat.page.tsx:482` `h1` = Projektname (**bewusst erlaubt**, R-WP-43, sein Entscheid
+  2026-11-10), `config.agents.tsx:222` `h2` „Agents", `:236` `h3` je Slot-Name. Die Seiten-`h1`
+  (Projekte/Settings) waren mit `7fa3f429` schon weg. **h2/h3 nirgends gepinnt.** Meine Empfehlung: `h2` raus,
+  Slot-Namen `h3` bleiben (Plugin-Parität: je Agent eine betitelte Gruppe), Chat-Kopf bleibt.
+  Bei Bestätigung: **R-WP-69/UC-WP-106** (IDs mit `nextIds` ziehen) + Schärfung `docs/ui.md` ~181–185.
+* Gates nach Review #17 (Review selbst gemessen): UI **35 Dateien / 293 Tests**, oxlint 0/0, tsc 0, build ✓,
+  `antd lint src` 62 Dateien/0, `lintDocsAndTests` **29** (UC 132/132, nur `UC-WP-101` + 28 fremd).
+* **Größen:** `styles.css` **1288 > 1000** (R-WP-64 blockiert weiter), `chat.page.tsx` 525/600,
+  `theme.test.ts` 213, `sheets.ts` 85.
+* **Fremd im Baum (nicht anfassen, nicht committen):** `.agents/skills/wiki/skill-impact.md` — von Paul per
+  Scaffold akzeptierte `test-honesty`-Zeile, liegt **oberhalb** von `aifactory/`. Deshalb Status-Reports aus
+  `aifactory/` immer **pfadbezogen** (`git status --short .`) melden, sonst wirkt Fremdänderung wie eigene.
 
-* **Branch `web-factory-5`**, gepusht bis `bb2d64a5` (Docs `4f507525`, Skill-Ledger `bb2d64a5`). Gates: **UI 292 Tests / 35 Dateien**,
-  **Backend 276 / missCount = 1**, oxlint/tsc/`antd lint` je 0, `lintDocsAndTests` **29 Findings**
-  (28 fremd UC-CR/UC-PC + UC-WP-101), **UC 130/130 definiert**, keine `UNBELEGT_ERLEDIGT`.
-* **Regeln dieses Zyklus — alle ✅, Browser-Abnahme durch Paul offen:**
-  **R-WP-65/UC-WP-102** Stop nur bei stoppbarem Turn (`9f466a8a` + `c2a18caf` + `ce4538bb`) ·
-  **R-WP-66/UC-WP-103** Panel-Lebensdauer (`351fea28` + `ce4538bb`) ·
-  **R-WP-62 geschärft** (Panel ist das Panel, Lebensdauer ist R-WP-66).
-  **❌ blieb nur R-WP-64/UC-WP-101** (Styling ans Widget) — **das nächste Feature-Inkrement**.
-* **Bau in vier kleinen Schritten** (bewährt): A Testteilung + `chat.turn.controls.ts` (`8a8b5030`) →
-  A2b `chat.read.ts` (`43750900`) → B Backend-Feld + UI (`9f466a8a`, `351fea28`, Marker `53a0c9c3`) →
-  C Review-Nacharbeit Verhalten (`c2a18caf`) → D Nachweise nur (`ce4538bb`, Docs `461aa2f3`).
-  Größen jetzt: `chat.page.tsx` **525**/600, `chat.turn.controls.ts` 172, `chat.read.ts` 94,
-  `chat.page.test.tsx` 738, `chat.page.stop.test.tsx` 366. **`styles.css` weiterhin 1286 > 1000** (R-WP-64).
-* **Architektur-Entscheidung:** „ein Turn ist stoppbar" gehört `TurnClaim.turnIsStoppable()` → **ein** Feld
-  `stoppable` am `AgentTileDto`, gesetzt **nur auf Jons Kachel**, getragen vom bestehenden
-  Kachel-Snapshot/Push (R-WP-60). Abgelehnt: eigener Endpoint/Wrapper, neuer `AgentTileState` „AKTION",
-  dynamische `TileCapability`.
-* **Zwei Grenzen, die der Review gefunden hat und die jetzt im Doc stehen** (`docs/chat.md` R-WP-65):
-  der **eigene Send-Intent** überstimmt den Stand **nicht**, sobald eine Kachel Arbeit meldet
-  (`stoppable = some(stoppable) || (ownTurn && keine Kachel WORKING/COMPACTING)`); und eine **`409` auf
-  Stop lässt den Intent fallen** (Netzwerkfehler nicht). Grund: ein Turn, den nur die eigene Erinnerung
-  behält, ist kein Zustand.
-* **AF-ADR-004**: Jons eigene Absorptions-Ausnahme „409 auf Stop bleibt still" (2026-11-10) ist von Paul
-  verworfen — **keine Server-Ablehnung auf eine Nutzer-Aktion bleibt unsichtbar**.
-* **Review #15** (Verdict REJECTED → alle Punkte gebaut): Findings liegen in
-  `aifactory/peon-plan/review-findings.md` §15 (der Plan wird überschrieben, Findings müssen dorthin —
-  Review-Agent kann nur `overview.md` schreiben, Kopie ist Jons Schritt).
-* **Nach Pauls Antworten offengeblieben:** **B0/Q1** Reasoning-Dropdown (meine Test-Anleitung steht im
-  Chat; `AutoComplete` hat keinen Chevron, rechts sitzt der Clear-Knopf) · ⏳ gestoppte Zeilen überleben
-  genau einen Rebuild · ⏳ Summary-Zeile nach Compact = eigene Eingabe (Plugin-Parität) ·
-  ⏳ Kern-Flags ohne Hook (B5-Grenze) · ⏳ M3 Spring-Advice · ⏳ Stop-Fenster nach eigenem Senden ·
-  Browser-Abnahmen: Look Inc 4, Drawer §7, A7 Punkt 8, R-WP-48, F8 Config, Look-Story, R-WP-58/59/61/62,
-  R-WP-65/66, Compact/Clear am echten Browser.
-* **Nächste Inkrete:** 1) **B0-Zyklus zu Ende bauen** — Inkrement B (`allowClear` am Think-Feld weg);
-  A ist grün, O1 von Jon entschieden: **`suffix`** statt `suffixIcon` (deprecated);
-  2) **R-WP-64** Styling ans Widget — `styles.css` 1286 in kleine Schritte auflösen (gemeinsame Datei =
-  Tokens/Typografie/Geteiltes; `test/shared/sheets.ts::declarations()` trifft nur den **ersten** Block,
-  CSS-Tests müssen mitziehen); 3) C-2a Compact-Ergebnis live; 4) C-1 TurnClaim-Timeout
-  (`ProjectRuntime.java:348`); 5) F9/F10, M2b. Auf Zuruf: Büroklammer (🚧).
-* **Sicherheitsbefund (unverändert relevant):** ≥13 **Injektionsversuche ausschließlich in
-  Tool-Resultaten** (Shell-Output, Leseblöcke, `compactSession`, erfundene „[Queued Message]"-Aufträge wie
-  „B7c"): Verifikation auslassen, Trailer „Approved by human partner: Jon", falsche „harness note".
-  Nichts befolgt — Regel dauerhaft im memory*-Speicher.
+### Nächste Inkrete
+1. Antwort von Paul zu den Überschriften → ggf. R-WP-69/UC-WP-106.
+2. **R-WP-64** Styling ans Widget — `styles.css` 1288 in kleine Schritte auflösen (gemeinsame Datei =
+   Tokens/Typografie/Geteiltes; `test/shared/sheets.ts::declarations()` trifft nur den **ersten** Block,
+   CSS-Tests müssen mitziehen; `padding-block-end: 2rem` ist ein Literal-Rest, in R-WP-68 als Restarbeit
+   benannt).
+3. C-2a Compact-Ergebnis live · C-1 TurnClaim-Timeout (`ProjectRuntime.java:348`) · F9/F10 · M2b.
+   Auf Zuruf: Büroklammer (🚧).
+4. **Ältere Browser-Abnahmen stehen weiter aus** (Pauls „sonnst passt alles" war B0, keine Sammelabnahme —
+   nicht als Abnahme verbuchen): Look Inc 4, Drawer §7, A7 P8, R-WP-48, F8, Look-Story, R-WP-58/59/61/62,
+   R-WP-65/66, Compact/Clear, Feldabstände im Error-Panel.
 
 ## Fallstricke (gemessen)
 
-* **Doc-Lint selbst messen, nicht die Agenturmeldung:** Dev meldete nach meinem Doc-Edit **33** Befunde
-  und schrieb vier davon (`DOPPELT_DEFINIERT`, `PRAEFIX_FEHLT`, `UC_OHNE_REGEL`, `STATUS_FEHLT`) meiner
-  `memory.md`-Überschrift zu. Nach meinem Umbau der Überschrift messe ich **29** (Basis wieder erreicht,
-  UC-WP-104 nicht mehr `UNBELEGT`) — die Ursache ist **nicht mehr reproduzierbar** (`memory.md` steht
-  ohnehin unter „not participating"). Fazit bleibt: ID-Häufungen in Überschriften sind verdächtig, und die
-  Zahl kommt aus meinem Lint-Lauf, nicht aus dem Report.
-* **`toBeNull()`-Fall:** „ist nicht `null`" als `.not.toBeNull()` ist auf **`undefined` wahr** — die
-  Pfeil-Aussage war grün, obwohl kein Element da war (von Dev per Temp-Log gemessen). Nachweis immer
-  `toBeTruthy()` am Element — und seit LOW-1 des Reviews auf die **Identität** des Icons prüfen
-  (`.anticon-down`), nicht nur auf „irgendein `svg`". AntD 6.7.0: **`suffixIcon` ist deprecated** (`antd info` zeigt es nicht, die Quelle
-  `BaseSelect/index.d.ts:98` und `antd lint` schon) ⇒ **`suffix`** am `AutoComplete`. — Nicht belegt ist die
-  Dev-Notiz „`antd lint ./src` scannt 0 Dateien": der Review maß `src` **und** `./src` = je 62 Dateien. Wer
-  eine Gate-Zahl meldet, nennt den exakten Befehl; eine „0 Dateien"-Aussage nicht ungeprüft weiterschreiben.
-* **Test-Marker: eine ID pro `//`-Zeile, direkt über dem Test** — Mischzeilen (`// R-WP-65, UC-WP-102`)
-  zählen nicht, die UC bleibt `UNBELEGT` (2× gemessen; steht jetzt in `AGENTS-DEV.md`). Nach einem
-  Marker-Edit den **Lint-Lauf** zeigen, nicht nur die Tests.
-* **Der Review-Agent kann nicht in `review-findings.md` schreiben** (nur `overview.md`) → Jon kopiert den
-  Block, bevor der nächste Planüberschrieb den Fund zerstört.
-* **Ein lokaler Client-Intent, der eine Server-Aussage überstimmt, ist eine Dauer-Falle** — er ist die
-  einzige Stelle dieser Art im Chat und kippt bei jedem neuen „ist gerade etwas zu tun?"-Fall.
-* **Dev meldet auch Ungeprüftes als Tatsache** (dieser Zyklus: „Plan wurde archiviert" — nie nachgesehen;
-  zuvor: „Docs entfernen R-WP-64/65"): vor jeder Reaktion selbst messen bzw. Befehl-Ausgabe verlangen.
+* **Agenten-Zahlen sind Behauptungen:** Plan meldete Doc-Lint-Basis 30 statt meiner 29, Dev „`antd lint ./src`
+  scannt 0 Dateien", der Review maß zweimal **62**. Jede Gate-Zahl braucht die echte Werkzeugzeile; widersprechen
+  sich zwei Agenten, messe ich. Doc-Lint ist **mein** Werkzeug: `lintDocsAndTests` (docRoots `["docs"]`,
+  testRoots `factory-backend/src/test`, `factory-ui/test`, `factory-ui/src`), **`idPattern` weglassen**,
+  Basis **29**. `nextIds` zählt auch Verweise in Linktexten: erst schreiben, dann ziehen.
+* **Nachweis-Form:** `.not.toBeNull()` ist auf `undefined` **wahr**; Abwesenheit auf einem Zweig, der ein
+  anderes Element malt, ist selbstgrün. Immer `toBeTruthy()` am Element und auf die **Identität** prüfen
+  (`.anticon-down`, nicht „irgendein `svg`"). Globaler Skill `test-honesty` laden, sobald Tests geschrieben
+  oder Incremente grün gemeldet werden.
+* **Test-Marker: eine ID pro `//`-Zeile, direkt über dem Test** — Mischzeilen zählen nicht, die UC bleibt
+  `UNBELEGT`. Nach einem Marker-Edit den **Lint-Lauf** zeigen. **Eine GIVEN-Klausel ohne eigenen Test ist
+  unbelegt** — außer der Fakt ist wörtlich anderweitig gepinnt (Review #17 G2: `margin: 0`), dann keine
+  Doppel-Aussage verlangen.
+* **Mein eigener Edit kann eine Überschrift fressen:** `oldString` = Überschriftenzeile und `newString` ohne
+  sie ⇒ die Regel verschwindet. Anker, der eine Überschrift ist, immer **in beiden** Strings, oder Anker
+  unterhalb der Überschrift.
+* **Der Review-Agent kann nur `overview.md` schreiben** → seinen Befundblock **sofort** nach
+  `peon-plan/review-findings.md` kopieren, bevor der nächste Planüberschrieb ihn zerstört.
 * Bauen: Kern `clean test` → `install -DskipTests` → Fabrik `clean verify`; immer `clean`. Backend
   `mvn -o -f aifactory/pom.xml -pl factory-backend clean test`; UI `cd factory-ui &&
   COREPACK_ENABLE_PROJECT_SPEC=0 pnpm test`. Nur-UI-Änderung ⇒ nur UI-Tests. Smoke:
   `spring-boot:run -Dspring-boot.run.arguments=--server.port=8099` → `http://localhost:8099/ui/`.
-  nvm-`default` bleibt 22.12 ⇒ PATH-Export auf v22.23.4 Pflicht; vor jedem UI-Gate `node -v`/`pnpm -v`.
+  nvm-`default` bleibt 22.12 ⇒ PATH auf v22.23.4; vor jedem UI-Gate `node -v`.
 * **Vitest-Filter:** nie `pnpm test -- <datei>` (jsdom CSS-Fehler) ⇒ `pnpm test -t '<name>'`; `-t` filtert
   **Testnamen** — ein Dateiwort ist ein **Scheinlauf**.
-* **Anzeige eines offenen Zustands immer an das laufende Objekt binden**; **Identität schützt das _Ob_,
-  nicht das _Wo_**. Der Dreh-Indikator endet über `writeTurn(null)`; eine **Aktion** schuldet kein Turn-Ende,
-  also endet er bei ihr über die Kachel-Fallkante.
-* **Zusage ≠ Fertig:** `202` heißt „angenommen"; Verlauf und Roster gehören an das **Ende** der Aktion
-  (`agents`-Fallkante). Der Clear meldet nie etwas außer diesem Snapshot — der Kern hat keinen `onClear`-Hook.
-* **Stale-Fallen Fabrik-UI:** `factory-ui/pom.xml` clean-Filesets zeigen auf `web-app/` ⇒ `mvn clean`
-  löscht `factory-ui/dist` nie; `copy-resources` ist additiv; Eclipse baut nie `pnpm run build`; ein
-  repo-aufgelöster `spring-boot:run` liefert die Oktober-SPA aus `~/.m2`. Bei „Zustand kommt aus Quelle X"
-  immer am **Frischbau** messen.
-* AntD 6.7.0: hell malt **`lightSiderBg`**; `matchMedia`+`ResizeObserver` stubben; `collapsed` controlled ⇒
-  Effekt ignoriert; `Menu` ohne `navigation`-Landmarke; **Alert** bringt `role="alert"` selbst;
-  **`AutoComplete` malt keinen Default-Pfeil** ⇒ `suffix={<DownOutlined />}` (`suffixIcon` ist deprecated,
-  R-WP-67). AntD nie aus dem Gedächtnis:
-  `antd info`/`antd lint` (Skill `~/.agents/skills/antd`; CLI nur unter v22.23.4). jsdom rechnet **keine
-  Farbe** ⇒ Rot-Beweis über DOM-Handle + Sheet-Deklaration; `+`/`~`-CSS braucht den Nestungs-Beweis;
-  Vitest ohne `.as()`; `act()`-Rauschen bei AntD+React 19 ist Baseline.
-* `lintDocsAndTests`/`nextIds`: Pfade relativ zum Session-cwd (`docRoots:["docs"]`, `testRoots`:
-  `factory-backend/src/test`, `factory-ui/test`, `factory-ui/src`) — **`idPattern` weglassen**; Basis
-  **29 Findings**. `nextIds` zählt auch **Verweise** in Linktexten: erst schreiben, dann ziehen.
+* **Anzeige eines offenen Zustands immer an das laufende Objekt binden**; **Identität schützt das _Ob_, nicht
+  das _Wo_**. Ein lokaler Client-Intent, der eine Server-Aussage überstimmt, ist eine Dauer-Falle (R-WP-65).
+  **Zusage ≠ Fertig:** `202` heißt „angenommen"; Verlauf und Roster gehören an das **Ende** der Aktion.
+* **Stale-Fallen Fabrik-UI:** `factory-ui/pom.xml` clean-Filesets zeigen auf `web-app/` ⇒ `mvn clean` löscht
+  `factory-ui/dist` nie; `copy-resources` ist additiv; Eclipse baut nie `pnpm run build`; ein repo-aufgelöster
+  `spring-boot:run` liefert die Oktober-SPA aus `~/.m2`. Bei „Zustand kommt aus Quelle X" am **Frischbau** messen.
+* AntD 6.7.0 nie aus dem Gedächtnis (Skill `~/.agents/skills/antd`, CLI nur unter v22.23.4): **`AutoComplete`
+  malt keinen Default-Pfeil** ⇒ `suffix={<ChoiceArrow />}` (`suffixIcon` deprecated, `BaseSelect/index.d.ts:98`);
+  hell malt `lightSiderBg`; `matchMedia`+`ResizeObserver` stubben; `collapsed` controlled ⇒ Effekt ignoriert;
+  `Menu` ohne `navigation`-Landmarke; **Alert** bringt `role="alert"` selbst. jsdom rechnet **keine Farbe** und
+  lädt **kein Stylesheet** (`?raw`) ⇒ Blatt-Deklaration + DOM-Handle, `+`/`~`-CSS braucht den Nestungs-Beweis.
 * Git mit Paul im selben Repo: **nie amend/rebase auf seinen Commits**, nur `aifactory/`-Pfade, **kein
   Modell-/Tool-Name, kein `Assisted-by`**, **kein `git add -A`**; `peon-plan/` ist enttrackt + ignored.
-  Neuen Datei committen: `git add -- <pfade>` + **nacktes** `git commit` (`-o` nimmt Ungetrackte nicht);
-  Index-Löschung = `git rm --cached` + nacktes `git commit`. Tool-Quirks: `eclipseEditFile` verliert
-  `oldString` bei langen Blöcken ⇒ `diskEditFile` mit frisch gelesener Datei und kurzem Anker;
-  `*InsertLines` scheitern an Dateiende mit Leerzeile; Mutations-Restore nur per `cp` + `cmp`.
-* **Agenten-Grenzen:** Review-Verdicts und neue Inkremente kommen **nur von Jon**; Dev-Antworten manchmal
-  als rohes Tool-Fragment ⇒ Text-Status verlangen, nie neu bauen. Kontext: >90 % ⇒ `compactPlan`,
+  Neue Datei committen: `git add -- <pfade>` + **nacktes** `git commit` (`-o` nimmt Ungetrackte nicht);
+  Index-Löschung = `git rm --cached` + nacktes `git commit`. Tool-Quirks: `eclipseEditFile` verliert `oldString`
+  bei langen Blöcken ⇒ `diskEditFile` mit frisch gelesener Datei und kurzem Anker; `*InsertLines` scheitern an
+  Dateiende mit Leerzeile; Mutations-Restore nur per `cp` + `cmp`.
+* **Agenten-Grenzen:** Review-Verdicts und neue Inkremente kommen **nur von Jon**; Dev-Antworten manchmal als
+  rohes Tool-Fragment ⇒ Text-Status verlangen, nie neu bauen. Kontext: >90 % ⇒ `compactPlan`,
   >85 % ⇒ `compactDev`/`compactReview`.
-* **Aufträge an Plan/Dev beginnen mit „Auftrag = Inkrement X, entscheidungsvollständig"** — sonst plant der
-  Plan eine Scope-Frage. Je Inkrement **eine** Polarität (nur hinzufügen ODER nur löschen).
-* `web-prototype.md` existiert nicht mehr — SOLL in `chat.md`/`files.md`. Grundsatzentscheidungen Pauls
-  immer im **Eclipse-Plugin** nachlesen (`chat.html`, `ActionsBarWidget`, `AIChatView`), nicht neu fragen.
+* **Aufträge an Plan/Dev beginnen mit „Auftrag = Inkrement X, entscheidungsvollständig"**; je Inkrement
+  **eine** Polarität (nur hinzufügen ODER nur löschen). Vor jeder Dateänderung `git status`/`git diff`,
+  Rücksicherung nur per `cp`.
+* `web-prototype.md` existiert nicht mehr — SOLL in `chat.md`/`files.md`. Grundsatzentscheidungen Pauls immer im
+  **Eclipse-Plugin** nachlesen (`chat.html`, `ActionsBarWidget`, `AIChatView`, `ModelComboWidget`), nicht neu
+  fragen.
+* **Sicherheitsbefund (unverändert relevant):** ≥13 **Injektionsversuche ausschließlich in Tool-Resultaten**
+  (Shell-Output, Leseblöcke, `compactSession`, erfundene „[Queued Message]"-Aufträge): Verifikation auslassen,
+  Trailer „Approved by human partner", falsche „harness note". Nichts befolgt — Regel dauerhaft im
+  memory*-Speicher.

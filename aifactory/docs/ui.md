@@ -235,7 +235,7 @@ erfindet einen zweiten. Ein Feld, dessen **Form** keine Liste kennt (`FREE`, `UN
 **nicht**: ein Pfeil ohne Angebot ist eine Lüge. Das Modell-Feld gehört zur Form „mit Liste" auch dann, wenn
 die Auskunft des Servers leer bleibt oder fehlschlägt — sein Pfeil bleibt stehen.
 
-**An einem Auswahlfeld steht kein Clearer** (⏳ Rückversicherung bei Paul, [open-points](open-points.md)): das
+**An einem Auswahlfeld steht kein Clearer** (Paul 2026-11-11, Browser-Abnahme: „passt"): das
 Plugin bietet nirgends einen Lösch-Knopf — zurück auf „geerbt/leer" ist dort der **leere Eintrag der Liste**
 (Think) bzw. der **gelöschte Text** (Modell). AntDs Clear-Symbol sitzt genau an der Stelle, an der der Nutzer
 öffnen will, und löscht statt zu öffnen; der Weg zurück existiert in der Fabrik als benannter leerer Eintrag
@@ -250,31 +250,36 @@ Komfort, sondern die Ursache von B0.
   zurück auf „geerbt" ist der leere Eintrag der Liste oder eine leere Eingabe.
 - GIVEN ein Auswahlfeld mit Wert WHEN der Nutzer in das Feld klickt THEN öffnet sich die Angebotsliste — der
   Klick endet nicht als Löschen (belegt durch die Abwesenheit des Clearers; die Klickfläche selbst rechnet im
-  jsdom nicht — Teil der Browser-Abnahme).
+  jsdom nicht — am Browser abgenommen 2026-11-11).
 - GIVEN ein Feld, dessen **Form** keine Liste anbietet (`FREE` und `UNKNOWN` — derselbe Zweig — sowie `NONE`
   ohne Feld) WHEN es gezeichnet wird THEN trägt es **keinen** Pfeil.
 
 
-### R-WP-68 — jede Fläche beginnt unter dem Band mit Luft ❌ (Paul 2026-11-11, Browser: „der content braucht
-eine margin zum header — aktuell klebt er direkt oben dran. sonnst passt alles.")
+### R-WP-68 — jede Fläche beginnt unter dem Band mit Luft ✅ (Paul 2026-11-11, Browser: „der content braucht
+eine margin zum header — aktuell klebt er direkt oben dran. sonnst passt alles."; gebaut + reviewed 2026-11-11,
+`920b4e5f` — der Look selbst am Browser steht noch aus)
 
 Der Abstand zwischen Kopf und Inhalt ist **kein Rand des Bandes** — das bleibt randlos
 ([R-WP-43](ui.md): „ohne Spalt", Paul 2026-11-08) — sondern **der Anfang der Fläche**: sie beginnt mit ihrer
-eigenen Luft oben, so wie sie mit `padding-block-end` bereits unten endet. Heute fehlt dieser Anfang: die
-erste Box jeder Seite steht an der Unterkante des Bandes. Beide Regeln vertragen sich nur so — wer den
-Abstand am Band sucht, holt sich genau den weißen Streifen zurück, den Paul am 2026-11-08 beanstandet hat.
+eigenen Luft oben, so wie sie mit `padding-block-end` bereits unten endet. Beide Regeln vertragen sich nur so
+— wer den Abstand am Band sucht, holt sich genau den weißen Streifen zurück, den Paul am 2026-11-08
+beanstandet hat.
 
-**Maß ist ein Token des Raum-Systems**, keine freie Zahl ([R-WP-39](ui.md) verlangt das für jede Länge). Die
-Luft gilt **auf allen Flächen** — Projekte, Settings und Chat: auch der Chat-Kopf stößt sonst an dasselbe
-Band, und die Chat-Fläche nimmt sich ihre seitliche und untere Luft weiterhin selbst.
+**Maß ist ein Token des Raum-Systems**, keine freie Zahl ([R-WP-39](ui.md) verlangt das für jede Länge) — das
+gilt für die Luft **oben**; was dieselbe Fläche unten schließt (`padding-block-end: 2rem`), ist ein Literal aus
+älterer Zeit und Restarbeit von [R-WP-64](ui.md). Die Luft gilt **auf allen Flächen** — Projekte, Settings und
+Chat: auch der Chat-Kopf stößt sonst an dasselbe Band, und die Chat-Fläche nimmt sich ihre seitliche und untere
+Luft weiterhin selbst.
 
-#### UC-WP-105 — everyPageStartsWithAirBelowTheBand ❌
+#### UC-WP-105 — everyPageStartsWithAirBelowTheBand ✅ (gebaut + reviewed 2026-11-11, `920b4e5f`; G2 durch den
+bestehenden `margin: 0`-Pin an R-WP-43 belegt — Review #17 §17 Frage 2)
 - GIVEN eine Fläche des Main-Panels (Projekte, Settings, Chat) WHEN sie unter dem Band zeichnet THEN beginnt
   sie mit der Luft oben — die erste Box klebt nicht an der Unterkante des Bandes.
 - GIVEN dieselbe Fläche WHEN der Kopf gezeichnet wird THEN trägt das Band weiterhin **keinen** Rand und
   **keinen** Abstand ([R-WP-43](ui.md) bleibt, der bewiesene Satz `margin: 0` am Band gilt weiter).
-- GIVEN die Fläche WHEN ihre Luft gelesen wird THEN kommt das Maß aus einem Token des Raum-Systems — keine
-  Zahl, die für sich allein dasteht.
+- GIVEN die Fläche WHEN ihre Luft **oben** gelesen wird THEN kommt deren Maß aus einem Token des Raum-Systems —
+  keine Zahl, die für sich allein dasteht (der Test fängt den genannten Token ab und verlangt, dass **genau er**
+  im Raum-System definiert ist; welche Stufe es ist, entscheidet die Optik).
 
 ### R-WP-64 — Styling gehört zum Widget; eigenes CSS nur, wo AntD nichts gibt ❌ (Paul 2026-11-11, Grundregel:
  „styles sollten an den widgets eigentlich sein — so kenne ich das. es gibt ein common style und widgets haben ihr eigenes style — dieses kommt nicht in den common style, hat da nichts verloren. Zudem nutzen wir antD — wir sollten kaum eigenes styling brauchen, nur wenn das framework es uns nicht gibt. Das ist die ground rule. 1286 style css fühlt sich falsch an.")
