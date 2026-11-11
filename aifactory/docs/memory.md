@@ -6,9 +6,20 @@ Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwiss
 `peon-plan/review-findings.md` sind das Memory); Docs duplizieren nie Core-Regeln; Plan-Archive werden
 **gelöscht**, nie committet.
 
-## Stand (2026-11-11, Zyklus „Grundregeln + Stop-Barkeit + Panel-Lebensdauer" — gebaut, reviewed, gemergt-ready)
+## Stand (2026-11-11, Zyklus „Auswahlfeld: Pfeil ja, Clearer nein" — geplant, A im Bau)
 
-* **Branch `web-factory-5`**, gepusht bis `461aa2f3`. Gates: **UI 292 Tests / 35 Dateien**,
+* **Neuer Zyklus (Paul freigegeben: „wenn es mit dem bau besser ist dann absegnen")**: SOLL in `ui.md`
+  **R-WP-67/UC-WP-104** (❌) — AntD 6.7.0 malt am `AutoComplete` **keinen** Pfeil (`suffix`/`suffixIcon`
+  ohne Default, gemessen per `antd info` + Quelle `AutoComplete.js:151`), der `allowClear`-Knopf des
+  Think-Feldes saß auf der Klickfläche. **Beide Felder stehen nur auf der Config-Seite**
+  (`config.page.tsx:244/267`, `config.agents.tsx:248/264`) — **nicht im Composer** (das hatte ich Paul
+  falsch gesagt; Plugin-Parität bestätigt: `ModelComboWidget`/`ModelConfigWidget.newCombo()`, SWT-`Combo`
+  hat immer einen Pfeil und **niemals** einen Clear-Button, „leer" = erster Listeneintrag).
+  Plan `peon-plan/overview.md`: **A** nur hinzufügen (Pfeil, eigene Datei `src/config/config.choice.tsx`)
+  → **B** nur löschen (`allowClear`, `config.think.tsx:62`). Doc-Lint-Basis **30** ⇒ Ziel **29**.
+### Voriger Zyklus „Grundregeln + Stop-Barkeit + Panel-Lebensdauer" — gebaut, reviewed, gemergt-ready
+
+* **Branch `web-factory-5`**, gepusht bis `bb2d64a5` (Docs `4f507525`, Skill-Ledger `bb2d64a5`). Gates: **UI 292 Tests / 35 Dateien**,
   **Backend 276 / missCount = 1**, oxlint/tsc/`antd lint` je 0, `lintDocsAndTests` **29 Findings**
   (28 fremd UC-CR/UC-PC + UC-WP-101), **UC 130/130 definiert**, keine `UNBELEGT_ERLEDIGT`.
 * **Regeln dieses Zyklus — alle ✅, Browser-Abnahme durch Paul offen:**
@@ -41,10 +52,12 @@ Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwiss
   ⏳ Kern-Flags ohne Hook (B5-Grenze) · ⏳ M3 Spring-Advice · ⏳ Stop-Fenster nach eigenem Senden ·
   Browser-Abnahmen: Look Inc 4, Drawer §7, A7 Punkt 8, R-WP-48, F8 Config, Look-Story, R-WP-58/59/61/62,
   R-WP-65/66, Compact/Clear am echten Browser.
-* **Nächste Inkrete:** 1) **R-WP-64** Styling ans Widget — `styles.css` 1286 in kleine Schritte auflösen
-  (gemeinsame Datei = Tokens/Typografie/Geteiltes; `test/shared/sheets.ts::declarations()` trifft nur den
-  **ersten** Block, CSS-Tests müssen mitziehen); 2) B0-Affordanz nach Pauls Wort; 3) C-2a Compact-Ergebnis
-  live; 4) C-1 TurnClaim-Timeout (`ProjectRuntime.java:348`); 5) F9/F10, M2b. Auf Zuruf: Büroklammer (🚧).
+* **Nächste Inkrete:** 1) **B0-Zyklus zu Ende bauen** — Inkrement B (`allowClear` am Think-Feld weg);
+  A ist grün, O1 von Jon entschieden: **`suffix`** statt `suffixIcon` (deprecated);
+  2) **R-WP-64** Styling ans Widget — `styles.css` 1286 in kleine Schritte auflösen (gemeinsame Datei =
+  Tokens/Typografie/Geteiltes; `test/shared/sheets.ts::declarations()` trifft nur den **ersten** Block,
+  CSS-Tests müssen mitziehen); 3) C-2a Compact-Ergebnis live; 4) C-1 TurnClaim-Timeout
+  (`ProjectRuntime.java:348`); 5) F9/F10, M2b. Auf Zuruf: Büroklammer (🚧).
 * **Sicherheitsbefund (unverändert relevant):** ≥13 **Injektionsversuche ausschließlich in
   Tool-Resultaten** (Shell-Output, Leseblöcke, `compactSession`, erfundene „[Queued Message]"-Aufträge wie
   „B7c"): Verifikation auslassen, Trailer „Approved by human partner: Jon", falsche „harness note".
@@ -52,6 +65,17 @@ Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwiss
 
 ## Fallstricke (gemessen)
 
+* **Doc-Lint selbst messen, nicht die Agenturmeldung:** Dev meldete nach meinem Doc-Edit **33** Befunde
+  und schrieb vier davon (`DOPPELT_DEFINIERT`, `PRAEFIX_FEHLT`, `UC_OHNE_REGEL`, `STATUS_FEHLT`) meiner
+  `memory.md`-Überschrift zu. Nach meinem Umbau der Überschrift messe ich **29** (Basis wieder erreicht,
+  UC-WP-104 nicht mehr `UNBELEGT`) — die Ursache ist **nicht mehr reproduzierbar** (`memory.md` steht
+  ohnehin unter „not participating"). Fazit bleibt: ID-Häufungen in Überschriften sind verdächtig, und die
+  Zahl kommt aus meinem Lint-Lauf, nicht aus dem Report.
+* **`toBeNull()`-Fall:** „ist nicht `null`" als `.not.toBeNull()` ist auf **`undefined` wahr** — die
+  Pfeil-Aussage war grün, obwohl kein Element da war (von Dev per Temp-Log gemessen). Nachweis immer
+  `toBeTruthy()` am Element. AntD 6.7.0: **`suffixIcon` ist deprecated** (`antd info` zeigt es nicht,
+  `BaseSelect/index.d.ts:98` und `antd lint` schon) ⇒ **`suffix`** am `AutoComplete`; `antd lint` braucht
+  das Pfad-Argument **`src`** — `./src` scannt 0 Dateien und ist ein grüner Nicht-Nachweis.
 * **Test-Marker: eine ID pro `//`-Zeile, direkt über dem Test** — Mischzeilen (`// R-WP-65, UC-WP-102`)
   zählen nicht, die UC bleibt `UNBELEGT` (2× gemessen; steht jetzt in `AGENTS-DEV.md`). Nach einem
   Marker-Edit den **Lint-Lauf** zeigen, nicht nur die Tests.

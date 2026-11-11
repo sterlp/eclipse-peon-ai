@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 
 import { ConfigPage } from '../../src/config/config.page'
 import { content } from '../../src/shared/content'
-import { chooseOption, inputField, openChoice } from '../shared/choices'
+import { arrowOf, chooseOption, inputField, openChoice } from '../shared/choices'
 import { sentBodies, settingsAnswer, stubServer, valueOf } from '../shared/config.stub'
 
 /**
@@ -28,6 +28,8 @@ afterEach(() => {
  * places in `config.agents.test.tsx` (`storedThinkStaysVerbatim`).
  */
 // UC-WP-85
+// R-WP-67
+// UC-WP-104
 test('defaultThinkShowsTheProviderFormAndSaves', async () => {
   const server = stubServer({
     GET: settingsAnswer({ think: 'medium' }),
@@ -46,6 +48,11 @@ test('defaultThinkShowsTheProviderFormAndSaves', async () => {
     'high',
   ])
   expect(inputField(content.agents.thinkDefault, DEFAULT_THINK)).toHaveValue('medium')
+  // R-WP-67: a field that offers a list says so — the base paints no arrow of its own on an AutoComplete
+  expect(
+    arrowOf(content.agents.thinkDefault, DEFAULT_THINK)?.querySelector('svg'),
+    'the think field shows the arrow of its offer',
+  ).toBeTruthy()
 
   // and a level the provider does not list is an answer too — typed, not picked (Runde 7)
   fireEvent.change(inputField(content.agents.thinkDefault, DEFAULT_THINK), {

@@ -216,6 +216,20 @@ Anzeige ist ein Defekt ([AF-ADR-003](adr/003-reference-ui-is-a-donor-not-a-sourc
   zweites Mal nach.
 - GIVEN das Widget braucht eine Optik, die AntD nicht mitbringt WHEN es entsteht THEN ist es trotzdem
   ein Widget (AntD-Pendant oder eigene Komponente), kein Inline-Markup in der Seite.
+### R-WP-67 — ein Auswahlfeld zeigt seinen Pfeil und keinen Clearer ❌ (Paul 2026-11-11, Bug-Liste B0: „Drop Down funktioniert reasonsing effort"; auf die Frage, ob Affordanz gebaut oder erst am Browser gemessen wird: „wenn es mit dem bau besser ist dann absegnen")
+
+Ein Feld, das eine Liste **anbietet**, sagt das auch sichtbar: es trägt den **Pfeil** des Frameworks. AntD malt ihn am `AutoComplete` nicht von selbst — gemessen 2026-11-11 an AntD 6.7.0: `suffix`/`suffixIcon` haben dort **keinen** Default, während `Select` `<DownOutlined />` mitbringt. Ein `AutoComplete` ohne Pfeil sieht aus wie ein reines Textfeld; wer sein Angebot erst in den Entwicklerwerkzeugen findet, hat keine Auswahl, sondern ein Rätsel. Parität zum Plugin: dort ist jedes dieser Felder ein editierbarer SWT-`Combo`, dessen Pfeil die Plattform immer malt (`ModelComboWidget`, `ModelConfigWidget.newCombo()`).
+
+Der Pfeil ist **eine** Definition im Fabrik-UI und wird von beiden Auswahlfeldern genutzt ([R-WP-46](ui.md)) — kein Feld erfindet einen zweiten Pfeil. Ein Feld **ohne** Liste (`FREE`, `UNKNOWN`, `NONE`) trägt ihn **nicht**: ein Pfeil ohne Angebot ist eine Lüge.
+
+**An einem Auswahlfeld steht kein Clearer** (Schärfung 2026-11-11, ⏳ Rückversicherung bei Paul): das Plugin bietet nirgends einen Lösch-Knopf — zurück auf „geerbt/leer" ist dort der **leere Eintrag der Liste** (Think) bzw. der **gelöschte Text** (Modell). AntDs Clear-Symbol sitzt genau an der Stelle, an der der Nutzer öffnen will, und löscht statt zu öffnen; der Weg zurück existiert in der Fabrik bereits als benannter leerer Eintrag ([R-WP-49](config.md)) und als leere Eingabe. Ein zweiter Rückweg an der konfligierenden Stelle ist kein Komfort, sondern die Ursache von B0.
+
+#### UC-WP-104 — aChoiceFieldShowsItsArrowAndNoClear ❌
+- GIVEN das Think-Feld (Standard-Stufe wie Agenten-Stufe) WHEN es als Auswahlfeld gezeichnet wird THEN trägt es den AntD-Pfeil; GIVEN das Modell-Feld (beide Stufen) WHEN es gezeichnet wird THEN trägt es denselben Pfeil.
+- GIVEN ein ausgefülltes Think-Feld WHEN es gezeichnet wird THEN steht darin **kein** Clear-Symbol; der Weg zurück auf „geerbt" ist der leere Eintrag der Liste oder eine leere Eingabe.
+- GIVEN ein Auswahlfeld mit Wert WHEN der Nutzer in das Feld klickt THEN öffnet sich die Angebotsliste — der Klick endet nicht als Löschen.
+- GIVEN ein Feld, dessen Provider keine Liste anbietet (`FREE`, `UNKNOWN`, `NONE`) WHEN es gezeichnet wird THEN trägt es **keinen** Pfeil.
+
 
 ### R-WP-64 — Styling gehört zum Widget; eigenes CSS nur, wo AntD nichts gibt ❌ (Paul 2026-11-11, Grundregel: „styles sollten an den widgets eigentlich sein — so kenne ich das. es gibt ein common style und widgets haben ihr eigenes style — dieses kommt nicht in den common style, hat da nichts verloren. Zudem nutzen wir antD — wir sollten kaum eigenes styling brauchen, nur wenn das framework es uns nicht gibt. Das ist die ground rule. 1286 style css fühlt sich falsch an.")
 

@@ -63,7 +63,9 @@ MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabi
 ([R-WP-43](ui.md) Aktionen inkl. Composer, Inc 4); **Icon-Button-Widget ✅
 [R-WP-59/UC-WP-96](ui.md)** (B2/B3, 2026-11-10), **Styling gehört zum Widget ❌
 [R-WP-64/UC-WP-101](ui.md)** (Grundregel Paul 2026-11-11: AntD zuerst, eigenes CSS nur wo AntD nichts
-gibt, gemeinsame Datei = nur Geteiltes; `styles.css` 1286 Zeilen → aufteilen), [open-points](open-points.md) Runde 4b)
+gibt, gemeinsame Datei = nur Geteiltes; `styles.css` 1286 Zeilen → aufteilen); **Auswahlfeld mit Pfeil, ohne Clearer ❌
+  [R-WP-67/UC-WP-104](ui.md)** (B0, 2026-11-11 freigegeben: AntD malt am `AutoComplete` keinen Pfeil, und
+  der Clearer saß auf der Klickfläche), [open-points](open-points.md) Runde 4b)
 * [Projekte](project.md) — Git-Checkout als Projekt: klonen, eindeutig, entfernen, nie interaktiv, Live-Status. ◐
 * [Jon-Chat](chat.md) — ein Jon, ein Gespräch je Projekt: Streaming, Queue, Neustart, Tools, Kacheln. ◐
   (Herkunft je Zeile ✅ UC-WP-39/40; Kacheln ✅ R-WP-7, Blick je Agent ✅ R-WP-26, **Timeline als AntD-

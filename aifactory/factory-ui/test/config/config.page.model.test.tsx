@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 
 import { ConfigPage } from '../../src/config/config.page'
 import { content } from '../../src/shared/content'
-import { openChoice } from '../shared/choices'
+import { arrowOf, openChoice } from '../shared/choices'
 import { modelQueries, sentBodies, settingsAnswer, stubServer } from '../shared/config.stub'
 
 /**
@@ -27,6 +27,8 @@ afterEach(() => {
  * `settingsShowsMaskedConfig` guards with its three reads. The body names the draft, and the key is not in it.
  */
 // UC-WP-86
+// R-WP-67
+// UC-WP-104
 test('modelFieldListsServerModelsOnOpen', async () => {
   const server = stubServer({ GET: settingsAnswer(), MODELS: ['gpt-x', 'llama-mock'] })
   render(<ConfigPage />)
@@ -35,6 +37,11 @@ test('modelFieldListsServerModelsOnOpen', async () => {
   expect(server.calls.filter((call) => call.method === 'POST'), 'a mount asks no provider').toEqual([])
 
   expect(await openChoice(content.config.model, MODEL_FIELD)).toEqual(['gpt-x', 'llama-mock'])
+  // R-WP-67: the same arrow the think field carries — one definition, both offer fields (R-WP-46)
+  expect(
+    arrowOf(content.config.model, MODEL_FIELD)?.querySelector('svg'),
+    'the model field shows the arrow of its offer',
+  ).toBeTruthy()
 
   expect(modelQueries(server), 'one opening asks once, for the drafted connection').toEqual([
     { provider: 'OPEN_AI', url: 'https://api.example.com/v1', refresh: false },

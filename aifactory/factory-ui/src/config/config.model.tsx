@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AutoComplete, Button } from 'antd'
 
 import { content } from '../shared/content'
+import { ChoiceArrow } from './config.choice'
 
 /**
  * The field's text is the server's entry as soon as it names one, whatever case was typed (UC-WP-86 GIVEN 4).
@@ -65,6 +66,7 @@ export function ModelField(props: {
         // no appending: the list is the server's, whole (R-WP-50). The basis offers an AutoComplete unfiltered
         // and with no pre-selected entry — both are the point here, so neither is asked for
         notFoundContent={null}
+        suffix={<ChoiceArrow />}
         onChange={(value) => props.onChange(canonicalModel(value ?? '', ids))}
         onOpenChange={(open) => {
           if (open && listed?.identity !== props.identity) {

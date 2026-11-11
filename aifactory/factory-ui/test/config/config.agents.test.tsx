@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 
 import { content } from '../../src/shared/content'
-import { chooseOption, inputField, openChoice } from '../shared/choices'
+import { arrowOf, chooseOption, inputField, openChoice } from '../shared/choices'
 import { refused } from '../shared/refusal'
 import {
   agent,
@@ -217,6 +217,8 @@ test('aRefusedSaveSaysWhyAndKeepsWhatWasTyped', async () => {
  * (R-THINK-10).
  */
 // UC-WP-67
+// R-WP-67
+// UC-WP-104
 test('thinkFieldFollowsTheProviderForm', async () => {
   stubServer({ slots: [agent({ overridden: true, think: 'medium' })] })
 
@@ -247,6 +249,11 @@ test('thinkFieldFollowsTheProviderForm', async () => {
   renderAgents({ form: 'TOGGLE', values: [] })
 
   await waitFor(() => row('po'))
+  // R-WP-67: a slot's think field offers a list too, so it carries the same arrow
+  expect(
+    arrowOf(content.agents.think, 'agent-po-think')?.querySelector('svg'),
+    'the slot think field shows the arrow of its offer',
+  ).toBeTruthy()
   expect(await openChoice(content.agents.think)).toEqual([content.agents.inheritOption, 'true', 'false'])
   expect(inputField(content.agents.think)).toHaveValue('true')
   // and the toggle form types too: the plugin's think field is an editable combo in both forms
@@ -308,6 +315,8 @@ test('storedThinkStaysVerbatim', async () => {
  * keeps the plain name, or the page would claim twice that a slot is the default.
  */
 // UC-WP-67
+// R-WP-67
+// UC-WP-104
 test('devThinkIsLabeledAsTheDefault', async () => {
   stubServer({
     slots: [agent({ overridden: true }), agent({ id: 'po', name: 'Jon', overridden: true })],
@@ -321,6 +330,8 @@ test('devThinkIsLabeledAsTheDefault', async () => {
 
   const jon = within(row('po'))
   expect(jon.getByLabelText(content.agents.think)).toBeTruthy()
+  // UC-WP-104 GIVEN 4: this fixture offers no list (FREE) — an arrow would claim one
+  expect(arrowOf(content.agents.think, 'agent-po-think'), 'a free text field carries no arrow').toBeNull()
   expect(jon.queryByLabelText(content.agents.thinkDefault)).toBeNull()
 })
 
@@ -331,6 +342,8 @@ test('devThinkIsLabeledAsTheDefault', async () => {
  * base travels either way and a key travels never (R-WP-16).
  */
 // UC-WP-86
+// R-WP-67
+// UC-WP-104
 test('agentModelFieldAsksForItsOwnConnection', async () => {
   const server = stubServer({
     slots: [
@@ -345,6 +358,11 @@ test('agentModelFieldAsksForItsOwnConnection', async () => {
   const slot = await waitFor(() => row('po'))
   expect(await openChoice(content.agents.model, 'agent-po-model')).toEqual(['gpt-slot'])
   expect(await openChoice(content.agents.model, 'agent-plan-model')).toEqual(['gpt-slot'])
+  // R-WP-67: both slot rows build the one model field, so both carry the arrow
+  expect(
+    arrowOf(content.agents.model, 'agent-po-model')?.querySelector('svg'),
+    'the slot model field shows the arrow of its offer',
+  ).toBeTruthy()
 
   expect(modelQueries(server)[0]).toEqual({
     provider: 'OPEN_AI',

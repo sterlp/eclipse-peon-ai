@@ -61,3 +61,13 @@ export function shownChoice(label: string, id?: string): string {
 export function inputField(label: string, id?: string): HTMLInputElement {
   return fieldOf(label, id) as HTMLInputElement
 }
+
+/** The arrow area of a choice field: the base renders it only when the field is given one (R-WP-67). */
+export function arrowOf(label: string, id?: string): Element | null {
+  return fieldOf(label, id)?.closest('.ant-select')?.querySelector('.ant-select-suffix') ?? null
+}
+
+/** The clear area of a choice field: the button the base adds on `allowClear` — the fabrik wants none. */
+export function clearOf(label: string, id?: string): Element | null {
+  return fieldOf(label, id)?.closest('.ant-select')?.querySelector('.ant-select-clear') ?? null
+}

@@ -2,6 +2,7 @@ import { AutoComplete, Input } from 'antd'
 
 import { content } from '../shared/content'
 import type { ThinkInput } from './config.client'
+import { ChoiceArrow } from './config.choice'
 
 /** The two answers of a toggle form; the third state of `ThinkValueSupport.toggleItems()` is empty. */
 const TOGGLE_ITEMS = ['true', 'false']
@@ -59,6 +60,7 @@ export function ThinkControl(props: ThinkProps) {
           ...choices.map((item) => ({ value: item, label: item })),
         ]}
         placeholder={content.agents.inheritOption}
+        suffix={<ChoiceArrow />}
         allowClear
         onChange={(value) => props.onChange(value ?? '')}
       />

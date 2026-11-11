@@ -51,14 +51,13 @@ Pauls Wortlaut, je Punkt seine Entscheidung (alle zur Look-Story, kein Teil des 
   published einen Roster. **Abnahme am Browser steht aus**; bewusste Grenze bleibt: Kern-Flags ohne
   Rückmeldung (z. B. Auto-Compact-Anlauf) erscheinen erst mit der nächsten Zeile — ein Kern-Hook wäre
   ein Core-Inkrement.
-* **❓ Reasoning-Effort-Feld im Browser (Bug-Liste B0, 2026-11-10)** — Paul: „Drop Down funktioniert
-  reasonsing effort". Diagnose (Dev, antd-CLI-belegt): unser Think-`AutoComplete` hat **keinen Pfeil**
-  (AutoComplete setzt `suffix=null` → kein Chevron) und rechts sitzt der **Clear**-Knopf — Klick dort
-  löscht den Wert, ohne die Liste zu öffnen; im jsdom unsichtbar. Zweitverdacht: alter Bundle im
-  Browser (Pre-L4-`Select` sichtbar). **Frage an Paul (DevTools, < 1 min):** (1) war die UI frisch
-  gebaut/Server neu gestartet? (2) öffnet Klick in die **linke** Feldhälfte die Liste und Klick rechts
-  löscht? (3) existiert nach dem Klick `.ant-select-dropdown` im DOM? Entscheidung danach: Affordance
-  (Pfeil-Suffix am AutoComplete) bauen oder Bundle-Thema.
+* **⏳ Think-Feld: Pfeil ja, Clearer nein (Bug-Liste B0 → Regel, 2026-11-11)** — SOLL steht in
+  [R-WP-67/UC-WP-104](ui.md). **Angenommen** statt gefragt (Ableitung: Plugin-Parität — der SWT-`Combo`
+  dort hat niemals einen Clear-Button, „leer" ist dort der erste Listeneintrag; `allowClear` war genau
+  die Stelle, die in B0 statt zu öffnen gelöscht hat): das `allowClear` am Think-Feld **entfällt**, der
+  Rückweg auf „geerbt" bleibt der benannte leere Eintrag und die leere Eingabe.
+  *Andersfall:* Paul will One-Klick-Leeren ⇒ Clearer zurück, aber **außerhalb** der Klickfläche des
+  Feldes (eigener Knopf daneben) — dann als neue Klausel in [ui.md](ui.md), nie still im Code.
 * **⏳ Clear am Chat-Eingabe-Bereich fehlt (nur Icon)** — **gebaut 2026-11-10** als Icon-Button-Widget
   ([R-WP-59/UC-WP-96](ui.md)); Abnahme am Browser steht aus.
 * **⏳ Compact am Chat-Eingabe-Bereich fehlt (nur Icon)** — **gebaut 2026-11-10**, dito
