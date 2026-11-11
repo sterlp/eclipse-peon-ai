@@ -104,9 +104,11 @@ Meldung am Ort, wo sie steht (Paul 2026-11-10, Q1): eine abgelehnte Ebene meldet
 - GIVEN ein Fehler mit `fieldErrors` WHEN er ankommt THEN bleiben die Feldfehler am Feld
   ([R-WP-56](api-errors.md)) und das Panel zeigt nur, was keinem Feld zugeordnet ist.
 
-### R-WP-66 — Das Panel steht, bis der Nutzer selbst wieder etwas tut ❌ (Paul 2026-11-11, Q3:
+### R-WP-66 — Das Panel steht, bis der Nutzer selbst wieder etwas tut ✅ (Paul 2026-11-11, Q3:
 „jeder Retry von mir bestätigt den Fehler automatisch … THEN wir senden die ganze conversation an das
-LLM AND fehler werden ausgeblenden — ist ein retry"; und Q4 zum abgelehnten Stop)
+LLM AND fehler werden ausgeblenden — ist ein retry"; und Q4 zum abgelehnten Stop. Gebaut + reviewed
+2026-11-11, `351fea28` + `ce4538bb` — UI 292, Rot-Beweis je Seite durch Entfernen der
+`setError(null)`-Zeile; Abnahme am Browser steht aus)
 
 Das Panel von [R-WP-62](api-errors.md) steht von seiner Ursache so lange, bis **eine** von zwei Dingen
 passiert: der Nutzer klickt sein **X**, oder der Nutzer löst **selbst** eine neue Anfrage auf dieser
@@ -123,7 +125,7 @@ ausspricht. Die Ausnahme von 2026-11-10 („ein 409 auf Stop bleibt still") ist 
 abgelehnter Stop zeigt seinen Wortlaut im Panel; die Taste ist in diesem Fall ohnehin nicht bedienbar
 ([R-WP-65](chat.md)), einen klickbaren Knopf ohne Reaktion gibt es nicht.
 
-#### UC-WP-103 — panelClosesOnlyOnWhatTheUserAskedFor ❌
+#### UC-WP-103 — panelClosesOnlyOnWhatTheUserAskedFor ✅
 - GIVEN das Panel steht WHEN der Nutzer das X klickt THEN ist es weg und die Seite behält ihre Eingaben.
 - GIVEN das Panel steht WHEN der Nutzer **selbst** eine neue Anfrage auslöst (Senden, Formular
   absenden, **Resend mit leerer Eingabe**) THEN ist das Panel fort, während die neue Anfrage läuft.

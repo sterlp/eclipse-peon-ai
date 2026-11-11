@@ -314,7 +314,7 @@ Aktion es verändert — [R-WP-26](chat.md)).
   endet THEN stehen diese Zeilen **weiterhin** — und der frische Stand des Verlaufs ist trotzdem da.
   WHEN die nächste Aktion endet THEN sind sie beendet (gewöhnliche Live-Spur, kein zweiter Speicher).
 
-### R-WP-65 — Stop gibt es nur, wenn es etwas zu stoppen gibt ❌ (Paul 2026-11-11, Browser-Abnahme: „ja 409 vom server ist richtig — der Fehler war nur, das generische Fehler-Widget sollte es anzeigen + der Button sollte disabled sein im UI")
+### R-WP-65 — Stop gibt es nur, wenn es etwas zu stoppen gibt ✅ (Paul 2026-11-11, Browser-Abnahme: „ja 409 vom server ist richtig — der Fehler war nur, das generische Fehler-Widget sollte es anzeigen + der Button sollte disabled sein im UI"; gebaut + reviewed 2026-11-11, `9f466a8a` + `c2a18caf` + `ce4538bb` — Backend 276 / missCount 1, UI 292, Mutationsnachweis in `AgentActionTest.sendDuringAnActionIsAnsweredNotLost`; Abnahme am Browser steht aus)
 
 **Stop** gehört einem **laufenden Turn**. Was ein Turn ist, weiß allein der Server (ein Claim entscheidet
 in einem Monitor über Turn und Aktion, [Architektur](aifactory-architektur.md)) und sagt es dem Client auf
@@ -339,7 +339,7 @@ womöglich weiter. Ein
 akzeptierter Stop endet wie bisher mit genau einem `done` ([R-WP-48](chat.md)) und hält die gezeigten
 Zeilen ([UC-WP-50](chat.md)).
 
-#### UC-WP-102 — stopIsOfferedOnlyWhenATurnIsStoppable ❌
+#### UC-WP-102 — stopIsOfferedOnlyWhenATurnIsStoppable ✅
 - GIVEN der Stand meldet **keinen** stoppbaren Turn — nichts läuft, oder eine **Aktion** läuft — WHEN der
   Chat zeichnet THEN ist die Stop-Taste **deaktiviert**; ein Klick ins Leere ist nicht möglich. Einzige
   Ausnahme: dieser Browser hat **selbst** gesendet **und** der Stand meldet noch keine Arbeit — in diesem
