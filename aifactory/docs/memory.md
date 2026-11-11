@@ -18,6 +18,9 @@ Proposal mit WARUM** — gilt auch für Core-Tests. `AGENTS*.md` = nur Dauerwiss
   **⏳ bei Paul:** „Clearer entfällt" (`open-points.md`) · **Browser-Abnahme der Affordanz offen**.
   Gates: UI **292 / 35 Dateien**, oxlint/tsc/build/`antd lint` je 0, Doc-Lint **29** (UC 131/131, nur
   `UC-WP-101` fremd/offen). Kein Architektur-Doc nötig (Review §4: zustandslose Präsentationskomponente).
+* **Zyklus-Stand:** gepusht bis `d699584e` (`fb19a55d` = LOW-1/LOW-2 + mein ✅-Flip, `d699584e` = Skill-Ledger
+  + `test-honesty`-Proposal). Review #16 liegt in `aifactory/peon-plan/review-findings.md` §16; Plan archiviert
+  und **gelöscht** (Convention). **Noch offen:** Pauls Wort zum ⏳ „Clearer entfällt" und die Browser-Abnahme.
 ### Voriger Zyklus „Grundregeln + Stop-Barkeit + Panel-Lebensdauer" — gebaut, reviewed, gemergt-ready
 
 * **Branch `web-factory-5`**, gepusht bis `bb2d64a5` (Docs `4f507525`, Skill-Ledger `bb2d64a5`). Gates: **UI 292 Tests / 35 Dateien**,
