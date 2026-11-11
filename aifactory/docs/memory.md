@@ -6,14 +6,19 @@ Dev committet sie auf mein Wort (`git add -- <pfade>` + nacktes `git commit`, **
 `AGENTS*.md` = nur Dauerwissen (Plan-Dateien und `peon-plan/review-findings.md` sind das Memory);
 Docs duplizieren nie Core-Regeln; Plan-Archive werden **gelöscht**, nie committet.
 
-## Stand (2026-11-11, Zyklus „Look: Luft unter dem Band" — gebaut, Review #17 **ACCEPTED**, ✅)
+## Stand (2026-11-11, Zyklus „Look: Luft unter dem Band" — gebaut, Review #17 **ACCEPTED**, ✅, Nacharbeit gebaut)
 
 * **R-WP-68/UC-WP-105 ✅** (`docs/ui.md`): jede Fläche beginnt unter dem Band mit Luft —
   `padding-block-start: var(--space-4)` im `.view`-Block (`styles.css:109`), **das Band bleibt randlos**
   (`margin: 0` bleibt gepinnt, `theme.test.ts:44`, R-WP-43 „ohne Spalt" 2026-11-08 gilt weiter).
-  gebaut `920b4e5f` (5 Pfade, +58/−6), Review #17 in `peon-plan/review-findings.md` §17 — **0 HIGH, 0 MEDIUM,
-  6 LOWs** (alle angenommen): §17.1/§17.2 Kommentar-Präzision in `styles.css`, §17.3 Test pinnte Stufe **und**
-  Zahl → jetzt „der genannte Token muss definiert sein" (stufen-offen), §17.4–17.6 meine Docs-Hygiene.
+  Commits: `920b4e5f` (Bau) → `1f7568f2` (LOW-Nacharbeit) → `a8a07727` (meine Docs, ✅-Flip). Gepusht, 0/0.
+  Review #17 in `peon-plan/review-findings.md` §17 — **0 HIGH, 0 MEDIUM, 6 LOWs** (alle gebaut bzw. von mir
+  gezogen): §17.1 Chat-Kommentar „none inherited" war falsch geworden; §17.2 R-WP-64 will im eigenen CSS den
+  **Grund** — gemessen: `antd/es/layout/style/index.js:66-71` gibt `.ant-layout-content` nur `flex/color/
+  minHeight`, **kein Padding** ⇒ Kommentar nennt jetzt das Framework; §17.3 Test pinnte Stufe **und** Zahl →
+  jetzt „der **genannte** Token muss definiert sein" (Stufe frei, Beweis a/c gemessen); §17.4–17.6 meine
+  Docs-Hygiene. Gates nach der Nacharbeit: **35 Dateien / 293 Tests**, oxlint 0/0, tsc 0, build ✓,
+  `antd lint src` 62 Dateien/0, `wc -l` `styles.css` **1288**, `theme.test.ts` 214.
   **Look selbst am Browser noch offen.**
 * **B0/Zyklus davor komplett zu Ende:** R-WP-67/UC-WP-104 ✅, **Paul hat am Browser abgenommen** („passt …
   sonnst passt alles") ⇒ `⏳ Clearer entfällt` ist entschieden und aus `open-points.md` entfernt.
@@ -81,6 +86,8 @@ Docs duplizieren nie Core-Regeln; Plan-Archive werden **gelöscht**, nie committ
   hell malt `lightSiderBg`; `matchMedia`+`ResizeObserver` stubben; `collapsed` controlled ⇒ Effekt ignoriert;
   `Menu` ohne `navigation`-Landmarke; **Alert** bringt `role="alert"` selbst. jsdom rechnet **keine Farbe** und
   lädt **kein Stylesheet** (`?raw`) ⇒ Blatt-Deklaration + DOM-Handle, `+`/`~`-CSS braucht den Nestungs-Beweis.
+* **AntD-CLI in der Fabrik:** `antd lint src` (Bin aus dem UI-Paket, nur unter v22.23.4) — **`npx antd lint`
+  scheitert** am fehlenden Bin-Link (`AGENTS-DEV.md:75-77`). Wer ein Gate meldet, nennt den gerufenen Befehl.
 * Git mit Paul im selben Repo: **nie amend/rebase auf seinen Commits**, nur `aifactory/`-Pfade, **kein
   Modell-/Tool-Name, kein `Assisted-by`**, **kein `git add -A`**; `peon-plan/` ist enttrackt + ignored.
   Neue Datei committen: `git add -- <pfade>` + **nacktes** `git commit` (`-o` nimmt Ungetrackte nicht);
