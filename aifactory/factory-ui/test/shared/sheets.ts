@@ -33,6 +33,11 @@ export function appSheet(): string {
   return SHEETS[APP_SHEET]
 }
 
+/** The base sheet as written — for a table a keyed selector read cannot reach (`:root, [data-theme='light']`). */
+export function baseSheet(): string {
+  return SHEETS[BASE_SHEET]
+}
+
 /** One rule block of one sheet, nested rules included, from the selector to its closing brace. */
 function blockIn(sheet: string, selector: string): string {
   const source = SHEETS[sheet]

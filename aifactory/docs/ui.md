@@ -159,8 +159,11 @@ String-Catalog ([R-WP-27](ui.md)), ein Weg je Verantwortung.
 
 Der **Header** trägt Marke, das horizontale **Top-Menü** (AntD `Menu`, `mode="horizontal"`, dunkel —
 wie die erste Version der App und wie im Mockup), den gewählten Nutzernamen und **Settings**. Das
-dunkle Band liegt **ohne Spalt** direkt auf Sider und Inhalt — es gibt keinen Rand zwischen Band und
-Fläche (Paul 2026-11-08, Abnahme: „das Menü oben ist nicht verbunden mit dem Header"). Die
+dunkle Band liegt **ohne Spalt** direkt auf Sider und Inhalt — es gibt keinen Rand **des Bandes** und keinen
+weißen Streifen zwischen Band und Fläche (Paul 2026-11-08, Abnahme: „das Menü oben ist nicht verbunden mit
+dem Header"). Die **Luft**, mit der eine Seite nach unten wie nach oben beginnt, ist dagegen eine Eigenschaft
+der Fläche selbst ([R-WP-68](ui.md), Paul 2026-11-11: „der content braucht eine margin zum header — aktuell
+klebt er direkt oben dran"). Die
 Menü-Einträge sind die globalen Seiten **Projekte · Chat · Settings** (Config, [R-WP-16](config.md);
 gebaut L2 `f6636688`) — **„Chat" ist seit 2026-11-10 wieder im Top-Menü** (Paul, Runde 7: „Chats wieder ins
 Top-Menü" — kehrt die Abnahme vom 2026-11-08 „das muss weg — chat ist nur an der Seite" **teilweise
@@ -218,7 +221,7 @@ Anzeige ist ein Defekt ([AF-ADR-003](adr/003-reference-ui-is-a-donor-not-a-sourc
   ein Widget (AntD-Pendant oder eigene Komponente), kein Inline-Markup in der Seite.
 ### R-WP-67 — ein Auswahlfeld zeigt seinen Pfeil und keinen Clearer ✅ (Paul 2026-11-11, Bug-Liste B0: „Drop Down
 funktioniert reasonsing effort"; Freigabe des Baus: „wenn es mit dem bau besser ist dann absegnen"; gebaut +
-reviewed 2026-11-11, `4c1b75fe` + `39ed1e24`; **Abnahme der Affordanz am Browser steht aus**)
+reviewed 2026-11-11, `4c1b75fe` + `39ed1e24`; **am Browser abgenommen 2026-11-11 — „passt"**)
 
 Ein Feld, das eine Liste **anbietet**, sagt das auch sichtbar: es trägt den **Pfeil** des Frameworks. AntD
 malt ihn am `AutoComplete` nicht von selbst (der `Select` bringt ihn mit) — ein `AutoComplete` ohne Pfeil
@@ -252,7 +255,29 @@ Komfort, sondern die Ursache von B0.
   ohne Feld) WHEN es gezeichnet wird THEN trägt es **keinen** Pfeil.
 
 
-### R-WP-64 — Styling gehört zum Widget; eigenes CSS nur, wo AntD nichts gibt ❌ (Paul 2026-11-11, Grundregel: „styles sollten an den widgets eigentlich sein — so kenne ich das. es gibt ein common style und widgets haben ihr eigenes style — dieses kommt nicht in den common style, hat da nichts verloren. Zudem nutzen wir antD — wir sollten kaum eigenes styling brauchen, nur wenn das framework es uns nicht gibt. Das ist die ground rule. 1286 style css fühlt sich falsch an.")
+### R-WP-68 — jede Fläche beginnt unter dem Band mit Luft ❌ (Paul 2026-11-11, Browser: „der content braucht
+eine margin zum header — aktuell klebt er direkt oben dran. sonnst passt alles.")
+
+Der Abstand zwischen Kopf und Inhalt ist **kein Rand des Bandes** — das bleibt randlos
+([R-WP-43](ui.md): „ohne Spalt", Paul 2026-11-08) — sondern **der Anfang der Fläche**: sie beginnt mit ihrer
+eigenen Luft oben, so wie sie mit `padding-block-end` bereits unten endet. Heute fehlt dieser Anfang: die
+erste Box jeder Seite steht an der Unterkante des Bandes. Beide Regeln vertragen sich nur so — wer den
+Abstand am Band sucht, holt sich genau den weißen Streifen zurück, den Paul am 2026-11-08 beanstandet hat.
+
+**Maß ist ein Token des Raum-Systems**, keine freie Zahl ([R-WP-39](ui.md) verlangt das für jede Länge). Die
+Luft gilt **auf allen Flächen** — Projekte, Settings und Chat: auch der Chat-Kopf stößt sonst an dasselbe
+Band, und die Chat-Fläche nimmt sich ihre seitliche und untere Luft weiterhin selbst.
+
+#### UC-WP-105 — everyPageStartsWithAirBelowTheBand ❌
+- GIVEN eine Fläche des Main-Panels (Projekte, Settings, Chat) WHEN sie unter dem Band zeichnet THEN beginnt
+  sie mit der Luft oben — die erste Box klebt nicht an der Unterkante des Bandes.
+- GIVEN dieselbe Fläche WHEN der Kopf gezeichnet wird THEN trägt das Band weiterhin **keinen** Rand und
+  **keinen** Abstand ([R-WP-43](ui.md) bleibt, der bewiesene Satz `margin: 0` am Band gilt weiter).
+- GIVEN die Fläche WHEN ihre Luft gelesen wird THEN kommt das Maß aus einem Token des Raum-Systems — keine
+  Zahl, die für sich allein dasteht.
+
+### R-WP-64 — Styling gehört zum Widget; eigenes CSS nur, wo AntD nichts gibt ❌ (Paul 2026-11-11, Grundregel:
+ „styles sollten an den widgets eigentlich sein — so kenne ich das. es gibt ein common style und widgets haben ihr eigenes style — dieses kommt nicht in den common style, hat da nichts verloren. Zudem nutzen wir antD — wir sollten kaum eigenes styling brauchen, nur wenn das framework es uns nicht gibt. Das ist die ground rule. 1286 style css fühlt sich falsch an.")
 
 Eine Stil-Regel lebt **bei dem Widget, das sie zeichnet**. Die **gemeinsame** Datei trägt ausschließlich
 geteilte Grundlagen: Design-Tokens (Farben, Maße, Radien), Grundtypografie und Regeln, die **mehr als ein

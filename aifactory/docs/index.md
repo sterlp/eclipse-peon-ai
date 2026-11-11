@@ -65,7 +65,9 @@ MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabi
 [R-WP-64/UC-WP-101](ui.md)** (Grundregel Paul 2026-11-11: AntD zuerst, eigenes CSS nur wo AntD nichts
 gibt, gemeinsame Datei = nur Geteiltes; `styles.css` 1286 Zeilen → aufteilen); **Auswahlfeld mit Pfeil, ohne Clearer ✅
   [R-WP-67/UC-WP-104](ui.md)** (B0, 2026-11-11 gebaut + reviewed `4c1b75fe` + `39ed1e24`: AntD malt am
-  `AutoComplete` keinen Pfeil, der Clearer saß auf der Klickfläche; Abnahme der Affordanz am Browser steht aus),
+  `AutoComplete` keinen Pfeil, der Clearer saß auf der Klickfläche; am Browser abgenommen), **Fläche beginnt
+  mit Luft unter dem Band ❌ [R-WP-68/UC-WP-105](ui.md)** (Paul 2026-11-11: „der content braucht eine margin
+  zum header — aktuell klebt er direkt oben dran"; Luft gehört in die Fläche, das Band bleibt randlos),
   [open-points](open-points.md) Runde 4b)
 * [Projekte](project.md) — Git-Checkout als Projekt: klonen, eindeutig, entfernen, nie interaktiv, Live-Status. ◐
 * [Jon-Chat](chat.md) — ein Jon, ein Gespräch je Projekt: Streaming, Queue, Neustart, Tools, Kacheln. ◐

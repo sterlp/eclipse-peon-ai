@@ -1,7 +1,7 @@
 import { afterEach, expect, test, vi } from 'vitest'
 
 import { prefersDark } from '../../src/shared/prefers.dark'
-import { declarations, declares } from './sheets'
+import { baseSheet, declarations, declares } from './sheets'
 import {
   isDesignLibrary,
   manifestPackageNames,
@@ -47,6 +47,24 @@ test('theHeaderRowHoldsTheMenuAndNoSecondSettingsEntry', () => {
   expect(top, 'the menu shrinks instead of stretching the header').toMatch(/min-width:\s*0/)
   // and no second way to the settings page is left beside the menu's entry (R-WP-43)
   expect(declares('.app-settings'), 'the settings button of the header is gone').toBe(false)
+})
+
+/**
+ * UC-WP-105 GIVEN 1 + 3 (R-WP-68): the air below the band is the page's own beginning, not a margin of the band
+ * (R-WP-43 stays pinned above). jsdom lays out nothing, so the measure is read where it is written — and the
+ * token it names has to exist, because a `var()` without a definition is no air at all.
+ */
+// R-WP-68
+// UC-WP-105
+test('everyPageStartsWithAirBelowTheBand', () => {
+  expect(declarations('.view'), 'a page begins with air below the band').toMatch(
+    /padding-block-start:\s*var\(--space-4\)\s*;/,
+  )
+  expect(baseSheet(), 'and the step it names is a token of the room system').toContain('--space-4: 16px')
+  // the chat hands the gutter to its own surfaces but keeps the page's air: the override names inline and end
+  const chat = declarations('.chat-workspace > .view')
+  expect(chat, 'the chat still carries its own gutter').toContain('padding-inline: 0')
+  expect(chat, 'and never resets the air below the band').not.toContain('padding-block-start')
 })
 
 /**
