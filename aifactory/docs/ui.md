@@ -200,7 +200,7 @@ Menü sagt „Chat", nicht *welches* Projekt).
 - GIVEN der Nutzer wählt im Sider die Einheit Chat WHEN ein Turn läuft THEN endet der Turn nicht
   (UC-WP-70, GIVEN 2).
 
-### R-WP-46 — AntD zuerst, UI-Funktionen als wiederverwendbare Widgets ❌ (Paul 2026-11-08, Abnahme: „wir schauen immer, ob es da ein Widget gibt, bevor wir was eigenes bauen"; „UI-Funktionen bauen wir immer als Widgets und nutzen diese")
+### R-WP-46 — AntD zuerst, UI-Funktionen als wiederverwendbare Widgets ✅ (Paul 2026-11-08, Abnahme: „wir schauen immer, ob es da ein Widget gibt, bevor wir was eigenes bauen"; „UI-Funktionen bauen wir immer als Widgets und nutzen diese"; Status auf ✅ gezogen 2026-11-11 — die Regel war ❌, während ihr UC-WP-81 ✅ gebaut und im Index als ✅ geführt war)
 
 Für jede UI-Funktion gilt zwei Mal nachschauen, bevor etwas Eigenes entsteht: **erst** im AntD-Bestand
 (Gibt es ein Widget dafür — `Spin`, `FloatButton`, `Timeline`, `BorderBeam`, …), **dann** im
@@ -216,6 +216,32 @@ Anzeige ist ein Defekt ([AF-ADR-003](adr/003-reference-ui-is-a-donor-not-a-sourc
   zweites Mal nach.
 - GIVEN das Widget braucht eine Optik, die AntD nicht mitbringt WHEN es entsteht THEN ist es trotzdem
   ein Widget (AntD-Pendant oder eigene Komponente), kein Inline-Markup in der Seite.
+
+### R-WP-64 — Styling gehört zum Widget; eigenes CSS nur, wo AntD nichts gibt ❌ (Paul 2026-11-11, Grundregel: „styles sollten an den widgets eigentlich sein — so kenne ich das. es gibt ein common style und widgets haben ihr eigenes style — dieses kommt nicht in den common style, hat da nichts verloren. Zudem nutzen wir antD — wir sollten kaum eigenes styling brauchen, nur wenn das framework es uns nicht gibt. Das ist die ground rule. 1286 style css fühlt sich falsch an.")
+
+Eine Stil-Regel lebt **bei dem Widget, das sie zeichnet**. Die **gemeinsame** Datei trägt ausschließlich
+geteilte Grundlagen: Design-Tokens (Farben, Maße, Radien), Grundtypografie und Regeln, die **mehr als ein
+Widget** wirklich braucht. Eine Optik, die genau ein Widget trifft, gehört **nie** in die gemeinsame
+Datei — auch nicht, wenn sie dort funktioniert: die Datei wächst an jedem Fleck, niemand findet die
+Regel wieder, und ein Umbau einer Optik zieht unbekannte Folgen an anderen nach.
+
+**AntD zuerst** ([R-WP-46](ui.md)) gilt für die Optik ebenso wie für die Komponente: was AntD mitbringt
+(Token, Komponenten-Klasse, `ConfigProvider`-Theme), wird **nicht** mit eigenem CSS übermalt. Eigenes CSS
+entsteht nur für das, was das Framework schuldig bleibt (Beispiel: die Timeline-Geometrie im Chat-Scope,
+[R-WP-40](chat.md)), und benennt in einem Kommentar, **was** AntD hier nicht liefert. Eine Regel, die zu
+einem Widget gehört, wandert **mit** diesem Widget (eigene Stil-Datei, von seiner Komponente importiert) —
+die gemeinsame Datei wird nicht um einen Sonderfall länger.
+
+**Maß der Sache** ist die gemeinsame Datei selbst: sie ist **klein**, und ihre Größe ist der Beweis dafür,
+wie viel Eigenbau nötig war — nicht eine Naturgesetz-Grenze. Pauls Messlatte ist „kaum eigenes styling".
+
+#### UC-WP-101 — stylesLiveWithTheirWidget ❌
+- GIVEN eine Stil-Regel, die nur die Optik **eines** Widgets betrifft WHEN sie gebraucht wird THEN steht
+  sie in der Stil-Datei dieses Widgets — die gemeinsame Datei bleibt unverändert.
+- GIVEN ein Widget braucht eine Optik, die AntD mitbringt WHEN es gezeichnet wird THEN nutzt es AntD
+  (Token, Komponenten-Klasse, Theme) — kein eigenes CSS überschreibt AntD ohne begründete Not.
+- GIVEN die gemeinsame Stil-Datei WHEN sie gelesen wird THEN enthält sie nur geteilte Grundlagen (Tokens,
+  Typografie, was mindestens zwei Widgets nutzen) — keine Regel, die genau ein Widget trifft.
 
 ### R-WP-59 — Aktionen sind Icon-Buttons: ein Widget, Tooltip statt Text ✅ (Paul 2026-11-10, Browser-Abnahme: „chat send compact usw. sind keine icons … in den panels sind es auch keine icons => bitte diese buttons als widget anlegen und wiederverwenden")
 

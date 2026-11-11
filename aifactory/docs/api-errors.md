@@ -87,21 +87,47 @@ sichtbar, außerhalb des Scroll-Bereichs (Wegscrollen ist unmöglich), auf **jed
 Bauteil (AntD zuerst, [R-WP-46](ui.md)). Der Client liest die `ApiError`-Antwort aus und zeigt den
 **Wortlaut des Servers** samt Spring-Details — ein 409 beim parallelen Compact ist damit genauso
 sichtbar wie ein 500. Feldfehler bleiben am Feld ([R-WP-56](api-errors.md)) und stehen nicht doppelt
-im Panel. Das Panel trägt ein **X**: der Nutzer schließt es; **jede neue Server-Interaktion derselben
-Seite** schließt es ebenfalls, und ein nächster Fehler ersetzt den Inhalt. Ausnahmen bleiben, wie sie
-sind: der 409 „Turn war schon vorbei" auf Stop bleibt absorbiert ([R-WP-30](chat.md), D-17), ein
-gescheiterter Turn bleibt eine Zeile des Chats ([R-WP-34](chat.md)) — das Panel zeigt die Fehler
-**dieser Seite** (gescheiterte Requests), nicht die der Unterhaltung. Das Panel steht auf den **drei
+im Panel. Das Panel trägt ein **X**: der Nutzer schließt es, ein nächster Fehler ersetzt den Inhalt. Wie lange es
+steht, was es außer dem X noch schließt und was es **nicht** schließt, ist eine eigene Regel
+([R-WP-66](api-errors.md)) — hier steht, was das Panel **ist**. Das Panel zeigt die Fehler **dieser Seite**
+(gescheiterte Requests), nicht die der Unterhaltung. Das Panel steht auf den **drei
 Adressen** (Projects, Chat, Settings); Overlays der Kante — Datei-Drawer und Insight — behalten ihre
 Meldung am Ort, wo sie steht (Paul 2026-11-10, Q1): eine abgelehnte Ebene meldet sich dort, nicht oben.
 
 #### UC-WP-99 — pageErrorPanelTopAlwaysVisible ✅ (gebaut + reviewed 2026-11-10, `9d8c17bb` + Delta
-`ea4330ef` — GIVEN 1–3 mit Tests `api.error.panel.test.tsx` P1–P7, `chat.page.test.tsx`,
-`project.page.test.tsx`, `config.page.test.tsx`; Abnahme am Browser steht aus)
+`ea4330ef` — GIVEN 1 und 2 mit Tests `api.error.panel.test.tsx` P1–P7, `chat.page.test.tsx`,
+`project.page.test.tsx`, `config.page.test.tsx`; Abnahme am Browser steht aus. Lebensdauer des Panels =
+[R-WP-66](api-errors.md)/[UC-WP-103](api-errors.md))
 - GIVEN eine Seite WHEN ein Server-Fehler ohne Feldbezug ankommt (z. B. 409 beim parallelen Compact)
   THEN steht er als Error-Panel **prominent oben** — immer sichtbar, nicht Teil des Scroll-Bereichs,
   auf jeder Seite dasselbe Bauteil.
-- GIVEN das Panel steht WHEN der Nutzer das X klickt **oder** eine neue Server-Interaktion derselben
-  Seite beginnt THEN verschwindet es; der nächste Fehler ersetzt den Inhalt.
 - GIVEN ein Fehler mit `fieldErrors` WHEN er ankommt THEN bleiben die Feldfehler am Feld
   ([R-WP-56](api-errors.md)) und das Panel zeigt nur, was keinem Feld zugeordnet ist.
+
+### R-WP-66 — Das Panel steht, bis der Nutzer selbst wieder etwas tut ❌ (Paul 2026-11-11, Q3:
+„jeder Retry von mir bestätigt den Fehler automatisch … THEN wir senden die ganze conversation an das
+LLM AND fehler werden ausgeblenden — ist ein retry"; und Q4 zum abgelehnten Stop)
+
+Das Panel von [R-WP-62](api-errors.md) steht von seiner Ursache so lange, bis **eine** von zwei Dingen
+passiert: der Nutzer klickt sein **X**, oder der Nutzer löst **selbst** eine neue Anfrage auf dieser
+Seite aus — Senden, Formular absenden, und ebenso das **erneute Senden mit leerer Eingabe**
+(Resend, [R-WP-30](chat.md)). Ein Retry ist die stärkste Aussage des Nutzers, dass ihn der Fehler nichts
+mehr angeht: die Meldung verschwindet mit ihm, ohne dass er sie erst lesen und bestätigen muss.
+
+Was **nicht** schließt: die Ereignisse eines bereits laufenden Turns (`done`, `error`). Ein Turn-Fehler
+ist eine Zeile des Chats ([R-WP-34](chat.md)), keine neue Anfrage — die Meldung, die der Nutzer gerade
+liest, darf nicht verschwinden, während etwas anderes fehlschlägt.
+
+Und was **nicht** verschwinden darf: eine Ablehnung, die der Server auf einen Klick des Nutzers selbst
+ausspricht. Die Ausnahme von 2026-11-10 („ein 409 auf Stop bleibt still") ist **zurückgenommen** — ein
+abgelehnter Stop zeigt seinen Wortlaut im Panel; die Taste ist in diesem Fall ohnehin nicht bedienbar
+([R-WP-65](chat.md)), einen klickbaren Knopf ohne Reaktion gibt es nicht.
+
+#### UC-WP-103 — panelClosesOnlyOnWhatTheUserAskedFor ❌
+- GIVEN das Panel steht WHEN der Nutzer das X klickt THEN ist es weg und die Seite behält ihre Eingaben.
+- GIVEN das Panel steht WHEN der Nutzer **selbst** eine neue Anfrage auslöst (Senden, Formular
+  absenden, **Resend mit leerer Eingabe**) THEN ist das Panel fort, während die neue Anfrage läuft.
+- GIVEN das Panel steht WHEN ein **laufender Turn** endet oder fehlschlägt (`done`, `error`) THEN bleibt
+  das Panel unverändert stehen — der Turn-Fehler steht als Zeile im Chat.
+- GIVEN ein **Stop** wird vom Server abgelehnt (`409`) WHEN die Antwort ankommt THEN zeigt das Panel den
+  Wortlaut des Servers ([R-WP-65](chat.md)).

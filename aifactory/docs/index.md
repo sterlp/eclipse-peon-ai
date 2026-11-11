@@ -61,7 +61,9 @@ MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabi
   [R-WP-46/UC-WP-81](ui.md)**; offen bleiben Look-Reparaturen aus der
   Browser-Abnahme 2026-11-08 (in Inc 4 gebaut) und der Look am Browser; Chat-Aktionen-Buttons ✅
 ([R-WP-43](ui.md) Aktionen inkl. Composer, Inc 4); **Icon-Button-Widget ✅
-[R-WP-59/UC-WP-96](ui.md)** (B2/B3, 2026-11-10), [open-points](open-points.md) Runde 4b)
+[R-WP-59/UC-WP-96](ui.md)** (B2/B3, 2026-11-10), **Styling gehört zum Widget ❌
+[R-WP-64/UC-WP-101](ui.md)** (Grundregel Paul 2026-11-11: AntD zuerst, eigenes CSS nur wo AntD nichts
+gibt, gemeinsame Datei = nur Geteiltes; `styles.css` 1286 Zeilen → aufteilen), [open-points](open-points.md) Runde 4b)
 * [Projekte](project.md) — Git-Checkout als Projekt: klonen, eindeutig, entfernen, nie interaktiv, Live-Status. ◐
 * [Jon-Chat](chat.md) — ein Jon, ein Gespräch je Projekt: Streaming, Queue, Neustart, Tools, Kacheln. ◐
   (Herkunft je Zeile ✅ UC-WP-39/40; Kacheln ✅ R-WP-7, Blick je Agent ✅ R-WP-26, **Timeline als AntD-
@@ -77,14 +79,17 @@ MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabi
   [R-WP-61/UC-WP-98](chat.md)**, **Reconnect mit Backoff ✅ [R-WP-58/UC-WP-95](chat.md)** und
   **Kachel-Stand per Push ✅ [R-WP-60/UC-WP-97](chat.md)** (Bugs B6/B1/B5, 2026-11-10));
   **eine Chat-Aktion endet mit dem Neuaufbau des Gesprächs ✅ [R-WP-63/UC-WP-100](chat.md)** (B7b, Compact
-  und Clear — kein neues Signal, Auslöser ist die Kachel-Fallkante, 2026-11-11))
+  und Clear — kein neues Signal, Auslöser ist die Kachel-Fallkante, 2026-11-11); **Stop-Taste nur bei
+  stoppbarem Turn ❌ [R-WP-65/UC-WP-102](chat.md)** (Paul 2026-11-11: Aussage im Kachel-Snapshot, Knopf
+  sonst deaktiviert, abgelehnter Stop zeigt im Panel))
 * [Dateien](files.md) — Schreiben nur in Projekt + TMP, Datei-Bereich lesend. ◐ (gebaut, reviewed 2026-11-01)
 * [API-Fehler](api-errors.md) — Server-Fehler sichtbar: generierte API-Typen (typescript-generator),
   Bean Validation mit `fieldErrors`, ein Standard-Error-Widget (AntD), **Error-Panel je Seite prominent
-  oben ✅ [R-WP-62/UC-WP-99](api-errors.md)**. ✅
+  oben ✅ [R-WP-62/UC-WP-99](api-errors.md)**. ◐
   gebaut+reviewed 2026-11-09 (R-WP-54/55/56 + N1; UC-WP-92/93 mit Tests, R-WP-54 per M1/M2) und
-  2026-11-10 (R-WP-62/UC-WP-99, `9d8c17bb` + Delta `ea4330ef`); offen nur
-  die Browser-Abnahme der Feldabstände und des Panels)
+  2026-11-10 (R-WP-62/UC-WP-99, `9d8c17bb` + Delta `ea4330ef`); offen: **Panel-Lebensdauer ❌
+  [R-WP-66/UC-WP-103](api-errors.md)** (Paul 2026-11-11: eigener Retry schließt es, Turn-Fehler nicht,
+  abgelehnter Stop zeigt) und die Browser-Abnahme der Feldabstände und des Panels)
 * [Config](config.md) — eigene Datei der Factory, Config-Seite maskiert, „überschreiben" je Agent. ◐
   (Plugin-Parität F8 ✅ gebaut+reviewed 2026-11-09: R-WP-49–52 — Think (Default), Modell-AutoComplete
   mit Server-Liste, Max Tokens, Query-/Header-Params, je Agent Extra-Body + Tools-Allowlist)

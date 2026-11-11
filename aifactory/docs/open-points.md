@@ -2,8 +2,11 @@
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung steht aus) · 🔒 geklärt.
 Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entfällt.
-Aufgeräumt 2026-11-10: die geschlossenen 🔒-Erzählberichte der Runden 3–6 sind entfallen — ihre
-Entscheidungen stehen in den Feature-Docs, die gemessenen Fallstricke in [memory.md](memory.md).
+Aufgeräumt 2026-11-11: Runde 8 ist entfallen — ihre Punkte sind entschieden und stehen als Regeln
+(Panel-Lebensdauer [R-WP-66](api-errors.md), Stop nur bei stoppbarem Turn
+[R-WP-65](chat.md), Styling ans Widget [R-WP-64](ui.md)). Zuvor 2026-11-10: die geschlossenen
+🔒-Erzählberichte der Runden 3–6 sind entfallen — ihre Entscheidungen stehen in den Feature-Docs, die
+gemessenen Fallstricke in [memory.md](memory.md).
 
 ## Runde 9 — B7b: Compact-Ende im Chat (2026-11-10)
 
@@ -19,13 +22,6 @@ Entscheidungen stehen in den Feature-Docs, die gemessenen Fallstricke in [memory
   abgeleitet: ein Auto-/Vorlauf-Compact passiert **mitten im Turn**, ein Neuaufbau würde die laufenden
   Live-Zeilen des Turns über die gezeigten Zeilen legen — verboten nach UC-WP-100 GIVEN 3 und D-16).
   *Andersfall:* Neuaufbau auch dort = Anker-Mechanik des Turns nachziehen ([R-WP-47](chat.md)).
-* **❓ Stop während eines Clear** (gemessen 2026-11-10, Nebenbefund bei B7b) — **Clear** färbt die
-  Kachel `WORKING` (`ProjectRuntime.java:161-162`), und `WORKING` macht den Chat „beschäftigt"
-  (`chat.page.tsx:425-426`) ⇒ es stehen Chat-Warten **und** Stop; der Stop läuft in eine `409`
-  ([TurnClaim.java:65-67]) und wird verschluckt (`:504-507`). Vorbild Plugin: Clear ist während eines
-  Laufs gar nicht erst möglich (`ActionsBarWidget.java:161-168`). Entscheidung Paul: Aktions-`WORKING`
-  ebenfalls kein Stop-Ziel (Parität zu `COMPACTING`, D-17) **oder** die Aktion wie im Plugin sperren.
-  Antwort ⇒ Schärfung in [chat.md](chat.md).
 * **⏳ Die Zeilen eines gestoppten Turns überleben genau EINEN Aktions-Neuaufbau** (im Bau entschieden
   2026-11-11, abgeleitet aus [R-WP-11](chat.md): Live-only endet mit der nächsten Lesung — dieselbe
   Grenze wie beim Diff; UC-WP-50 sagt „schon gezeigte Zeilen bleiben" nur über den **Stop** selbst, nicht
@@ -61,21 +57,6 @@ Pauls Wortlaut, je Punkt seine Entscheidung (alle zur Look-Story, kein Teil des 
 * **⏳ Compact am Chat-Eingabe-Bereich fehlt (nur Icon)** — **gebaut 2026-11-10**, dito
   ([R-WP-59/UC-WP-96](ui.md)).
 * **⏳ Send nur als Icon** — **gebaut 2026-11-10**, dito ([R-WP-59/UC-WP-96](ui.md)).
-
-## Runde 8 — Nachwehen des Bug-Zyklus B6/B7a (2026-11-10)
-
-* **❓ Ein Turn-Fehler wischt eine stehende Seiten-Ablehnung** (`chat.page.tsx:351`, gemessen im
-  B7a-Review) — steht das Error-Panel (z. B. 409 auf ein Compact) und schlägt später ein **Turn**
-  fehl, verschwindet das Panel. [R-WP-62](api-errors.md) sagt: das Panel schließt eine **neue
-  Server-Interaktion** — ein Turn-Fehler ist aber keine Interaktion, die der Nutzer gerade gestartet
-  hat. Beides denkbar: (a) Turn-Fehler lässt das Panel stehen (nur eigene Interaktion schließt),
-  (b) jede Server-Nachricht schließt. **Frage an Paul**, dann Regel-Satz in
-  [api-errors.md](api-errors.md).
-* **❓ `factory-ui/src/styles.css` 1286 Zeilen** — über der 1000er-Grenze (`AGENTS.md`: „a file over
-  1000 lines is a bug and blocks acceptance until split"); schon vor dem Bug-Zyklus 1273, der Zyklus
-  hat nur drei flache Regeln ergänzt und einen Block entfernt. Entscheidung Paul: **Aufteilen als
-  eigenes Inkrement** (Empfehlung: nach Familien — Shell · Chat · Formulare · Trace) **oder** die
-  Grenze für Stylesheets schriftlich aussetzen (dann als Satz in `AGENTS.md`).
 
 ## Runde 7 — Look-Story-Nebenbefunde (2026-11-10)
 

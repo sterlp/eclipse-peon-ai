@@ -314,6 +314,32 @@ Aktion es verändert — [R-WP-26](chat.md)).
   endet THEN stehen diese Zeilen **weiterhin** — und der frische Stand des Verlaufs ist trotzdem da.
   WHEN die nächste Aktion endet THEN sind sie beendet (gewöhnliche Live-Spur, kein zweiter Speicher).
 
+### R-WP-65 — Stop gibt es nur, wenn es etwas zu stoppen gibt ❌ (Paul 2026-11-11, Browser-Abnahme: „ja 409 vom server ist richtig — der Fehler war nur, das generische Fehler-Widget sollte es anzeigen + der Button sollte disabled sein im UI")
+
+**Stop** gehört einem **laufenden Turn**. Was ein Turn ist, weiß allein der Server (ein Claim entscheidet
+in einem Monitor über Turn und Aktion, [Architektur](aifactory-architektur.md)) und sagt es dem Client auf
+dem **einzigen Weg, den er schon hat**: der Kachel-Snapshot trägt die Aussage „ein Turn ist stoppbar"
+([R-WP-60](chat.md)) — kein neues Ereignis, kein zweiter Pfad, keine Raten-Oberfläche. Die Oberfläche
+bietet die Taste **genau dann** an, sonst ist sie **deaktiviert** (Parität zum Plugin, dessen Bedienleiste
+während einer Arbeit gesperrt ist).
+
+Während einer **Aktion** (Clear, Compact) ist kein Turn stoppbar: ein halber Compact ist kein Ergebnis
+(D-17 bleibt als fachliche Aussage) — die Taste ist **aus**, und der Server lehnt weiterhin mit `409` ab,
+was Paul ausdrücklich richtig findet. Kommt die Ablehnung trotzdem (der Turn endete zwischen dem Lesen des
+Stands und dem Klick), zeigt sie das **Error-Panel** ([R-WP-62](api-errors.md)): **keine Ablehnung bleibt
+unsichtbar**; die Absorptions-Ausnahme „409 auf Stop bleibt still" (2026-11-10) ist zurückgenommen. Ein
+akzeptierter Stop endet wie bisher mit genau einem `done` ([R-WP-48](chat.md)) und hält die gezeigten
+Zeilen ([UC-WP-50](chat.md)).
+
+#### UC-WP-102 — stopIsOfferedOnlyWhenATurnIsStoppable ❌
+- GIVEN der Stand meldet **keinen** stoppbaren Turn — nichts läuft, oder eine **Aktion** läuft — WHEN der
+  Chat zeichnet THEN ist die Stop-Taste **deaktiviert**; ein Klick ins Leere ist nicht möglich.
+- GIVEN ein Turn läuft (auch der eines anderen Nutzers, [UC-WP-22](chat.md)) WHEN der Chat zeichnet THEN
+  ist die Taste **bedienbar** und ihr Klick stoppt den Turn vollständig ([UC-WP-50](chat.md)).
+- GIVEN die Taste war bedienbar WHEN der Server antwortet „nichts mehr zu stoppen" (`409`) THEN steht der
+  Wortlaut des Servers im Error-Panel ([R-WP-62](api-errors.md)) und bleibt, bis der Nutzer selbst
+  weitermacht.
+
 ### R-WP-61 — Eine Problem-Meldung ist rot und trägt ein rotes Icon ✅ (Paul 2026-11-10, Browser-Abnahme: „tool indicatoren nicht da … status onProblem sollte sichtbar sein im UI mit dem rot und auch einem roten Icon"; Präzisierung Paul 2026-11-10: die Werkzeug-Schritte mit Dreh-Indikator sind gut so — nur der Fehlerfall muss sichtbar sein; gebaut + reviewed 2026-11-10, Inkrement `30ed0525` — Backend 276 Tests, missCount=1, UI 276; Abnahme am Browser steht aus, dort erscheint auch eine API-Retry-Meldung rot)
 
 Läuft ein Werkzeug auf einen Fehler, meldet der Kern das als `PROBLEM` (z. B. ein abgelehnter oder
