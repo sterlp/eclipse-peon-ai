@@ -1,16 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 
-import {
-  isAlreadyOver,
-  isTraceLine,
-  listMessages,
-  sendMessage,
-  senderName,
-  stopTurn,
-  type ChatMessage,
-  type ChatStreamEvent,
-} from './chat.client'
+import { isTraceLine, listMessages, type ChatMessage, type ChatStreamEvent } from './chat.client'
 import { agentAction, type AgentAction } from './chat.agents.client'
 import { acceptedAction, afterSnapshot, type ActionWatch } from './chat.action.rebuild'
 import { useTileBoard } from './chat.board'
@@ -37,6 +28,7 @@ import { ScrollBottomButton } from './chat.scroll.bottom'
 import { ChatTiles } from './chat.tiles'
 import { ChatWaiting } from './chat.waiting'
 import { openChatStream } from './chat.stream'
+import { useTurnControls } from './chat.turn.controls'
 import { errorMessage } from '../shared/api.client'
 import { ApiErrorPanel } from '../shared/api.error.panel'
 import { content } from '../shared/content'
@@ -120,17 +112,9 @@ export function ChatPage({
   const [outgoing, setOutgoing] = useState<PendingLine[]>([])
   const [live, setLive] = useState<LiveItem[]>([])
   const [draft, setDraft] = useState('')
-  const [error, setError] = useState<string | null>(null)
   // the one overlay this view may put on the right edge, held to one with the file area (R-WP-33,
   // UC-WP-60 G3); the rule and its measured reason live beside the state they write
   const { shown: insight, openInsight, closeInsight } = useEdgeInsight(filesOpen, onCloseFiles)
-  /**
-   * The project whose turn we started and have not seen end — held by id, so switching the project ends it
-   * here without an effect writing state (UC-WP-50).
-   */
-  const [runningTurn, setRunningTurn] = useState<string | null>(null)
-  /** The turn he stopped: its project, whose `done` reads nothing (D-16), and the live row its rows began at. */
-  const stoppedTurn = useRef<{ projectId: string | null; from: number | null }>({ projectId: null, from: null })
   /**
    * What the last read holds, in the two units that read it: `lines` indexes a pending line's own position
    * (chat.pending.ts), `voices` is what a live anchor counts — a step of the trace is a line the read may add
@@ -179,7 +163,6 @@ export function ChatPage({
   const log = useRef<HTMLUListElement>(null)
   const { following, onLogScroll, followNow, followIfFollowing } = useFollowBottom(log)
   const projectId = project?.id ?? null
-  const { tiles, refreshTiles, applySnapshot } = useTileBoard(projectId, setError)
   /** The action this browser asked for on its own tile, with the live mark its rebuild keeps (R-WP-63, UC-WP-100) */
   const actionWatch = useRef<ActionWatch | null>(null)
 
@@ -198,6 +181,25 @@ export function ChatPage({
     pendingLines.current = lines
     setOutgoing(lines)
   }, [])
+
+  /**
+   * The turn's own controls, before the board: the board reports its failures into the same one panel. Read by
+   * name on purpose — the callbacks below list these in their dependencies, and the hook keeps each of them
+   * identity-stable, so the stream is not re-opened by a render.
+   */
+  const {
+    ownTurn,
+    error,
+    setError,
+    send,
+    // the page's own `stop` stays the composer's handler: it adds the live row the hook must not know (R-WP-63)
+    stop: stopTheTurn,
+    endTurn,
+    forgetStoppedFrom,
+    stoppedFrom,
+    takeStoppedTurn,
+  } = useTurnControls({ projectId, user, historyCount, pendingLines, writePending, followNow })
+  const { tiles, refreshTiles, applySnapshot } = useTileBoard(projectId, setError)
 
   const writeLive = useCallback((next: LiveItem[]) => {
     liveItems.current = next
@@ -248,9 +250,9 @@ export function ChatPage({
       // input stands in the memory with the core's marker and would never be recognised again (R-WP-37)
       writePending(withoutConfirmed(pendingLines.current, loaded))
       writeLive(liveLinesAfterHistory(liveItems.current, mark))
-      stoppedTurn.current.from = null
+      forgetStoppedFrom()
     },
-    [writeHistory, writePending, writeLive],
+    [forgetStoppedFrom, writeHistory, writePending, writeLive],
   )
 
   /**
@@ -266,7 +268,7 @@ export function ChatPage({
     return listMessages(projectId)
       .then(loaded => applyHistory(loaded, mark, read))
       .catch(reason => setError(errorMessage(reason)))
-  }, [applyHistory, projectId])
+  }, [applyHistory, projectId, setError])
 
   const applyEvent = useCallback(
     (event: ChatStreamEvent) => {
@@ -335,16 +337,12 @@ export function ChatPage({
           actionWatch.current = null
           // one reload per turn — the turn that drained a queued input closes that input too, and the
           // history that lands carries every finished line, the team's own answer among them
-          if (stoppedTurn.current.projectId === projectId) {
-            // UC-WP-50: after an accepted stop the lines he has seen stay on the screen — there is no
-            // second store to read them back from, and a history read would throw them away (D-16, R-WP-11)
-            stoppedTurn.current.projectId = null
-          } else {
+          if (!takeStoppedTurn()) {
             void refresh()
           }
           // the end snapshot usually arrives on its own; reading again covers the reader who lost it
           void refreshTiles()
-          setRunningTurn(null)
+          endTurn()
           break
         case 'error': {
           // shown where it happened — a line of the log, not a notice beside it — and the composer stays
@@ -354,7 +352,7 @@ export function ChatPage({
           // the failure is an end of the answer, so no step of this turn works behind it
           writeTurn(null)
           writeLive(appendLiveError(liveItems.current, event.message, at))
-          setRunningTurn(null)
+          endTurn()
           setError(null)
           void refresh()
           break
@@ -372,7 +370,7 @@ export function ChatPage({
           break
       }
     },
-    [applySnapshot, beginTurn, projectId, refresh, refreshTiles, writeLive, writeTurn],
+    [applySnapshot, beginTurn, endTurn, refresh, refreshTiles, setError, takeStoppedTurn, writeLive, writeTurn],
   )
 
   useEffect(() => {
@@ -435,45 +433,9 @@ export function ChatPage({
    * A turn is running when we started one that has not ended, or when the roster shows an agent working —
    * another user's turn on the same project is a turn the user here may stop (UC-WP-22). COMPACTING is
    * deliberately not one of them: a half Compact is not something a turn's stop may cut (D-17). Read above
-   * `send` as well: the empty send way asks it before anything goes out (UC-WP-57 GIVEN 2).
+   * `submit` as well: the empty send way asks it before anything goes out (UC-WP-57 GIVEN 2).
    */
-  const busy = (runningTurn !== null && runningTurn === projectId) || tiles.some(tile => tile.state === 'WORKING')
-
-  /**
-   * One text into this project's conversation — whether the field wrote it or an empty send repeated the last
-   * line the screen shows makes no difference on the wire (UC-WP-57): the same edge, the same queue while a
-   * turn runs (R-WP-10). Never reached with a blank text: the backend answers 400, so the empty way ends in
-   * `submit` before any request.
-   */
-  async function send(text: string) {
-    if (projectId === null) {
-      return
-    }
-    // his own input is always shown, wherever he had read up to (UC-WP-80) — before the line is written, so
-    // the follow is re-armed when the effect that carries the new line runs
-    followNow()
-    // shown before the server has it: a turn writes the user line into the memory only when it starts,
-    // so a queued input would vanish from the screen until the next history read. The number of history
-    // lines standing now and this browser's sender name are what confirm the line later — the name is
-    // normalised exactly as the wire carries it, or the history would never confirm it (R-WP-37, D-H)
-    writePending([
-      ...pendingLines.current,
-      { text, afterHistory: historyCount.current.lines, origin: senderName(user) },
-    ])
-    setError(null)
-    // the send is what opens the turn, so the flag follows the intent and not the answer (D-13): 202 only
-    // says "taken", and a stop that comes one moment later must already address this turn
-    setRunningTurn(projectId)
-    stoppedTurn.current.projectId = null
-    try {
-      // the name of this browser goes with it, and only when there is one (R-WP-25, UC-WP-48)
-      await sendMessage(projectId, text, user)
-    } catch (reason) {
-      writePending(pendingLines.current.slice(0, -1))
-      setRunningTurn(null)
-      setError(errorMessage(reason))
-    }
-  }
+  const busy = ownTurn || tiles.some(tile => tile.state === 'WORKING')
 
   /**
    * The one decider of the send way (UC-WP-57), because the composer answers nothing on its own (UC-WP-74):
@@ -500,30 +462,9 @@ export function ChatPage({
     }
   }
 
-  /**
-   * Stop the running turn (UC-WP-50). A 409 is not shown: it says the turn was already over, which is
-   * what the click wanted, and the roster is read again so the tiles say so too (D-17). Any other
-   * refusal is a line in the chat like any other error.
-   */
-  async function stop() {
-    if (projectId === null) {
-      return
-    }
-    setError(null)
-    try {
-      await stopTurn(projectId)
-      // remembered for the `done` that follows: his lines stay, the history is not re-read (D-16)
-      stoppedTurn.current = { projectId, from: turn.current?.from ?? null }
-    } catch (reason) {
-      if (!isAlreadyOver(reason)) {
-        setError(errorMessage(reason))
-        return
-      }
-    }
-    // the end he asked for has been taken: the wait ends now, without waiting for a `done` that will not
-    // read anything over it — the lines on the screen stay (R-WP-31, UC-WP-50, D-16)
-    setRunningTurn(null)
-    void refreshTiles()
+  /** The composer's stop: the live row the stopped turn's lines began at is the anchor block's fact (R-WP-63). */
+  function stop() {
+    void stopTheTurn(turn.current?.from ?? null, refreshTiles)
   }
 
   /**
@@ -537,7 +478,7 @@ export function ChatPage({
       return
     }
     setError(null)
-    const mark = stoppedTurn.current.from ?? liveItems.current.length
+    const mark = stoppedFrom() ?? liveItems.current.length
     actionWatch.current = acceptedAction(tiles.find(tile => tile.name === name), action, mark)
     try {
       await agentAction(projectId, name, action)
