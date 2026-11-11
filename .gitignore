@@ -49,6 +49,10 @@ org.sterl.llmpeon.core/.classpath
 /copilot_src/
 /graphify-out/
 
+### Plan artefacts: peon-plan is never committed ###
+peon-plan/
+**/peon-plan/
+
 
 ### Fixture: test_project re-inkludieren (Muss nach allen Ignorier-Regeln stehen) ###
 !/test_project/.project
