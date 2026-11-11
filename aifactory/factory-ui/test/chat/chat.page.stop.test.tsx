@@ -104,9 +104,9 @@ test('aCompactAfterAStopKeepsTheLinesOfTheStoppedTurn', async () => {
   expect(screen.queryAllByTestId('chat-timeline'), 'and its step went with it').toHaveLength(0)
 })
 
-// UC-WP-50
-// R-WP-65, UC-WP-102 GIVEN 3 — the button was operable on the stand's word; the refusal answers on the same
-// edge and is shown, not absorbed (ADR-004). R-WP-66, UC-WP-103: the server's word stands in the one panel.
+// UC-WP-50, R-WP-65, UC-WP-102
+// the button was operable on the stand's word; the refusal answers on the same edge and is shown, not
+// absorbed (ADR-004) — R-WP-66, UC-WP-103: the server's word stands in the one panel.
 test('aStopThatCameTooLateShowsTheServerWording', async () => {
   // a tile that says its turn is stoppable offers the stop — another user's turn is stoppable too (UC-WP-22)
   const chat = stubChat({ messages: [QUESTION], agents: [{ ...tile('Jon', 'WORKING'), stoppable: true }] })
@@ -126,8 +126,8 @@ test('aStopThatCameTooLateShowsTheServerWording', async () => {
   expect(chat.countOf('/messages', 'GET')).toBe(1)
 })
 
-// UC-WP-50
-// R-WP-65, UC-WP-102 GIVEN 1 — a half Compact is not something a turn's stop may cut, so it offers no stop (D-17)
+// UC-WP-50, R-WP-65, UC-WP-102
+// GIVEN 1: a half Compact is not something a turn's stop may cut, so it offers no stop (D-17)
 test('aCompactingTileOffersNoStop', async () => {
   // a half Compact is not something a turn's stop may cut — so it is not a turn to stop (D-17)
   stubChat({ messages: [QUESTION], agents: [tile('Jon', 'COMPACTING')] })
@@ -144,8 +144,7 @@ test('aCompactingTileOffersNoStop', async () => {
  * and the statement alone makes it operable even on an IDLE tile — the turn of another browser, which the state
  * would have hidden a moment later (GIVEN 2).
  */
-// R-WP-65
-// UC-WP-102
+// R-WP-65, UC-WP-102
 test('stopFollowsTheStoppableStatementOfTheStand', async () => {
   const chat = stubChat({ messages: [QUESTION], agents: [{ ...tile('Jon', 'WORKING'), stoppable: false }] })
   render(<ChatPage project={project()} />)
@@ -164,8 +163,7 @@ test('stopFollowsTheStoppableStatementOfTheStand', async () => {
  * UC-WP-103 GIVEN 2: his own next request closes it, and the empty send is such a request (the repeat of
  * UC-WP-57 goes out with it).
  */
-// R-WP-66
-// UC-WP-103
+// R-WP-66, UC-WP-103
 test('aTurnEndNeverClosesThePanel', async () => {
   const REFUSAL = 'a turn or another action is still running'
   const chat = stubChat({ messages: [QUESTION], agents: [tile('Jon', 'IDLE')] })
