@@ -123,7 +123,9 @@ class AgentStopTest extends FactorySpringTest {
     @Test
     @Timeout(60)
     // UC-WP-50
-    // R-WP-65, UC-WP-102 — the tile is the only state address of a turn: it says whether one is stoppable
+    // the tile is the only state address of a turn: it says whether one is stoppable
+    // R-WP-65
+    // UC-WP-102
     void stopEndsTheTurnAndEndsItAsAnEnd() {
         Project project = projects.add("https://git.example.com/acme/stop-turn.git").project();
         ProjectRuntime runtime = runtimes.runtime(project.id());
@@ -306,7 +308,9 @@ class AgentStopTest extends FactorySpringTest {
     @Test
     @Timeout(60)
     // UC-WP-50
-    // R-WP-65, UC-WP-102 — with no turn there is nothing to stop, and the tile says so
+    // with no turn there is nothing to stop, and the tile says so
+    // R-WP-65
+    // UC-WP-102
     void stopWithoutATurnIsRefused() {
         Project project = projects.add("https://git.example.com/acme/stop-idle.git").project();
         ProjectRuntime runtime = runtimes.runtime(project.id());
