@@ -44,7 +44,7 @@ flowchart LR
 |---|---|---|
 | `ProjectService` (Package `project`) | Projektliste, Klonen, Entfernen, Pfad je Projekt | den Core kennen |
 | `ProjectRuntime` | Jon + Team je Projekt, Serialisierung der Turns, Clear/Compact je Agent, Tool- und Write-Roots | HTTP, JSON, Browser-Formate |
-| `ChatStreamRegistry` | Events des `AiMonitor` als SSE je Projekt verteilen, tote Zuschauer abmelden; **zwei Kanäle je Projekt** (seit C-7, [R-WP-53](chat.md)): Jon-Kanal (`channel == null`, nur Jon + namenlose Zeilen — UC-WP-40) und je Mitglied ein Agenten-Kanal (`publishAgent`, nur `partial`/`tool` dieses Mitglieds) | eigene Nachrichten halten (Memory ist im Core), **kein** Replay des Verlaufs, kein Emitter-I/O unter dem Projekt-Lock (ein langsamer Leser darf den Turn nicht bremsen, UC-WP-41) |
+| `ChatStreamRegistry` | Events des `AiMonitor` als SSE je Projekt verteilen, tote Zuschauer abmelden; **zwei Kanäle je Projekt** (seit C-7, [R-WP-53](chat.md)): Jon-Kanal (`channel == null`, nur Jon + namenlose Zeilen — UC-WP-40) und je Mitglied ein Agenten-Kanal (`publishAgent`, nur `partial`/`tool`/`problem` dieses Mitglieds) | eigene Nachrichten halten (Memory ist im Core), **kein** Replay des Verlaufs, kein Emitter-I/O unter dem Projekt-Lock (ein langsamer Leser darf den Turn nicht bremsen, UC-WP-41) |
 | `FactoryConfig` (Package `config`) | Lesen/Schreiben der Factory-Config, Maskierung der Keys, Auflösung pro Turn | den geteilten Config-Bestand des Plugins schreiben **oder lesen** |
 | `PacoRuntime` | ein Paco je Nutzer und Projekt, Write-Liste `stories/<nutzer>/` + `proposals/<nutzer>/`, nur `searchAgent` | Team Plan/Dev/Review, Projekt-Jon-Memory |
 | Core (`AiPoAgent` …) | Agent-Logik, Tools, Memory, History-Store | Eclipse, HTTP, Factory-Klassen |
@@ -97,9 +97,10 @@ sequenceDiagram
 * **Ein `ProjectRuntime` je Projekt**, `ChatStreamRegistry` hält **keine** Nachrichten — nur die
   Zuhörer je Projekt und den Broadcast. Wer den Verlauf braucht, liest ihn aus dem Core-History-Store
   (`home.stateDir(id)`), nicht aus einem zweiten Speicher.
-* **Ereignis-Namen, jeder mit Besitzer:** `partial` (ein Token-Delta), `tool` (eine Werkzeug-/
-  Problem-Zeile), `done`, `error`. `done`/`error` sendet `ProjectRuntime`, wenn `jon.call()`
-  zurückkehrt bzw. wirft — **kein** Monitor-Event (ein Mitglieds-Ende ist kein Turn-Ende).
+* **Ereignis-Namen, jeder mit Besitzer:** `partial` (ein Token-Delta), `tool` (eine Werkzeug-Zeile),
+  `problem` (eine Problem-Meldung des Kerns, [R-WP-61](chat.md)), `done`, `error`. `done`/`error`
+  sendet `ProjectRuntime`, wenn `jon.call()` zurückkehrt bzw. wirft — **kein** Monitor-Event (ein
+  Mitglieds-Ende ist kein Turn-Ende).
 * **Finale Team-Antwort (UC-WP-39/40):** im Verlauf liest die Fabrik die `ToolExecutionResultMessage`
   in Jons History; der Urheber kommt aus einer festen Zuordnung Werkzeugname → Mitglied in `chat`.
   Live gibt es **keinen** Werkzeug-Ergebnis-Kanal — die Mitglieder-Zeile erscheint bei `done`, live
@@ -107,9 +108,11 @@ sequenceDiagram
   Live-Trennung Jon/Mitglied läuft allein über den vom Core gestempelten `origin`
   ([ADR-0078](../../docs/adr/0078-origin-in-core-owner-monitor.md)) — keine Id-Buchführung für offene
   Delegationen, das Web zeigt Zeilen mit Mitglieds-Origin grundsätzlich nicht.
-* **Chat-Rebuild nach Compact:** dieselbe Regel wie im Plugin —
+* **Chat-Rebuild nach Compact und Clear:** dieselbe Regel wie im Plugin —
   [R-CT-7](../../org.sterl.llmpeon.core/docs/compact-lock.md) (`onCompactCompleted` mit dem angezeigten
-  Agenten als Absender → neu aus dem Verlauf aufbauen).
+  Agenten als Absender → neu aus dem Verlauf aufbauen). Auf dem Draht ändert das nichts: das Ende einer
+  Aktion meldet die Fabrik schon mit dem `agents`-Snapshot ihrer Kachel, die Oberfläche baut auf dessen
+  **Fallkante** neu auf ([R-WP-63](chat.md)) — kein eigenes Ereignis, kein neues Feld.
 
 * **Komponentenzuschnitt:** `chat` besitzt Controller + `ProjectRuntime` + `ChatStreamRegistry` und darf
   `config` und `project` fragen; `config` liefert die `LlmConfig` pro Turn (UC-WP-24 GIVEN 3), `project`
@@ -169,7 +172,7 @@ sequenceDiagram
   C-->>U: 202
   A-->>S: Compact-Zeilen (Jons Origin) / Fehler als Tool-Zeile
   P->>S: Agents(tiles) — endgültig
-  U->>C: GET /agents + GET /messages (neu lesen)
+  U->>C: GET /messages — Neuaufbau auf die Fallkante des Kachel-Zustands
 ```
 
 * **Die drei Gesprächs-Kanten bleiben drei.** `GET/POST …/messages` und `GET …/events` führen den
@@ -178,7 +181,10 @@ sequenceDiagram
   bleibt im `chat`-Paket (`ComponentArchitectureTest` verbietet Agent-Instanzen anderswo).
 * **SSE `agents` ist ein Snapshot, kein Verlauf.** Das Event trägt die ganze Kachel-Liste, die UI
   ersetzt ihren Zustand; kein Replay, kein zweiter Speicher. Frisch gelesen wird beim Mount/Reconnect
-  über `GET …/agents` (dieselbe Regel wie beim Verlauf: *re-connect ⇒ lesen*). Die Kontextzahl ist
+  über `GET …/agents` (dieselbe Regel wie beim Verlauf: *re-connect ⇒ lesen*). Der **Neuaufbau des
+  Gesprächs nach Clear/Compact** hängt an dieser Kachel-Kante, nicht an der Antwort: gemerkte Aktion +
+  Zustands-Bereich ihrer Kachel + dessen Fallkante ([R-WP-63](chat.md)) — der Verlaufslauf unmittelbar
+  nach `202` ist der alte Defekt, `202` heißt „angenommen", nicht „fertig". Die Kontextzahl ist
   der Plugin-Wert (`getTotalTokenUsed()` + `isTokenEstimate()`, Prozent gegen das Auto-Compact-Budget);
   die Fabrik formatiert nicht selbst. Search ist ein Sub-Loop — Kachel ohne Kontext, kein Clear/Compact,
   kein Blick (R-WP-7/R-WP-26).

@@ -1,4 +1,4 @@
-import { request } from '../shared/api.client'
+import { ApiRequestError, request } from '../shared/api.client'
 import type { AgentTile } from './chat.agents.client'
 
 /**
@@ -119,4 +119,13 @@ export async function stopTurn(projectId: string): Promise<void> {
   return request<void>(`/api/projects/${encodeURIComponent(projectId)}/messages/stop`, {
     method: 'POST',
   })
+}
+
+/**
+ * The server's "no turn is running" (409) to a stop — what its answer means, next to the edge that gets it.
+ * The user got what he asked for either way, so the caller absorbs this one refusal instead of printing it
+ * (UC-WP-50, D-17).
+ */
+export function isAlreadyOver(error: unknown): boolean {
+  return error instanceof ApiRequestError && (error.apiError?.status ?? 0) === 409
 }

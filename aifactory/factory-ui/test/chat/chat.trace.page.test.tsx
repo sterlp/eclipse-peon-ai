@@ -452,6 +452,10 @@ test('twoTurnsCountingTheSameRowsAreNotTheSameTurn', async () => {
   // anchored at
   chat.setMessages([])
   fireEvent.click(screen.getByTestId('tile-clear-Jon'))
+  await chat.push(event('agents', { tiles: [tile('Jon', 'WORKING')] }))
+  // R-WP-63: `202` says taken, so what rebuilds the conversation is the tile leaving WORKING — the read of a
+  // cleared conversation is asked for by that snapshot, never by the answer
+  await chat.push(event('agents', { tiles: [tile('Jon', 'IDLE')] }))
   await waitFor(() => expect(userLineTexts()).toEqual([]))
   expect(
     screen.queryByTestId('chat-timeline'),

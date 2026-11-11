@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { renderApp } from '../shared/app.harness'
 import { baseDeclarations, declarations, declares } from '../shared/sheets'
 import { ChatPage } from '../../src/chat/chat.page'
+import type { TileCapability } from '../../src/chat/chat.agents.client'
 import { project } from '../shared/fixtures'
 import { content } from '../../src/shared/content'
 import {
@@ -478,6 +479,121 @@ test('aCompactingTileOffersNoStop', async () => {
 
   expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.COMPACTING)
   expect(screen.getByTestId('chat-stop')).toBeDisabled()
+})
+
+/** The seat of a member: all four capabilities — the insight is what tells his seat from the conversation's own. */
+const MEMBER_SEAT: TileCapability[] = ['CONTEXT', 'CLEAR', 'COMPACT', 'TRANSCRIPT']
+
+/** The steps of the trace and the ones wearing the indicator — our own `data-*`, never a class of the basis. */
+const traceSteps = () =>
+  screen
+    .getAllByTestId('chat-timeline')
+    .flatMap(widget => [...widget.querySelectorAll('.chat-trace-item[data-trace="tool"]')])
+const workingSteps = () => traceSteps().filter(step => step.hasAttribute('data-working'))
+
+// R-WP-63
+// UC-WP-100
+test('theConversationIsRebuiltWhenItsCompactEnds', async () => {
+  const STEP = '🗜 Compressing Jon: 12 messages 78000 tokens (estimate)'
+  const SUMMARY = 'Session compacted: zwei Dateien, eine Banane.'
+  const chat = stubChat({ messages: [QUESTION], agents: [tile('Jon', 'IDLE'), tile('Dev', 'IDLE')] })
+  render(<ChatPage project={project()} />)
+  await flush()
+  const historyReads = chat.countOf('/messages', 'GET')
+
+  fireEvent.click(screen.getByTestId('tile-compact-Jon'))
+  await chat.push(event('agents', { tiles: [tile('Jon', 'COMPACTING'), tile('Dev', 'IDLE')] }))
+  await chat.push(event('tool', { text: STEP, origin: 'Jon' }))
+  expect(workingSteps(), 'the step of a running action works').toHaveLength(1)
+
+  // what the core leaves in the memory: the one summary line, and nothing else to show
+  chat.setMessages([{ role: 'user', text: SUMMARY }])
+  await chat.push(event('agents', { tiles: [tile('Jon', 'IDLE'), tile('Dev', 'IDLE')] }))
+  await flush()
+
+  // the end of the area is the moment, not the acceptance: one read, taken when the Compact was over
+  expect(chat.countOf('/messages', 'GET'), 'one read, on the falling edge').toBe(historyReads + 1)
+  expect(userLineTexts(), 'the conversation is what the Bestand holds now').toEqual([SUMMARY])
+  expect(screen.queryByText(QUESTION.text), 'the line the memory dropped is gone with it').toBeNull()
+  expect(
+    [...screen.getByTestId('chat-timeline').querySelectorAll('.chat-trace-item')].map(line => line.textContent),
+    "the Compact wrote no line into any memory — it stays as the live trace of this action",
+  ).toEqual([`Jon${STEP}`])
+  expect(workingSteps(), 'nothing spins any more').toEqual([])
+})
+
+// UC-WP-100
+test('clearEmptiesTheConversationWhenItsTileIsIdle', async () => {
+  const chat = stubChat({ messages: [QUESTION, ANSWER], agents: [tile('Jon', 'IDLE')] })
+  render(<ChatPage project={project()} />)
+  await flush()
+  const historyReads = chat.countOf('/messages', 'GET')
+  const rosterReads = chat.countOf('/agents', 'GET')
+
+  fireEvent.click(screen.getByTestId('tile-clear-Jon'))
+  await chat.push(event('agents', { tiles: [tile('Jon', 'WORKING')] }))
+  await flush()
+
+  // 202 means <em>taken</em>: the memory still holds the conversation, and a read here is the defect the rule
+  // rules out — so nothing may have been read while the tile stands in the action's area
+  expect(userLineTexts(), 'the conversation still stands while the action runs').toEqual([QUESTION.text])
+  expect(chat.countOf('/messages', 'GET')).toBe(historyReads)
+
+  chat.setMessages([])
+  await chat.push(event('agents', { tiles: [tile('Jon', 'IDLE')] }))
+  await flush()
+
+  expect(chat.countOf('/messages', 'GET'), 'one read, on the falling edge').toBe(historyReads + 1)
+  expect(screen.queryAllByTestId('chat-line-user'), 'the conversation is empty, as the plugin leaves it').toEqual([])
+  expect(screen.queryAllByTestId('chat-line-jon')).toEqual([])
+  // the roster's read occasion moved with the action's end (its start arrives on the wire anyway, R-WP-60)
+  expect(chat.countOf('/agents', 'GET')).toBe(rosterReads + 1)
+})
+
+// UC-WP-100
+test('aTileSnapshotAloneNeverRebuildsTheConversation', async () => {
+  const chat = stubChat({
+    messages: [QUESTION],
+    agents: [tile('Jon', 'IDLE'), tile('Dev', 'IDLE', MEMBER_SEAT)],
+  })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'zähl die Dateien' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+  await chat.push(event('tool', { text: 'ls in the checkout' }))
+
+  const historyReads = chat.countOf('/messages', 'GET')
+  const rosterReads = chat.countOf('/agents', 'GET')
+  const shown = userLineTexts()
+  expect(workingSteps(), 'the turn is open and its step works').toHaveLength(1)
+
+  // GIVEN 3: another turn's ends and states are nobody's action — the running turn keeps what it reported
+  await chat.push(event('agents', { tiles: [tile('Jon', 'WORKING'), tile('Dev', 'IDLE', MEMBER_SEAT)] }))
+  await chat.push(event('agents', { tiles: [tile('Jon', 'IDLE'), tile('Dev', 'IDLE', MEMBER_SEAT)] }))
+  await flush()
+  expect(chat.countOf('/messages', 'GET')).toBe(historyReads)
+  expect(workingSteps(), 'a snapshot takes the indicator of an open turn away from nothing').toHaveLength(1)
+
+  // GIVEN 4: the core's own Compact reports the same area and ends the same way — no click, no rebuild
+  await chat.push(event('agents', { tiles: [tile('Jon', 'COMPACTING'), tile('Dev', 'IDLE', MEMBER_SEAT)] }))
+  await chat.push(event('agents', { tiles: [tile('Jon', 'IDLE'), tile('Dev', 'IDLE', MEMBER_SEAT)] }))
+  await flush()
+  expect(chat.countOf('/messages', 'GET')).toBe(historyReads)
+  expect(workingSteps()).toHaveLength(1)
+
+  // Grenze 2: an accepted action on a member's tile changes his conversation and nobody's here
+  fireEvent.click(screen.getByTestId('tile-compact-Dev'))
+  await chat.push(event('agents', { tiles: [tile('Jon', 'IDLE'), tile('Dev', 'COMPACTING', MEMBER_SEAT)] }))
+  await chat.push(event('agents', { tiles: [tile('Jon', 'IDLE'), tile('Dev', 'IDLE', MEMBER_SEAT)] }))
+  await flush()
+
+  expect(chat.countOf('/messages', 'POST'), 'the click sent its action, and only that').toBe(1)
+  expect(chat.countOf('/messages', 'GET'), 'no snapshot of these read the conversation again').toBe(historyReads)
+  expect(chat.countOf('/agents', 'GET'), "a member's action reads nothing at this chat").toBe(rosterReads)
+  expect(userLineTexts(), 'the lines the turn showed stay the lines on the screen').toEqual(shown)
+  expect(screen.getByTestId('chat-timeline')).toHaveTextContent('ls in the checkout')
 })
 
 // UC-WP-57

@@ -5,28 +5,78 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
 Aufgeräumt 2026-11-10: die geschlossenen 🔒-Erzählberichte der Runden 3–6 sind entfallen — ihre
 Entscheidungen stehen in den Feature-Docs, die gemessenen Fallstricke in [memory.md](memory.md).
 
+## Runde 9 — B7b: Compact-Ende im Chat (2026-11-10)
+
+* **🔒 Was schließt die 🗜-Zeile nach einem Compact** — gemessen: die 🗜-Zeile **öffnet** in der
+  Oberfläche einen offenen Turn (`chat.page.tsx:285-300`), geschlossen nur durch ein Turn-Ende (`:328`);
+  eine **Aktion** schuldet per [R-WP-48](chat.md) keins ⇒ der Spin bleibt, und der Verlaufs-Lauf lief
+  unmittelbar nach der Zusage (`:533-534`), also **vor** der Aktion ⇒ Inhalt stale. **Paul
+  2026-11-10:** „du brauchst kein eigenes signal — alles ist bereits im core … wenn Jon ein compact macht
+  / clear und rebuild des chats anhand der history von jon, genau wie es im eclipse plugin passiert."
+  ⇒ Regel [R-WP-63/UC-WP-100](chat.md): Neuaufbau auf der **Fallkante des Kachel-Zustands**, kein
+  neues Ereignis, kein neues Feld; Compact **und** Clear.
+* **⏳ Kern-eigener Compact löst keinen Neuaufbau aus** (Bewusste Grenze in [R-WP-63](chat.md),
+  abgeleitet: ein Auto-/Vorlauf-Compact passiert **mitten im Turn**, ein Neuaufbau würde die laufenden
+  Live-Zeilen des Turns über die gezeigten Zeilen legen — verboten nach UC-WP-100 GIVEN 3 und D-16).
+  *Andersfall:* Neuaufbau auch dort = Anker-Mechanik des Turns nachziehen ([R-WP-47](chat.md)).
+* **❓ Stop während eines Clear** (gemessen 2026-11-10, Nebenbefund bei B7b) — **Clear** färbt die
+  Kachel `WORKING` (`ProjectRuntime.java:161-162`), und `WORKING` macht den Chat „beschäftigt"
+  (`chat.page.tsx:425-426`) ⇒ es stehen Chat-Warten **und** Stop; der Stop läuft in eine `409`
+  ([TurnClaim.java:65-67]) und wird verschluckt (`:504-507`). Vorbild Plugin: Clear ist während eines
+  Laufs gar nicht erst möglich (`ActionsBarWidget.java:161-168`). Entscheidung Paul: Aktions-`WORKING`
+  ebenfalls kein Stop-Ziel (Parität zu `COMPACTING`, D-17) **oder** die Aktion wie im Plugin sperren.
+  Antwort ⇒ Schärfung in [chat.md](chat.md).
+* **⏳ Nach dem Compact steht die Context-Zusammenfassung als eigene Eingabe im Chat** — der Kern
+  re-seedet genau eine Nutzer-Nachricht (`Session compacted:` + Summary, `AbstractAgent.java:601-605`)
+  und **beide** Consumer malen sie als Nutzer-Zeile: Plugin über `ToSimpleMessage.java:24-29` (kein
+  Filter auf den Marker), Fabrik über `ConversationRestore.java:57-61`. Parität ⇒ **lassen**.
+  *Andersfall:* eigene neutrale Zeile = Darstellungsregel in [chat.md](chat.md), kein Core-Eingriff.
+
+
 ## Runde 7 — Pauls Browser-Befunde zum API-Fehler-Stand (2026-11-09, „nach dem Release fixen")
 
 Pauls Wortlaut, je Punkt seine Entscheidung (alle zur Look-Story, kein Teil des api-errors-Zyklus):
 
-* **⏳ Überschriften im Main-Panel raus** — „die Überschriften kleben open, können raus im main panel —
-  wir haben es ja im Top-Menü." Zielt auf die Seiten-Überschriften (Projekte/Config/…) — genau
-  welche Flächen, am Browser abnehmen.
-* **⏳ „Chats" wieder ins Top-Menü** — Damit kehrt der Runde-6-Beschluss („Chat muss weg", 🔒 in
-  R-WP-43) **teilweise zurück**: Top-Menü wieder **Projekte · Chat · Settings**; der Sider bleibt,
-  ist aber **nur bei Chats sichtbar**. Widerspricht R-WP-43 — Regel wird in der Look-Story
-  umgeschrieben, nicht still.
-* **⏳ Reasoning-Effort-Feld ist ein Select ohne eigene Eingabe** — „ich kann nichts selber eingeben"
-  (F8, R-WP-51). Annahme: wie das Modell-Feld ein `AutoComplete` (Auswahl **oder** Eingabe) — am
-  Plugin nachlesen, wie Paul es dort entschieden hat, bevor gebaut wird.
-* **❓ Kacheln der Agenten oben im Chat sind weg (Paul: „most critical … damit wären wir defekt")** —
-  die Kachel-Reihe über dem Chat fehlt in seinem Blick; entweder Regression (C-7-Kanal, Kacheln-Read
-  nach `onOpen`) oder Look. Erst messen (Welcher Commit? Reproduktion), dann Regel — kein Blindfix.
-* **⏳ Clear am Chat-Eingabe-Bereich fehlt (nur Icon)** — Clear/Compact der Kachel-Reihe
-  ([R-WP-43](ui.md)) sind weg oder nicht sichtbar; „nur icon" heißt: Aktionen müssen als Icons an der
-  Eingabe sitzen, keine Text-Buttons.
-* **⏳ Compact am Chat-Eingabe-Bereich fehlt (nur Icon)** — dasselbe für Compact.
-* **⏳ Send nur als Icon** — der Send-Knopf soll ein reines Icon sein, kein Text-Knopf.
+* **❓ Kachel-Status wirkt verzögert (Paul 2026-11-10, Browser)** — **gebaut 2026-11-10** als
+  [R-WP-60/UC-WP-97](chat.md) (Push statt Poll, `e68f1710`): jede Fabrik-seitige Zustandsänderung
+  published einen Roster. **Abnahme am Browser steht aus**; bewusste Grenze bleibt: Kern-Flags ohne
+  Rückmeldung (z. B. Auto-Compact-Anlauf) erscheinen erst mit der nächsten Zeile — ein Kern-Hook wäre
+  ein Core-Inkrement.
+* **❓ Reasoning-Effort-Feld im Browser (Bug-Liste B0, 2026-11-10)** — Paul: „Drop Down funktioniert
+  reasonsing effort". Diagnose (Dev, antd-CLI-belegt): unser Think-`AutoComplete` hat **keinen Pfeil**
+  (AutoComplete setzt `suffix=null` → kein Chevron) und rechts sitzt der **Clear**-Knopf — Klick dort
+  löscht den Wert, ohne die Liste zu öffnen; im jsdom unsichtbar. Zweitverdacht: alter Bundle im
+  Browser (Pre-L4-`Select` sichtbar). **Frage an Paul (DevTools, < 1 min):** (1) war die UI frisch
+  gebaut/Server neu gestartet? (2) öffnet Klick in die **linke** Feldhälfte die Liste und Klick rechts
+  löscht? (3) existiert nach dem Klick `.ant-select-dropdown` im DOM? Entscheidung danach: Affordance
+  (Pfeil-Suffix am AutoComplete) bauen oder Bundle-Thema.
+* **⏳ Clear am Chat-Eingabe-Bereich fehlt (nur Icon)** — **gebaut 2026-11-10** als Icon-Button-Widget
+  ([R-WP-59/UC-WP-96](ui.md)); Abnahme am Browser steht aus.
+* **⏳ Compact am Chat-Eingabe-Bereich fehlt (nur Icon)** — **gebaut 2026-11-10**, dito
+  ([R-WP-59/UC-WP-96](ui.md)).
+* **⏳ Send nur als Icon** — **gebaut 2026-11-10**, dito ([R-WP-59/UC-WP-96](ui.md)).
+
+## Runde 8 — Nachwehen des Bug-Zyklus B6/B7a (2026-11-10)
+
+* **❓ Ein Turn-Fehler wischt eine stehende Seiten-Ablehnung** (`chat.page.tsx:351`, gemessen im
+  B7a-Review) — steht das Error-Panel (z. B. 409 auf ein Compact) und schlägt später ein **Turn**
+  fehl, verschwindet das Panel. [R-WP-62](api-errors.md) sagt: das Panel schließt eine **neue
+  Server-Interaktion** — ein Turn-Fehler ist aber keine Interaktion, die der Nutzer gerade gestartet
+  hat. Beides denkbar: (a) Turn-Fehler lässt das Panel stehen (nur eigene Interaktion schließt),
+  (b) jede Server-Nachricht schließt. **Frage an Paul**, dann Regel-Satz in
+  [api-errors.md](api-errors.md).
+* **❓ `factory-ui/src/styles.css` 1286 Zeilen** — über der 1000er-Grenze (`AGENTS.md`: „a file over
+  1000 lines is a bug and blocks acceptance until split"); schon vor dem Bug-Zyklus 1273, der Zyklus
+  hat nur drei flache Regeln ergänzt und einen Block entfernt. Entscheidung Paul: **Aufteilen als
+  eigenes Inkrement** (Empfehlung: nach Familien — Shell · Chat · Formulare · Trace) **oder** die
+  Grenze für Stylesheets schriftlich aussetzen (dann als Satz in `AGENTS.md`).
+
+## Runde 7 — Look-Story-Nebenbefunde (2026-11-10)
+
+* **❓ UI-Testbestand flackert unter Last** (bisectiert am L2-Stand: flackert auch auf der Baseline
+  `7fa3f429`, je Lauf 1–7 rot — `findBy`-Frist 1 s, Einzelfälle bis 4,5 s, 29 Worker) — keine Erwartung
+  entschärft, nichts umgeschrieben. Eigenes Mini-Inkrement „Wartefristen/Worker messen" später; langsame/
+  flatternde Suite ist nach AGENTS.md ein Defekt, kein Zustand.
 
 ## Runde 6 — Rest (2026-11-08/09)
 

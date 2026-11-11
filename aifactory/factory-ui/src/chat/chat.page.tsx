@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 
 import {
+  isAlreadyOver,
   isTraceLine,
   listMessages,
   sendMessage,
@@ -11,6 +12,7 @@ import {
   type ChatStreamEvent,
 } from './chat.client'
 import { agentAction, type AgentAction } from './chat.agents.client'
+import { acceptedAction, afterSnapshot, type ActionWatch } from './chat.action.rebuild'
 import { useTileBoard } from './chat.board'
 import { ChatComposer } from './chat.composer'
 import { useEdgeInsight } from './chat.edge'
@@ -35,7 +37,7 @@ import { ScrollBottomButton } from './chat.scroll.bottom'
 import { ChatTiles } from './chat.tiles'
 import { ChatWaiting } from './chat.waiting'
 import { openChatStream } from './chat.stream'
-import { ApiRequestError, errorMessage } from '../shared/api.client'
+import { errorMessage } from '../shared/api.client'
 import { ApiErrorPanel } from '../shared/api.error.panel'
 import { content } from '../shared/content'
 import type { ProjectDto } from '../shared/server-api'
@@ -179,6 +181,12 @@ export function ChatPage({
   const projectId = project?.id ?? null
   const showBoardFailure = useCallback((message: string) => setError(message), [])
   const { tiles, refreshTiles, applySnapshot } = useTileBoard(projectId, showBoardFailure)
+  /**
+   * The action this browser asked for on this conversation's own tile, with the live mark its rebuild keeps:
+   * `202` says <em>taken</em>, so the end is the tile leaving the action's state area (R-WP-63, UC-WP-100).
+   * A ref, because the snapshot handler decides on it and a render's state is one render behind (D-B).
+   */
+  const actionWatch = useRef<ActionWatch | null>(null)
 
   useEffect(() => {
     followIfFollowing()
@@ -249,16 +257,15 @@ export function ChatPage({
   )
 
   /**
-   * One read of the conversation, numbered and stamped with the live list it has to meet. The stamp is taken
-   * <em>before</em> the request: whatever the stream adds while the server is answering is not in the answer
-   * and must not be given up for it (D-C, UC-WP-7).
+   * One read of the conversation, numbered and stamped with the live list it has to meet — by the caller when
+   * the read answers to a moment of its own (the end of a tile action, R-WP-63), and always <em>before</em>
+   * the request: whatever the stream adds while the server answers is not in the answer (D-C, UC-WP-7).
    */
-  const refresh = useCallback((): Promise<void> => {
+  const refresh = useCallback((mark = liveItems.current.length): Promise<void> => {
     if (projectId === null) {
       return Promise.resolve()
     }
     const read = ++readSeq.current
-    const mark = liveItems.current.length
     return listMessages(projectId)
       .then(loaded => applyHistory(loaded, mark, read))
       .catch(reason => setError(errorMessage(reason)))
@@ -356,6 +363,13 @@ export function ChatPage({
           // replace, never merge — a snapshot that accumulated would become a second history (R-WP-7); as the
           // freshest stand it retires every roster read that began before it (UC-WP-84 GIVEN 3)
           applySnapshot(event.tiles)
+          // an action this browser asked for ends where its tile leaves the state area: the conversation is
+          // rebuilt, and the action's own lines stand behind the mark as its trace (R-WP-63, UC-WP-100)
+          actionWatch.current = afterSnapshot(actionWatch.current, event.tiles, mark => {
+            writeTurn(null)
+            void refresh(mark)
+            void refreshTiles()
+          })
           break
       }
     },
@@ -390,6 +404,7 @@ export function ChatPage({
             // is read again, and what the wire will not send back is dropped from the screen
             writeLive([])
             writeTurn(null)
+            actionWatch.current = null
             void refresh()
             reconnect = setTimeout(connect, backoff.next())
           },
@@ -410,6 +425,7 @@ export function ChatPage({
     return () => {
       mounted = false
       controller.abort()
+      actionWatch.current = null
       if (reconnect !== undefined) {
         clearTimeout(reconnect)
       }
@@ -513,25 +529,24 @@ export function ChatPage({
   }
 
   /**
-   * Clear or Compact one tile. 202 says <em>taken</em>, so both reads follow; a refusal (409 while a turn
-   * runs, 400 for a tile that offers nothing) is a line in the chat like any other error and changes
-   * nothing (UC-WP-12, UC-WP-13).
+   * Clear or Compact one tile. 202 says <em>taken</em> and nothing more, so <b>no read follows here</b>: the
+   * action runs on the turn executor and a read at this moment answers with the conversation as it stood
+   * before. What reads again is the end of the tile's state area, watched with {@link afterSnapshot} — on
+   * this conversation's tile only, never on a member's (R-WP-63). A refusal (409 while a turn runs, 400 for
+   * a tile that offers nothing) changes nothing, the watch included (UC-WP-12, UC-WP-13).
    */
   async function act(name: string, action: AgentAction) {
     if (projectId === null) {
       return
     }
     setError(null)
+    actionWatch.current = acceptedAction(tiles.find(tile => tile.name === name), action, liveItems.current.length)
     try {
       await agentAction(projectId, name, action)
     } catch (reason) {
+      actionWatch.current = null
       setError(errorMessage(reason))
-      return
     }
-    // the history is re-read for every action, not only for the conversation's own agent: this component
-    // knows no agent names, and a read of the single truth is cheaper than a rule about who owns it
-    void refreshTiles()
-    void refresh()
   }
 
   if (project === null) {
@@ -581,13 +596,5 @@ export function ChatPage({
       {insight !== null && <ChatInsight key={insight} projectId={project.id} name={insight} onClose={closeInsight} />}
     </>
   )
-}
-
-/**
- * The server's "no turn is running" (409) to a stop. The user got what he asked for either way, so this
- * one refusal is absorbed instead of printed (UC-WP-50, D-17).
- */
-function isAlreadyOver(error: unknown): boolean {
-  return error instanceof ApiRequestError && (error.apiError?.status ?? 0) === 409
 }
 

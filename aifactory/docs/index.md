@@ -60,7 +60,8 @@ MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabi
   Projekt, Chats als Einträge — Paul 2026-11-08), **AntD zuerst + wiederverwendbare Widgets ✅
   [R-WP-46/UC-WP-81](ui.md)**; offen bleiben Look-Reparaturen aus der
   Browser-Abnahme 2026-11-08 (in Inc 4 gebaut) und der Look am Browser; Chat-Aktionen-Buttons ✅
-([R-WP-43](ui.md) Aktionen inkl. Composer, Inc 4), [open-points](open-points.md) Runde 4b)
+([R-WP-43](ui.md) Aktionen inkl. Composer, Inc 4); **Icon-Button-Widget ✅
+[R-WP-59/UC-WP-96](ui.md)** (B2/B3, 2026-11-10), [open-points](open-points.md) Runde 4b)
 * [Projekte](project.md) — Git-Checkout als Projekt: klonen, eindeutig, entfernen, nie interaktiv, Live-Status. ◐
 * [Jon-Chat](chat.md) — ein Jon, ein Gespräch je Projekt: Streaming, Queue, Neustart, Tools, Kacheln. ◐
   (Herkunft je Zeile ✅ UC-WP-39/40; Kacheln ✅ R-WP-7, Blick je Agent ✅ R-WP-26, **Timeline als AntD-
@@ -72,12 +73,16 @@ MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabi
   **Send nie deaktiviert ✅ [R-WP-41/UC-WP-74](chat.md)** (Runde 6, 2026-11-08); **Werkzeug-Schritte
   im Restore ✅ [R-WP-47/UC-WP-82](chat.md)** (A7, 2026-11-08); **je Turn genau ein Endereignis ✅
   [R-WP-48/UC-WP-83/84](chat.md)** (Nachtzyklus, 2026-11-09); **Blick im selben Chat-Widget, live ✅
-  [R-WP-53/UC-WP-89/90](chat.md)** (C-7, 2026-11-09))
+  [R-WP-53/UC-WP-89/90](chat.md)** (C-7, 2026-11-09); **Problem-Meldung rot mit rotem Icon ✅
+  [R-WP-61/UC-WP-98](chat.md)**, **Reconnect mit Backoff ✅ [R-WP-58/UC-WP-95](chat.md)** und
+  **Kachel-Stand per Push ✅ [R-WP-60/UC-WP-97](chat.md)** (Bugs B6/B1/B5, 2026-11-10))
 * [Dateien](files.md) — Schreiben nur in Projekt + TMP, Datei-Bereich lesend. ◐ (gebaut, reviewed 2026-11-01)
-* [API-Fehler](api-errors.md) — Server-Fehler sichtbar am Feld: generierte API-Typen
-  (typescript-generator), Bean Validation mit `fieldErrors`, ein Standard-Error-Widget (AntD). ✅
-  gebaut+reviewed 2026-11-09 (R-WP-54/55/56 + N1; UC-WP-92/93 mit Tests, R-WP-54 per M1/M2; offen nur
-  die Browser-Abnahme der Feldabstände)
+* [API-Fehler](api-errors.md) — Server-Fehler sichtbar: generierte API-Typen (typescript-generator),
+  Bean Validation mit `fieldErrors`, ein Standard-Error-Widget (AntD), **Error-Panel je Seite prominent
+  oben ✅ [R-WP-62/UC-WP-99](api-errors.md)**. ✅
+  gebaut+reviewed 2026-11-09 (R-WP-54/55/56 + N1; UC-WP-92/93 mit Tests, R-WP-54 per M1/M2) und
+  2026-11-10 (R-WP-62/UC-WP-99, `9d8c17bb` + Delta `ea4330ef`); offen nur
+  die Browser-Abnahme der Feldabstände und des Panels)
 * [Config](config.md) — eigene Datei der Factory, Config-Seite maskiert, „überschreiben" je Agent. ◐
   (Plugin-Parität F8 ✅ gebaut+reviewed 2026-11-09: R-WP-49–52 — Think (Default), Modell-AutoComplete
   mit Server-Liste, Max Tokens, Query-/Header-Params, je Agent Extra-Body + Tools-Allowlist)
@@ -85,6 +90,8 @@ MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabi
   ◐ (Name, Präfix, Anzeige ✅ R-WP-17/R-WP-25; Paco ❌)
 * [Paco](paco.md) — fachlicher PO je Nutzer (grillt Vision/Ziele/SOLL), Stories/Proposals in `stories|proposals/<nutzer>/`,
   konfliktfrei oder mit benanntem Konflikt. ❌ specified (nach dem MVP)
+* [Büroklammer](buroklammer.md) — Dateien per Drag & Drop direkt in den Chat (`tmp/<projekt>/file-drops`);
+  Inline-Parsing (in die Chat-Message) eigener Folgeschritt. 🚧 in design (Paul 2026-11-10, nur aufgeschrieben)
 * [Config-Repo](config-repo.md) — Fabrik-Config (Agenten, Skills, `projects.yml`) aus einem Git-Repo beim
   Start, Zugang über HTTPS-Token oder SSH aus der Umgebung; Verschlüsselung der Keys direkt nach dem MVP.
   ❌ specified (MVP; Verschlüsselung/Rotation danach)

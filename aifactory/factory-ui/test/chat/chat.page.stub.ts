@@ -2,7 +2,7 @@ import { vi } from 'vitest'
 import { act, cleanup, screen, within } from '@testing-library/react'
 
 import type { ChatMessage } from '../../src/chat/chat.client'
-import type { AgentTile, AgentTileState } from '../../src/chat/chat.agents.client'
+import type { AgentTile, AgentTileState, TileCapability } from '../../src/chat/chat.agents.client'
 
 export interface Chat {
   calls: { method: string; path: string; body?: string }[]
@@ -60,8 +60,18 @@ export const JONS_ANSWER: ChatMessage = { role: 'jon', text: 'Dev nennt eine Ban
 /** The unified diff the wire carries for one written file (R-WP-36) — as the core's `SimpleDiff` writes it. */
 export const DIFF = '--- a/src/App.java\n+++ b/src/App.java\n@@ -1,2 +1,3 @@\n a\n+b\n \n'
 
-/** One roster entry as the server sends it — the tile family of R-WP-7. */
-export function tile(name: string, state: AgentTileState): AgentTile {
+/**
+ * One roster entry as the server sends it — the tile family of R-WP-7. The default is the seat of the
+ * conversation's own agent (Clear and Compact, no insight: `AgentTiles.capabilitiesOf` JON), because that is
+ * the seat most tests stand on. A test that asks about a <em>member's</em> seat hands its capabilities in —
+ * the capability set is what "whose conversation is this" reads as on the client (D-14), so a member fixture
+ * without TRANSCRIPT would prove nothing.
+ */
+export function tile(
+  name: string,
+  state: AgentTileState,
+  capabilities: TileCapability[] = ['CONTEXT', 'CLEAR', 'COMPACT'],
+): AgentTile {
   return {
     name,
     context: '3k',
@@ -70,7 +80,7 @@ export function tile(name: string, state: AgentTileState): AgentTile {
     contextPercent: 3,
     budget: 100_000,
     state,
-    capabilities: ['CONTEXT', 'CLEAR', 'COMPACT'],
+    capabilities,
   }
 }
 

@@ -86,6 +86,24 @@ Queue sind die des Cores — die Web-Schicht erfindet keinen zweiten Turn-Pfad.
   Zeilen bleiben, es gibt keinen zweiten Speicher und keinen zweiten Turn-Pfad. Die Interaktion kehrt
   an Jon zurück; gequeuete Eingaben bleiben in der Queue.
 
+### R-WP-58 — Reconnect mit Backoff: kein Dauerfeuer gegen einen toten Server ✅ (Paul 2026-11-10, Browser-Abnahme: „wir machen ständig requests auch wenn der server weg ist"; gebaut + reviewed 2026-11-10, Inkrement `c0555ce9` — 269/30 Tests, tsc/oxlint/antd-lint 0; Abnahme am Browser steht aus)
+
+Jeder Ereignis-Strom der App (Gespräch, Blick, Projekt-Status) verbindet sich nach einem Ende
+erneut — aber **nicht in konstantem Takt**: Nach jedem fehlgeschlagenen Verbindungsversuch wächst
+die Wartezeit an (Start 500 ms, je Versuch verdoppelt, Deckel 10 s). Hat eine Verbindung **gestanden
+und Ereignisse geliefert**, beginnt der nächste Reconnect wieder bei der Startwartezeit. Ein Server,
+der nicht antwortet, erzeugt so keine Request-Flut; die Kette selbst hört nie auf — kehrt der Server
+zurück, holt der nächste Versuch den Snapshot. Ein Ende ohne `retry` (Ablehnung, Verlassen der
+Seite) verbindet weiterhin nicht erneut.
+
+#### UC-WP-95 — theReconnectBacksOffInsteadOfHammering ✅ (gebaut + reviewed 2026-11-10, Inkrement `c0555ce9`)
+- GIVEN der Server ist nicht erreichbar WHEN der Strom endet und der Reconnect läuft THEN wachsen
+  die Wartezeiten an (500 ms → 1 s → 2 s → …, Deckel 10 s) — keine konstante Request-Folge.
+- GIVEN eine Verbindung stand und hat Ereignisse geliefert WHEN sie danach endet THEN beginnt der
+  Reconnect wieder bei der Startwartezeit.
+- GIVEN ein Strom endet ohne `retry` WHEN der Reconnect-Entscheid fällt THEN wird nicht erneut
+  verbunden (Bestand).
+
 ### R-WP-10 — Ein Turn je Projekt, weitere Eingaben in der Queue ✅
 
 Eingaben während eines laufenden Turns gehen in die Queue des Cores; verschiedene Projekte dürfen
@@ -223,6 +241,93 @@ eigene Gespräch ([R-WP-26](chat.md)).
 #### UC-WP-13 — compactAffectsOnlyThatAgent ✅
 - GIVEN eine Kachel WHEN **Compact** geklickt wird THEN kompaktiert genau dieser Agent und die
   Kachel zeigt den Compact als eigenen Zustand.
+
+### R-WP-60 — Kachel-Stand kommt per Push, nie per Poll ✅ (Paul 2026-11-10, Browser-Abnahme: „es sieht so aus als würden wir die panels via einem poll versorgen => spring event und stream -> bei jeder änderung ein push an das UI"; Messung 2026-11-10: das UI pollt nicht — kein `setInterval` — aber zwei Zustandswechsel erzeugen **keinen** Snapshot: der Turn-Anfangs-Snapshot läuft vor dem Kern-Flag (Jons Kachel zeigt „arbeitet" erst mit der ersten Core-Zeile, einen Modell-Roundtrip später), und Delegations-Anfang/-Ende senden ihren Eintrag **ohne** Roster — die Kachel des Mitglieds leuchtet mit seiner ersten Zeile und erlischt erst am nächsten fremden Ereignis); gebaut + reviewed 2026-11-10, Inkrement `e68f1710` — Backend 275 Tests, missCount=1; Abnahme am Browser steht aus)
+
+Jede Zustandsänderung der Kacheln, die die **Fabrik verursacht** oder **an einer ihrer Kern-Rückmeldungen
+erkennt**, published sofort einen `agents`-Snapshot auf dem Draht — kein Polling, keine Wartezeit auf
+die nächste Zeile. Gedeckt sind damit: Aktions-Claim und -Ende (Clear/Compact), Turn-Anfang **mit
+wahrheitsgemäßem Claim-Stand** (der Fabrik-Claim `turnInFlight` ist Teil des Kachel-Answers, genau wie
+beim Clear — der Kern setzt sein Flag erst im Modellaufruf, der Snapshot lügt deshalb nicht „idle"),
+Delegations-Anfang und -Ende **mit Roster**, Turn-Ende, Compact-Ende und jede Core-Zeile. **Grenze,
+bewusst:** `working`/`compacting` sind reine Kern-Flags ohne Listener — Änderungen, die die Fabrik an
+keiner Rückmeldung sieht (z. B. Auto-Compact-Anlauf im Kern), erscheinen erst mit der nächsten
+Rückmeldung; ein Kern-Hook dafür wäre ein Core-Inkrement (beide Verbraucher) und ist nicht Teil dieser
+Regel. **Stop** ändert daran nichts: der Kern gibt das Flag erst zwischen Modellaufrufen frei — der
+frische Read nach Stop bleibt der Mechanismus (gemessen, G3). Das UI liest den Roster nur an den
+dokumentierten Anlässen (Mount, Verbindungsaufbau, Turn-Ende, Stop, Kachel-Aktion — [R-WP-57](chat.md),
+[UC-WP-84](chat.md)) und hält sonst keinen Timer.
+
+#### UC-WP-97 — tileStateIsPushedNeverPolled ✅ (gebaut + reviewed 2026-11-10, Inkrement `e68f1710`; GIVEN 3 als Messung belegt — kein `setInterval` in factory-ui/src)
+- GIVEN ein Turn beginnt WHEN der Claim angenommen wird THEN zeigt Jons Kachel sofort „arbeitet" —
+  auch auf einem zweiten Browser, ohne auf die erste Core-Zeile zu warten.
+- GIVEN eine Delegation beginnt oder endet WHEN das Ereignis ankommt THEN geht derselbe
+  Kachel-Snapshot mit — die Kachel des Mitglieds leuchtet und erlischt mit dem Ereignis, nicht erst
+  mit seiner ersten beziehungsweise der nächsten fremden Zeile.
+- GIVEN die App WHEN sie zeichnet THEN pollt sie nicht — der Kachel-Stand kommt ausschließlich per
+  Push oder an den dokumentierten Read-Anlässen.
+
+### R-WP-63 — Eine Chat-Aktion endet mit dem Neuaufbau des Gesprächs ❌ (Paul 2026-11-10, Browser-Abnahme: „wenn ich einen compact mache, wird das chat-windows nicht aktualisiert, sondern bleibt auf animation in progress"; Entscheidung Paul 2026-11-10: „du brauchst kein eigenes signal — alles ist bereits im core … wenn Jon ein compact macht / clear und rebuild des chats anhand der history von Jon, genau wie es im eclipse plugin passiert")
+
+Eine Aktion, die Jons Gespräch verändert — **Compact** und **Clear** auf seiner Kachel — ist für den
+Betrachter erst dann beendet, wenn sein Gespräch **aus dem Verlauf neu aufgebaut** ist. Vorbild ist das
+Plugin: dort folgt auf das Compact-Ende der Neuaufbau aus dem Gedächtnis, und **Clear** leert das
+Chat-Fenster; beide kennen keinen zweiten Zustand ([R-WP-11](chat.md)).
+
+**Der Auslöser ist die vorhandene Kachel-Meldung, kein eigenes Signal** (Paul): die Oberfläche merkt sich
+die angenommene Aktion, sieht Jons Kachel im Zustands-Bereich dieser Aktion (**Compact** `COMPACTING`,
+**Clear** `WORKING`) und handelt auf dessen **Fallkante** im `agents`-Snapshot
+([R-WP-60](chat.md)) — kein neues Ereignis, kein neues Feld, keine Server-Änderung. **Der Zeitpunkt ist
+der Kern der Regel:** die Zusage der Aktion bedeutet „angenommen", nicht „fertig"; ein Verlauf-Lauf
+unmittelbar danach läuft vor dem Compact und zeigt deshalb den alten Stand.
+
+Der Neuaufbau schließt den offenen Live-Schritt (der Dreh-Indikator der 🗜-Zeile endet mit der Aktion,
+[R-WP-45](chat.md)) und zeigt danach, was der Verlauf hergibt: nach einem erfolgreichen Compact die eine
+wieder eingesetzte Zusammenfassungszeile des Kerns, nach **Clear** ein leeres Gespräch. Die 🗜-Zeilen des
+Compacts stehen in keinem Gedächtnis — sie bleiben als Live-Spuren dieser Aktion sichtbar (darunter das
+Ergebnis mit den Zahlen) und fallen mit dem nächsten Neuaufbau weg; ihr dauerhafter Auftritt ist
+[Grenze offener Punkt C-2a](open-points.md), nicht Sache dieser Regel.
+
+**Zwei Grenzen, bewusst.** (1) Ausgelöst wird nur durch eine **vom Nutzer an Jons Kachel angenommene**
+Aktion: ein Compact, den der Kern selbst anstößt (Auto-Compact, Vorlauf-Compact mitten im Turn), löst
+keinen Neuaufbau aus — der laufende Turn behält seine Live-Zeilen, und sein eigenes Ende
+([R-WP-48](chat.md)) räumt wie bisher auf. Ein Aktions-Neuaufbau ersetzt kein Turn-Ende und liest nicht
+zweimal. (2) Eine Aktion auf einer **Mitglieds**-Kachel verändert Jons Gespräch nicht; der Blick auf das
+Mitglieds-Gespräch behält seine Live-Zeilen (Parität: neu aufgebaut wird nur das Gespräch, dessen
+Aktion es verändert — [R-WP-26](chat.md)).
+
+#### UC-WP-100 — chatRebuildsAfterItsActionFinishes
+- GIVEN Jons Kachel WHEN **Compact** angenommen ist und die Kachel `COMPACTING` wieder verlässt THEN
+  liest die Oberfläche den Verlauf neu und zeigt das Gespräch danach — die Zusammenfassungszeile des
+  Kerns ist da, und kein Live-Schritt dreht mehr.
+- GIVEN Jons Kachel WHEN **Clear** angenommen ist und die Kachel `WORKING` wieder verlässt THEN ist das
+  Gespräch leer (Parität zum Plugin) — nicht der Lauf unmittelbar nach der Zusage entscheidet darüber.
+- GIVEN ein laufender Turn WHEN sein Ende eintrifft THEN bleibt das der einzige Aufräum-Anlass dieses
+  Turns; ein Aktions-Neuaufbau überschreibt die gezeigten Zeilen eines laufenden oder gestoppten Turns
+  nicht.
+- GIVEN ein Compact, den der Kern ohne Klick selbst anstößt WHEN er endet THEN bleibt der laufende Turn
+  mit seinen Live-Zeilen unangetastet.
+
+### R-WP-61 — Eine Problem-Meldung ist rot und trägt ein rotes Icon ✅ (Paul 2026-11-10, Browser-Abnahme: „tool indicatoren nicht da … status onProblem sollte sichtbar sein im UI mit dem rot und auch einem roten Icon"; Präzisierung Paul 2026-11-10: die Werkzeug-Schritte mit Dreh-Indikator sind gut so — nur der Fehlerfall muss sichtbar sein; gebaut + reviewed 2026-11-10, Inkrement `30ed0525` — Backend 276 Tests, missCount=1, UI 276; Abnahme am Browser steht aus, dort erscheint auch eine API-Retry-Meldung rot)
+
+Läuft ein Werkzeug auf einen Fehler, meldet der Kern das als `PROBLEM` (z. B. ein abgelehnter oder
+fehlgeschlagener Tool-Aufruf). Diese Meldung ist auf dem Draht ein **eigenes Ereignis** — der Server
+tarnt sie nicht mehr als Werkzeug-Zeile ([R-WP-40](chat.md)) — und das UI zeichnet sie als **eigenen
+Eintrag der Timeline**: **roter Text**, das Wort **„Problem"** (wie im Plugin) und ein **rotes Icon**
+(AntD-Fehler-Indikator, Widget-vor-Eigenbau [R-WP-46](ui.md)). Wie ein Werkzeug-Schritt trägt sie den
+Ursprungs-Stempel, wo einer steht ([R-WP-37](chat.md)), und ist ein Live-Eintrag
+([R-WP-11](chat.md)). Im Restore gilt dasselbe wie für Werkzeug-Schritte ([R-WP-47](chat.md)), soweit
+der Kern die Meldung in der Historie führt.
+
+#### UC-WP-98 — problemLineIsRedWithIcon ✅ (gebaut + reviewed 2026-11-10, Inkrement `30ed0525` — T1 Backend, T3–T8 `test/chat/chat.problem.test.tsx`; Abnahme am Browser steht aus)
+- GIVEN Jon arbeitet und ein Werkzeug läuft auf einen Fehler WHEN die Problem-Meldung ankommt THEN
+  steht sie als eigener **roter** Timeline-Eintrag mit dem Wort „Problem" und einem **roten Icon** —
+  nicht als graue Werkzeug-Zeile.
+- GIVEN die Meldung trägt einen Ursprungs-Stempel WHEN sie gezeichnet wird THEN zeigt der Eintrag
+  denselben Agent-Namen wie ein Werkzeug-Schritt.
+- GIVEN ein Werkzeug läuft fehlerfrei WHEN seine Zeile ankommt THEN bleibt sie eine graue
+  Werkzeug-Zeile — die Färbung gilt nur der Problem-Meldung.
+
 
 ### R-WP-45 — Status-Indikator der Kacheln: blau arbeitet, gelb kompaktiert, grün bereit ✅ (Paul 2026-11-08, Abnahme — „wir nutzen den Status-Indikator, keinen weiteren Status im Chat"; ersetzt den grauen Warte-Rahmen, [R-WP-31](chat.md); gebaut + reviewed 2026-11-08, Inkrement 4 — **Farb-/Maß-Abnahme am Browser steht aus**)
 
@@ -418,7 +523,7 @@ Datei-Bereich ([Dateien](files.md)).
   ist im Datei-Bereich sichtbar.
 
 
-### R-WP-29 — Farben und Fließtext der Chat-Zeilen ✅ (Paul 2026-11-07: die **Optik** folgt der Design-Übernahme — [R-WP-39](ui.md); die Fließtext-Grenzen unten bleiben gebaut. **Blasen: volle Breite, Höhe = Text** (Paul 2026-11-08) gebaut 2026-11-08, Inkrement 4 — **Abnahme am Browser steht aus**)
+### R-WP-29 — Farben und Fließtext der Chat-Zeilen ✅ (Paul 2026-11-07: die **Optik** folgt der Design-Übernahme — [R-WP-39](ui.md); die Fließtext-Grenzen unten bleiben gebaut. **Blasen: volle Breite, Höhe = Text** (Paul 2026-11-08) gebaut 2026-11-08, Inkrement 4 — **Abnahme am Browser steht aus**; **Farben nur als Indikator** — Paul 2026-11-10, Browser-Abnahme)
 
 **Übernahme 2026-11-07:** die Verlaufs-Optik folgt dem Referenz-Design (`ai-schulung` `MessageList` —
 Nutzer-**Bubble** rechts in Blau, Antworten links im Fluss); die frühere Fassung „Akzent links, keine
@@ -426,6 +531,16 @@ Bubbles" ist im Zuge der Design-Übernahme zurückgenommen ([R-WP-39](ui.md)). W
 grün bleibt: kein `<hr>` zwischen Zeilen, `---` innerhalb der Antwort, Tabelle scrollt im Antwortblock,
 Bild bleibt in der Antwortbreite, nichts rechtsbündig. Die untenstehende BDD wird im Bau der
 Übernahme auf die neue Optik umgeschrieben bzw. gelöscht (Design-Tests-Regel, [R-WP-39](ui.md)).
+
+**Farben nur als Indikator** (Paul 2026-11-10, Browser-Abnahme: „meine nachricht ist jetzt ganz blau —
+wir sollten nur die farben als indicatoren nutzen — panels sollten nicht blau sein, nur die rolle
+trägt seine farbe"): keine Zeile der Konversation ist eine **Vollfläche in ihrer Rollen-Farbe** —
+die Nutzer-Zeile ist dieselbe Karte wie eine Antwort (Oberfläche, Rand, normale Textfarbe; die
+Antwort-Karte war schon richtig), die **Rolle trägt ihre Farbe am Namen** (`.chat-role` in der
+Farbe ihrer Stimme). Damit ist die Referenz-Lesart „Nutzer-**Bubble** rechts in Blau" für die
+Farbfläche zurückgenommen — Pauls Entscheidung gegen die Referenz; volle Breite, Höhe = Text und
+„nichts rechtsbündig" bleiben unverändert. Abnahme am Browser; keine neuen Tests
+(Design-Tests-Regel).
 
 Die **eigene Eingabe steht rechts in ihrer Blase** (Referenz-Optik, oben); **keine Antwort** ist
 rechtsbündig oder mittig zentriert — Antworten stehen links im Fluss. **Blasen nehmen die volle
@@ -619,12 +734,15 @@ Fremdes dürfte die Live-Sicht des laufenden Turns nicht abreißen; die Zeile ze
 Refresh nach dessen `done`. Einreihen selbst ist kein Ende — der besitzende Turn endet für beide.
 Die Garantie liegt beim **finally-Pfad der Fabrik** (`ProjectRuntime`), kein Core-Eingriff.
 
-Dazu die Browser-Seite: der Warte-Zustand („busy", [R-WP-31](chat.md)/[R-WP-45](chat.md)) wird
-**nie** aus einem Schnappschuss abgeleitet, der **vor** dem Verbinden aufgenommen wurde — nach
-jedem (Re)Connect wird der Kachel-Stand **frisch gelesen**, sobald die Verbindung steht — und ein
-Read, der **vor** einem `agents`-Endschnappschuss begann, überschreibt ihn nicht (der frischeste
-Stand gewinnt, wie beim Verlauf über seine Lesefolge). Sonst bleibt ein Turn, der zwischen
-Kachel-Read und Stream-Abonnement endete, für immer als „arbeitet" stehen.
+Dazu die Browser-Seite: nach jedem (Re)Connect wird der Kachel-Stand **frisch gelesen**, sobald die
+Verbindung steht ([UC-WP-84](chat.md)) — dieser frische Stand ist der maßgebliche; ein **veralteter**
+Schnappschuss darf den Warte-Zustand („busy", [R-WP-31](chat.md)/[R-WP-45](chat.md)) nie dauerhaft
+halten. Die erste Lesung beim Öffnen des View ([R-WP-57](chat.md)) ist ein **Live-Read, kein
+veralteter Schnappschuss**; zeigt sie einen Stand, den der frische Read der stehenden Verbindung
+danach korrigiert, steht dieser nur bis zu dessen Antwort. Und ein Read, der **vor** einem
+`agents`-Endschnappschuss begann, überschreibt ihn nicht (der frischeste Stand gewinnt, wie beim
+Verlauf über seine Lesefolge). Sonst bleibt ein Turn, der zwischen Kachel-Read und
+Stream-Abonnement endete, für immer als „arbeitet" stehen.
 
 #### UC-WP-83 — everyOpenedTurnEndsOnTheWireExactlyOnce ✅ (gebaut + reviewed 2026-11-09, Inkrement 1 + N1 `430343f2`/`b47126d0`)
 - GIVEN ein Turn-Task, in dem ein `Error` entkommt (kein `RuntimeException`-Zweig) WHEN der Task
@@ -647,6 +765,26 @@ Kachel-Read und Stream-Abonnement endete, für immer als „arbeitet" stehen.
 - GIVEN eine Kachel-Lesung beginnt, bevor der `agents`-Endschnappschuss eintrifft WHEN ihre Antwort
   **nach** dem Schnappschuss ankommt THEN überschreibt sie ihn **nicht** — der frischeste Stand
   gewinnt, die Kachel zeigt bereit.
+
+### R-WP-57 — Die Kachel-Reihe liest ihren Roster, sobald der View steht — unabhängig vom Stream ✅ (Paul 2026-11-10, „nur das mal reparieren" — Defekt aus Runde 7: die Reihe war im Browser weg, [Open Points](open-points.md); gebaut + reviewed 2026-11-10, Inkrement N2 `4a607d11` + N3 `ccd62bd4`, Browser-Abnahme Paul 2026-11-10: „Agenten wieder da")
+
+Beim Öffnen des Chat-Views wird der Roster (`GET …/agents`) gelesen, **sobald der View steht** — nicht
+erst, wenn der Ereignis-Strom öffnet. Der frische Read nach jedem (Re)Connect ([R-WP-48](chat.md),
+[UC-WP-84](chat.md)) bleibt unverändert und schützt den Zustand nach einem Turn-Ende; er ist **kein**
+Ersatz für die erste Lesung. Der Verlauf hängt ohnehin nie am Stream — die Reihe darf es auch nicht:
+öffnet der Strom nicht, bleibt der Chat funktionsfähig und die Reihe sichtbar. Das Backend antwortet
+auf ein bestehendes Projekt **immer** mit der vollen Reihe (feste Team-Größe: Jon, Plan, Dev, Review,
+Search; Live-Zustand je Kachel) — eine leere Liste heißt im UI „Read nie angekommen", nie „kein Team".
+
+#### UC-WP-94 — theTileRowReadsItsRosterIndependentOfTheStream ✅ (gebaut + reviewed 2026-11-10, N2 `4a607d11` + N3 `ccd62bd4`; GIVEN 1 im bestehenden UC-WP-84-Test bewiesen, GIVEN 3 im Fehler-Test — Testzahl 268 unverändert)
+- GIVEN der Chat-View wird geöffnet WHEN der Ereignis-Strom **nicht** öffnet (Antwort bleibt aus oder
+  schlägt fehl) THEN steht die Kachel-Reihe trotzdem — der Roster-Read ist nicht vom Stream abhängig.
+- GIVEN der Stream öffnet WHEN die Seite verbindet THEN wird der Kachel-Stand zusätzlich frisch
+  gelesen (UC-WP-84, unverändert).
+- GIVEN der Roster-Read scheitert WHEN die Reihe zeichnet THEN wird der Fehler als **Seiten-Fehler**
+  gemeldet und der **zuletzt gelesene Stand** der Reihe bleibt stehen — kein Zurückfallen auf leer
+  (kein stilles Schweigen); die nächste Lesung (done, Stop, Aktion) korrigiert ihn.
+
 
 
 ### R-WP-35 — Der Chat scrollt, die Eingabe steht unten ✅ (Runde 2, Inc 3; Scroll-Verhalten geschärft Paul 2026-11-08 — Schärfungen + FloatButton gebaut + reviewed 2026-11-08, Inkrement 4, UC-WP-80 ✅; die **Look-Anteile** — volle Bildschirmbreite, weißer Composer, Senden rechts — nehmen wir am Browser ab)
