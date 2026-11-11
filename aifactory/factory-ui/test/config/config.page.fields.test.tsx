@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 
 import { ConfigPage } from '../../src/config/config.page'
 import { content } from '../../src/shared/content'
-import { arrowOf, chooseOption, inputField, openChoice } from '../shared/choices'
+import { arrowOf, chooseOption, clearOf, inputField, openChoice } from '../shared/choices'
 import { sentBodies, settingsAnswer, stubServer, valueOf } from '../shared/config.stub'
 
 /**
@@ -75,6 +75,8 @@ test('defaultThinkShowsTheProviderFormAndSaves', async () => {
  * leaves the switch alone, as the plugin carries both side by side.
  */
 // UC-WP-85
+// R-WP-67
+// UC-WP-104
 test('defaultThinkClearsIndependentlyOfSendThinking', async () => {
   const server = stubServer({
     GET: settingsAnswer({ think: 'high', sendThinking: true }),
@@ -87,6 +89,12 @@ test('defaultThinkClearsIndependentlyOfSendThinking', async () => {
       'the stored level',
     ).toHaveValue('high'),
   )
+
+  // R-WP-67: no clearer sits on the field's click area — the named empty entry is the way back to inherited
+  expect(
+    clearOf(content.agents.thinkDefault, DEFAULT_THINK),
+    'a filled think field carries no clear',
+  ).toBeNull()
 
   await chooseOption(content.agents.thinkDefault, content.agents.inheritOption, DEFAULT_THINK)
   fireEvent.click(screen.getByRole('button', { name: content.config.save }))

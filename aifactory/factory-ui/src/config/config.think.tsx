@@ -25,8 +25,9 @@ interface ThinkProps {
  * `VALUES` and `TOGGLE` are one `AutoComplete` each, because the plugin's field is an editable combo in
  * both forms (`ThinkValueSupport`: "Toggle → editable combo", `readThink(): thinkCombo.getText()`) and
  * because a provider's list is not a verdict about what a level may be called: what is typed is what is
- * stored, verbatim, and a stored value outside the offered list is offered as itself (ADR-0064). Empty is
- * the inherit answer, named by the option and by the placeholder of a field that can be emptied by hand.
+ * stored, verbatim, and a stored value outside the offered list is offered as itself (ADR-0064). Empty is the
+ * inherit answer, reached by the named option of the list or by emptying the field by hand — never by a clear
+ * button, which would sit exactly where the user means to open that list (R-WP-67, UC-WP-104).
  * `NONE` shows no control and still sends the stored value, so a provider without think input does not
  * delete what it cannot show.
  *
@@ -61,7 +62,6 @@ export function ThinkControl(props: ThinkProps) {
         ]}
         placeholder={content.agents.inheritOption}
         suffix={<ChoiceArrow />}
-        allowClear
         onChange={(value) => props.onChange(value ?? '')}
       />
     )
