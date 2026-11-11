@@ -118,16 +118,24 @@ test('aStopThatCameTooLateShowsTheServerWording', async () => {
   render(<ChatPage project={project()} />)
   await flush()
   expect(screen.getByTestId('chat-stop')).toBeEnabled()
+
+  // his own send is what stands behind the click: the refusal must take that intent down too, not only answer
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'und dann?' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+  // the stand that corrects the button: no turn runs here, the server said so with his own refusal
+  chat.setAgents([tile('Jon', 'IDLE')])
   const rosterReads = chat.countOf('/agents', 'GET')
 
   fireEvent.click(screen.getByTestId('chat-stop'))
-  await waitFor(() => expect(chat.countOf('/agents', 'GET')).toBe(rosterReads + 1))
+  await waitFor(() => expect(screen.getByTestId('chat-stop')).toBeDisabled())
 
   // the race the read and the click leave behind is the user's case: he sees the server's word, and the
-  // roster read that corrects the button is the only request the refusal costs
+  // roster read that corrects the button is the only request the refusal costs — the click started nothing
   expect(screen.getByTestId('error-panel')).toHaveTextContent('no turn is running')
-  expect(chat.countOf('/messages', 'POST')).toBe(0)
+  expect(chat.countOf('/messages', 'POST'), 'the send, and nothing from the click').toBe(1)
   expect(chat.countOf('/messages', 'GET')).toBe(1)
+  expect(chat.countOf('/agents', 'GET'), 'one roster read corrects the button').toBe(rosterReads + 1)
 })
 
 // GIVEN 1: a half Compact is not something a turn's stop may cut, so it offers no stop (D-17)
@@ -138,6 +146,11 @@ test('aCompactingTileOffersNoStop', async () => {
   // a half Compact is not something a turn's stop may cut — so it is not a turn to stop (D-17)
   stubChat({ messages: [QUESTION], agents: [tile('Jon', 'COMPACTING')] })
   render(<ChatPage project={project()} />)
+  await flush()
+
+  // his own send does not open a window here: the stand reports the action, so the stand alone decides
+  fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'und dann?' } })
+  fireEvent.click(screen.getByTestId('chat-send'))
   await flush()
 
   expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.COMPACTING)

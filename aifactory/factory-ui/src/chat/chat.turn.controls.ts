@@ -3,7 +3,7 @@ import type { RefObject } from 'react'
 
 import { sendMessage, senderName, stopTurn } from './chat.client'
 import type { PendingLine } from './chat.pending'
-import { errorMessage } from '../shared/api.client'
+import { ApiRequestError, errorMessage } from '../shared/api.client'
 
 /**
  * What the page knows about the turn it started, and the two controls of the composer (UC-WP-50, UC-WP-57):
@@ -34,6 +34,11 @@ export interface TurnControls {
   stoppedFrom(): number | null
   /** stable: forgets that row once a history read has landed (`applyHistory`) */
   forgetStoppedFrom(): void
+}
+
+/** The server's own "there is nothing to stop" — a 409 on the stop edge (ADR-004), never a transport error. */
+function nothingToStop(error: unknown): boolean {
+  return error instanceof ApiRequestError && error.apiError?.status === 409
 }
 
 /**
@@ -120,7 +125,8 @@ export function useTurnControls(args: {
    * Stop the running turn (UC-WP-50). Every refusal is shown (ADR-004, R-WP-66): a 409 says the turn was
    * already over, which is what the click wanted — but the click was made on a stand that said otherwise, so
    * its word goes into the panel and the roster is read again, or the button keeps offering what the server
-   * just refused (UC-WP-102 GIVEN 3). Only an accepted stop marks the turn whose lines stay on the screen.
+   * just refused (UC-WP-102 GIVEN 3), and a `409` takes the own intent with it. Only an accepted stop marks
+   * the turn whose lines stay on the screen.
    */
   const stop = useCallback(
     async (from: number | null, refreshRoster: () => void) => {
@@ -136,6 +142,12 @@ export function useTurnControls(args: {
         setError(errorMessage(reason))
         // the stand the click stood on was wrong: read it again instead of leaving the button as it was
         refreshRoster()
+        if (nothingToStop(reason)) {
+          // the server just denied that a turn exists (UC-WP-102 GIVEN 3): a turn only this browser's memory
+          // keeps is no stand against its word, so the intent falls with the refusal and the button falls with
+          // it. A transport error keeps it — there the turn may well run on.
+          setRunningTurn(null)
+        }
         return
       }
       // the end he asked for has been taken: the wait ends now, without waiting for a `done` that will not

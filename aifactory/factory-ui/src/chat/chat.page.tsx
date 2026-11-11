@@ -407,10 +407,14 @@ export function ChatPage({
   /**
    * Whether a Stop has something to stop (R-WP-65, UC-WP-102): the stand's own statement on any tile, plus this
    * browser's own send — between the click and the first WORKING snapshot the turn is already there and no
-   * snapshot says it yet (D-13). Read as a statement and never as a state: `busy` above stays the wait's and the
-   * empty send's question, and a name is never asked (R-WP-7, D-14).
+   * snapshot says it yet (D-13). The intent fills only that gap: once a tile reports work — a turn or an action —
+   * the stand speaks alone, because behind a running Clear/Compact a send has nothing to stop (UC-WP-102 GIVEN 1)
+   * and in that window the stand is older than the click. Read as a statement and never as a state: `busy` above
+   * stays the wait's and the empty send's question, and a name is never asked (R-WP-7, D-14).
    */
-  const stoppable = ownTurn || tiles.some(tile => tile.stoppable)
+  const stoppable =
+    tiles.some(tile => tile.stoppable) ||
+    (ownTurn && tiles.every(tile => tile.state !== 'WORKING' && tile.state !== 'COMPACTING'))
 
   /**
    * The one decider of the send way (UC-WP-57), because the composer answers nothing on its own (UC-WP-74):
