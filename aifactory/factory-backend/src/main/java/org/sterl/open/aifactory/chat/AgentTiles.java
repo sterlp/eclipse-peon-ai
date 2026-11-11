@@ -57,16 +57,27 @@ final class AgentTiles {
         return failed ? AgentTileState.ERROR : AgentTileState.IDLE;
     }
 
+    /** A tile that owns no statement about the project's turn — {@code stoppable} is then never true. */
+    static AgentTileDto of(String name, long tokens, boolean estimate, int percent, long budget,
+            boolean working, boolean compacting, boolean failed, Set<TileCapability> capabilities) {
+        return of(name, tokens, estimate, percent, budget, working, compacting, failed, capabilities, false);
+    }
+
     /**
      * The display value of the context number — {@code null} for a seat without
      * {@link TileCapability#CONTEXT}, which the UI renders as „—". Derived here and never passed in, so a
      * tile cannot carry a number its own capabilities forbid.
+     *
+     * <p>{@code stoppable} is the turn claim's own answer and reaches only the tile that speaks for the
+     * project's turn (R-WP-65): it is deliberately not derived from {@code working} here, because a turn
+     * waiting behind a Clear or Compact works and is still not stoppable (D-17).</p>
      */
     static AgentTileDto of(String name, long tokens, boolean estimate, int percent, long budget,
-            boolean working, boolean compacting, boolean failed, Set<TileCapability> capabilities) {
+            boolean working, boolean compacting, boolean failed, Set<TileCapability> capabilities,
+            boolean stoppable) {
         String context = capabilities.contains(TileCapability.CONTEXT) ? contextOf(tokens, estimate) : null;
         return new AgentTileDto(name, context, tokens, estimate, percent, budget,
-                stateOf(working, compacting, failed), capabilities);
+                stateOf(working, compacting, failed), capabilities, stoppable);
     }
 
     /** The core's display value for an agent — the same two calls the plugin header makes. */

@@ -21,6 +21,7 @@ export const DEV: AgentTile = {
   budget: 100_000,
   state: 'IDLE',
   capabilities: ['CONTEXT', 'CLEAR', 'COMPACT'],
+  stoppable: false,
 }
 
 /** The settings answer of the factory — masked, with no key of its own. */

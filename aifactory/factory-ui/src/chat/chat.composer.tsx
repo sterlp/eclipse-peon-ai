@@ -31,8 +31,14 @@ function typingElsewhere(own: HTMLFormElement | null): boolean {
 
 interface Props {
   draft: string
-  /** A turn is running on this project — the only thing that makes a stop mean something (UC-WP-50). */
+  /** A turn is running on this project — what the wait and the field's focus answer to (UC-WP-22, UC-WP-74). */
   busy: boolean
+  /**
+   * The stand's own statement that a turn is stoppable (R-WP-65, UC-WP-102) — the tile's field beside this
+   * browser's own send, never a reading of `busy`: a working tile whose turn is not stoppable keeps the
+   * button inert.
+   */
+  stoppable: boolean
   onDraftChange: (value: string) => void
   onSubmit: (event: FormEvent) => void
   onStop: () => void
@@ -50,6 +56,10 @@ interface Props {
  * last message or does nothing is the page's answer (R-WP-30, UC-WP-57). The draft is asked about in one
  * place only: the Enter gesture below.
  *
+ * The stop is the one control that answers to the stand instead of to the intent: it is operable exactly while
+ * the stand says a turn is stoppable (R-WP-65, UC-WP-102) — a working tile whose turn is not stoppable keeps it
+ * inert, and the disabled button still carries its reason as tooltip (R-WP-59).
+ *
  * The field is the basis' auto-grow textarea: one line to `MAX_ROWS`, then it scrolls instead of pushing the
  * chat away (R-WP-41). Enter is the send and Shift+Enter the browser's own line break; Ctrl/Cmd+Enter is the
  * second way to a line break, which the browser does not add by itself (R-WP-30). An **empty** Enter is no
@@ -57,7 +67,7 @@ interface Props {
  * button may repeat a text (UC-WP-56 GIVEN 1, Paul 2026-11-08). The field owns its focus: it takes it
  * when the project opens and gets it back when a turn ends (UC-WP-74 GIVEN 5).
  */
-export function ChatComposer({ draft, busy, onDraftChange, onSubmit, onStop }: Props) {
+export function ChatComposer({ draft, busy, stoppable, onDraftChange, onSubmit, onStop }: Props) {
   const field = useRef<GetRef<typeof Input.TextArea> | null>(null)
   const form = useRef<HTMLFormElement>(null)
   /** The turn that just ended is the moment the field gets its focus back (UC-WP-74 GIVEN 5). */
@@ -126,7 +136,7 @@ export function ChatComposer({ draft, busy, onDraftChange, onSubmit, onStop }: P
       <div className="chat-composer-actions">
         <IconButton
           className="chat-stop"
-          disabled={!busy}
+          disabled={!stoppable}
           icon={<StopOutlined />}
           label={content.chat.stop}
           onClick={() => void onStop()}

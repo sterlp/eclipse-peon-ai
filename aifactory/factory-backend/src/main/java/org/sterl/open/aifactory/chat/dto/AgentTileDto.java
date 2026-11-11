@@ -16,7 +16,9 @@ import java.util.Set;
  * @param budget         that budget ({@code autoCompactAfter}), shown beside the percentage
  * @param state          live state, {@code COMPACTING} winning over {@code WORKING}
  * @param capabilities   the affordances — see {@link TileCapability}
+ * @param stoppable      the turn claim's own statement: a turn of this project is stoppable right now
+ *                       (R-WP-65) — {@code true} on Jon's tile only, never during a Clear or Compact
  */
 public record AgentTileDto(String name, String context, long tokens, boolean estimate, int contextPercent,
-        long budget, AgentTileState state, Set<TileCapability> capabilities) {
+        long budget, AgentTileState state, Set<TileCapability> capabilities, boolean stoppable) {
 }

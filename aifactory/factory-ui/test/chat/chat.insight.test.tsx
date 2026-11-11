@@ -60,6 +60,7 @@ function tile(name: string, capabilities: TileCapability[]): AgentTile {
     contextPercent: 3,
     budget: 100_000,
     state: 'IDLE',
+    stoppable: false,
     capabilities,
   }
 }

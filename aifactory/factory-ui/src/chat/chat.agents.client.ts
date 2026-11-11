@@ -23,6 +23,12 @@ export interface AgentTile {
   budget: number
   state: AgentTileState
   capabilities: TileCapability[]
+  /**
+   * The server's own statement: a turn of this project is stoppable right now (R-WP-65). It rides on the
+   * conversation's own tile only and is never true during a Clear or Compact (D-17) — the Stop button follows
+   * this field and never derives the answer from `state` (UC-WP-102).
+   */
+  stoppable: boolean
 }
 
 /** The wire value of an action — `compact` and `clear` are the two the server knows. */

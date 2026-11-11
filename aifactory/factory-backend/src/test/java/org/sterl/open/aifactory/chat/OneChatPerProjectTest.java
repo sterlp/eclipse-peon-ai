@@ -220,9 +220,11 @@ class OneChatPerProjectTest extends FactorySpringTest {
         assertThat(modelFields.get(ChatMessageDto.class)).containsExactly("role", "text", "origin");
         // genau ein Label-Feld für den Absender: die Eingabe hat weiter keinen Adressaten (UC-WP-6)
         assertThat(modelFields.get(SendMessageRequest.class)).containsExactly("text", "user");
-        // a tile names an agent of this project's own team and carries numbers — no conversation, no author
+        // a tile names an agent of this project's own team and carries numbers — no conversation, no author.
+        // `stoppable` is the turn claim's one boolean about this project's turn (R-WP-65): it names no second
+        // conversation and no author, it only says whether a Stop has something to stop (UC-WP-102)
         assertThat(modelFields.get(AgentTileDto.class)).containsExactly("name", "context", "tokens", "estimate",
-                "contextPercent", "budget", "state", "capabilities");
+                "contextPercent", "budget", "state", "capabilities", "stoppable");
         assertThat(modelFields.get(AgentActionRequest.class)).containsExactly("name", "action");
         // der Blick liest eine Kachel: ein Agentenname, ein Cap-Flag und Zeilen — kein Feld, das ein
         // Gespräch adressieren oder einen Autor erfinden könnte

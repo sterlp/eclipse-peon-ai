@@ -81,6 +81,9 @@ export function tile(
     budget: 100_000,
     state,
     capabilities,
+    // the statement of a stoppable turn is the server's, never the fixture's guess (R-WP-65) — a test that
+    // stands on a stoppable turn hands it in as `{ ...tile('Jon', 'WORKING'), stoppable: true }`
+    stoppable: false,
   }
 }
 

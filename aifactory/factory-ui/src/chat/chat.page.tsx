@@ -404,6 +404,14 @@ export function ChatPage({
   const busy = ownTurn || tiles.some(tile => tile.state === 'WORKING')
 
   /**
+   * Whether a Stop has something to stop (R-WP-65, UC-WP-102): the stand's own statement on any tile, plus this
+   * browser's own send — between the click and the first WORKING snapshot the turn is already there and no
+   * snapshot says it yet (D-13). Read as a statement and never as a state: `busy` above stays the wait's and the
+   * empty send's question, and a name is never asked (R-WP-7, D-14).
+   */
+  const stoppable = ownTurn || tiles.some(tile => tile.stoppable)
+
+  /**
    * The one decider of the send way (UC-WP-57), because the composer answers nothing on its own (UC-WP-74):
    * a text goes out as it stands; an empty field repeats the last user line the screen shows — the history's
    * or this browser's pending one, which is what makes "send it again after a stop" work — and does nothing
@@ -493,7 +501,14 @@ export function ChatPage({
         {/* one rule with the stop button: while a turn works on this project, the wait is on the screen
             (R-WP-31) — another browser's turn included, because this stream carries its lines anyway */}
         {busy && <ChatWaiting preview={livePreview(live)} />}
-        <ChatComposer draft={draft} busy={busy} onDraftChange={setDraft} onSubmit={submit} onStop={stop} />
+        <ChatComposer
+          draft={draft}
+          busy={busy}
+          stoppable={stoppable}
+          onDraftChange={setDraft}
+          onSubmit={submit}
+          onStop={stop}
+        />
       </section>
       {files}
       {/* the look stands on the right edge only while the address leaves it free (R-WP-33, UC-WP-60 G3);

@@ -163,9 +163,12 @@ final class ProjectRuntime {
         boolean compacting = agent.isCompacting() || actingHere && current.action() == AgentAction.COMPACT;
         long tokens = agent.getMemory().getTotalTokenUsed();
         boolean estimate = agent.getMemory().isTokenEstimate();
+        // the claim's own answer, read by the same reader `stop()` consults (R-WP-65): not `working` — a turn
+        // waiting behind an action works and is refused, and only Jon's tile speaks for the project's turn
+        boolean stoppable = agent == jon && claim.turnIsStoppable();
         return AgentTiles.of(agent.getName(), tokens, estimate, agent.tokenContextUsedInPercent(), budget,
                 working, compacting, agent == jon && failedAgent != null,
-                AgentTiles.capabilitiesOf(seat));
+                AgentTiles.capabilitiesOf(seat), stoppable);
     }
 
     /**

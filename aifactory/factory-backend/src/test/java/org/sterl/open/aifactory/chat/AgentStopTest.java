@@ -123,6 +123,7 @@ class AgentStopTest extends FactorySpringTest {
     @Test
     @Timeout(60)
     // UC-WP-50
+    // R-WP-65, UC-WP-102 — the tile is the only state address of a turn: it says whether one is stoppable
     void stopEndsTheTurnAndEndsItAsAnEnd() {
         Project project = projects.add("https://git.example.com/acme/stop-turn.git").project();
         ProjectRuntime runtime = runtimes.runtime(project.id());
@@ -132,6 +133,16 @@ class AgentStopTest extends FactorySpringTest {
             send(project.id(), SLOW_INPUT);
             awaitUntil(() -> wire.hasToolLine(TurnGate.runningLine()), 20_000,
                     "der laufende Shell meldet seinen Befehl");
+            // read before the stop: the click may not be what puts the statement on the tile
+            assertThat(tile(project.id(), "Jon").stoppable())
+                    .as("while the turn holds, his tile says it is stoppable")
+                    .isTrue();
+            assertThat(tiles(project.id()))
+                    .as("no other tile claims a stoppable turn — the team's work is not the project's turn")
+                    .filteredOn(tile -> !"Jon".equals(tile.name()))
+                    .allSatisfy(tile -> assertThat(tile.stoppable())
+                            .as("%s carries no stoppable turn", tile.name())
+                            .isFalse());
 
             assertThat(stop(project.id()))
                     .as("a stop of a running turn is taken")
@@ -158,6 +169,11 @@ class AgentStopTest extends FactorySpringTest {
                     .allSatisfy(tile -> assertThat(tile.state())
                             .as("%s after the stop", tile.name())
                             .isEqualTo(AgentTileState.IDLE));
+            assertThat(tiles(project.id()))
+                    .as("an ended turn leaves no tile claiming a stoppable turn behind")
+                    .allSatisfy(tile -> assertThat(tile.stoppable())
+                            .as("%s after the end", tile.name())
+                            .isFalse());
             assertThat(memoryText(runtime.jon()))
                     .as("the answer the model had left was never asked for again — the turn is over, not hidden")
                     .doesNotContain("DIESE-ANTWORT-DARF-NICHT-MEHR-KOMMEN");
@@ -290,6 +306,7 @@ class AgentStopTest extends FactorySpringTest {
     @Test
     @Timeout(60)
     // UC-WP-50
+    // R-WP-65, UC-WP-102 — with no turn there is nothing to stop, and the tile says so
     void stopWithoutATurnIsRefused() {
         Project project = projects.add("https://git.example.com/acme/stop-idle.git").project();
         ProjectRuntime runtime = runtimes.runtime(project.id());
@@ -297,6 +314,9 @@ class AgentStopTest extends FactorySpringTest {
             assertThat(stop(project.id()))
                     .as("nothing runs, so there is nothing to stop — 409 and no side effect")
                     .isEqualTo(HttpStatus.CONFLICT.value());
+            assertThat(tile(project.id(), "Jon").stoppable())
+                    .as("the refused stop stood on a tile that never claimed a stoppable turn")
+                    .isFalse();
             wire.assertNoEventWithin("done", 500);
             wire.assertNoEventWithin("error", 500);
             assertThat(runtime.jon().getMemory().getCopy())

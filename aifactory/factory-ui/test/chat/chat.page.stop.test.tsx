@@ -106,8 +106,8 @@ test('aCompactAfterAStopKeepsTheLinesOfTheStoppedTurn', async () => {
 
 // UC-WP-50
 test('stopOnAFinishedTurnIsSilent', async () => {
-  // a roster that says WORKING is enough to offer the stop — another user's turn is stoppable too (UC-WP-22)
-  const chat = stubChat({ messages: [QUESTION], agents: [tile('Jon', 'WORKING')] })
+  // a tile that says its turn is stoppable offers the stop — another user's turn is stoppable too (UC-WP-22)
+  const chat = stubChat({ messages: [QUESTION], agents: [{ ...tile('Jon', 'WORKING'), stoppable: true }] })
   chat.setStopAnswer(409, 'no turn is running')
   render(<ChatPage project={project()} />)
   await flush()
@@ -124,6 +124,7 @@ test('stopOnAFinishedTurnIsSilent', async () => {
 })
 
 // UC-WP-50
+// R-WP-65, UC-WP-102 GIVEN 1 — a half Compact is not something a turn's stop may cut, so it offers no stop (D-17)
 test('aCompactingTileOffersNoStop', async () => {
   // a half Compact is not something a turn's stop may cut — so it is not a turn to stop (D-17)
   stubChat({ messages: [QUESTION], agents: [tile('Jon', 'COMPACTING')] })
@@ -132,6 +133,26 @@ test('aCompactingTileOffersNoStop', async () => {
 
   expect(screen.getByTestId('tile-state-Jon')).toHaveTextContent(content.tiles.state.COMPACTING)
   expect(screen.getByTestId('chat-stop')).toBeDisabled()
+})
+
+/**
+ * R-WP-65: the tile carries the statement „a turn is stoppable" and the button follows <em>it</em> — neither the
+ * state nor a guess of this browser. UC-WP-102: a WORKING tile that says nothing leaves the button inert (GIVEN 1),
+ * and the statement alone makes it operable even on an IDLE tile — the turn of another browser, which the state
+ * would have hidden a moment later (GIVEN 2).
+ */
+// R-WP-65
+// UC-WP-102
+test('stopFollowsTheStoppableStatementOfTheStand', async () => {
+  const chat = stubChat({ messages: [QUESTION], agents: [{ ...tile('Jon', 'WORKING'), stoppable: false }] })
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  expect(screen.getByTestId('chat-stop'), 'a working tile that says nothing has nothing to stop').toBeDisabled()
+
+  await chat.push(event('agents', { tiles: [{ ...tile('Jon', 'IDLE'), stoppable: true }] }))
+
+  expect(screen.getByTestId('chat-stop'), 'the statement decides, the state does not').toBeEnabled()
 })
 
 /** The seat of a member: all four capabilities — the insight is what tells his seat from the conversation's own. */

@@ -8,6 +8,7 @@ import { block } from '../shared/sheets'
 interface Over {
   draft?: string
   busy?: boolean
+  stoppable?: boolean
 }
 
 /** The composer with everything off: a test names only what its scenario cares about. */
@@ -15,6 +16,7 @@ function renderComposer(over: Over = {}) {
   const props = {
     draft: over.draft ?? '',
     busy: over.busy ?? false,
+    stoppable: over.stoppable ?? false,
     onDraftChange: vi.fn(),
     // the page prevents the browser's own submission, and the test double has to: jsdom would otherwise
     // report the form submission it does not implement
@@ -47,6 +49,7 @@ function renderOwnedComposer(): HTMLTextAreaElement {
       <ChatComposer
         draft={draft}
         busy={false}
+        stoppable={false}
         onDraftChange={setDraft}
         onSubmit={() => undefined}
         onStop={() => undefined}

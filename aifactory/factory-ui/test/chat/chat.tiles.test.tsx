@@ -26,6 +26,7 @@ function tile(
     budget: 100_000,
     state,
     capabilities: ['CONTEXT', 'CLEAR', 'COMPACT'],
+    stoppable: false,
     ...overrides,
   }
 }

@@ -26,6 +26,7 @@ function rosterOf(name: string, state: AgentTileState, capabilities: TileCapabil
       budget: 100_000,
       state,
       capabilities,
+      stoppable: false,
     },
   ]
 }
