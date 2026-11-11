@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 
-import { isTraceLine, listMessages, type ChatMessage, type ChatStreamEvent } from './chat.client'
+import { isTraceLine, type ChatMessage, type ChatStreamEvent } from './chat.client'
 import { agentAction, type AgentAction } from './chat.agents.client'
 import { acceptedAction, afterSnapshot, type ActionWatch } from './chat.action.rebuild'
 import { useTileBoard } from './chat.board'
@@ -18,11 +18,11 @@ import {
   appendLiveThink,
   appendLiveTool,
   endLiveDelegation,
-  liveLinesAfterHistory,
   livePreview,
   type LiveItem,
 } from './chat.live'
-import { lastVisibleUserText, withoutConfirmed, type PendingLine } from './chat.pending'
+import { lastVisibleUserText, type PendingLine } from './chat.pending'
+import { useHistoryReads } from './chat.read'
 import { useFollowBottom } from './chat.scroll'
 import { ScrollBottomButton } from './chat.scroll.bottom'
 import { ChatTiles } from './chat.tiles'
@@ -148,14 +148,6 @@ export function ChatPage({
   /** The open turn as the screen sees it — no turn open, no step working (R-WP-40, UC-WP-72 GIVEN 2). */
   const [openTurn, setOpenTurn] = useState<number | null>(null)
   /**
-   * How many history reads this view has asked for. A read is a network round trip over the whole memory, so
-   * it is slowest exactly when the conversation is long, and a later read can answer first — the number is
-   * what tells the two answers apart (D-C, R-WP-11).
-   */
-  const readSeq = useRef(0)
-  /** The number of the read whose content is on the screen. An older answer never overwrites a newer one. */
-  const appliedRead = useRef(0)
-  /**
    * The scroll area of the chat. Where the user reads and what a new line owes him — follow him to its end,
    * or leave him reading (R-WP-35) — is `useFollowBottom`'s question; this view only says when the log has
    * new content, because that is the only thing here that knows it.
@@ -229,46 +221,20 @@ export function ChatPage({
   }, [writeTurn])
 
   /**
-   * The finished text arrives here, never as an event — so the live answer gives way to it (§3.3.3). What
-   * gives way is nothing else: the tool lines of the turn exist on the wire only and stay where they were
-   * placed, because a finished turn without its trace is not what UC-WP-54 asks for.
-   *
-   * Two things make a read a statement about one moment instead of about the conversation: `read` is the
-   * number this view gave the request, and a read that answers after a newer one has been applied is
-   * dropped — reads race, and the slower one would move the log back (R-WP-11). `mark` is how many live
-   * lines stood when the request went out; text and error behind it belong to a turn the read never saw and
-   * stay on the screen (UC-WP-7). The same cut moved the row a stopped turn's rows hang at (R-WP-63).
+   * One read of the conversation — its number and its live cut live in {@link useHistoryReads}, what it writes
+   * stays here. The controls' forget of the stopped turn's row goes in as `afterRead`, not beside each call:
+   * it is identity-stable, and only a read that really landed may clear that mark (R-WP-63).
    */
-  const applyHistory = useCallback(
-    (loaded: ChatMessage[], mark: number, read: number) => {
-      if (read < appliedRead.current) {
-        return
-      }
-      appliedRead.current = read
-      writeHistory(loaded)
-      // his own lines are confirmed by their position in what the read brings, not by their text: a queued
-      // input stands in the memory with the core's marker and would never be recognised again (R-WP-37)
-      writePending(withoutConfirmed(pendingLines.current, loaded))
-      writeLive(liveLinesAfterHistory(liveItems.current, mark))
-      forgetStoppedFrom()
-    },
-    [forgetStoppedFrom, writeHistory, writePending, writeLive],
-  )
-
-  /**
-   * One read of the conversation, numbered and stamped with the live list it has to meet — by the caller when
-   * the read answers to a moment of its own (the end of a tile action, R-WP-63), always <em>before</em> the
-   * request: what the stream adds while the server answers is not in the answer (D-C, UC-WP-7).
-   */
-  const refresh = useCallback((mark = liveItems.current.length): Promise<void> => {
-    if (projectId === null) {
-      return Promise.resolve()
-    }
-    const read = ++readSeq.current
-    return listMessages(projectId)
-      .then(loaded => applyHistory(loaded, mark, read))
-      .catch(reason => setError(errorMessage(reason)))
-  }, [applyHistory, projectId, setError])
+  const { refresh } = useHistoryReads({
+    projectId,
+    pendingLines,
+    liveItems,
+    writeHistory,
+    writePending,
+    writeLive,
+    onFailure: setError,
+    afterRead: forgetStoppedFrom,
+  })
 
   const applyEvent = useCallback(
     (event: ChatStreamEvent) => {
