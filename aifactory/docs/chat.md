@@ -321,30 +321,36 @@ in einem Monitor über Turn und Aktion, [Architektur](aifactory-architektur.md))
 dem **einzigen Weg, den er schon hat**: der Kachel-Snapshot trägt die Aussage „ein Turn ist stoppbar"
 ([R-WP-60](chat.md)) — kein neues Ereignis, kein zweiter Pfad, keine Raten-Oberfläche. Die Oberfläche
 bietet die Taste **genau dann** an, sonst ist sie **deaktiviert** (Parität zum Plugin, dessen Bedienleiste
-während einer Arbeit gesperrt ist). Eine Ausnahme hat diese Regel: das **eigene** Senden — zwischen dem
-Klick und dem nächsten Stand weiß der Browser aus eigener Handlung, dass er einen Turn begonnen hat, und
-bietet die Taste in diesem Fenster an (Parität zum Plugin, das dafür lokal sperrt). Das ist kein Raten:
-gezählt wird die eigene Anfrage, nicht ein vermuteter Zustand.
+während einer Arbeit gesperrt ist). Eine enge Ausnahme hat diese Regel: das **eigene** Senden, solange der
+Stand **noch keine Arbeit meldet** — in diesem Fenster ist der Stand älter als die eigene Handlung, und der
+Browser weiß aus ihr, dass er einen Turn begonnen hat (Parität zum Plugin, das dafür lokal sperrt). Sobald
+eine Kachel Arbeit meldet, gilt wieder ausschließlich der Stand: die Ausnahme überschreibt keine
+Server-Aussage, sie füllt nur eine Lücke, die der Stand selbst noch nicht zeigt.
 
 Während einer **Aktion** (Clear, Compact) ist kein Turn stoppbar: ein halber Compact ist kein Ergebnis
 (D-17 bleibt als fachliche Aussage) — die Taste ist **aus**, und der Server lehnt weiterhin mit `409` ab,
 was Paul ausdrücklich richtig findet. Kommt die Ablehnung trotzdem (der Turn endete zwischen dem Lesen des
 Stands und dem Klick), zeigt sie das **Error-Panel** ([R-WP-62](api-errors.md)): **keine Ablehnung bleibt
-unsichtbar**; die Absorptions-Ausnahme „409 auf Stop bleibt still" (2026-11-10) ist zurückgenommen. Ein
+unsichtbar**; die Absorptions-Ausnahme „409 auf Stop bleibt still" (2026-11-10) ist zurückgenommen. Mit der
+Ablehnung fällt auch die Taste **zurück** — selbst dann, wenn dieser Browser den Turn selbst begonnen hatte:
+der Server hat soeben verneint, dass es etwas zu stoppen gibt, und ein Turn, den nur die eigene Erinnerung
+behält, ist kein Zustand. Bei einem Netzwerkfehler bleibt die Anmeldung stehen, denn dort läuft der Turn
+womöglich weiter. Ein
 akzeptierter Stop endet wie bisher mit genau einem `done` ([R-WP-48](chat.md)) und hält die gezeigten
 Zeilen ([UC-WP-50](chat.md)).
 
 #### UC-WP-102 — stopIsOfferedOnlyWhenATurnIsStoppable ❌
-- GIVEN der Stand meldet **keinen** stoppbaren Turn — nichts läuft, oder eine **Aktion** läuft — **und**
-  dieser Browser hat selbst keinen Turn begonnen WHEN der Chat zeichnet THEN ist die Stop-Taste
-  **deaktiviert**; ein Klick ins Leere ist nicht möglich. (Der Einschub ist die Zeitlücke: zwischen dem
-  eigenen Senden und dem nächsten Stand weiß der Server schon, dass sein Turn läuft, der Browser liest ihn
-  aber noch nicht — wer den Turn selbst begonnen hat, darf ihn in diesem Fenster stoppen.)
+- GIVEN der Stand meldet **keinen** stoppbaren Turn — nichts läuft, oder eine **Aktion** läuft — WHEN der
+  Chat zeichnet THEN ist die Stop-Taste **deaktiviert**; ein Klick ins Leere ist nicht möglich. Einzige
+  Ausnahme: dieser Browser hat **selbst** gesendet **und** der Stand meldet noch keine Arbeit — in diesem
+  Fenster ist der Stand schlicht älter als die Handlung. Meldet irgendeine Kachel Arbeit (die einer Aktion
+  eingeschlossen), gilt wieder ausschließlich der Stand.
 - GIVEN ein Turn läuft (auch der eines anderen Nutzers, [UC-WP-22](chat.md)) WHEN der Chat zeichnet THEN
   ist die Taste **bedienbar** und ihr Klick stoppt den Turn vollständig ([UC-WP-50](chat.md)).
 - GIVEN die Taste war bedienbar WHEN der Server antwortet „nichts mehr zu stoppen" (`409`) THEN steht der
   Wortlaut des Servers im Error-Panel ([R-WP-62](api-errors.md)) und bleibt, bis der Nutzer selbst
-  weitermacht.
+  weitermacht, **und** die Taste ist wieder **deaktiviert** — der Stand hat soeben verneint, dass es etwas
+  zu stoppen gibt. Bei einem Netzwerkfehler bleibt die Taste, wie sie war (der Turn läuft womöglich weiter).
 
 ### R-WP-61 — Eine Problem-Meldung ist rot und trägt ein rotes Icon ✅ (Paul 2026-11-10, Browser-Abnahme: „tool indicatoren nicht da … status onProblem sollte sichtbar sein im UI mit dem rot und auch einem roten Icon"; Präzisierung Paul 2026-11-10: die Werkzeug-Schritte mit Dreh-Indikator sind gut so — nur der Fehlerfall muss sichtbar sein; gebaut + reviewed 2026-11-10, Inkrement `30ed0525` — Backend 276 Tests, missCount=1, UI 276; Abnahme am Browser steht aus, dort erscheint auch eine API-Retry-Meldung rot)
 

@@ -77,6 +77,10 @@
   `antd lint ./src` fahren (auf dem nvm-Default 22.12 fehlt das `antd`-Binary).
 - **Doc-Lint-Baseline ist nicht 0** (❌-UCs kommender Inkremente): findings-frei = **keine neuen** Findings
   und die eigenen UCs von der Liste genommen.
+- **Test-Marker: eine ID pro `//`-Zeile, reine ID-Zeile direkt über dem Test** (`// R-WP-65`,
+  darunter `// UC-WP-102`, Begründungsprosa **über** den IDs). Mischzeilen (`// R-WP-65, UC-WP-102 …`) und
+  Prosa, die mit einer ID beginnt, zählt der Doc-Lint **nicht** ⇒ die UC bleibt `UNBELEGT`, obwohl ein Test
+  existiert (2× gemessen 2026-11-11). Nach dem Marker-Edit den Lint-Lauf zeigen, nicht nur die Tests.
 - **AntD-v6-Timeline (Inc 3)**: `Steps` erzwingt `min-height:48px` + `padding-bottom:12px` — Geometrie nur
   im Chat-Scope überschreiben (`.chat-log .chat-line.trace .ant-timeline-item`); `itemPaddingBottom` liest
   AntD **nur im Alternativ-Layout**, die `title`-Prop baut eine Zweitspalte. Beweise nur über
