@@ -18,6 +18,13 @@ gemessenen Fallstricke in [memory.md](memory.md).
   / clear und rebuild des chats anhand der history von jon, genau wie es im eclipse plugin passiert."
   ⇒ Regel [R-WP-63/UC-WP-100](chat.md): Neuaufbau auf der **Fallkante des Kachel-Zustands**, kein
   neues Ereignis, kein neues Feld; Compact **und** Clear.
+* **⏳ Stop-Taste im Fenster nach dem eigenen Senden** (2026-11-11, im Plan zu
+  [R-WP-65](chat.md) entschieden, von Jon ins Doc gezogen) — der Server meldet den neuen Turn erst mit dem
+  nächsten Kachel-Stand; in dieser Lücke zählt der Browser seine **eigene** Anfrage und bietet Stop an.
+  Abgeleitet aus dem Plugin (`ActionsBarWidget` sperrt lokal, weil die View ihren Job kennt) und aus
+  [UC-WP-50](chat.md) (der Stop muss den gerade begonnenen Turn erreichen). *Andersfall:* Taste bleibt in
+  dem Fenster aus — Pauls üblicher Fall „er hat gerade gestartet und will abbrechen"; oder der Stand wird
+  nach dem Senden sofort neu gelesen = zweiter Lese-Pfad.
 * **⏳ Kern-eigener Compact löst keinen Neuaufbau aus** (Bewusste Grenze in [R-WP-63](chat.md),
   abgeleitet: ein Auto-/Vorlauf-Compact passiert **mitten im Turn**, ein Neuaufbau würde die laufenden
   Live-Zeilen des Turns über die gezeigten Zeilen legen — verboten nach UC-WP-100 GIVEN 3 und D-16).

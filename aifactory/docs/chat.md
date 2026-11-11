@@ -321,7 +321,10 @@ in einem Monitor über Turn und Aktion, [Architektur](aifactory-architektur.md))
 dem **einzigen Weg, den er schon hat**: der Kachel-Snapshot trägt die Aussage „ein Turn ist stoppbar"
 ([R-WP-60](chat.md)) — kein neues Ereignis, kein zweiter Pfad, keine Raten-Oberfläche. Die Oberfläche
 bietet die Taste **genau dann** an, sonst ist sie **deaktiviert** (Parität zum Plugin, dessen Bedienleiste
-während einer Arbeit gesperrt ist).
+während einer Arbeit gesperrt ist). Eine Ausnahme hat diese Regel: das **eigene** Senden — zwischen dem
+Klick und dem nächsten Stand weiß der Browser aus eigener Handlung, dass er einen Turn begonnen hat, und
+bietet die Taste in diesem Fenster an (Parität zum Plugin, das dafür lokal sperrt). Das ist kein Raten:
+gezählt wird die eigene Anfrage, nicht ein vermuteter Zustand.
 
 Während einer **Aktion** (Clear, Compact) ist kein Turn stoppbar: ein halber Compact ist kein Ergebnis
 (D-17 bleibt als fachliche Aussage) — die Taste ist **aus**, und der Server lehnt weiterhin mit `409` ab,
@@ -332,8 +335,11 @@ akzeptierter Stop endet wie bisher mit genau einem `done` ([R-WP-48](chat.md)) u
 Zeilen ([UC-WP-50](chat.md)).
 
 #### UC-WP-102 — stopIsOfferedOnlyWhenATurnIsStoppable ❌
-- GIVEN der Stand meldet **keinen** stoppbaren Turn — nichts läuft, oder eine **Aktion** läuft — WHEN der
-  Chat zeichnet THEN ist die Stop-Taste **deaktiviert**; ein Klick ins Leere ist nicht möglich.
+- GIVEN der Stand meldet **keinen** stoppbaren Turn — nichts läuft, oder eine **Aktion** läuft — **und**
+  dieser Browser hat selbst keinen Turn begonnen WHEN der Chat zeichnet THEN ist die Stop-Taste
+  **deaktiviert**; ein Klick ins Leere ist nicht möglich. (Der Einschub ist die Zeitlücke: zwischen dem
+  eigenen Senden und dem nächsten Stand weiß der Server schon, dass sein Turn läuft, der Browser liest ihn
+  aber noch nicht — wer den Turn selbst begonnen hat, darf ihn in diesem Fenster stoppen.)
 - GIVEN ein Turn läuft (auch der eines anderen Nutzers, [UC-WP-22](chat.md)) WHEN der Chat zeichnet THEN
   ist die Taste **bedienbar** und ihr Klick stoppt den Turn vollständig ([UC-WP-50](chat.md)).
 - GIVEN die Taste war bedienbar WHEN der Server antwortet „nichts mehr zu stoppen" (`409`) THEN steht der
