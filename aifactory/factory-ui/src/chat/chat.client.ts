@@ -1,4 +1,4 @@
-import { ApiRequestError, request } from '../shared/api.client'
+import { request } from '../shared/api.client'
 import type { AgentTile } from './chat.agents.client'
 
 /**
@@ -111,21 +111,12 @@ export async function sendMessage(projectId: string, text: string, user?: string
  * End the turn that is running (UC-WP-50). It belongs to the conversation's own edge: it writes nothing,
  * starts nothing and names no addressee — the same single conversation, only shorter.
  *
- * 202 means the stop was <em>taken</em>; the end itself arrives as `done` on the live wire. 409 means no
- * turn was running — the caller treats that as "already over" and shows no message of its own, because a
- * refusal here denies the user nothing he wanted.
+ * 202 means the stop was <em>taken</em>; the end itself arrives as `done` on the live wire. 409 means no turn
+ * was running: the caller shows that word (ADR-004) — the button was operable on a stand that said otherwise,
+ * and a refusal the user cannot see would be a control lying about the project.
  */
 export async function stopTurn(projectId: string): Promise<void> {
   return request<void>(`/api/projects/${encodeURIComponent(projectId)}/messages/stop`, {
     method: 'POST',
   })
-}
-
-/**
- * The server's "no turn is running" (409) to a stop — what its answer means, next to the edge that gets it.
- * The user got what he asked for either way, so the caller absorbs this one refusal instead of printing it
- * (UC-WP-50, D-17).
- */
-export function isAlreadyOver(error: unknown): boolean {
-  return error instanceof ApiRequestError && (error.apiError?.status ?? 0) === 409
 }

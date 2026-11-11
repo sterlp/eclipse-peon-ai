@@ -105,7 +105,9 @@ test('aCompactAfterAStopKeepsTheLinesOfTheStoppedTurn', async () => {
 })
 
 // UC-WP-50
-test('stopOnAFinishedTurnIsSilent', async () => {
+// R-WP-65, UC-WP-102 GIVEN 3 — the button was operable on the stand's word; the refusal answers on the same
+// edge and is shown, not absorbed (ADR-004). R-WP-66, UC-WP-103: the server's word stands in the one panel.
+test('aStopThatCameTooLateShowsTheServerWording', async () => {
   // a tile that says its turn is stoppable offers the stop — another user's turn is stoppable too (UC-WP-22)
   const chat = stubChat({ messages: [QUESTION], agents: [{ ...tile('Jon', 'WORKING'), stoppable: true }] })
   chat.setStopAnswer(409, 'no turn is running')
@@ -117,8 +119,9 @@ test('stopOnAFinishedTurnIsSilent', async () => {
   fireEvent.click(screen.getByTestId('chat-stop'))
   await waitFor(() => expect(chat.countOf('/agents', 'GET')).toBe(rosterReads + 1))
 
-  // 409 says the turn was already over — that is what the click wanted, so it is not an error line
-  expect(screen.queryByTestId('error-panel')).toBeNull()
+  // the race the read and the click leave behind is the user's case: he sees the server's word, and the
+  // roster read that corrects the button is the only request the refusal costs
+  expect(screen.getByTestId('error-panel')).toHaveTextContent('no turn is running')
   expect(chat.countOf('/messages', 'POST')).toBe(0)
   expect(chat.countOf('/messages', 'GET')).toBe(1)
 })
@@ -153,6 +156,43 @@ test('stopFollowsTheStoppableStatementOfTheStand', async () => {
   await chat.push(event('agents', { tiles: [{ ...tile('Jon', 'IDLE'), stoppable: true }] }))
 
   expect(screen.getByTestId('chat-stop'), 'the statement decides, the state does not').toBeEnabled()
+})
+
+/**
+ * R-WP-66: the panel is the page's own trouble and it ends with what the user does, not with the stream — the
+ * `error` and the `done` of a turn that was running leave a standing panel untouched, whatever they say.
+ * UC-WP-103 GIVEN 2: his own next request closes it, and the empty send is such a request (the repeat of
+ * UC-WP-57 goes out with it).
+ */
+// R-WP-66
+// UC-WP-103
+test('aTurnEndNeverClosesThePanel', async () => {
+  const REFUSAL = 'a turn or another action is still running'
+  const chat = stubChat({ messages: [QUESTION], agents: [tile('Jon', 'IDLE')] })
+  chat.refuseActions(409, REFUSAL)
+  render(<ChatPage project={project()} />)
+  await flush()
+
+  fireEvent.click(screen.getByTestId('tile-compact-Jon'))
+  await waitFor(() => expect(screen.getByTestId('error-panel')).toHaveTextContent(REFUSAL))
+
+  // the turn that fails here is nobody's second request: its end is a line of the log (R-WP-34) and the
+  // panel keeps the word it was given (R-WP-66)
+  await chat.push(event('error', { message: 'Es fehlt ein Modellschlüssel' }))
+  await flush()
+  expect(screen.getByTestId('error-panel'), 'the turn error does not overwrite the refusal').toHaveTextContent(
+    REFUSAL,
+  )
+
+  await chat.push(event('done', { millis: 5 }))
+  await flush()
+  expect(screen.getByTestId('error-panel'), 'neither does the end of the turn').toHaveTextContent(REFUSAL)
+
+  // his own request closes it — the empty send repeats what the screen shows and reads as a new request
+  fireEvent.click(screen.getByTestId('chat-send'))
+  await flush()
+  expect(screen.queryByTestId('error-panel'), 'the user asked again, so the old trouble is gone').toBeNull()
+  expect(sentTexts(chat), 'and the repeat went out').toEqual([QUESTION.text])
 })
 
 /** The seat of a member: all four capabilities — the insight is what tells his seat from the conversation's own. */

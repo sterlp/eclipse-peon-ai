@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 
-import { isAlreadyOver, sendMessage, senderName, stopTurn } from './chat.client'
+import { sendMessage, senderName, stopTurn } from './chat.client'
 import type { PendingLine } from './chat.pending'
 import { errorMessage } from '../shared/api.client'
 
@@ -117,9 +117,10 @@ export function useTurnControls(args: {
   )
 
   /**
-   * Stop the running turn (UC-WP-50). A 409 is not shown: it says the turn was already over, which is
-   * what the click wanted, and the roster is read again so the tiles say so too (D-17). Any other
-   * refusal is a line in the chat like any other error.
+   * Stop the running turn (UC-WP-50). Every refusal is shown (ADR-004, R-WP-66): a 409 says the turn was
+   * already over, which is what the click wanted — but the click was made on a stand that said otherwise, so
+   * its word goes into the panel and the roster is read again, or the button keeps offering what the server
+   * just refused (UC-WP-102 GIVEN 3). Only an accepted stop marks the turn whose lines stay on the screen.
    */
   const stop = useCallback(
     async (from: number | null, refreshRoster: () => void) => {
@@ -132,10 +133,10 @@ export function useTurnControls(args: {
         // remembered for the `done` that follows: his lines stay, the history is not re-read (D-16)
         stoppedTurn.current = { projectId, from }
       } catch (reason) {
-        if (!isAlreadyOver(reason)) {
-          setError(errorMessage(reason))
-          return
-        }
+        setError(errorMessage(reason))
+        // the stand the click stood on was wrong: read it again instead of leaving the button as it was
+        refreshRoster()
+        return
       }
       // the end he asked for has been taken: the wait ends now, without waiting for a `done` that will not
       // read anything over it — the lines on the screen stay (R-WP-31, UC-WP-50, D-16)

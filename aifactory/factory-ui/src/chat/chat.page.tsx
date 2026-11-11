@@ -319,7 +319,8 @@ export function ChatPage({
           writeTurn(null)
           writeLive(appendLiveError(liveItems.current, event.message, at))
           endTurn()
-          setError(null)
+          // the panel is left alone: a turn ending on its own is no answer to whatever the user asked a
+          // moment before, and its word stays until he asks again or dismisses it (R-WP-66, UC-WP-103)
           void refresh()
           break
         }
@@ -336,7 +337,7 @@ export function ChatPage({
           break
       }
     },
-    [applySnapshot, beginTurn, endTurn, refresh, refreshTiles, setError, takeStoppedTurn, writeLive, writeTurn],
+    [applySnapshot, beginTurn, endTurn, refresh, refreshTiles, takeStoppedTurn, writeLive, writeTurn],
   )
 
   useEffect(() => {
@@ -479,7 +480,7 @@ export function ChatPage({
         {/* the page's own trouble, above the team and outside the one area that scrolls here (R-WP-62): a
             send refused, a refused stop, a tile action that did not run, a roster the read lost. A failed
             turn is not announced here: it is a line of the log, read from the conversation like every other
-            line (R-WP-34, UC-WP-64), and the 409 of a stop that came too late is absorbed (D-17) */}
+            line (R-WP-34, UC-WP-64), and it never closes this panel either (R-WP-66) */}
         <ApiErrorPanel error={error} onClose={() => setError(null)} />
         <ChatTiles tiles={tiles} onAction={act} onInspect={openInsight} />
         <ChatLog
