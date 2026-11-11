@@ -255,8 +255,8 @@ keiner Rückmeldung sieht (z. B. Auto-Compact-Anlauf im Kern), erscheinen erst m
 Rückmeldung; ein Kern-Hook dafür wäre ein Core-Inkrement (beide Verbraucher) und ist nicht Teil dieser
 Regel. **Stop** ändert daran nichts: der Kern gibt das Flag erst zwischen Modellaufrufen frei — der
 frische Read nach Stop bleibt der Mechanismus (gemessen, G3). Das UI liest den Roster nur an den
-dokumentierten Anlässen (Mount, Verbindungsaufbau, Turn-Ende, Stop, Kachel-Aktion — [R-WP-57](chat.md),
-[UC-WP-84](chat.md)) und hält sonst keinen Timer.
+dokumentierten Anlässen (Mount, Verbindungsaufbau, Turn-Ende, Stop, **Ende** einer Kachel-Aktion —
+[R-WP-57](chat.md), [UC-WP-84](chat.md), [R-WP-63](chat.md)) und hält sonst keinen Timer.
 
 #### UC-WP-97 — tileStateIsPushedNeverPolled ✅ (gebaut + reviewed 2026-11-10, Inkrement `e68f1710`; GIVEN 3 als Messung belegt — kein `setInterval` in factory-ui/src)
 - GIVEN ein Turn beginnt WHEN der Claim angenommen wird THEN zeigt Jons Kachel sofort „arbeitet" —
@@ -267,7 +267,7 @@ dokumentierten Anlässen (Mount, Verbindungsaufbau, Turn-Ende, Stop, Kachel-Akti
 - GIVEN die App WHEN sie zeichnet THEN pollt sie nicht — der Kachel-Stand kommt ausschließlich per
   Push oder an den dokumentierten Read-Anlässen.
 
-### R-WP-63 — Eine Chat-Aktion endet mit dem Neuaufbau des Gesprächs ❌ (Paul 2026-11-10, Browser-Abnahme: „wenn ich einen compact mache, wird das chat-windows nicht aktualisiert, sondern bleibt auf animation in progress"; Entscheidung Paul 2026-11-10: „du brauchst kein eigenes signal — alles ist bereits im core … wenn Jon ein compact macht / clear und rebuild des chats anhand der history von Jon, genau wie es im eclipse plugin passiert")
+### R-WP-63 — Eine Chat-Aktion endet mit dem Neuaufbau des Gesprächs ✅ (Paul 2026-11-10, Browser-Abnahme: „wenn ich einen compact mache, wird das chat-windows nicht aktualisiert, sondern bleibt auf animation in progress"; Entscheidung Paul 2026-11-10: „du brauchst kein eigenes signal — alles ist bereits im core … wenn Jon ein compact macht / clear und rebuild des chats anhand der history von Jon, genau wie es im eclipse plugin passiert"; gebaut + reviewed 2026-11-11 — `cd0e187e` + Delta N1 `383ff4cd` (Review REJECTED wegen GIVEN 5, mit Mutationsbeweis), UI 290/34, tsc/oxlint/antd-lint 0, Backend unberührt; **Abnahme am Browser steht aus**)
 
 Eine Aktion, die Jons Gespräch verändert — **Compact** und **Clear** auf seiner Kachel — ist für den
 Betrachter erst dann beendet, wenn sein Gespräch **aus dem Verlauf neu aufgebaut** ist. Vorbild ist das
@@ -286,7 +286,11 @@ Der Neuaufbau schließt den offenen Live-Schritt (der Dreh-Indikator der 🗜-Ze
 wieder eingesetzte Zusammenfassungszeile des Kerns, nach **Clear** ein leeres Gespräch. Die 🗜-Zeilen des
 Compacts stehen in keinem Gedächtnis — sie bleiben als Live-Spuren dieser Aktion sichtbar (darunter das
 Ergebnis mit den Zahlen) und fallen mit dem nächsten Neuaufbau weg; ihr dauerhafter Auftritt ist
-[Grenze offener Punkt C-2a](open-points.md), nicht Sache dieser Regel.
+[Grenze offener Punkt C-2a](open-points.md), nicht Sache dieser Regel. **Ersetzt wird nur, was der
+Verlauf ebenfalls hält:** die Zeilen eines **gestoppten** Turns stehen nur live ([UC-WP-50](chat.md)) —
+der Neuaufbau, den eine **danach** folgende Aktion auslöst, nimmt sie nicht weg. Danach sind sie eine
+**gewöhnliche Live-Spur**: der nächste Neuaufbau beendet sie wie jede andere Lesung
+([R-WP-11](chat.md) — dieselbe Grenze wie beim Diff, [R-WP-36](chat.md)).
 
 **Zwei Grenzen, bewusst.** (1) Ausgelöst wird nur durch eine **vom Nutzer an Jons Kachel angenommene**
 Aktion: ein Compact, den der Kern selbst anstößt (Auto-Compact, Vorlauf-Compact mitten im Turn), löst
@@ -296,17 +300,19 @@ zweimal. (2) Eine Aktion auf einer **Mitglieds**-Kachel verändert Jons Gespräc
 Mitglieds-Gespräch behält seine Live-Zeilen (Parität: neu aufgebaut wird nur das Gespräch, dessen
 Aktion es verändert — [R-WP-26](chat.md)).
 
-#### UC-WP-100 — chatRebuildsAfterItsActionFinishes
+#### UC-WP-100 — chatRebuildsAfterItsActionFinishes ✅ (gebaut + reviewed 2026-11-11, `cd0e187e` + N1 `383ff4cd`; GIVEN 5 im Page-Test mit Mutationsbeweis; Abnahme am Browser steht aus)
 - GIVEN Jons Kachel WHEN **Compact** angenommen ist und die Kachel `COMPACTING` wieder verlässt THEN
   liest die Oberfläche den Verlauf neu und zeigt das Gespräch danach — die Zusammenfassungszeile des
   Kerns ist da, und kein Live-Schritt dreht mehr.
 - GIVEN Jons Kachel WHEN **Clear** angenommen ist und die Kachel `WORKING` wieder verlässt THEN ist das
   Gespräch leer (Parität zum Plugin) — nicht der Lauf unmittelbar nach der Zusage entscheidet darüber.
-- GIVEN ein laufender Turn WHEN sein Ende eintrifft THEN bleibt das der einzige Aufräum-Anlass dieses
-  Turns; ein Aktions-Neuaufbau überschreibt die gezeigten Zeilen eines laufenden oder gestoppten Turns
-  nicht.
+- GIVEN ein **laufender** Turn WHEN sein Ende eintrifft THEN bleibt das der einzige Aufräum-Anlass
+  dieses Turns; ein Aktions-Neuaufbau legt sich nie über die Zeilen dieses Turns.
 - GIVEN ein Compact, den der Kern ohne Klick selbst anstößt WHEN er endet THEN bleibt der laufende Turn
   mit seinen Live-Zeilen unangetastet.
+- GIVEN ein **gestoppter** Turn, dessen Zeilen nur live stehen WHEN danach eine Aktion auf Jons Kachel
+  endet THEN stehen diese Zeilen **weiterhin** — und der frische Stand des Verlaufs ist trotzdem da.
+  WHEN die nächste Aktion endet THEN sind sie beendet (gewöhnliche Live-Spur, kein zweiter Speicher).
 
 ### R-WP-61 — Eine Problem-Meldung ist rot und trägt ein rotes Icon ✅ (Paul 2026-11-10, Browser-Abnahme: „tool indicatoren nicht da … status onProblem sollte sichtbar sein im UI mit dem rot und auch einem roten Icon"; Präzisierung Paul 2026-11-10: die Werkzeug-Schritte mit Dreh-Indikator sind gut so — nur der Fehlerfall muss sichtbar sein; gebaut + reviewed 2026-11-10, Inkrement `30ed0525` — Backend 276 Tests, missCount=1, UI 276; Abnahme am Browser steht aus, dort erscheint auch eine API-Retry-Meldung rot)
 
@@ -783,7 +789,7 @@ Search; Live-Zustand je Kachel) — eine leere Liste heißt im UI „Read nie an
   gelesen (UC-WP-84, unverändert).
 - GIVEN der Roster-Read scheitert WHEN die Reihe zeichnet THEN wird der Fehler als **Seiten-Fehler**
   gemeldet und der **zuletzt gelesene Stand** der Reihe bleibt stehen — kein Zurückfallen auf leer
-  (kein stilles Schweigen); die nächste Lesung (done, Stop, Aktion) korrigiert ihn.
+  (kein stilles Schweigen); die nächste Lesung (done, Stop, **Ende** einer Aktion) korrigiert ihn.
 
 
 

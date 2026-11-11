@@ -26,6 +26,12 @@ Entscheidungen stehen in den Feature-Docs, die gemessenen Fallstricke in [memory
   Laufs gar nicht erst möglich (`ActionsBarWidget.java:161-168`). Entscheidung Paul: Aktions-`WORKING`
   ebenfalls kein Stop-Ziel (Parität zu `COMPACTING`, D-17) **oder** die Aktion wie im Plugin sperren.
   Antwort ⇒ Schärfung in [chat.md](chat.md).
+* **⏳ Die Zeilen eines gestoppten Turns überleben genau EINEN Aktions-Neuaufbau** (im Bau entschieden
+  2026-11-11, abgeleitet aus [R-WP-11](chat.md): Live-only endet mit der nächsten Lesung — dieselbe
+  Grenze wie beim Diff; UC-WP-50 sagt „schon gezeigte Zeilen bleiben" nur über den **Stop** selbst, nicht
+  über alle künftigen Lesungen). Festgehalten in [R-WP-63](chat.md) und UC-WP-100 GIVEN 5, gebaut mit
+  Mutationsbeweis. *Andersfall:* dauerhafte Rettung = eigener Marker je Live-Zeile („diese Zeile ist nie
+  ersetzbar") — widerspricht R-WP-11 und braucht einen zweiten Speicher.
 * **⏳ Nach dem Compact steht die Context-Zusammenfassung als eigene Eingabe im Chat** — der Kern
   re-seedet genau eine Nutzer-Nachricht (`Session compacted:` + Summary, `AbstractAgent.java:601-605`)
   und **beide** Consumer malen sie als Nutzer-Zeile: Plugin über `ToSimpleMessage.java:24-29` (kein

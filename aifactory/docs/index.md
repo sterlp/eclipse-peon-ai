@@ -75,7 +75,9 @@ MVP-Features teilen sich das ID-Präfix `WP` (IDs bleiben beim Verschieben stabi
   [R-WP-48/UC-WP-83/84](chat.md)** (Nachtzyklus, 2026-11-09); **Blick im selben Chat-Widget, live ✅
   [R-WP-53/UC-WP-89/90](chat.md)** (C-7, 2026-11-09); **Problem-Meldung rot mit rotem Icon ✅
   [R-WP-61/UC-WP-98](chat.md)**, **Reconnect mit Backoff ✅ [R-WP-58/UC-WP-95](chat.md)** und
-  **Kachel-Stand per Push ✅ [R-WP-60/UC-WP-97](chat.md)** (Bugs B6/B1/B5, 2026-11-10))
+  **Kachel-Stand per Push ✅ [R-WP-60/UC-WP-97](chat.md)** (Bugs B6/B1/B5, 2026-11-10));
+  **eine Chat-Aktion endet mit dem Neuaufbau des Gesprächs ✅ [R-WP-63/UC-WP-100](chat.md)** (B7b, Compact
+  und Clear — kein neues Signal, Auslöser ist die Kachel-Fallkante, 2026-11-11))
 * [Dateien](files.md) — Schreiben nur in Projekt + TMP, Datei-Bereich lesend. ◐ (gebaut, reviewed 2026-11-01)
 * [API-Fehler](api-errors.md) — Server-Fehler sichtbar: generierte API-Typen (typescript-generator),
   Bean Validation mit `fieldErrors`, ein Standard-Error-Widget (AntD), **Error-Panel je Seite prominent

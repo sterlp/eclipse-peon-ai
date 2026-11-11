@@ -21,7 +21,8 @@ Mechanismus**, die Factory übergibt nur die zwei Wurzeln.
 
 #### UC-WP-9 — writeOutsideBothRootsRejected ❌
 - GIVEN derselbe Agent WHEN er außerhalb von Projekt-Root **und** temporärem Verzeichnis schreiben
-  will THEN wird abgelehnt und **Jons** Ablehnung steht als Tool-Zeile im Chat.
+  will THEN wird abgelehnt und **Jons** Ablehnung steht als Problem-Meldung im Chat — rot mit rotem
+  Icon ([R-WP-61](chat.md)).
 - GIVEN dasselbe Verlangen eines **Team-Mitglieds** WHEN es abgelehnt wird THEN erreicht die Ablehnung
   als Werkzeug-Ergebnis das Modell, die Datei entsteht nicht und im Chat erscheint **keine** Zeile —
   Mitglieder-Interna sind unsichtbar ([R-WP-4, UC-WP-40](chat.md)). Ein Mitglied hinterlässt also nie

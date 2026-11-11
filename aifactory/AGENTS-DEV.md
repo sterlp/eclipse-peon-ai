@@ -115,7 +115,10 @@
   (Projektwechsel remountet die Chat-Seite über `key={project.id}`).
 - **Vitest nie über den Dateipfad fahren** (`pnpm test -- test/chat/x.test.tsx` ⇒ jsdom
   `Could not parse CSS stylesheet` über die Dateigrenze, der Test läuft gar nicht): einzelne Fälle mit
-  `pnpm test -t '<test-name>'` filtern (fährt die Suite), Gleiches für `npm test`.
+  `pnpm test -t '<test-name>'` filtern (fährt die Suite), Gleiches für `npm test`. **Reconnect-Wartezeiten
+  wachsen** (R-WP-58): ein `waitFor` auf einen Reconnect, der **nicht** der erste nach einem gelieferten
+  Ereignis ist, braucht `timeout: 2_500`, ein vierter Versuch ≥ 4_000 ms; Keep-alive (`:comment`) liefert kein
+  Ereignis und setzt die Kette nicht zurück.
 
 - **AntD 6 `Form` ersetzt die native Hülle** (kein `component={false}`; das `<form>` kommt aus
   `@rc-component/form`, `Form.Item` ohne `Form` als Vorfahr loggt je Mount). Server-Fehler zeichnet

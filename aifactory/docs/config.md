@@ -140,12 +140,16 @@ Extra-Body, Tools … — nicht id/name/description; der Provider ist kein Agent
 
 - Haken gesetzt: ein leeres Feld erbt den Default (Feld für Feld, wie R-DEF-1/2 im Plugin); Keys bleiben
   maskiert wie in R-WP-16.
-- **Think ist die Form des Basis-Providers**, nie Freitext: **Toggle** (leer / `true` / `false`) ·
-  **Values** (die feste Liste des Providers) · **FreeString** (Text) · **None** (kein Feld, nur der
-  Hinweis) — dieselbe Form, die das Think-Feld im Plugin hat. Einen Provider je Agent gibt es nicht
-  (oben), also entscheidet immer die Basis. Ein gespeicherter Wert außerhalb der Liste **bleibt
-  verbatim** erhalten — die Auswahl bietet ihn als zusätzlichen Eintrag an, sie ersetzt ihn nicht
-  (ADR-0064); leer erbt den Default ([R-THINK-10](../../org.sterl.llmpeon.core/docs/per-agent-think.md)).
+- **Think folgt der Form des Basis-Providers** — die Form entscheidet über das **Angebot**, das Feld
+  selbst ist aber **editierbar** (L4, Paul 2026-11-10: „ich kann nichts selber eingeben"; Plugin-Beleg:
+  editierbares `Combo` mit `SWT.BORDER`, `ThinkValueSupport.java` — „editable combo", Wert verbatim):
+  **Toggle** (Angebot leer / `true` / `false`) · **Values** (Angebot: die feste Liste des Providers) ·
+  **FreeString** (Text) · **None** (weiterhin kein Feld, nur der Hinweis) — wie im Plugin gibt es für
+  Toggle und Values **ein** editierbares Feld: Auswahl aus dem Angebot **oder** eigene Eingabe. Einen
+  Provider je Agent gibt es nicht (oben), also entscheidet immer die Basis. Ein gespeicherter Wert
+  außerhalb der Liste **bleibt verbatim** erhalten — das Feld bietet ihn als zusätzlichen Eintrag an,
+  er ersetzt ihn nicht (ADR-0064); leer erbt den Default
+  ([R-THINK-10](../../org.sterl.llmpeon.core/docs/per-agent-think.md)).
   Im **Dev-Slot** heißt das Feld **`Think (Default)`**, weil der Dev-Record im Core die Basis-Semantik
   für alle anderen Agenten trägt (R-THINK-10).
 - Haken entfernt + Speichern: alle Config-Werte dieses Agenten werden **aus seiner Datei gelöscht** —
@@ -168,9 +172,9 @@ Agenten; was nicht sichtbar ist, wirkt auch nicht.
   speichert THEN trägt die Datei kein Config-Feld mehr, der Rumpf ist unverändert, Dev nutzt den Default
   und der Haken ist beim nächsten Öffnen leer.
 
-#### UC-WP-67 — agentThinkFollowsTheProviderForm ✅
-- GIVEN die Config-Seite mit Basis-Provider `OLLAMA` WHEN ein Slot überschreibt THEN ist Think eine
-  Auswahl aus leer / `true` / `false` — kein Freitext-Feld.
+#### UC-WP-67 — agentThinkFollowsTheProviderForm ✅ (L4 `c44a057c`: editierbar)
+- GIVEN die Config-Seite mit Basis-Provider `OLLAMA` WHEN ein Slot überschreibt THEN ist Think ein
+  **editierbares Feld** — Angebot leer / `true` / `false`, **Auswahl oder eigene Eingabe** (L4).
 - GIVEN ein Basis-Provider mit fester Werte-Liste (z. B. `ANTHROPIC` → `adaptive`, `enabled`) WHEN der
   Slot trägt bereits `ultra` THEN zeigt die Auswahl `ultra` als zusätzlichen Eintrag, und Speichern
   schreibt `ultra` unverändert in die Datei (kein stiller Ersatz, ADR-0064).
@@ -191,6 +195,8 @@ keine Eclipse-Präferenzen, der Web-Chat streamt immer). Belege der Delta-Bestim
 Die Default-Seite zeigt zusätzlich **„Think (Default)"** — derselbe Wert wie das Dev-Slot-Feld
 (R-WP-23): der Think-Wert, der je Request als Thinking/`reasoning_effort` geht. Es gilt **dieselbe
 Form des Basis-Providers** wie je Agent — Toggle · Values · FreeString · None ([UC-WP-67](#uc-wp-67)),
+und das Feld ist **editierbar** wie je Agent (L4 `c44a057c` — Auswahl oder eigene Eingabe,
+Plugin-Combo),
 ein gespeicherter Wert außerhalb der Liste bleibt verbatim (ADR-0064), leeren löscht ihn aus der Datei
 (UC-WP-46). Beide Orte zeigen **einen** Wert: die Default-Seite liest und schreibt das Dev-Slot-Feld,
 die Agent-Sektion bleibt wie sie ist — es gibt keinen zweiten Speicherplatz.
@@ -200,9 +206,10 @@ Modells** in den nächsten Request zurückgesendet wird, nicht mit welcher Stär
 Plugin hat beide Angaben nebeneinander; das eine ersetzt das andere nicht, und ein leeres
 Think-Feld ändert den Schalter nicht.
 
-#### UC-WP-85 — defaultThinkFollowsTheProviderForm ✅
+#### UC-WP-85 — defaultThinkFollowsTheProviderForm ✅ (L4 `c44a057c`: editierbar)
 - GIVEN die Default-Seite mit einem Basis-Provider, dessen Think-Form `VALUES` ist WHEN sie geöffnet
-  wird THEN ist „Think (Default)" eine Auswahl aus der Werte-Liste des Providers — kein Freitext.
+  wird THEN ist „Think (Default)" ein **editierbares Feld** — Angebot: die Werte-Liste des Providers,
+  **Auswahl oder eigene Eingabe** (L4).
 - GIVEN die Datei trägt einen Think-Wert außerhalb der Liste WHEN die Seite lädt THEN bietet die
   Auswahl ihn als zusätzlichen Eintrag an, und Speichern schreibt ihn unverändert (ADR-0064).
 - GIVEN ein Provider ohne Think-Eingang WHEN die Seite lädt THEN steht kein Think-Feld, nur der

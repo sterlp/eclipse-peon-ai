@@ -63,14 +63,45 @@ beim Tipport); ein Fehler ohne Feldbezug (409-Konflikt, git-Output, 500) erschei
 Meldung (AntD `Alert`) mit dem **Wortlaut des Servers** — nie stillschweigend verworfen, nie ein
 falsches „erfolgreich". Formulare binden ihre Felder über denselben Namen wie der Draht
 (R-WP-54), das Mapping ist damit trivial; Seiten, die es nutzen, bauen **keinen** zweiten
-Anzeige-Pfad. Muster-Skill: `.agents/skills/api-types-and-error-widget/` (wird beim Bau weiter
+Anzeige-Pfad. Ein Feldfehler gehört immer zum Formular, dessen Anfrage abgelehnt wurde — nie zu einem
+anderen Formular derselben Seite (Paul 2026-11-10, B7a-Review: der Slot-Fehler färbt nicht das
+Basis-Formular). Muster-Skill: `.agents/skills/api-types-and-error-widget/` (wird beim Bau weiter
 geschärft).
 
 #### UC-WP-93 — theFieldErrorShowsAtTheField ✅
 - GIVEN ein Formular mit an den Draht gebundenen Feldern WHEN die Antwort `fieldErrors` trägt THEN
   zeigt genau das genannte Element den Fehler (rot + Hilfetext) — die übrigen Felder bleiben
   unangetastet, und die Eingabe des Nutzers bleibt erhalten.
-- GIVEN ein Fehler ohne Feldbezug WHEN er ankommt THEN erscheint die Server-Meldung als Alert des
-  Formulars — kein Feld wird rot gemalt, das nicht gemeint war.
+- GIVEN ein Fehler ohne Feldbezug WHEN er ankommt THEN erscheint die Server-Meldung im Error-Panel
+  der Seite ([R-WP-62](api-errors.md)) — kein Feld wird rot gemalt, das nicht gemeint war.
 - GIVEN zwei Seiten mit Server-Formularen WHEN beide denselben Fehlerfall fahren THEN zeichnen beide
   über **dasselbe** Bauteil (kein zweiter Anzeige-Pfad).
+
+### R-WP-62 — Ein Error-Panel je Seite, prominent oben ✅ (gebaut + reviewed 2026-11-10, `9d8c17bb` +
+Delta `ea4330ef` — UI 283 Tests, Doc-Lint 28; Abnahme am Browser steht aus) (Paul 2026-11-10, Browser-Abnahme: „409
+Conflict (paralleles Compact) unsichtbar; Error-Widget unscheinbar ganz unten"; Präzisierung:
+„eigenes panel prominent oben, immer sichtbar, nicht teil vom scroll")
+
+Jede Seite zeigt Server-Fehler **ohne Feldbezug** in **einem** Panel **prominent oben** — immer
+sichtbar, außerhalb des Scroll-Bereichs (Wegscrollen ist unmöglich), auf **jeder** Seite dasselbe
+Bauteil (AntD zuerst, [R-WP-46](ui.md)). Der Client liest die `ApiError`-Antwort aus und zeigt den
+**Wortlaut des Servers** samt Spring-Details — ein 409 beim parallelen Compact ist damit genauso
+sichtbar wie ein 500. Feldfehler bleiben am Feld ([R-WP-56](api-errors.md)) und stehen nicht doppelt
+im Panel. Das Panel trägt ein **X**: der Nutzer schließt es; **jede neue Server-Interaktion derselben
+Seite** schließt es ebenfalls, und ein nächster Fehler ersetzt den Inhalt. Ausnahmen bleiben, wie sie
+sind: der 409 „Turn war schon vorbei" auf Stop bleibt absorbiert ([R-WP-30](chat.md), D-17), ein
+gescheiterter Turn bleibt eine Zeile des Chats ([R-WP-34](chat.md)) — das Panel zeigt die Fehler
+**dieser Seite** (gescheiterte Requests), nicht die der Unterhaltung. Das Panel steht auf den **drei
+Adressen** (Projects, Chat, Settings); Overlays der Kante — Datei-Drawer und Insight — behalten ihre
+Meldung am Ort, wo sie steht (Paul 2026-11-10, Q1): eine abgelehnte Ebene meldet sich dort, nicht oben.
+
+#### UC-WP-99 — pageErrorPanelTopAlwaysVisible ✅ (gebaut + reviewed 2026-11-10, `9d8c17bb` + Delta
+`ea4330ef` — GIVEN 1–3 mit Tests `api.error.panel.test.tsx` P1–P7, `chat.page.test.tsx`,
+`project.page.test.tsx`, `config.page.test.tsx`; Abnahme am Browser steht aus)
+- GIVEN eine Seite WHEN ein Server-Fehler ohne Feldbezug ankommt (z. B. 409 beim parallelen Compact)
+  THEN steht er als Error-Panel **prominent oben** — immer sichtbar, nicht Teil des Scroll-Bereichs,
+  auf jeder Seite dasselbe Bauteil.
+- GIVEN das Panel steht WHEN der Nutzer das X klickt **oder** eine neue Server-Interaktion derselben
+  Seite beginnt THEN verschwindet es; der nächste Fehler ersetzt den Inhalt.
+- GIVEN ein Fehler mit `fieldErrors` WHEN er ankommt THEN bleiben die Feldfehler am Feld
+  ([R-WP-56](api-errors.md)) und das Panel zeigt nur, was keinem Feld zugeordnet ist.
