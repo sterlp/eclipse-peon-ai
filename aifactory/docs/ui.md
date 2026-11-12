@@ -257,7 +257,7 @@ Komfort, sondern die Ursache von B0.
 
 ### R-WP-68 — jede Fläche beginnt unter dem Band mit Luft ✅ (Paul 2026-11-11, Browser: „der content braucht
 eine margin zum header — aktuell klebt er direkt oben dran. sonnst passt alles."; gebaut + reviewed 2026-11-11,
-`920b4e5f` — der Look selbst am Browser steht noch aus)
+`920b4e5f`; Optik am Browser abgenommen, Paul 2026-11-11 „optik ist gut")
 
 Der Abstand zwischen Kopf und Inhalt ist **kein Rand des Bandes** — das bleibt randlos
 ([R-WP-43](ui.md): „ohne Spalt", Paul 2026-11-08) — sondern **der Anfang der Fläche**: sie beginnt mit ihrer

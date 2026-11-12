@@ -19,9 +19,20 @@ Docs duplizieren nie Core-Regeln; Plan-Archive werden **gelöscht**, nie committ
   jetzt „der **genannte** Token muss definiert sein" (Stufe frei, Beweis a/c gemessen); §17.4–17.6 meine
   Docs-Hygiene. Gates nach der Nacharbeit: **35 Dateien / 293 Tests**, oxlint 0/0, tsc 0, build ✓,
   `antd lint src` 62 Dateien/0, `wc -l` `styles.css` **1288**, `theme.test.ts` 214.
-  **Look selbst am Browser noch offen.**
+  **Optik am Browser abgenommen (Paul 2026-11-11 „optik ist gut").**
 * **B0/Zyklus davor komplett zu Ende:** R-WP-67/UC-WP-104 ✅, **Paul hat am Browser abgenommen** („passt …
   sonnst passt alles") ⇒ `⏳ Clearer entfällt` ist entschieden und aus `open-points.md` entfernt.
+ * **Chat-„wurm" (Paul 2026-11-12, Browser) — analysiert + von mir gegengeprüft: KEIN Fabrik-Bug.** Paul sah
+   unter „Jon" den Text `[User Paul]: ich will das Projekt spring-persistent-tasks aufbauen`. Ground Truth
+   `~/.aifactory/state/spring-persistent-tasks-071d14a/Jon-history.jsonl` **Zeile 8 = AI-Message**, deren `text`
+   wörtlich genau dieser queuingte User-Input ist und deren `thinking` noch der Ping lautet („Ping successful …
+   What's next?") — das **Modell** (fremde LM-Studio-Maschine, Qwen-27B-GGUF) hat den queuingten Input als seine
+   eigene Antwort ausgespuckt. Es gibt dort **keine** UserMessage dazu; die Fabrik speichert/rendert getreu
+   (`ConversationRestore.java:73-75` mappt jede nicht-leere `AiMessage` zu `ChatLine.jon`). Die „Ping erfolgreich …"
+   -Zeile (Zeile 10) ist **kein** Duplikat — echte Antwort auf „sag sie nochmal" (Thinking: „asking me to repeat").
+   Queue→UserMessage-Pfad mit sauberem Modell bewiesen (`ChatUserMessageTest.aQueuedInputKeepsItsName`).
+   **Nicht ohne genau dieses LLM reproduzierbar.** → Kein Code zu reparieren, alle Tests korrekt. Sider
+   „Projekt-Gruppe nicht zuklappbar" = **gewollt** (`app.sider.tsx:90-96`, R-WP-44/R-WP-1).
 * **Offen an Paul (eine Frage, noch nicht gestellt):** **welche Überschriften** müssen im Main-Panel raus.
   Bestand (gemessen): `chat.page.tsx:482` `h1` = Projektname (**bewusst erlaubt**, R-WP-43, sein Entscheid
   2026-11-10), `config.agents.tsx:222` `h2` „Agents", `:236` `h3` je Slot-Name. Die Seiten-`h1`

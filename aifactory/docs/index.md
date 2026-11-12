@@ -67,8 +67,8 @@ gibt, gemeinsame Datei = nur Geteiltes; `styles.css` 1288 Zeilen → aufteilen);
   [R-WP-67/UC-WP-104](ui.md)** (B0, 2026-11-11 gebaut + reviewed `4c1b75fe` + `39ed1e24`: AntD malt am
   `AutoComplete` keinen Pfeil, der Clearer saß auf der Klickfläche; am Browser abgenommen, **Clearer entfällt** —
   Paul 2026-11-11), **Fläche beginnt mit Luft unter dem Band ✅ [R-WP-68/UC-WP-105](ui.md)** (gebaut + reviewed
-  2026-11-11, `920b4e5f`, Look am Browser offen: Paul 2026-11-11 „der content braucht eine margin zum header";
-  Luft gehört in die Fläche (`--space-4`), das Band bleibt randlos),
+  2026-11-11, `920b4e5f`, Optik am Browser abgenommen — Paul 2026-11-11 „optik ist gut"; Luft gehört in die
+  Fläche (`--space-4`), das Band bleibt randlos),
   [open-points](open-points.md) Runde 4b)
 * [Projekte](project.md) — Git-Checkout als Projekt: klonen, eindeutig, entfernen, nie interaktiv, Live-Status. ◐
 * [Jon-Chat](chat.md) — ein Jon, ein Gespräch je Projekt: Streaming, Queue, Neustart, Tools, Kacheln. ◐
