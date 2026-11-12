@@ -28,7 +28,6 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.ui.IWorkingSet;
-import org.osgi.service.prefs.BackingStoreException;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiAgentStatusModel;
 import org.sterl.llmpeon.compact.CompactFeedback;
@@ -173,8 +172,6 @@ public class AIChatView implements EclipseAiMonitor {
             this::onClear,
             this::onHandoff,
             this::onAgentChange,
-            LlmPreferenceInitializer::buildWithDefaults,
-            this::onModelChange,
             this::doCompactAgent,
             this::refreshChat
         );
@@ -191,7 +188,6 @@ public class AIChatView implements EclipseAiMonitor {
         );
 
         applyConfig();
-        actionsBar.fetchModels();
         refreshChat();
 
         var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
@@ -462,7 +458,6 @@ public class AIChatView implements EclipseAiMonitor {
         lastAppliedConfig = config;
         aiService.updateConfig(config);
 
-        actionsBar.setModel(config.getModel());
         actionsBar.setAgents(aiService.getAgents());
         actionsBar.updateModeUI(aiService.getActiveAgent());
         refreshStatusLine();
@@ -499,17 +494,6 @@ public class AIChatView implements EclipseAiMonitor {
         }
 
         refreshChat();
-    }
-
-    /** Chat model selector: persist the base model — the pref listener re-applies the config.
-     *  A flush failure only breaks the restart persistence, the in-memory switch already
-     *  happened — reported, not thrown (like ActiveAgentPreference). */
-    private void onModelChange(String model) {
-        try {
-            LlmPreferenceInitializer.saveBaseModel(InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID), model);
-        } catch (BackingStoreException e) {
-            LOG.error("Failed to persist the chat model preference " + PeonConstants.PREF_MODEL, e);
-        }
     }
 
     private void onHandoff() {
