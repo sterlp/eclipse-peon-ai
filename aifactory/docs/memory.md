@@ -6,49 +6,54 @@ Dev committet sie auf mein Wort (`git add -- <pfade>` + nacktes `git commit`, **
 `AGENTS*.md` = nur Dauerwissen (Plan-Dateien und `peon-plan/review-findings.md` sind das Memory);
 Docs duplizieren nie Core-Regeln; Plan-Archive werden **gelöscht**, nie committet.
 
-## Stand (2026-11-11, Zyklus „Look: Luft unter dem Band" — gebaut, Review #17 **ACCEPTED**, ✅, Nacharbeit gebaut)
+## Stand (2026-11-12, „Look: Luft unter dem Band" ✅ zu Ende + Chat-„wurm" geprüft: **kein Fabrik-Bug**, Bericht an Paul raus)
 
 * **R-WP-68/UC-WP-105 ✅** (`docs/ui.md`): jede Fläche beginnt unter dem Band mit Luft —
   `padding-block-start: var(--space-4)` im `.view`-Block (`styles.css:109`), **das Band bleibt randlos**
   (`margin: 0` bleibt gepinnt, `theme.test.ts:44`, R-WP-43 „ohne Spalt" 2026-11-08 gilt weiter).
-  Commits: `920b4e5f` (Bau) → `1f7568f2` (LOW-Nacharbeit) → `a8a07727` (meine Docs, ✅-Flip). Gepusht, 0/0.
+  Commits: `920b4e5f` (Bau) → `1f7568f2` (LOW-Nacharbeit) → `a8a07727` (meine Docs, ✅-Flip) →
+  `d94b9ae0` (Optik-Abschluss + Session-Stand). Gepusht, 0/0. **Optik am Browser abgenommen**
+  (Paul 2026-11-11 „optik ist gut", 2026-11-12 „gut und abgenommen").
   Review #17 in `peon-plan/review-findings.md` §17 — **0 HIGH, 0 MEDIUM, 6 LOWs** (alle gebaut bzw. von mir
   gezogen): §17.1 Chat-Kommentar „none inherited" war falsch geworden; §17.2 R-WP-64 will im eigenen CSS den
   **Grund** — gemessen: `antd/es/layout/style/index.js:66-71` gibt `.ant-layout-content` nur `flex/color/
   minHeight`, **kein Padding** ⇒ Kommentar nennt jetzt das Framework; §17.3 Test pinnte Stufe **und** Zahl →
   jetzt „der **genannte** Token muss definiert sein" (Stufe frei, Beweis a/c gemessen); §17.4–17.6 meine
-  Docs-Hygiene. Gates nach der Nacharbeit: **35 Dateien / 293 Tests**, oxlint 0/0, tsc 0, build ✓,
-  `antd lint src` 62 Dateien/0, `wc -l` `styles.css` **1288**, `theme.test.ts` 214.
-  **Optik am Browser abgenommen (Paul 2026-11-11 „optik ist gut").**
+  Docs-Hygiene. **Gates (Review gemessen):** UI 35 Dateien / 293 Tests, oxlint 0/0, tsc 0, build ✓,
+  `antd lint src` 62 Dateien/0, `wc -l` `styles.css` **1288**, `theme.test.ts` **214**, `lintDocsAndTests`
+  **29** (UC 132/132, nur `UC-WP-101` + 28 fremd). `peon-plan/overview.md` ist gelöscht (Zyklus geschlossen).
 * **B0/Zyklus davor komplett zu Ende:** R-WP-67/UC-WP-104 ✅, **Paul hat am Browser abgenommen** („passt …
   sonnst passt alles") ⇒ `⏳ Clearer entfällt` ist entschieden und aus `open-points.md` entfernt.
- * **Chat-„wurm" (Paul 2026-11-12, Browser) — analysiert + von mir gegengeprüft: KEIN Fabrik-Bug.** Paul sah
-   unter „Jon" den Text `[User Paul]: ich will das Projekt spring-persistent-tasks aufbauen`. Ground Truth
-   `~/.aifactory/state/spring-persistent-tasks-071d14a/Jon-history.jsonl` **Zeile 8 = AI-Message**, deren `text`
-   wörtlich genau dieser queuingte User-Input ist und deren `thinking` noch der Ping lautet („Ping successful …
-   What's next?") — das **Modell** (fremde LM-Studio-Maschine, Qwen-27B-GGUF) hat den queuingten Input als seine
-   eigene Antwort ausgespuckt. Es gibt dort **keine** UserMessage dazu; die Fabrik speichert/rendert getreu
-   (`ConversationRestore.java:73-75` mappt jede nicht-leere `AiMessage` zu `ChatLine.jon`). Die „Ping erfolgreich …"
-   -Zeile (Zeile 10) ist **kein** Duplikat — echte Antwort auf „sag sie nochmal" (Thinking: „asking me to repeat").
-   Queue→UserMessage-Pfad mit sauberem Modell bewiesen (`ChatUserMessageTest.aQueuedInputKeepsItsName`).
-   **Nicht ohne genau dieses LLM reproduzierbar.** → Kein Code zu reparieren, alle Tests korrekt. Sider
-   „Projekt-Gruppe nicht zuklappbar" = **gewollt** (`app.sider.tsx:90-96`, R-WP-44/R-WP-1).
-* **Offen an Paul (eine Frage, noch nicht gestellt):** **welche Überschriften** müssen im Main-Panel raus.
-  Bestand (gemessen): `chat.page.tsx:482` `h1` = Projektname (**bewusst erlaubt**, R-WP-43, sein Entscheid
-  2026-11-10), `config.agents.tsx:222` `h2` „Agents", `:236` `h3` je Slot-Name. Die Seiten-`h1`
-  (Projekte/Settings) waren mit `7fa3f429` schon weg. **h2/h3 nirgends gepinnt.** Meine Empfehlung: `h2` raus,
-  Slot-Namen `h3` bleiben (Plugin-Parität: je Agent eine betitelte Gruppe), Chat-Kopf bleibt.
-  Bei Bestätigung: **R-WP-69/UC-WP-106** (IDs mit `nextIds` ziehen) + Schärfung `docs/ui.md` ~181–185.
-* Gates nach Review #17 (Review selbst gemessen): UI **35 Dateien / 293 Tests**, oxlint 0/0, tsc 0, build ✓,
-  `antd lint src` 62 Dateien/0, `lintDocsAndTests` **29** (UC 132/132, nur `UC-WP-101` + 28 fremd).
+* **Chat-„wurm" (Paul 2026-11-12, Browser) — Dev-Analyse + mein Gegencheck: KEIN Fabrik-Bug, Bericht raus.**
+  Pauls Auftrag: Dev-Analyse → Review → Reparatur, „fehlerhafte Tests entfernen, neue nur wenn sie den
+  Fehler abdecken." Ground Truth `~/.aifactory/state/spring-persistent-tasks-071d14a/Jon-history.jsonl`
+  **Zeile 8 = AI-Message**, deren `text` wörtlich = queuingtem User-Input, deren `thinking` noch der Ping —
+  das **Modell** (Qwen-27B-GGUF, fremde LM-Studio-Maschine) hat den queuingten Input als eigene Antwort
+  ausgespuckt. **Keine** zugehörige UserMessage; die Fabrik speichert/rendert getreu
+  (`ConversationRestore.java:73-75` mappt jede nicht-leere `AiMessage` zu `ChatLine.jon`).
+  Die „Ping erfolgreich …"-Zeile (Zeile 10) ist **kein** Duplikat — echte Antwort auf „sag sie nochmal"
+  (Thinking: „asking me to repeat"). Queue→UserMessage-Pfad mit sauberem Modell bewiesen
+  (`ChatUserMessageTest.aQueuedInputKeepsItsName`). **Nicht ohne genau dieses LLM reproduzierbar;
+  fehlerhafte Tests: keine** — alle pinnen korrektes Fabrik-Verhalten.
+  Sider „Projekt-Gruppe nicht zuklappbar" = **gewollt** (`app.sider.tsx:90-96`, R-WP-44/R-WP-1).
+* **Offen an Paul (unbeantwortet) — 3 Punkte:**
+  1. **Echo-Guard** (AI-Zeile identisch zur User-Zeile = verdächtig, blockieren)? Meine Empfehlung:
+     **nein** — ein legitimes „sag es nochmal" ist nicht unterscheidbar.
+  2. **Aktive Sider-Gruppe: Titel zuklappbar machen?** Meine Empfehlung: **nein** (würde R-WP-1 streifen);
+     das Klapp-Handle am Band genügt.
+  3. **Welche Überschriften raus aus dem Main-Panel?** Paul: „Dein Punkt 1 war nie der Fehler" ⇒
+     **aufgeschoben, offen**. Bestand (gemessen): `chat.page.tsx:482` `h1` = Projektname (**bewusst erlaubt**,
+     R-WP-43), `config.agents.tsx:222` `h2` „Agents", `:236` `h3` je Slot-Name; h2/h3 nirgends gepinnt.
+     Meine Empfehlung: `h2` raus, Slot-Namen `h3` bleiben, Chat-Kopf bleibt. Bei Bestätigung:
+     R-WP-69/UC-WP-106 (IDs frisch per `nextIds` ziehen) + Schärfung `docs/ui.md` ~181–185.
 * **Größen:** `styles.css` **1288 > 1000** (R-WP-64 blockiert weiter), `chat.page.tsx` 525/600,
-  `theme.test.ts` 213, `sheets.ts` 85.
+  `config.agents.test.tsx` 470, `theme.test.ts` 214, `sheets.ts` 85.
 * **Fremd im Baum (nicht anfassen, nicht committen):** `.agents/skills/wiki/skill-impact.md` — von Paul per
   Scaffold akzeptierte `test-honesty`-Zeile, liegt **oberhalb** von `aifactory/`. Deshalb Status-Reports aus
   `aifactory/` immer **pfadbezogen** (`git status --short .`) melden, sonst wirkt Fremdänderung wie eigene.
 
-### Nächste Inkrete
-1. Antwort von Paul zu den Überschriften → ggf. R-WP-69/UC-WP-106.
+### Nächste Schritte
+1. Antworten von Paul zu den 3 offenen Punkten → ggf. R-WP-69/UC-WP-106 (Überschriften).
 2. **R-WP-64** Styling ans Widget — `styles.css` 1288 in kleine Schritte auflösen (gemeinsame Datei =
    Tokens/Typografie/Geteiltes; `test/shared/sheets.ts::declarations()` trifft nur den **ersten** Block,
    CSS-Tests müssen mitziehen; `padding-block-end: 2rem` ist ein Literal-Rest, in R-WP-68 als Restarbeit
@@ -77,6 +82,9 @@ Docs duplizieren nie Core-Regeln; Plan-Archive werden **gelöscht**, nie committ
 * **Mein eigener Edit kann eine Überschrift fressen:** `oldString` = Überschriftenzeile und `newString` ohne
   sie ⇒ die Regel verschwindet. Anker, der eine Überschrift ist, immer **in beiden** Strings, oder Anker
   unterhalb der Überschrift.
+* **`*EditFile` ohne `newString` LÖSCHT die Stelle** und meldet trotzdem Erfolg (2026-11-12 zweimal getroffen:
+  einmal Dev, einmal ich selbst — `newContent` statt `newString` ⇒ Git-Bulle weg, repariert). Immer
+  `oldString` **und** `newString` explizit setzen + geänderte Stelle zurücklesen.
 * **Der Review-Agent kann nur `overview.md` schreiben** → seinen Befundblock **sofort** nach
   `peon-plan/review-findings.md` kopieren, bevor der nächste Planüberschrieb ihn zerstört.
 * Bauen: Kern `clean test` → `install -DskipTests` → Fabrik `clean verify`; immer `clean`. Backend
