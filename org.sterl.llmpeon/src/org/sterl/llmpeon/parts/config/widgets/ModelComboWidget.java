@@ -142,7 +142,12 @@ public class ModelComboWidget {
 
     /** SWT-free base snapshot for the basic page (no per-agent overrides). */
     public static FetchSnapshot baseSnapshot(LlmConfig base) {
-        var effective = base.effectiveConnectionFor(AgentModelConfig.empty());
+        return snapshotFor(base, AgentModelConfig.empty());
+    }
+
+    /** SWT-free snapshot of the effective connection of one per-agent record (R-ML5: the chat fetches for the active agent). */
+    public static FetchSnapshot snapshotFor(LlmConfig base, AgentModelConfig record) {
+        var effective = base.effectiveConnectionFor(record);
         return new FetchSnapshot(effective.identity(), effective.buildConfig());
     }
 

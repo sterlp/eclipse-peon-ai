@@ -28,7 +28,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.ui.IWorkingSet;
-import org.osgi.service.prefs.BackingStoreException;
+import org.sterl.llmpeon.agent.AgentModelSelection;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiAgentStatusModel;
 import org.sterl.llmpeon.compact.CompactFeedback;
@@ -41,10 +41,12 @@ import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.memory.AgentErrorMemory;
 import org.sterl.llmpeon.parts.ai.PeonAiService;
+import org.sterl.llmpeon.parts.config.EclipseLlmConfigStore;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpConnectionService;
 import org.sterl.llmpeon.parts.config.McpPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.VoicePreferenceInitializer;
+import org.sterl.llmpeon.parts.config.widgets.ModelComboWidget;
 import org.sterl.llmpeon.parts.log.EclipseSlf4jLogger;
 import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
@@ -173,7 +175,7 @@ public class AIChatView implements EclipseAiMonitor {
             this::onClear,
             this::onHandoff,
             this::onAgentChange,
-            LlmPreferenceInitializer::buildWithDefaults,
+            this::modelFetchSnapshot,
             this::onModelChange,
             this::doCompactAgent,
             this::refreshChat
@@ -190,8 +192,7 @@ public class AIChatView implements EclipseAiMonitor {
             this::onSkillMenuSelection
         );
 
-        applyConfig();
-        actionsBar.fetchModels();
+        applyConfig(); // R-ML5: also shows the active agent's model and fetches its list
         refreshChat();
 
         var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
@@ -438,7 +439,20 @@ public class AIChatView implements EclipseAiMonitor {
     private void refreshAgentUI() {
         actionsBar.setAgents(aiService.getAgents());
         actionsBar.updateModeUI(aiService.getActiveAgent());
+        refreshModelSelector();
         refreshChat();
+    }
+
+    /** R-ML5: the model selector shows the effective model of the active agent (+ its list connection). */
+    private void refreshModelSelector() {
+        actionsBar.showModel(aiService.getActiveModelSelection());
+        actionsBar.fetchModels(); // cached per connection identity — refetches only for a new connection
+    }
+
+    /** R-ML5 BDD 9 / R-ML1: the active agent's connection, built from the live settings at fetch time. */
+    private ModelComboWidget.FetchSnapshot modelFetchSnapshot() {
+        var live = LlmPreferenceInitializer.buildWithDefaults();
+        return ModelComboWidget.snapshotFor(live, AgentModelSelection.connectionRecord(aiService.getActiveAgent(), live));
     }
 
     private void applyConfig() {
@@ -462,9 +476,9 @@ public class AIChatView implements EclipseAiMonitor {
         lastAppliedConfig = config;
         aiService.updateConfig(config);
 
-        actionsBar.setModel(config.getModel());
         actionsBar.setAgents(aiService.getAgents());
         actionsBar.updateModeUI(aiService.getActiveAgent());
+        refreshModelSelector();
         refreshStatusLine();
     }
 
@@ -480,7 +494,13 @@ public class AIChatView implements EclipseAiMonitor {
     // -------------------------------------------------------------------------
 
     private void onAgentChange(AiAgent mode) {
-        aiService.setActiveAgent(mode);
+        // R-ML5 BDD 10: a typed, unconfirmed model belongs to the PREVIOUS agent — save it before
+        // the switch. The save may re-apply the config (pref listener → agents rebuilt), so the
+        // new agent is resolved by name afterwards.
+        actionsBar.commitPendingModel();
+        aiService.setActiveAgent(mode.getName());
+        actionsBar.updateModeUI(aiService.getActiveAgent());
+        refreshModelSelector();
 
         // The header status widget pulls the new agent's team live on the next refresh — nothing to
         // reset here (the old onSubAgent chip state is gone; the widget holds no per-agent state).
@@ -501,21 +521,26 @@ public class AIChatView implements EclipseAiMonitor {
         refreshChat();
     }
 
-    /** Chat model selector: persist the base model — the pref listener re-applies the config.
-     *  A flush failure only breaks the restart persistence, the in-memory switch already
-     *  happened — reported, not thrown (like ActiveAgentPreference). */
+    /** R-ML5: the chat's model selector saves for the active agent — Dev into the base, PO/Plan/Review
+     *  into their slot (the pref listener re-applies the config), a custom agent into its AGENT.md.
+     *  A failed save is reported in the chat, not thrown (UI callback); the selector then shows the
+     *  stored state again. */
     private void onModelChange(String model) {
         try {
-            LlmPreferenceInitializer.saveBaseModel(InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID), model);
-        } catch (BackingStoreException e) {
-            LOG.error("Failed to persist the chat model preference " + PeonConstants.PREF_MODEL, e);
+            aiService.saveActiveAgentModel(model,
+                    new EclipseLlmConfigStore(InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID)));
+        } catch (RuntimeException e) {
+            onChatResponse(new SimpleMessage(Type.PROBLEM, "Failed to save the model '" + model + "' for "
+                    + aiService.getActiveAgent().getName() + ": " + ExceptionUtil.unwrap(e).getMessage()));
         }
+        refreshModelSelector();
     }
 
     private void onHandoff() {
         if (aiService.onHandoff()) {
             AiAgent agent = aiService.getActiveAgent();
             actionsBar.updateModeUI(agent);
+            refreshModelSelector();
             this.refreshChat();
             doSendMessage();
         } else {

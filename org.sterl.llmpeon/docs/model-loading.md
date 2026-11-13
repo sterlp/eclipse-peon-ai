@@ -2,8 +2,8 @@
 
 The model dropdown shows the available models from the current LLM provider, with per-agent
 model resolution. The list is fetched lazily and persists across agent switches — it is only
-refetched when the provider config changes. The chat dialog's action bar carries a base-model
-selector on the same cache (R-ML5).
+refetched when the provider config changes. The chat dialog's action bar carries a model selector
+for the **active agent** on the same cache (R-ML5).
 
 ## SOLL (2026-08-28) — ✅ gebaut (Zyklus 2b, 2026-08-30)
 
@@ -105,42 +105,74 @@ fehlgeschlagen/leer) bleibt der Feld-Text verbatim, die Liste bleibt beim alten 
   → `ModelComboWidgetTest.refreshFailureKeepsTypedModelVerbatim` (angepasst: kein Listen-Append)
 
 
-## R-ML5 — Chat-Oberfläche: Base-Model-Selector in der ActionsBar (2026-11-01, Paul) ✅ done
+## R-ML5 — Chat-Oberfläche: Model-Selector des aktiven Agenten (2026-11-12, PO-Entscheidung, #177) ✅ done (Core + PDE grün, UI-Smoke ✅ 2026-11-13)
 
-Die Chat-View (ActionsBar, direkt rechts vom Agent-Combo — [interaction-design.md](interaction-design.md)
-Section 3) zeigt den **Base-Model**-Selector (`ChatModelComboWidget`): editierbares SWT-Combo
-(~200px) + Refresh-Button `↻`. Die Liste kommt aus demselben `ModelListCache` für die
-**Base**-`ConnectionIdentity` (R-ML1: Identity live zur Fetch-Zeit via
-`LlmPreferenceInitializer::buildWithDefaults`), Fetch bei View-Open (Cache-on-success → kein
-Duplikat-HTTP) und auf Refresh. Der gesamte Lade-Ablauf (Job, `getOrFetch`/`refresh`,
-Cache-Fallback, Stale-Guard, R-ML4-Apply) existiert genau einmal in `ModelComboWidget`; das
-Chat-Widget baut nur Combo + Refresh-Button im RowLayout und hängt die Commit-Listener an
-(one behaviour, one implementation).
+Ersetzt R-ML5 vom 2026-11-01 (Base-Model-Selector aus #173, per `0eae76b` revertiert).
 
-**Scope (PO 2026-11-01):** nur das Base-Model (`PREF_MODEL` / `LlmConfig.model`). Pro-Agent-
-Overrides aus der Advanced-Page bleiben wirksam — das Tooltip sagt es. Persistenz: eine
-Selection **oder ein FocusOut** commitet den gezeigten Text (auch getippter Freitext — ein
-editierbares Combo ohne Effekt wäre eine lügende UI) → `AIChatView.onModelChange` schreibt
-`PREF_MODEL` (+ `flush()`) → der bestehende prefListener-Pfad re-applyt die Config synchron
-(UI-Thread) — Settings und Chat bleiben sync, überlebt Restart. Programmatische Updates
-(`setModel` aus applyConfig, List-Apply) committen nicht — SWT feuert `SWT.Selection` nur bei
-echter User-Interaktion, nie bei `select()`/`setText()`/`setItems()`; ein Guard-Flag ist nicht nötig.
-Das Speichern liegt in `LlmPreferenceInitializer.saveBaseModel(prefs, model)`.
+**IST (#173):** Der Selector zeigte immer das Base-Model und speicherte immer nach `llm.model` —
+mit PO aktiv änderte eine Auswahl still Dev und alle Agenten ohne eigenes Modell, PO selbst blieb
+beim alten Modell; leere Eingabe wurde als `""` gespeichert; die Liste kam immer vom Base-Server.
+**SOLL:** Der Selector zeigt und ändert das **effektive Modell des aktiven Agenten**.
+**WEIL:** Ein Selector neben dem Agent-Combo wird als „Modell dieses Agenten“ gelesen; eine Auswahl,
+die andere Agenten umstellt, ist eine lügende UI ohne Undo.
+
+**Begriffe:** *Base-Model* = `llm.model` (Dev nutzt es direkt). *Eigenes Modell* =
+`llm.agent.<id>.model` (PO/Plan/Review) bzw. `model:` im Frontmatter (Custom-Agent). *Effektives
+Modell* = eigenes, sonst Base.
+
+| Aktiver Agent | Speicherziel | Leere Eingabe |
+|---|---|---|
+| Dev | `llm.model` | Key `llm.model` entfernen (Default greift) |
+| PO / Plan / Review | `llm.agent.<id>.model` | Key entfernen → erbt Base |
+| Custom-Agent | `model:` in seiner `AGENT.md` | Feld entfernen → erbt Base |
+| Ohne eigenes Modell (Scaffold) | — (Selector disabled, zeigt Base) | — |
+
+Regeln:
+- Gespeichert wird nur bei einer **echten Änderung** gegenüber dem gezeigten effektiven Modell
+  (case-insensitive wie R-ML4). Leer wird **nie** als `""` gespeichert.
+- Ein FocusOut, den der Klick ins Agent-Combo auslöst, speichert beim **vorherigen** Agenten: die
+  View flusht die offene Eingabe vor dem Wechsel (`commitPending`) — unabhängig von der
+  Event-Reihenfolge der Plattform.
+- Die Liste kommt von der **Verbindung des Agenten** (eigene URL/Key; Cache pro
+  `ConnectionIdentity`, R-ML1) — höchstens ein Fetch pro Verbindung.
+- Tooltip nennt die Wirkung: Dev → Base gilt auch für Agenten ohne eigenes Modell; erbender Agent
+  → Wert kommt vom Base, Auswahl setzt das eigene; Agent mit eigenem Modell → Leeren stellt das
+  Erben wieder her.
+- Unverändert aus #173: Lade-Ablauf genau einmal in `ModelComboWidget`; Ladefehler → Modell bleibt,
+  kein Auto-Switch; R-ML4; `↻` lädt neu; Combo während der Agent arbeitet gesperrt;
+  programmatisches `show`/`setModel` speichert nie.
+
+Umsetzung: Routing in Core `AgentModelSelection` (`of`/`save`/`connectionRecord`; öffentlicher Slot
+`AiAgent.modelSlot()`, eigene Config `AiAgent.ownModelConfig()`, `LlmConfigSaver.saveAgentModel`).
+Plugin: `PeonAiService.getActiveModelSelection()`/`saveActiveAgentModel()`, `AIChatView`
+(`refreshModelSelector` bei Config-Apply, Agentenwechsel, Agent-Reload, Handoff),
+`ChatModelComboWidget` (`show`, `commitPending`, Tooltip).
 
 ```
-GIVEN der Chat ist offen und der List-Fetch schlägt fehl
-WHEN der View-Open-Fetch abgeschlossen ist
-THEN das konfigurierte Modell bleibt gesetzt (kein Fehler, kein Auto-Switch, keine Liste)
-
-GIVEN die Liste ist geladen und das konfigurierte Model ist case-insensitiv enthalten
-WHEN die Liste angewendet wird
-THEN der serverseitige (canonische) Eintrag ist ausgewählt (R-ML4)
-
-GIVEN der Chat ist offen
-WHEN der User ein anderes Model wählt (Selection) oder getippten Text bestätigt (FocusOut)
-THEN PREF_MODEL zeigt das gezeigte Model und die nächste Config (buildWithDefaults) trägt es
+R-ML5 BDD 1  GIVEN Base qwen3, PO hat eigenes claude-sonnet, Dev aktiv
+             WHEN PO gewählt wird  THEN der Selector zeigt claude-sonnet
+R-ML5 BDD 2  GIVEN Base qwen3, Plan ohne eigenes Modell
+             WHEN Plan gewählt wird  THEN der Selector zeigt qwen3, Tooltip „erbt“
+R-ML5 BDD 3  GIVEN Base qwen3, PO aktiv  WHEN gpt-5 gewählt
+             THEN llm.agent.po.model = gpt-5, llm.model bleibt qwen3, Dev nutzt qwen3
+R-ML5 BDD 4  GIVEN Dev aktiv, Review ohne eigenes Modell  WHEN gpt-5 gewählt
+             THEN llm.model = gpt-5, Review nutzt gpt-5
+R-ML5 BDD 5  GIVEN Custom-Agent Tester ohne model:  WHEN gpt-5 gewählt
+             THEN seine AGENT.md hat model: gpt-5, llm.model unverändert
+R-ML5 BDD 6  GIVEN PO hat eigenes gpt-5  WHEN Feld geleert und verlassen
+             THEN PO-Key entfernt, Selector zeigt qwen3
+R-ML5 BDD 7  GIVEN Dev aktiv  WHEN Feld geleert  THEN llm.model entfernt, nicht "" gespeichert
+R-ML5 BDD 8  GIVEN Plan erbt Base  WHEN reinklicken und ohne Änderung verlassen
+             THEN kein Plan-Key entsteht
+R-ML5 BDD 9  GIVEN PO hat eigene URL, Base localhost:11434  WHEN PO gewählt
+             THEN die Liste kommt von der PO-Verbindung (max. ein Fetch pro Verbindung, Cache)
+R-ML5 BDD 10 GIVEN PO aktiv, gpt-5 getippt, nicht bestätigt  WHEN Klick ins Agent-Combo, Plan gewählt
+             THEN gpt-5 wird bei PO gespeichert, danach zeigt der Selector Plans effektives Modell
 ```
 
-Tests: `ChatModelComboWidgetTest` (PDE/SWT, Widget-Level bis zur Commit-Callback-Grenze —
-headless übersprungen, live in PDE laufen lassen), `ChatModelPreferenceTest` (BDD 3:
-`saveBaseModel` → PREF_MODEL + `buildWithDefaults`).
+Tests: Core `AgentModelSelectionTest` (BDD 1–9 Routing, je Ziel positiv + andere Ziele unverändert;
+Custom-Clear; Scaffold nicht wählbar). Plugin `ChatModelPreferenceTest` (BDD 3/4/7 gegen den echten
+Eclipse-Store + `buildWithDefaults`), `PeonAiServiceTest.test_chat_model_selection_saves_for_active_agent`
+(BDD 3 über den Service-Pfad der View), `ChatModelComboWidgetTest` (Anzeige/Tooltip, BDD 7/8/10 auf
+Widget-Ebene, #173-Regeln; PDE/SWT — headless übersprungen). Das View-Wiring (`onAgentChange` →
+`commitPending` vor dem Wechsel) ist nur per Review/Smoke verifiziert (SWT-Präzedenz R-UI1).

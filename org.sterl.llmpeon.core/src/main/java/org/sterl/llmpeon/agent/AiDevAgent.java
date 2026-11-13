@@ -32,7 +32,7 @@ public class AiDevAgent extends AbstractAgent {
     }
 
     @Override
-    protected String toolAllowlistSlot() {
+    public String modelSlot() {
         return AgentModelConfig.DEV;
     }
 

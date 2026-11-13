@@ -21,16 +21,19 @@ import org.eclipse.swt.widgets.Event;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.sterl.llmpeon.agent.AgentModelSelection;
+import org.sterl.llmpeon.agent.AgentModelSelection.Target;
 import org.sterl.llmpeon.ai.ModelListCache;
+import org.sterl.llmpeon.parts.config.widgets.ModelComboWidget;
 import org.sterl.llmpeon.parts.widget.ChatModelComboWidget;
 
 /**
- * Workbench-display test for the chat dialog's base-model selector
- * ({@link ChatModelComboWidget}): the widget is a controller that builds its editable combo and
- * refresh button directly into the RowLayout parent (like the production ActionsBar), so the
- * helpers look them up there. Display/Shell lifecycle, the Assume-skip and UI-thread access come
- * from {@link AbstractSwtUiTest}. The commit callback is the contract boundary — AIChatView
- * persists its argument to PREF_MODEL (covered by {@link ChatModelPreferenceTest}).
+ * Workbench-display test for the chat dialog's model selector ({@link ChatModelComboWidget},
+ * R-ML5): the widget is a controller that builds its editable combo and refresh button directly
+ * into the RowLayout parent (like the production ActionsBar), so the helpers look them up there.
+ * Display/Shell lifecycle, the Assume-skip and UI-thread access come from {@link AbstractSwtUiTest}.
+ * The commit callback is the contract boundary — AIChatView saves its argument for the active
+ * agent (routing: core {@code AgentModelSelectionTest}, Eclipse store: {@link ChatModelPreferenceTest}).
  *
  * <p>Programmatic {@code select()}/{@code setText()} fire no {@code SWT.Selection}/{@code FocusOut};
  * user interaction is simulated with {@code notifyListeners}. Headless runs skip these tests —
@@ -56,14 +59,98 @@ public class ChatModelComboWidgetTest extends AbstractSwtUiTest {
         // GIVEN a widget in a RowLayout parent (like the chat's ActionsBar)
         var built = ui(() -> newWidget("gpt-4o", new ArrayList<>()));
 
-        // THEN it shows an editable model combo with the override hint and a refresh button
+        // THEN it shows an editable model combo and a refresh button
         assertNotNull("model combo missing", ui(() -> combo(built.parent())));
         assertTrue("model combo must be editable (no SWT.READ_ONLY)",
                 ui(() -> (combo(built.parent()).getStyle() & SWT.READ_ONLY) == 0));
-        assertTrue("tooltip must mention the per-agent overrides",
-                ui(() -> combo(built.parent()).getToolTipText() != null
-                        && combo(built.parent()).getToolTipText().contains("per-agent overrides")));
         assertTrue("refresh button missing", ui(() -> hasButton(built.parent(), "↻")));
+    }
+
+    // R-ML5 BDD 1/2 — display + tooltip of the active agent's selection
+    @Test
+    public void showDisplaysEffectiveModelAndTargetTooltip() {
+        // GIVEN a widget showing Dev's base model
+        var committed = new ArrayList<String>();
+        var built = ui(() -> newWidget("qwen3", committed));
+
+        // WHEN the agent switches to PO with its own claude-sonnet
+        ui(() -> {
+            built.widget().show(new AgentModelSelection("PO", Target.AGENT_SLOT, "claude-sonnet", "claude-sonnet"));
+            return null;
+        });
+
+        // THEN PO's model is shown, the tooltip says how to restore inheritance, nothing is committed
+        assertEquals("claude-sonnet", ui(built.widget()::getModel));
+        assertTrue(ui(() -> combo(built.parent()).getToolTipText()).contains("clear the field"));
+        assertTrue("programmatic show must not commit", committed.isEmpty());
+    }
+
+    @Test
+    public void tooltipStatesTheEffectPerTarget() {
+        assertTrue(ChatModelComboWidget.tooltipFor(new AgentModelSelection("Dev", Target.BASE, "qwen3", "qwen3"))
+                .contains("every agent without its own model"));
+        assertTrue(ChatModelComboWidget.tooltipFor(new AgentModelSelection("Plan", Target.AGENT_SLOT, null, "qwen3"))
+                .contains("inherits the base model"));
+        assertTrue(ChatModelComboWidget.tooltipFor(new AgentModelSelection("Tester", Target.AGENT_FILE, null, "qwen3"))
+                .contains("AGENT.md"));
+        assertTrue(ChatModelComboWidget.tooltipFor(new AgentModelSelection("PO", Target.AGENT_SLOT, "gpt-5", "gpt-5"))
+                .contains("inherit the base model again"));
+    }
+
+    // R-ML5 BDD 8
+    @Test
+    public void focusOutWithoutChangeDoesNotCommit() {
+        // GIVEN a widget showing the inherited base "qwen3"
+        var committed = new ArrayList<String>();
+        var built = ui(() -> newWidget("qwen3", committed));
+
+        // WHEN the user clicks in and leaves without a change (also a case variant, R-ML4)
+        ui(() -> {
+            combo(built.parent()).notifyListeners(SWT.FocusOut, null);
+            combo(built.parent()).setText("QWEN3");
+            combo(built.parent()).notifyListeners(SWT.FocusOut, null);
+            return null;
+        });
+
+        // THEN nothing is committed
+        assertTrue("an unchanged field must not commit", committed.isEmpty());
+    }
+
+    // R-ML5 BDD 10
+    @Test
+    public void commitPendingFlushesTypedTextOnce() {
+        // GIVEN the user typed gpt-5 without confirming
+        var committed = new ArrayList<String>();
+        var built = ui(() -> newWidget("qwen3", committed));
+        ui(() -> {
+            combo(built.parent()).setText("gpt-5");
+            return null;
+        });
+
+        // WHEN the view flushes before the agent switch, and a late FocusOut follows
+        ui(() -> {
+            built.widget().commitPending();
+            combo(built.parent()).notifyListeners(SWT.FocusOut, null);
+            return null;
+        });
+
+        // THEN gpt-5 is committed exactly once (for the previous agent — the view switches after)
+        assertEquals(List.of("gpt-5"), committed);
+    }
+
+    // R-ML5 BDD 7 — the empty field is committed as "", the routing removes the key
+    @Test
+    public void clearedFieldCommitsEmpty() {
+        var committed = new ArrayList<String>();
+        var built = ui(() -> newWidget("qwen3", committed));
+
+        ui(() -> {
+            combo(built.parent()).setText("");
+            combo(built.parent()).notifyListeners(SWT.FocusOut, null);
+            return null;
+        });
+
+        assertEquals(List.of(""), committed);
     }
 
     @Test
@@ -218,7 +305,7 @@ public class ChatModelComboWidgetTest extends AbstractSwtUiTest {
         var parent = new Composite(shell, SWT.NONE);
         parent.setLayout(new RowLayout(SWT.HORIZONTAL));
         var widget = new ChatModelComboWidget(parent,
-                () -> mockLlmServer.newConfig(model), committed::add);
+                () -> ModelComboWidget.baseSnapshot(mockLlmServer.newConfig(model)), committed::add);
         widget.setModel(model); // like AIChatView.applyConfig
         return new BuiltWidget(parent, widget);
     }

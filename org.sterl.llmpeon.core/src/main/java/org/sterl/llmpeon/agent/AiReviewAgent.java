@@ -67,7 +67,7 @@ public class AiReviewAgent extends AbstractAgent {
     }
 
     @Override
-    protected String toolAllowlistSlot() {
+    public String modelSlot() {
         return AgentModelConfig.REVIEW;
     }
 
