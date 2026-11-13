@@ -21,8 +21,10 @@ import org.sterl.llmpeon.provider.LlmProviders;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
- * Model dropdown (native editable {@link Combo}) + Refresh button, shared by the basic config
- * page and the per-agent sections of the advanced config page.
+ * Model dropdown (native editable {@link Combo}) + Refresh button — the one implementation of the
+ * model-list load/apply lifecycle (fetch Job, {@code getOrFetch}/{@code refresh}, cache fallback,
+ * stale-guard, R-ML4 apply). Used by the basic config page, the per-agent sections of the advanced
+ * config page and the chat dialog's model selector ({@code ChatModelComboWidget}).
  *
  * <p>The combo is filled from the provider's model list, cached per {@link ConnectionIdentity}
  * in {@link ModelListCache}: fetched once when the page opens (or on the refresh button), never
@@ -30,11 +32,15 @@ import org.sterl.llmpeon.shared.StringUtil;
  * auto-switch. The widget owns the whole fetch/apply lifecycle; the caller only supplies a
  * {@link FetchSnapshot} provider (UI-thread) that reflects the current connection settings.</p>
  *
- * <p>This is a plain controller (no SWT parent of its own): it creates the combo and the
- * refresh button directly in the given 2-column parent grid, so the combo sits in the same
- * field column as the sibling fields. <b>Constructor contract:</b> the caller creates the
- * "Model:" label in the parent grid <b>before</b> constructing this widget — otherwise the
- * combo lands in the label column.</p>
+ * <p>This is a plain controller (no SWT parent of its own). Two ways to build it:</p>
+ * <ul>
+ * <li>{@link #ModelComboWidget(Composite, String, Supplier)} creates the combo and the refresh
+ * button directly in the given 2-column parent grid, so the combo sits in the same field column
+ * as the sibling fields. <b>Contract:</b> the caller creates the "Model:" label in the parent grid
+ * <b>before</b> constructing this widget — otherwise the combo lands in the label column.</li>
+ * <li>{@link #ModelComboWidget(Combo, Button, String, Supplier)} attaches the lifecycle to a combo
+ * and refresh button the caller created with its own layout (e.g. RowLayout in the chat).</li>
+ * </ul>
  */
 public class ModelComboWidget {
 
@@ -43,6 +49,8 @@ public class ModelComboWidget {
     private final Combo modelCombo;
 
     /**
+     * Builds combo + refresh button into a 2-column grid (config pages).
+     *
      * @param parent           the 2-column grid to build into (basic page or agent section);
      *                         the caller's "Model:" label must already occupy its label cell
      * @param jobName          used in the background Job names (e.g. the agent id or "base")
@@ -50,17 +58,40 @@ public class ModelComboWidget {
      *                         settings — read when a fetch starts and for the stale-guard
      */
     public ModelComboWidget(Composite parent, String jobName, Supplier<FetchSnapshot> snapshotProvider) {
+        this(newGridCombo(parent), newGridRefresh(parent), jobName, snapshotProvider);
+    }
+
+    /**
+     * Attaches the load/apply lifecycle to a combo and refresh button the caller already created
+     * (caller owns layout, label and texts).
+     *
+     * @param combo            the editable model combo
+     * @param refresh          the refresh button — its selection triggers a manual refetch
+     * @param jobName          used in the background Job names
+     * @param snapshotProvider UI-thread supplier of the effective connection for the current
+     *                         settings — read when a fetch starts and for the stale-guard
+     */
+    public ModelComboWidget(Combo combo, Button refresh, String jobName, Supplier<FetchSnapshot> snapshotProvider) {
         this.jobName = jobName;
         this.snapshotProvider = snapshotProvider;
-        modelCombo = new Combo(parent, SWT.BORDER);
-        modelCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        this.modelCombo = combo;
+        refresh.addListener(SWT.Selection, e -> refreshModels());
+    }
+
+    private static Combo newGridCombo(Composite parent) {
+        var combo = new Combo(parent, SWT.BORDER);
+        combo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        return combo;
+    }
+
+    private static Button newGridRefresh(Composite parent) {
         var refresh = new Button(parent, SWT.PUSH);
         refresh.setText("Refresh");
         refresh.setToolTipText("Reload the model list for this connection");
         var refreshGd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         refreshGd.horizontalSpan = 2;
         refresh.setLayoutData(refreshGd);
-        refresh.addListener(SWT.Selection, e -> refreshModels());
+        return refresh;
     }
 
     /** Sets the configured model (null shows as empty). */

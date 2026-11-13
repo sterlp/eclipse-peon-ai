@@ -8,6 +8,7 @@ import org.eclipse.core.runtime.preferences.AbstractPreferenceInitializer;
 import org.eclipse.core.runtime.preferences.DefaultScope;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
+import org.osgi.service.prefs.BackingStoreException;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.LlmConfigLoader;
@@ -51,6 +52,19 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
 
         var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
         return LlmConfigLoader.load(new EclipseLlmConfigStore(prefs));
+    }
+
+    /**
+     * Persists the base model ({@code PREF_MODEL}, stripped) and flushes — used by the chat's
+     * model selector (R-ML5). Registered pref listeners (AIChatView) re-apply the config, and the
+     * next {@link #buildWithDefaults()} carries the model.
+     *
+     * @throws BackingStoreException if the flush fails — the in-memory value is already set,
+     *         only the restart persistence is lost
+     */
+    public static void saveBaseModel(IEclipsePreferences prefs, String model) throws BackingStoreException {
+        prefs.put(PeonConstants.PREF_MODEL, StringUtil.stripToEmpty(model));
+        prefs.flush();
     }
 
     private static void buildConfigDirs() {
