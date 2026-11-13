@@ -44,7 +44,7 @@ Layout: `GridLayout(2)` — left cell is a wrapping `RowLayout` composite, right
 | Position | Control | Notes |
 |----------|---------|-------|
 | Left | **Mode selector** (`Plan`, `Dev`, `Agent`) | combo |
-| Left | **Model selector** | combo, ~200px |
+| Left | **Model selector** | editable combo, ~200px, effective model of the **active agent** (own model, else the inherited base — the tooltip says which and where a change goes); list from the agent's connection, `↻` refetches it; a selection or a focus-out saves a real change for the active agent: Dev → `llm.model`, PO/Plan/Review → `llm.agent.<id>.model`, custom agent → `model:` in its AGENT.md; empty = remove (inherit); disabled for agents without an own model (R-ML5, [model-loading.md](model-loading.md)) |
 | Left | **🧠 Thinking support** | model-support flag for selected agent; Dev/Plan persist to preferences, custom agents persist to `AGENT.md` |
 | Left | **Clear** | clears conversation history |
 | Right (pinned) | **Send / Stop** | always rightmost; icon swaps while working |

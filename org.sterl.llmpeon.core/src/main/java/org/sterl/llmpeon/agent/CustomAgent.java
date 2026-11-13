@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Predicate;
 
+import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.ThinkResolver;
 import org.sterl.llmpeon.memory.FileAgentHistoryStore;
@@ -13,6 +15,7 @@ import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.prompt.PromptYmlParser;
 import org.sterl.llmpeon.prompt.model.SimplePromptFile;
+import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolPolicy;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
@@ -152,14 +155,23 @@ public class CustomAgent extends AbstractAgent {
 
     @Override
     public org.sterl.llmpeon.ai.AgentConfig getConfig() {
-        var rec = new org.sterl.llmpeon.ai.AgentModelConfig(
+        return configuredModel.getConfig().customAgentConfig(frontmatterModelConfig(), getName());
+    }
+
+    /** The frontmatter's model config ({@code AGENT.md}) — also the connection the model list is fetched for. */
+    @Override
+    public Optional<AgentModelConfig> ownModelConfig() {
+        return Optional.of(frontmatterModelConfig());
+    }
+
+    private AgentModelConfig frontmatterModelConfig() {
+        return new AgentModelConfig(
                 promptFile.firstOrDefault(URL, null),
                 promptFile.firstOrDefault(API_KEY, null),
                 promptFile.firstOrDefault(MODEL, null),
                 resolveThink(),
                 promptFile.firstOrDefault(EXTRA_BODY, null),
                 promptFile.firstOrDefault(TEMPERATURE, null));
-        return configuredModel.getConfig().customAgentConfig(rec, getName());
     }
 
     @Override
@@ -167,17 +179,19 @@ public class CustomAgent extends AbstractAgent {
         return promptFile.firstOrDefault(MODEL, null);
     }
     /**
-     * Pins the model to this agent only (not the shared config). {@link PeonAiService} persists the
-     * change back into the {@code AGENT.md} frontmatter.
+     * Pins the model to this agent only (not the shared config) and saves it into the
+     * {@code AGENT.md} frontmatter. A blank value removes the {@code model} field — the agent then
+     * inherits the base model again (empty means unset, R-ML5).
      *
      * @return <code>true</code> if changed
      */
     @Override
     public boolean setAgentModelName(String modelName) {
-        if (modelName == null) return false;
-        if (Objects.equals(modelName, getAgentModelName())) return false;
+        var value = StringUtil.stripToNull(modelName);
+        if (Objects.equals(value, StringUtil.stripToNull(getAgentModelName()))) return false;
         migrateIfNeeded();
-        promptFile.setValue(MODEL, modelName);
+        if (value == null) promptFile.remove(MODEL);
+        else promptFile.setValue(MODEL, value);
         try {
             promptFile.save();
         } catch (IOException e) {

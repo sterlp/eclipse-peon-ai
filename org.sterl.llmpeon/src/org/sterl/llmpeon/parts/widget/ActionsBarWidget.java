@@ -3,6 +3,7 @@ package org.sterl.llmpeon.parts.widget;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
@@ -13,13 +14,15 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.sterl.llmpeon.agent.AgentModelSelection;
 import org.sterl.llmpeon.agent.AiAgent;
+import org.sterl.llmpeon.parts.config.widgets.ModelComboWidget.FetchSnapshot;
 import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
- * Action bar below the user input. RowLayout (wrapping) with agent selector,
- * Clear, and conditional controls.
+ * Action bar below the user input. RowLayout (wrapping) with agent selector, model selector of
+ * the active agent (R-ML5), Clear, and conditional controls.
  */
 public class ActionsBarWidget extends Composite {
 
@@ -28,8 +31,11 @@ public class ActionsBarWidget extends Composite {
     private final Button btnCompact;
     private final Button btnSync;
     private Combo agentCombo;
+    private final ChatModelComboWidget modelCombo;
 
     private volatile boolean working = false;
+    /** R-ML5: false for agents without an own model (e.g. Scaffold) — the selector stays disabled. */
+    private boolean modelSelectable = true;
     private List<AiAgent> agents = new ArrayList<>();
     
     private final Color colorWarning;
@@ -40,6 +46,8 @@ public class ActionsBarWidget extends Composite {
             Runnable onClear,
             Runnable onImplement,
             Consumer<AiAgent> onAgentChange,
+            Supplier<FetchSnapshot> modelSnapshot,
+            Consumer<String> onModelChange,
             Runnable onCompress,
             Runnable onReload) {
         super(parent, style);
@@ -65,6 +73,7 @@ public class ActionsBarWidget extends Composite {
         setLayout(rowLayout);
 
         buildAgentCombo(onAgentChange);
+        modelCombo = new ChatModelComboWidget(this, modelSnapshot, onModelChange);
 
         btnCompact = new Button(this, SWT.PUSH);
         buildCompact(onCompress);
@@ -158,10 +167,28 @@ public class ActionsBarWidget extends Composite {
         agentCombo.select(restore);
     }
 
+    /** R-ML5: shows the model selection of the active agent (model, tooltip, selectable). */
+    public void showModel(AgentModelSelection selection) {
+        modelCombo.show(selection);
+        modelSelectable = selection.selectable();
+        modelCombo.setEnabled(!working && modelSelectable);
+    }
+
+    /** R-ML5 BDD 10: saves a typed, not yet committed model for the current agent — before an agent switch. */
+    public void commitPendingModel() {
+        modelCombo.commitPending();
+    }
+
+    /** Fetches the model list of the active agent's connection (view open, agent switch). Cached per identity. */
+    public void fetchModels() {
+        modelCombo.fetchModels();
+    }
+
     /** Enable/disable controls while a request is in flight. */
     public void lockWhileWorking(boolean value) {
         working = value;
         agentCombo.setEnabled(!working);
+        modelCombo.setEnabled(!working && modelSelectable);
         btnClear.setEnabled(!working);
         btnImplement.setEnabled(!working);
         btnCompact.setEnabled(!working);
