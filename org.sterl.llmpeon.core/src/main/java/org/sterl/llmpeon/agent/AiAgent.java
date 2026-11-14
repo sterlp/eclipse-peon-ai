@@ -1,9 +1,11 @@
 package org.sterl.llmpeon.agent;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
+import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.model.CompactResult;
@@ -87,6 +89,25 @@ public interface AiAgent {
      */
     default boolean setAgentModelName(String modelName) {
         return false;
+    }
+
+    /**
+     * The config slot ({@link AgentModelConfig#DEV}, {@link AgentModelConfig#PO},
+     * {@link AgentModelConfig#PLAN}, {@link AgentModelConfig#REVIEW}) whose stored values apply to
+     * this agent: its model ({@code llm.model} for dev, {@code llm.agent.<id>.model} otherwise)
+     * and its tool allowlist. {@code null} = no slot — custom agents carry their own config
+     * ({@link #ownModelConfig()}), other agents use the base config.
+     */
+    default @Nullable String modelSlot() {
+        return null;
+    }
+
+    /**
+     * The model config this agent carries itself (custom agents: the {@code AGENT.md}
+     * frontmatter). Empty = the agent has no own config file.
+     */
+    default Optional<AgentModelConfig> ownModelConfig() {
+        return Optional.empty();
     }
     
     default boolean isReadOnly() {

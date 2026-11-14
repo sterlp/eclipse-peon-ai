@@ -14,6 +14,7 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.Platform;
 import org.sterl.llmpeon.AgentService;
 import org.sterl.llmpeon.agent.AbstractAgent;
+import org.sterl.llmpeon.agent.AgentModelSelection;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
@@ -21,6 +22,7 @@ import org.sterl.llmpeon.agent.AiReviewAgent;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.ai.LlmConfigStore;
 import org.sterl.llmpeon.command.CommandService;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.UserContext;
@@ -296,6 +298,24 @@ public class PeonAiService {
         return StringUtil.hasValue(getActiveAgent().getAgentModelName())
                 ? getActiveAgent().getAgentModelName()
                 : getConfig().getModel();
+    }
+
+    /** R-ML5: the model selection of the active agent — what the chat's model selector shows. */
+    public AgentModelSelection getActiveModelSelection() {
+        return AgentModelSelection.of(getActiveAgent(), getConfig());
+    }
+
+    /**
+     * R-ML5: saves a model chosen in the chat's model selector for the active agent — Dev into the
+     * base model, PO/Plan/Review into their slot, a custom agent into its {@code AGENT.md}. Only a
+     * real change from the shown model is saved; a blank value removes the agent's own model.
+     *
+     * @param store the preference store for base and slot keys — a slot save fires the pref listener,
+     *              which re-applies the config
+     * @return {@code true} if something was saved
+     */
+    public boolean saveActiveAgentModel(String model, LlmConfigStore store) {
+        return AgentModelSelection.save(getActiveAgent(), getConfig(), store, model);
     }
 
     /**

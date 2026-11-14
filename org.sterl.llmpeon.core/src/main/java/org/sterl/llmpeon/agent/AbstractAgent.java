@@ -118,10 +118,11 @@ public abstract class AbstractAgent implements AiAgent {
 
     /**
      * The agent slot whose stored tool allowlist ({@code llm.agent.<id>.tools}) applies to this
-     * agent; {@code null} = no allowlist (all tools). Dev/Plan/PO/Review override with their slot.
+     * agent; {@code null} = no allowlist (all tools). Same slot as the model ({@link #modelSlot()},
+     * overridden by Dev/Plan/PO/Review) — one slot per agent.
      */
     protected String toolAllowlistSlot() {
-        return null;
+        return modelSlot();
     }
 
     /**

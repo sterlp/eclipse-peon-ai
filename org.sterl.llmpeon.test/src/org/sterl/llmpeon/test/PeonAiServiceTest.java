@@ -723,6 +723,32 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
     }
 
     /**
+     * R-ML5 BDD 3 (org.sterl.llmpeon/docs/model-loading.md): the chat selector's save goes to the
+     * ACTIVE agent — with PO active only the PO slot is written, never the base model.
+     */
+    @Test
+    public void test_chat_model_selection_saves_for_active_agent() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // GIVEN base "dev-model", PO active without its own model
+        aiService.updateConfig(aiService.getConfig().toBuilder().model("dev-model").build());
+        aiService.setActiveAgent(AiPoAgent.NAME);
+        var store = new java.util.HashMap<String, String>();
+        var configStore = new org.sterl.llmpeon.ai.LlmConfigStore() {
+            @Override public String get(String key, String defaultValue) { return store.getOrDefault(key, defaultValue); }
+            @Override public void put(String key, String value) { store.put(key, value); }
+            @Override public void remove(String key) { store.remove(key); }
+        };
+        assertTrue(aiService.getActiveModelSelection().inherited());
+
+        // WHEN the user chooses gpt-5 in the chat's model selector (AIChatView.onModelChange path)
+        assertTrue(aiService.saveActiveAgentModel("gpt-5", configStore));
+
+        // THEN only the PO slot is written — the base model (Dev) is untouched
+        assertEquals(Map.of(org.sterl.llmpeon.ai.LlmConfigKeys.agentKey(AgentModelConfig.PO,
+                org.sterl.llmpeon.ai.LlmConfigKeys.AGENT_FIELD_MODEL), "gpt-5"), store);
+    }
+
+    /**
      * "Die Info": on an empty workspace with no docs/index.md, Jon greets the user with a one-time chat
      * tutorial. It is the clean complement of the docs index (which rides in his turn context,
      * ADR-0029) — never shown once an index exists and never once Jon has state.

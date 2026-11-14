@@ -62,7 +62,7 @@ public class AiPlanAgent extends AbstractAgent {
     }
 
     @Override
-    protected String toolAllowlistSlot() {
+    public String modelSlot() {
         return AgentModelConfig.PLAN;
     }
 
