@@ -31,7 +31,7 @@ Existing installations start with an empty PO slot, which inherits the base conf
 
 ### Model Selector in the Chat
 
-The chat's action bar (next to the agent selector) shows the model of the **active agent**: its own model, or the base model it inherits — the tooltip tells you which. The dropdown is filled from the model list of that agent's connection — fetched when the chat opens or the agent changes, `↻` reloads it (a failed reload keeps the previous list).
+The chat's action bar (next to the agent selector) shows the model of the **active agent**: its own model, or the base model it inherits — the tooltip tells you which. The dropdown is filled from the model list of that agent's connection — fetched when the chat opens or the agent changes, the **refresh button** (same icon as Reload) reloads it (a failed reload keeps the previous list).
 
 Selecting an entry — or typing a model and moving away from the field — changes the model of the active agent only:
 

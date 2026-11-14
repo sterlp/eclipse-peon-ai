@@ -458,7 +458,6 @@ public class AIChatView implements EclipseAiMonitor {
     private void applyConfig() {
         var config = LlmPreferenceInitializer.buildWithDefaults();
         EclipseSlf4jLogger.setDebug(config.isDebugMode());
-        LOG.info("Set new config " + config);
         // ensure we set the voice config as we break later ...
         chatInput.setVoiceInputVisible(VoicePreferenceInitializer.buildWithDefaults().enabled());
         chatHistory.setShowRealtimeAiResponse(config.isShowRealtimeAiResponse());
@@ -472,7 +471,10 @@ public class AIChatView implements EclipseAiMonitor {
         // change would early-return otherwise (same pattern as applyMcpConfig, R-MCP1).
         shellApproval.applyConfiguration();
 
+        // The same preference node carries UI state (llm.activeAgent), so a change event is not a
+        // config change — the entry belongs where the config is really applied, not on every event.
         if (lastAppliedConfig != null && lastAppliedConfig.equals(config)) return;
+        LOG.info("Set new config " + config);
         lastAppliedConfig = config;
         aiService.updateConfig(config);
 

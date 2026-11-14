@@ -106,9 +106,18 @@ public class ModelComboWidget {
 
     // --- model list (per ConnectionIdentity, cached on success only) ---
 
-    /** Fetches the model list for the current settings (page open). Cached per identity. */
+    /**
+     * Fetches the model list for the current settings (page open, agent switch). A known identity is
+     * applied straight away — the Job, and with it the progress entry, runs only for a connection that
+     * was never listed (no Refetch on a cache hit, model-loading.md SOLL).
+     */
     public void fetchModels() {
         var snapshot = snapshotProvider.get(); // UI thread: capture before the background Job
+        var known = ModelListCache.instance().cached(snapshot.identity());
+        if (known != null) {
+            applyModelList(known, snapshot.identity());
+            return;
+        }
         Job.create("Loading models (" + jobName + ")", monitor -> {
             var list = ModelListCache.instance().getOrFetch(snapshot.identity(), fetchList(snapshot));
             applyModelList(list, snapshot.identity());

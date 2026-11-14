@@ -139,7 +139,7 @@ Regeln:
   → Wert kommt vom Base, Auswahl setzt das eigene; Agent mit eigenem Modell → Leeren stellt das
   Erben wieder her.
 - Unverändert aus #173: Lade-Ablauf genau einmal in `ModelComboWidget`; Ladefehler → Modell bleibt,
-  kein Auto-Switch; R-ML4; `↻` lädt neu; Combo während der Agent arbeitet gesperrt;
+  kein Auto-Switch; R-ML4; Refresh-Button (Icon `refresh.svg`/`refresh_dark.svg`) lädt neu; Combo während der Agent arbeitet gesperrt;
   programmatisches `show`/`setModel` speichert nie.
 
 Umsetzung: Routing in Core `AgentModelSelection` (`of`/`save`/`connectionRecord`; öffentlicher Slot

@@ -74,6 +74,29 @@ public class ModelComboWidgetTest extends AbstractSwtUiTest {
     }
 
     @Test
+    public void cachedIdentityAppliesWithoutBackgroundJob() {
+        // GIVEN the list of this connection was already fetched successfully
+        mockLlmServer.setModelIds(List.of("server-a"));
+        var first = ui(() -> newWidget("server-a"));
+        ui(() -> {
+            first.widget().fetchModels();
+            return null;
+        });
+        waitUntil(() -> ui(() -> combo(first.parent()).getItems().length) > 0, "initial fetch not applied");
+
+        // WHEN a second widget of the same identity fetches (the chat selector on an agent switch)
+        var second = ui(() -> newWidget("server-a"));
+        ui(() -> {
+            second.widget().fetchModels();
+            return null;
+        });
+
+        // THEN the list is applied on the spot — the UI thread is still here, so a background Job
+        // could not have applied yet; a switch between known connections shows no progress
+        assertArrayEquals(new String[] { "server-a" }, ui(() -> combo(second.parent()).getItems()));
+    }
+
+    @Test
     public void refreshRefetchesAndUpdates() {
         // GIVEN a fetched list
         var built = ui(() -> newWidget("gpt-4o"));

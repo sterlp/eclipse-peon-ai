@@ -11,6 +11,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.sterl.llmpeon.agent.AgentModelSelection;
 import org.sterl.llmpeon.parts.config.widgets.ModelComboWidget;
 import org.sterl.llmpeon.parts.config.widgets.ModelComboWidget.FetchSnapshot;
+import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
@@ -50,7 +51,7 @@ public class ChatModelComboWidget {
         combo.addListener(SWT.FocusOut, e -> commit());
 
         refresh = new Button(parent, SWT.PUSH);
-        refresh.setText("↻");
+        refresh.setImage(ImageUtil.loadImage(refresh, ImageUtil.Icon.REFRESH));
         refresh.setToolTipText("Reload the model list for this agent's connection");
 
         loader = new ModelComboWidget(combo, refresh, "chat", snapshot);

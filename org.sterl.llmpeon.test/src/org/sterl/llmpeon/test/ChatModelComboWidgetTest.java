@@ -43,6 +43,8 @@ public class ChatModelComboWidgetTest extends AbstractSwtUiTest {
 
     private static final long WAIT_TIMEOUT_MS = 5_000;
     private static final long SETTLE_MS = 2_000;
+    /** The refresh button is looked up by tooltip — its look (themed icon, not a glyph) is not a contract. */
+    private static final String REFRESH_TOOLTIP = "Reload the model list for this agent's connection";
 
     @Before
     public void setUp() {
@@ -63,7 +65,9 @@ public class ChatModelComboWidgetTest extends AbstractSwtUiTest {
         assertNotNull("model combo missing", ui(() -> combo(built.parent())));
         assertTrue("model combo must be editable (no SWT.READ_ONLY)",
                 ui(() -> (combo(built.parent()).getStyle() & SWT.READ_ONLY) == 0));
-        assertTrue("refresh button missing", ui(() -> hasButton(built.parent(), "↻")));
+        assertTrue("refresh button missing", ui(() -> hasButton(built.parent(), REFRESH_TOOLTIP)));
+        assertNotNull("refresh button must carry the themed refresh icon",
+                ui(() -> refreshButton(built.parent()).getImage()));
     }
 
     // R-ML5 BDD 1/2 — display + tooltip of the active agent's selection
@@ -319,22 +323,24 @@ public class ChatModelComboWidgetTest extends AbstractSwtUiTest {
     }
 
     /** UI-thread only. */
-    private static boolean hasButton(Composite parent, String text) {
+    private static boolean hasButton(Composite parent, String toolTip) {
         for (var child : parent.getChildren()) {
-            if (child instanceof Button b && text.equals(b.getText())) return true;
+            if (child instanceof Button b && toolTip.equals(b.getToolTipText())) return true;
         }
         return false;
     }
 
     /** UI-thread only. */
-    private void clickRefresh(Composite parent) {
+    private static Button refreshButton(Composite parent) {
         for (var child : parent.getChildren()) {
-            if (child instanceof Button b && "↻".equals(b.getText())) {
-                b.notifyListeners(SWT.Selection, null);
-                return;
-            }
+            if (child instanceof Button b && REFRESH_TOOLTIP.equals(b.getToolTipText())) return b;
         }
-        fail("no refresh button in " + parent);
+        throw new AssertionError("no refresh button in " + parent);
+    }
+
+    /** UI-thread only. */
+    private void clickRefresh(Composite parent) {
+        refreshButton(parent).notifyListeners(SWT.Selection, null);
     }
 
     private void waitUntil(BooleanSupplier condition, String timeoutMessage) {
