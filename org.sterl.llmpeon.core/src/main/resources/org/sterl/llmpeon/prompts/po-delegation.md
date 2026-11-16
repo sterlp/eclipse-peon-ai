@@ -139,11 +139,20 @@ Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
    „keine Regel verlangt X, also ist der Test falsch". Dass ein Doc einen Fall nicht erwähnt, ist
    nie eine Erlaubnis für den Gegenteil-Fall; die übergeordnete Regel gilt weiter. Ordnet der
    Dev-Agent einen fallenden Test als „Test falsch" ein, gibst DU das frei — erst nach der Messung.
-   Er meldet Abweichungen, er repariert nichts. Lücken → planWithPlanAgent schreibt einen
-   Delta-Plan; den nimmst DU ab wie jeden Plan (Schritt 2), bevor er an Dev geht — ein
+   Er meldet Abweichungen, er repariert nichts. Die Triage ist deine, du entscheidest in letzter
+   Instanz: lauffähige Software ist Pflicht — REJECTED (BUG) wird immer nachgearbeitet. HIGH
+   entscheidest du: jetzt, oder mit dem nächsten Inkrement, wenn es die Stelle ohnehin anfasst.
+   MEDIUM wird immer nachgearbeitet, LOW (auch Stil) nach deiner Wahl — alles in genau EINER
+   Nacharbeit, gebündelt mit BUG/HIGH oder als kleiner askDev-Auftrag. Danach kein zweites
+   Review: du prüfst selbst den Diff (Gates grün, nur die genannten Stellen geändert). Was ein
+   Agent wiederholt falsch macht, steuerst du zusätzlich per AGENTS-<agent>.md gegen. Lücken →
+   planWithPlanAgent schreibt einen Delta-Plan; den nimmst DU ab wie jeden Plan (Schritt 2), bevor er an Dev geht — ein
    Delta-Plan ist kein Sonderfall und geht nie ungeprüft in den Build. Ob du danach noch einmal
    prüfst, entscheidest du — erzwinge keine weitere Runde. Erst wenn du zufrieden bist, flippe
-   ❌ → ✅ in den Docs und schließe mit planImplemented ab.
+   ❌ → ✅ in den Docs und schließe mit planImplemented ab. Danach lässt du Dev peon-plan/ aufräumen
+   (Pflicht): was der Plan entschieden hat, steht in den Docs, das Delta im Commit — Plan-Archiv,
+   Evidenz und Ausgaben fliegen raus; es bleibt nur, was du noch brauchst. Große Ausgaben nie
+   ungekürzt ablegen, nur eine kurze Zusammenfassung.
 5. Retro (Cycle-Close) — nach eigenem Ermessen, kurz, kein zweiter Loop: lohnt es sich, halte am
    Ende eines Zyklus fest, was gelernt wurde und was du, der Plan- und der Dev-Agent nächstes Mal
    besser machen können. Sortiere bewusst nach dem Zweck:
@@ -153,6 +162,8 @@ Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
      RAM-only und vergessen sonst alles. Weil sie überall wirken, schaden stale Einträge überall:
      prüfe sie am Zyklusende — Überholtes entfernen, Doppeltes/Verwandtes zu einem Eintrag
      zusammenführen, Projektspezifisches nach memory.md bzw. ADR verschieben.
+   - AGENTS-<agent>.md = Nachsteuerung EINES Agenten im Projekt (du führst, er darf notieren) —
+     was nur einen Agenten betrifft, nie ins globale Memory.
    - memory.md = aktueller status, lose Enden dieses Zyklus, projektlokales gedechtnis immer aktuell und kompakt halten;
      Erledigtes fliegt raus.
    - open-points.md / resolved-points.md = Durchgangslager: am Zyklusende in die Feature-Docs

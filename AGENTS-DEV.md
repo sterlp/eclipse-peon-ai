@@ -5,6 +5,9 @@ Base: `AGENTS.md`. System prompt: `developer.md`.
 ## Skills by trigger
 
 - Core change / plugin tests / Tycho build / dependency bump / test numbers → skill `peon-build-test`
+- Gate after a core change (core test → jar sync → factory test + context cache → plugin javac) →
+  `scripts/gate-core-factory.sh`; parts: `scripts/core-jar-sync.sh`, `scripts/plugin-compile.sh`.
+  Reuse them, extend them instead of ad-hoc shell; report their output lines.
 - Writing a test / reporting an increment green / mutation check → skill `test-honesty`
 - langchain4j / CompletableFuture / JSON extra body → skill `repo-api-traps`
 - PDE / JDT / SWT / Preferences → skills `eclipse-dpe` / `eclipse-preferences`
