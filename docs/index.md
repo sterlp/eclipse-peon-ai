@@ -19,8 +19,9 @@ Backlog = every ❌/🚧 item. Vollständige Einträge (mit Status-Grund) stehen
   infra (Docs-Linter, MCP, Codegraph, Caches).
 * **[Plugin docs](../org.sterl.llmpeon/docs/index.md)** — Eclipse/OSGi: chat view & widgets ·
   header/roster · configuration & models · `eclipse*` tools & workspace · OSGi test setup.
-* **[AI Factory docs](../aifactory/docs/index.md)** — Web-App (Spring Boot + SPA): Jon mit den
-  Disk-Tools statt Eclipse-Plugin; eigener ADR-Raum `AF-ADR-*`. 🚧 Richtung, nichts gebaut.
+* **AI Factory** — eigenes Projekt/Repo `/aifactory-parent` (Docs: `aifactory-parent/docs/index.md`),
+  nicht mehr in diesem Repo; Reste unter `llmpeon-parent/aifactory/` sind kein SOLL. Eigener
+  ADR-Raum `AF-ADR-*`.
 * **[ADRs](adr/index.md)** (global 0001–0076) · [Glossary](glossary.md) · [Configuration](configuration.md)
 * [Architecture rules](architecture.md) · [Open Points](open-points.md) · [Resolved](resolved-points.md)
   · [Open to Discuss](open-to-discuss.md)

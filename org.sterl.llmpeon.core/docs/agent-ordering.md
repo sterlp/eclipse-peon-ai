@@ -105,7 +105,7 @@ Scaffold
 **Verdict:** der Defekt lag **doch** im Core-Sort — nicht an den Default-Patterns, sondern an der
 Fallback-**Bedingung**: `sort` fiel nur zurück, wenn die Datei gar keine Patterns lieferte
 (`patterns.isEmpty()`). Eine bestehende Datei mit gültigen, aber zu nichts passenden Mustern
-(Pauls `^Peon-PO$` nach den Renames) ließ jeden Agenten als „unmatched" ans Ende laufen → Jon verlor
+(Pauls `^Jon$` nach den Renames) ließ jeden Agenten als „unmatched" ans Ende laufen → Jon verlor
 Platz 1. Der Vor-Check hatte allein den Fall „nur `^Jon$`" gesehen.
 
 **Fix:** **R5** — matcht kein Agent irgendein Pattern, gilt die Default-Ordnung (Jon zuerst) samt

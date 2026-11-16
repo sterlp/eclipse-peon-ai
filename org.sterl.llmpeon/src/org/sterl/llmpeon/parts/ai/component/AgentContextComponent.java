@@ -10,8 +10,6 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.Platform;
 import org.sterl.llmpeon.agent.AiAgent;
-import org.sterl.llmpeon.agent.model.ContextInput;
-import org.sterl.llmpeon.agent.model.TaggedInput;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.context.AgentsMdContextItem;
 import org.sterl.llmpeon.context.ContextItem;
@@ -92,7 +90,7 @@ public class AgentContextComponent {
         }
     }
 
-    /** Arms the one-time handoff standing order shown instead of the plan reference on the next turn. */
+/** Arms the one-time handoff standing order for the next turn. */
     public void armHandoffLine(String agentName, String planPath) {
         handoffLine = new SimpleContextItem("Handover reference " + agentName,
                 "Handover from " + agentName + " " + planPath);
@@ -128,9 +126,9 @@ public class AgentContextComponent {
         return content == null ? "" : content;
     }
 
-    /**
+/**
      * Assembles the per-turn context items (injected after compact or on first call):
-     * plan reference or handoff line, AGENTS.md, live workspace memory, Jon's docs, user context.
+     * AGENTS.md, live workspace memory, Jon's docs, user context with plan.
      * Scaffold agents get their own env/tool listing instead.
      */
     public List<ContextItem> turnContext() {
@@ -141,16 +139,14 @@ public class AgentContextComponent {
         if ((agent instanceof AiScaffoldAgent)) {
             appendScaffoldContext(result);
         } else {
-            result.addAll(userContext.get());
+            result.addAll(userContext.get(planFile));
 
             if ((agent instanceof AiPoAgent)) {
                 result.add(new EclipseFileContextItem("docs/memory.md", projectRef));
                 result.add(new EclipseFileContextItem("docs/index.md", projectRef));
             }
 
-            if (handoffLine == null) {
-                appendPlanReference(result);
-            } else {
+            if (handoffLine != null) {
                 // Consume handoff line once (set by onHandoff, survives compaction)
                 result.add(handoffLine);
                 handoffLine = null;
@@ -217,33 +213,4 @@ public class AgentContextComponent {
         }
     }
 
-    /**
-     * R-PT-3: the file comes from the injected supplier — the same refreshed view the query paths
-     * use — so a plan written past the workspace tree by the disk tools is offered like any other.
-     * 
-     * TODO remove this, an add existing and found plans to the project info in which we e.g. show already the pom.xml
-     * EclipseUtil.projectInfo
-     */
-    private void appendPlanReference(LinkedList<ContextItem> result) {
-        final var visible = planFile.get();
-        if (visible == null) return;
-
-        result.add(new ContextItem() {
-            @Override
-            public String label() {
-                return "Plan reference " + JdtUtil.pathOf(visible);
-            }
-            @Override
-            public String dedupKey() {
-                if (!visible.exists()) return null;
-                return TaggedInput.PREFIX + "context: plan " + JdtUtil.pathOf(visible);
-            }
-            @Override
-            public ContextInput render() {
-                if (!visible.exists()) return null;
-                return new ContextInput("context: plan " + JdtUtil.pathOf(visible),
-                        "Existing plan found: " + JdtUtil.pathOf(visible));
-            };
-        });
-    }
 }

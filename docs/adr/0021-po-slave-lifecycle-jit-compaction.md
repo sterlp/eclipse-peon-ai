@@ -1,9 +1,9 @@
-# ADR-0021: Peon-PO slave lifecycle & just-in-time compaction
+# ADR-0021: Jon slave lifecycle & just-in-time compaction
 
 **Status** · Accepted
 
 ## Context
-Jon's team members (Peon-Plan "Da Thinka", Peon-Dev "Da Mek") carry a real conversation across many
+Jon's team members (Plan, Dev) carry a real conversation across many
 delegate turns, so they must **keep their context** between calls — unlike the stateless one-shot
 SearchAgent. Long-running team members will eventually overflow their window, but compacting eagerly
 (or on every turn) wastes tokens and can drop the very instruction Jon is about to send. Team members

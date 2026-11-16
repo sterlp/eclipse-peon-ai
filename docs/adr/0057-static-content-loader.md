@@ -1,6 +1,6 @@
 # ADR-0057 (vormals 0027 — Nummer war doppelt vergeben): StaticContentLoader — effizientes Dateiladen mit Duplikat-Prüfung
 
-**Status:** Superseded by [ADR-0032](0032-workspace-memory-dynamic-turn-context.md) (statischer Snapshot entfernt, Memory dynamisch pro Turn) · **Datum:** 2026-08-11 · **Betroffen:** Jon (Peon-PO), allgemein nutzbar
+**Status:** Superseded by [ADR-0032](0032-workspace-memory-dynamic-turn-context.md) (statischer Snapshot entfernt, Memory dynamisch pro Turn) · **Datum:** 2026-08-11 · **Betroffen:** Jon, allgemein nutzbar
 
 ## Kontext
 
@@ -24,9 +24,9 @@ Jon braucht Auto-Load von `memory.md` + `docs/index.md` bei Session-Start und na
 
 - **Pro:** Token-Effizienz (einmal laden), Duplikat-Skip, Testbarkeit (core headless), allgemein nutzbar
 - **Con:** Callback null-Monitor im Compact-Handler (Inc-3-Refinement), kein Auto-Refresh bei Datei-Changes (bewusst)
-- **Review:** Da Thinka: "Das ist bereits die beste Lösung."
+- **Review:** Plan: "Das ist bereits die beste Lösung."
 
 ## Verwandt
 
-- [Jon (Peon-PO)](../../org.sterl.llmpeon.core/docs/po-agent-jon.md) — Auto-Load memory.md + docs/index.md
+- [Jon](../../org.sterl.llmpeon.core/docs/po-agent-jon.md) — Auto-Load memory.md + docs/index.md
 - [Queued User Messages](../../org.sterl.llmpeon.core/docs/queued-user-messages.md) — Compact-Abbruch + Queue-Drain

@@ -70,7 +70,7 @@ kanonischen Namen. Gemessen, nicht nur angenommen.
 
 Whitespace-only-Werte in Filter-Parametern (`files=" "`) zählen als unset → projektweiter Modus,
 wie `severity`-Blank-Handling und AGENTS-Regel „Empty means unset" — konsistent, kein hartes
-Abschlagen nur für `files` (Da-Mek-Entscheidung 2026-09-20, Paul-Freigabe im Review-Umlauf).
+Abschlagen nur für `files` (Dev-Entscheidung 2026-09-20, Paul-Freigabe im Review-Umlauf).
 
 #### UC-PP-7 — whitespaceOnlyFilesMeansUnset ✅
 - GIVEN `files=" "` WHEN Aufruf THEN projektweite Liste (wie ohne Filter), kein stiller Scope-Wechsel.

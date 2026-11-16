@@ -10,6 +10,11 @@
 
 - Review meldet den Skill-Evolution-Outcome + Evidence (Gate-Phase) — der Befund ist Evolve-Input.
 
+## Prompts
+
+- Prompt-Änderungen (`org.sterl.llmpeon.core/.../prompts/*.md`) macht Jon selbst, nie über Dev
+  (Paul 2026-11-16) — danach Paul das WARUM in 2–3 Sätzen erklären.
+
 ## Architektur-Docs
 
 - Architektur-Doc schreiben oder prüfen → skillRead `architecture-doc` (Regeln + Template dort).

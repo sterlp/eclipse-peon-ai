@@ -51,6 +51,8 @@ beliefert. Dieses Wissen hat der Agent nicht, sein Auftraggeber hat es.
 - **Bewusst:** Die 0.7-Regel feuert jetzt **pro Delegation**, nicht pro Turn (ADR-0021 hatte einen
   tool-seitigen Trigger ausdrücklich verworfen). Das ist der Punkt: jede neue Aufgabe startet mit einem
   leanen Wegwerf-Context, auch mitten in einem langen Zyklus. Ein fehlgeschlagener Compact blockiert die
-  Delegation nicht (`SKIPPED_SMALL`/`FAILED_EMPTY` werden still übergangen).
+  Delegation nicht (`SKIPPED_SMALL`/`FAILED_EMPTY` werden still übergangen). Kosten: mehrere
+  Delegationen hintereinander können mehrere Compressor-Calls auslösen — von Paul akzeptiert
+  (2026-11-16); Stellschraube wäre der Faktor in `PoDelegateTool`.
 - **Grenze bleibt:** verglichen wird gegen das *konfigurierte* Budget, nie gegen das echte Modellfenster —
   Peon kennt es nicht.

@@ -610,7 +610,7 @@ THEN the latch reads Optional.empty() and the stale "done" is not re-consumed
 ### R9: Slave lifecycle — persistent singletons ✅
 Per Jon session there is **exactly one** Plan and **one** Dev instance. Each is created
 **lazily on first delegation** and **kept alive**, holding its context across calls.
-Peon-Search stays a stateless **one-shot** agent.
+Search stays a stateless **one-shot** agent.
 
 These are **dedicated, Jon-owned instances** — **not** the user-selectable Plan/Dev from
 `AgentService`, and are **RAM-only — no history files** ([ADR-0024](../../docs/adr/0024-po-slaves-ram-only.md)). Sharing the *instance* would make the `ask*`/`buildWithDev` tools mutate

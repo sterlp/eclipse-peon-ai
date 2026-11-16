@@ -7,7 +7,7 @@
 Paul-Smoke 2026-09-29: `think=none` auf OPEN_AI (LM-Studio-Server) kam **nicht** im Request an —
 `ThinkResolver` mappte Off-Tokens für die OpenAI-Familie auf Omission („OpenAI kennt kein
 off-Konzept"), das Modell dachte trotzdem weiter. Config sagte „aus", Verhalten war „an" — die
-genaue Lügen-Klasse, die wir nicht bauen. Diagnose (Da Mek + Da Sniffa, Log-evidenz
+genaue Lügen-Klasse, die wir nicht bauen. Diagnose (Dev + Search, Log-evidenz
 `.bak_0.log:11108`): kein Transport-Bug, dokumentiertes SOLL von UC-THINK-1 — aber das SOLL selbst
 stand auf einer Prämisse, die der SDK-Wirklichkeit widerspricht (`ReasoningEffort.Known`
 **enthält `none`**), und auf der Checkbox-Ära: Der Resolver mit Off-Set und On-Mapping

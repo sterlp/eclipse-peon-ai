@@ -5,7 +5,7 @@
 
 ## Context
 
-ADR-0067 introduced two agent-facing tool registries (the shared `ToolService` and Peon-PO's own)
+ADR-0067 introduced two agent-facing tool registries (the shared `ToolService` and Jon's own)
 so that Jon takes part in the dynamic tool families. ADR-0068 reuses the same pair for the Codegraph
 built-in. Both connection services therefore call `connectMcp(...)` **per registry**:
 

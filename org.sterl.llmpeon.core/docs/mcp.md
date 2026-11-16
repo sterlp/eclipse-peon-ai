@@ -9,7 +9,7 @@ Code: core `org.sterl.llmpeon.mcp` (`McpService`, `McpServerConfig`), Plugin
 **✅ done (2026-09-10, Zyklus mcp-fixes)** — R-MCP1–R-MCP3 gebaut und reviewed (Verdict CONCERNS
 ohne Rework, Findings C1–C4 abgearbeitet: C1-Test, C2-Homepage-Drift raus, C3-Dedup; C4 Hinweis).
 R-MCP3 manuell verifiziert
-(Code-Review Da Dok; Live-Bestätigung im User-Smoke-Test). Auslöser: duckduckgo-mcp (`uvx`, stdio)
+(Code-Review; Live-Bestätigung im User-Smoke-Test). Auslöser: duckduckgo-mcp (`uvx`, stdio)
 stirbt mit JSON-RPC `-32022 UNSUPPORTED_PROTOCOL_VERSION` — Analyse in
 [ADR-0045](../../docs/adr/0045-mcp-protocol-version-auto-detect.md).
 
@@ -33,7 +33,7 @@ nicht im LlmConfig-Gate.
   Test: `McpConnectionServiceTest.givenUnchangedMcpConfig_whenApplied_thenNoReconnect`
 - **BDD R-MCP1c** GIVEN toggle() hat den Zustand angewandt und lastApplied aktualisiert WHEN das
   Preference-Event des Toggles applyConfig triggert THEN kein erneutes connect/disconnect.
-  Test: `McpConnectionServiceTest.givenToggledState_whenApplied_thenNoReconnect` (Da-Dok-Finding
+  Test: `McpConnectionServiceTest.givenToggledState_whenApplied_thenNoReconnect` (Review-Finding
   C1: einzige konsistenzkritische Stelle ohne roten Test; zugleich Mutations-Nachweis).
 
 ## R-MCP2 — Protocol-Version-Semantik ✅

@@ -288,7 +288,7 @@ Stale-Guard-Mutation lässt die bestehenden Tests grün — Follow-up-Test offen
 im Copilot-Plugin abschauen (alle Labels bündig, auch Extra Body) — Inspiration, kein Copy; nur
 anschauen, wenn die 2 einfachen Fixes drin sind.
 
-**R-A4 ✅ done (ui-config Inc-3; User-Smoke ✅ 2026-09-12, Da-Dok-Review ✅ 2026-09-13) — natives Combo (editierbar):**
+**R-A4 ✅ done (ui-config Inc-3; User-Smoke ✅ 2026-09-12, Review ✅ 2026-09-13) — natives Combo (editierbar):**
 das Think-Feld für `ThinkSupport.Values` nutzt das **native SWT-Combo** (`SWT.BORDER`, editierbar —
 kein READ_ONLY) wie das Model-Combo (R-A2), an derselben Stelle im 2-Spalten-Grid: Label `Think:`
 mit `addLabel` (SWT.END) in der Label-Spalte, Combo FILL/CENTER in der Feld-Spalte. Boolean →

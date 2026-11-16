@@ -78,8 +78,8 @@ Delegation über [PoDelegateTool](../../docs/adr/0020-po-agent-orchestration.md)
   - **Migration-Hinweis (User):** standen die Review-Werte bisher im PLAN-Slot, müssen sie nach
     dem Update einmal in die REVIEW-Sektion kopiert werden — ein leerer REVIEW-Slot erbt Base,
     nicht mehr Plan (kein stiller Alias).
-  - GIVEN REVIEW-Slot leer WHEN Da-Dok-Model aufgelöst THEN Base-Config (nicht PLAN)
-  - GIVEN REVIEW-Slot gefüllt WHEN Da-Dok-Model aufgelöst THEN REVIEW-Werte gewinnen
+  - GIVEN REVIEW-Slot leer WHEN Review-Model aufgelöst THEN Base-Config (nicht PLAN)
+  - GIVEN REVIEW-Slot gefüllt WHEN Review-Model aufgelöst THEN REVIEW-Werte gewinnen
   - GIVEN PLAN-Slot gefüllt WHEN REVIEW leer THEN Plan-Werte fließen NICHT ein (Clean Break)
 
 

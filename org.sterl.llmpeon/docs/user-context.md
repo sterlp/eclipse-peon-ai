@@ -4,8 +4,8 @@ idPrefix: SEL
 
 # User-Context Selection
 
-> **Status:** ✅ done (2026-09-16, Branch `bugfix/user-context-selection`, Review CONCERNS → abgenommen; User-Smoke ✅ 2026-09-30) · **Architektur:** kein eigenes
-> Architektur-Doc — Bestandskomponenten `UserContext` + `AIChatView`, Regeln siehe `docs/architecture.md`
+> **Status:** ✅ done (R-SEL-6 Projekt-Info 2026-11-16) · **Code:** `UserContext`, `EclipseUtil.projectInfo` · **Architektur:** kein eigenes
+> Architektur-Doc — Bestandskomponenten `UserContext` + `AIChatView`, Regeln siehe [architecture.md](../../docs/architecture.md)
 
 ## Ziel
 
@@ -122,6 +122,61 @@ genau dort, wo der Zustand gesetzt wird. Ein früherer UI-Crash (Unhandled event
   (`preloadPlanIfNeeded` läuft nicht).
 - GIVEN aktives Projekt A WHEN `setProject` mit einem geschlossenen, aber existierenden Projekt THEN
   es wird wie bisher übernommen (nur `exists()` zählt, nicht `isOpen()`).
+
+### R-SEL-6 — Projekt-Info ist die eine Orientierung über Pfade, Einstiegsdateien und Plan ✅
+
+Die Projekt-Info des gewählten Projekts (Turn-Kontext, alle Agenten außer Scaffold) enthält, in
+dieser Reihenfolge:
+
+- `User selected project: <Name>`
+- `Eclipse path: /<Name>` mit der Anweisung, dass dieser Pfad für die `eclipse*`-Tools gilt (alle
+  Workspace-Dateien)
+- `Disk path: <absoluter Plattenpfad>` mit der Anweisung, dass er nur für `disk*`-Tools und das
+  `workDir` der Shell gilt — ein Pfad `/<Name>/…` ist **kein** Plattenpfad
+- `Natures: …` (wie bisher)
+- `Files:` die Workspace-Pfade der vorhandenen Einstiegsdateien `pom.xml`, `package.json`,
+  `AGENTS.md`, `docs/index.md` (je im Projekt-Root); eine fehlende Datei wird nicht genannt, fehlen
+  alle, entfällt die Zeile
+- `Plan: /<Name>/peon-plan/overview.md`, nur wenn der Plan existiert — gleicher refreshter Stand wie
+  die Plan-Query ([plan-tool.md](plan-tool.md) R-PT-3), also auch für einen nur auf der Platte
+  geschriebenen Plan
+- die Verschachtelungs-Zeilen aus [workspace-nesting.md](workspace-nesting.md) R-WN-3 (unverändert)
+
+Damit entfallen das eigene ContextItem „Plan reference" und die Zeile „FILE ACCESS" in der
+Static-Env. Die Tools selbst lösen Pfade weiterhin nicht über die Familiengrenze auf (Paul
+2026-11-16).
+
+**Begründung:** Agenten nutzten `/<Projekt>/…` in `disk*`-Tools und der Shell, und griffen zu
+`disk*` statt zu `eclipse*`. Die Projekt-Info nennt beide Pfade bereits — dort, direkt am Pfad, wirkt
+die Anweisung, und Plan sowie Einstiegsdateien stehen an derselben Stelle statt in eigenen
+Kontext-Blöcken.
+
+#### UC-SEL-6 — Projekt-Info nennt Pfad-Anweisung, Einstiegsdateien und Plan ✅
+
+```gherkin
+Given das Projekt "test_project" ist gewählt
+  And im Projekt-Root existieren "pom.xml" und "AGENTS.md", aber nicht "docs/index.md"
+  And "peon-plan/overview.md" existiert nur auf der Platte
+When ein Turn startet
+Then enthält die Projekt-Info die Zeile "Eclipse path: /test_project" mit dem Hinweis auf die eclipse*-Tools
+  And die Zeile "Disk path:" mit dem Hinweis, dass "/test_project/…" kein Plattenpfad ist
+  And die Zeile "Files:" mit "/test_project/pom.xml" und "/test_project/AGENTS.md", ohne "docs/index.md"
+  And die Zeile "Plan: /test_project/peon-plan/overview.md"
+  And es gibt kein eigenes ContextItem "Plan reference"
+```
+
+```gherkin
+Given das Projekt "test_project" ist gewählt
+  And "peon-plan/overview.md" existiert nicht
+When ein Turn startet
+Then enthält die Projekt-Info keine Zeile "Plan:"
+```
+
+```gherkin
+Given ein beliebiger Agent außer Scaffold
+When sein Static-Kontext gebaut wird
+Then enthält er keine Zeile "FILE ACCESS"
+```
 
 ## Nebenfunde
 

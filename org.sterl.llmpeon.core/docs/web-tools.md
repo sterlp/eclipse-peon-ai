@@ -133,7 +133,7 @@ ist nicht paginiert, jede Call frisch). Snippets werden auf **200 Zeichen** gek�
 
 `webSearch` ist **nicht** `isEditTool` → er wird allen Agenten gegeben (Paul: „allen geben"),
 inklusive Search-Sub-Agenten — dieselbe Verteilung wie `webFetchAsMarkdown` (wörtlich: der
-Peon-PO hat `webFetchAsMarkdown` nicht und bekommt `webSearch` ebenfalls nicht). Kein Toggle: die
+Jon hat `webFetchAsMarkdown` nicht und bekommt `webSearch` ebenfalls nicht). Kein Toggle: die
 Risikoklasse ist Lesen im Web (wie webFetch), kein Schreiben.
 
 #### UC-WEB-11 — webSearchAvailableToAllAgents ✅

@@ -4,7 +4,7 @@
 
 ## Context
 
-[ADR-0023](0023-po-model-plan-slot.md) ließ Jon (Peon-PO) den **Plan-Slot** mitbenutzen, um
+[ADR-0023](0023-po-model-plan-slot.md) ließ Jon den **Plan-Slot** mitbenutzen, um
 einen weiteren Config-Slot zu sparen. Seit dem Config-Umbau (2a/2b/2c) ist ein Slot billig:
 `llm.agent.<id>.<field>` ist ein generisches Key-Schema, `AgentModelConfigSection` ein
 wiederverwendbares Widget, `EffectiveConnection` löst pro Agent auf.

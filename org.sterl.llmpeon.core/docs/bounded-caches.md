@@ -4,7 +4,7 @@ idPrefix: BC
 
 # Bounded Caches — RAM-Cache-Audit
 
-> **Status:** ✅ done (2026-10-17, Paul specified — Zyklus `story/night-5-2026-10-16`, Da-Dok ACCEPTED). Anlass: „dieser Cache, der sich selbst kürzt, sollte auch beim RegEx-Parser
+> **Status:** ✅ done (2026-10-17, Paul specified — Zyklus `story/night-5-2026-10-16`, Review ACCEPTED). Anlass: „dieser Cache, der sich selbst kürzt, sollte auch beim RegEx-Parser
 > eingesetzt werden — überall wo wir cachen, sonst Memory-Leak". Verwandt:
 > [temp-file-tool.md](temp-file-tool.md).
 

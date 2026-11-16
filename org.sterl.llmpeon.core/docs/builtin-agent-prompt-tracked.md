@@ -140,6 +140,6 @@ Clean Break (ADR-0079), alte `Peon-*-history.jsonl` lassen sich bei Bedarf umben
 
 - **`compact`** ist heute ein Config-Slot, kein Agent — bekommt er eine Datei?
 - **id `jon` statt `po`:** Config-Keys `llm.agent.po.*`, `AGENTS-JON.md`-Auflösung, History-Ordner —
-  Da Mek prüft vor der Planung, was am alten Namen hängt.
+  Dev prüft vor der Planung, was am alten Namen hängt.
 - **V2 berührt** R-ATC-1…4 ([agent-tool-config.md](agent-tool-config.md)), R-DEF-* (Plugin
   default-inheritance.md), R-THINK-10 — beim Entwurf von V2 gegenprüfen.

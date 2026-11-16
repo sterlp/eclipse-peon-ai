@@ -1,7 +1,7 @@
 # Open Ends / Memory — Session-Zwischenstand
 
 > Zwischenstand, kein Protokoll: Erledigtes fliegt raus.
-> **Branch `web-factory-5`** (Stand 2026-11-12; #173 dort NICHT enthalten). `web-factory-mvp` ist als #170 gemergt.
+> Arbeit läuft auf **main** (Stand 2026-11-16); Paul committet/released selbst.
 >
 > **#173 Model-Select (main `5dc254dd`, Autor Demmtop):** SOLL-Ersatz für R-ML5 mit Paul geklärt
 > (Combo folgt aktivem Agenten) → `peon-plan/ticket-173-chat-model-select-soll.md` als
@@ -11,72 +11,53 @@
 > Paul überträgt per `peon-plan/web-factory-4-skill-sync.patch` auf den anderen Rechner
 > (dort erst `git merge origin/main`, dann `git am`).
 
-## Skill-Sync 2026-11-09 (Paul-Auftrag, kein Plan-Zyklus)
+## Stand 2026-11-16
 
-- Ziel (Paul): jedes Projekt entwickelt eigene Skills unter `.agents/skills/` (CRUD je Zyklus),
-  generische AGENTS*.md-Passagen wandern schrittweise in Skills. Grund-Loop läuft auch ohne Skill
-  `skill-evolution` und ohne Wiki → steht jetzt in `po-delegation.md` (Retro), R6 ❌ in
-  `core/docs/skill-evolution-loop.md` (Flip nach Pauls Bestätigung / erster Nacht-Retro).
-- `doc-method.md`: neue Regel „Wechsel auf ✅ zieht den ganzen Regelblock mit" (aus Wiki-Muster
-  Status flip, Teil 3 Disclosure bleibt im llmpeon-Wiki).
-- Wiki `.agents/skills/wiki/` überall; Muster „Rename-Zyklen: Verbraucher inventarisieren" nach
-  us4g/FORgE/MaPa. us4g committet+gepusht (`97008d6`, inkl. `AGENTS-PO.md`→`AGENTS-JON.md`).
-- FORgE: direkt auf `main` + Push; Projekt-Kopie `skill-evolution` entfällt (nutzt den globalen).
-  MaPa: direkt auf `master`, **Paul pusht** (Repo-Policy). us4g: auf `main` per Cherry-Pick + Push.
-- Global `skill-evolution` (sterlp/ai-skill-codex via `~/apm.yml`): Paul kopiert die 2 Dateien aus
-  `peon-plan/ai-skill-codex/skills/skill-evolution/` selbst ins Repo und synct.
-- us4g: Projekt-Kopie `skill-evolution` gelöscht (`6fe9a44` auf main, gepusht) — nutzt den globalen.
-- Lose Ende: ai-skill-codex enthält `skills/wiki/` mit llmpeon-Inhalt — Empfehlung an Paul: löschen.
-- Working Tree llmpeon: `SkillService.java` (nur Zeilenumbruch) + `.factorypath` nicht von Dev —
-  Pauls IDE, nicht committen.
+- Kein laufender Zyklus. R-SEL-6, R-PT-3, R-RT-1 ✅ — Release durch Paul.
+- ⏳-Sweep 2026-11-16 erledigt: einziger ⏳ = Codegraph-Windows-Fallback (Paul testet bei
+  Windows-Lauf); technische Notizen auf ❓ Backlog. Uncommittet (Paul): compressor.md,
+  AGENTS-JON.md, Ork-Rename in docs/**, Homepage index.md + setup/agents.md.
+- **AI Factory lebt im eigenen Projekt `/aifactory-parent`** — `llmpeon-parent/aifactory/` = Reste.
 
-## R18 Skill-Aktualität ✅ (2026-11-09) — nur als Patch geliefert
+## Bekannte Lint-Altlasten (Bestand, nicht R-RT-1)
 
-- **Hotfix bewusst nur am `SkillTool`** (Paul): UI (Statuszeile/Autocomplete) bleibt stale bis zum
-  nächsten Neuladen. Soll die UI aktuell werden → Entscheidung in den Service, neuer Zyklus.
-- **Kein Commit/Push** (Paul): `peon-plan/web-factory-4-skill-refresh.patch` (`git diff`, auf dem
-  anderen Rechner NACH dem Skill-Sync-Patch per `git apply --3way`), enthält auch Docs + memory.md.
-- Backlog-Kandidat (Review P1/P2, Bestand): `SkillComponent`-Writer unkoordiniert (Projektwechsel/
-  Scaffold vs. Tool-Reload), `AbstractTool`-Request/Monitor nicht threadlokal bei geteilten Tools.
+- Voll-Lint: ~260 `VERWAIST` R-*-Marker (Linter kennt R-Definitionen nicht → open-points ❓
+  „R-*-Regeln haben kein Linter-Gate"), `DOPPELT_DEFINIERT`/`PRAEFIX_*` in tool-confirmation,
+  default-inheritance/model-config-widget, compact-architektur; `UNBELEGT` UC-BAP-1…5, UC-CT-3/5;
+  `UC_OHNE_REGEL` UC-WPV-1/2. Kandidat für einen Lint-Aufräumzyklus.
 
-## Beobachtete tool probleme
-- Ungeklärt (nicht gefixt): Insert-Meldung „newContent required" am Dateiende (aifactory-Notiz) und
-  ReplaceLines „fügt ein" (memory #6) — erst messen.
+## Beobachtete Tool-Probleme
+- Ungeklärt (nicht gefixt): Insert-Meldung „newContent required" am Dateiende und ReplaceLines
+  „fügt ein" — erst messen.
+- PDE-Einzellauf `EclipseWorkspaceWriteFileToolTest` lief einmal in 5-min-Timeout (nach mehreren
+  PDE-Läufen), danach grün — erst bei Wiederholung untersuchen.
 
 ## Offen für Paul (je eine Frage / Bestätigung)
 
-1. **⏳ R-PT-8:** Query auf geschlossenes Projekt meldet `onProblem` statt still „kein Plan" — ok?
-2. **⏳ AGENTS-JON.md-Alias** (2026-10-30, open-points.md) — der Rename-Fall hat us4g getroffen
-   (`AGENTS-PO.md` wirkte still nicht mehr), dort jetzt umbenannt.
-3. **Homepage-Zeile zur Diff-Anzeige?** (optional)
-4. ❓ Altbestand Reparatur-Zyklus: Edit-Tool-Falle (upstream melden?), manuelle Nachweise.
+1. ❓ Altbestand Reparatur-Zyklus: Edit-Tool-Falle (upstream melden?), manuelle Nachweise.
+2. ❓ Status-Bug „waiting for AI... verschwindet bei File-Read" → open-points.md, erst messen.
 
 ## Backlog (nicht gestartet)
 
-- **Search-Agent als vollwertiger interner Agent** (R-LSR-7 🚧, search-agent-tool.md) ·
-  **Rename-Sicherheit über stabile `id()`** (agenten-namen-im-chat.md 🚧).
-- **P3:** SSE-Client-Kopien (5×) in Fabrik-Tests extrahieren — eigenes Gate.
+- **Search-Agent als vollwertiger interner Agent** (R-LSR-7 🚧) · **Rename-Sicherheit über
+  stabile `id()`** (agenten-namen-im-chat.md 🚧).
+- **P3:** SSE-Client-Kopien (5×) in Fabrik-Tests extrahieren.
 - **P1-Variante:** Cancel-/Fehler-Pfad-Release ohne atomaren Queue-Blick — test-first (⏳).
 - Async-Shell-Tool (Paul-Prio) → async Agents; Merge-Check „geteilte disk-Tool-Instanzen" vorher.
 - Bug-Triage-Reste: totes MCP-Tool in Spec-Liste, `PoDelegateTool.dispatch`-Catch, ApiRetry-
-  Fehlerklassen, Header-State-Leak, Auto-Compact bei Context-Overflow, `org.sterl.llmpeon.test`
-  Surefire-Basis. Neu: Warnungs-Aufräum-Zyklus (5 `@SuppressWarnings`-Dateien) · „Kein `throw`
-  ohne Message" · ApiRetry-Null-Byte-IOException-Verdacht (❓ open-points).
-- Klein: `MutableClock` 8× → Fixture · `AbstractAgent.asyncCall` ohne Aufrufer · Lint-Baseline
-  Core · historische `*-plan.md` löschen? · `StringUtil.oneLine`-Konsolidierung ·
-  `effectiveUrl`-Schnitt · Ork-/Peon-Altbestand ~35 SOLL-Docs (Massen-Rename braucht Paul).
+  Fehlerklassen, Header-State-Leak, Auto-Compact bei Context-Overflow, Warnungs-Aufräum-Zyklus,
+  „Kein `throw` ohne Message".
+- Klein: `MutableClock` 8× → Fixture · `AbstractAgent.asyncCall` ohne Aufrufer · Lint-Baseline ·
+  `StringUtil.oneLine`-Konsolidierung · `effectiveUrl`-Schnitt.
+- Read-Tools: Refresh-Fehler in `refreshScope` wird nur geloggt (Bestand, bewusst nicht in R-RT-1).
 
 ## Notizen
 
-- Agentennamen: Jon (PO), Plan, Dev, Review — Ork-Namen (Da Mek/Da Dok/Da Thinka) nur noch als
-  Synonym im Glossar, in neuem Text nie.
-- System-Prompts generisch; Scaffold-Prompts stehen auf `Scaffold` (Jon editiert System-Prompts
-  selbst, Übersicht: `core/docs/system-prompts.md`).
+- Agentennamen: Jon (PO), Plan, Dev, Review — Ork-Namen nur noch als Synonym im Glossar.
+- System-Prompts generisch; Übersicht `core/docs/system-prompts.md`.
 - Commit: EXPLIZITE Pfadliste; Pauls WIP nie (`AGENTS*.md` Root, `peon-plan/**`, `README.md`,
   `ai-e2e-test/**`, `bugs/**`, `homepage/**` nur auf Ansage).
-- Lint: `docRoots`/`testRoots` weglassen = Auto-Discovery (R-DL-26 + AGENTS-DEV-Präzisierung
-  2026-11-05 — teilweise Listen erzeugen Massen-Findings); `findings:`-Zeile melden, nie
-  `Scanned:`; `idPattern` **mit** `[a-z]?`.
-- JUnit `@Timeout`-Falle: Daemon-Probe-Muster statt `@Timeout` (memory 50).
-- Eclipse-Plugin-Tests: `eclipseBuildProject` vor JUnit-Lauf; Einzelklassenlauf einer
-  bestehenden Klasse ist trust-frei (~6 s).
+- Lint: `docRoots`/`testRoots` weglassen = Auto-Discovery; `findings:`-Zeile melden; `idPattern`
+  **mit** `[a-z]?`; Überschriften in Notiz-Docs nie mit einer Regel-ID beginnen.
+- JUnit `@Timeout`-Falle: Daemon-Probe-Muster statt `@Timeout`.
+- Eclipse-Plugin-Tests: `eclipseBuildProject` vor JUnit-Lauf; nach core-Änderung Reactor-Route A.

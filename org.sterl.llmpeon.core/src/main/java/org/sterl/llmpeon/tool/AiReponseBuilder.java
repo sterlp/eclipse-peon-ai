@@ -2,7 +2,12 @@ package org.sterl.llmpeon.tool;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
+import java.util.function.Predicate;
 
+import org.jspecify.annotations.Nullable;
+import org.sterl.llmpeon.exception.ExceptionUtil;
+import org.sterl.llmpeon.shared.FileUtils;
 import org.sterl.llmpeon.shared.GrepHit;
 import org.sterl.llmpeon.shared.OutputTrim;
 import org.sterl.llmpeon.shared.SearchQuery;
@@ -15,6 +20,8 @@ public class AiReponseBuilder {
     public static final int MAX_GREP_LINES = 100;
 
     public static final int MAX_BUILD_MARKERS = 100;
+
+    public static final int MAX_SUGGESTIONS = 3;
 
     /**
      * R-OD-5: renders build marker lines (all errors first, then warnings), capped at
@@ -123,5 +130,47 @@ public class AiReponseBuilder {
         }
         if (suffix != null) result.append(System.lineSeparator()).append(suffix);
         return result.toString();
+    }
+
+    public static String didYouMean(List<String> matches, String searchTool) {
+        if (matches.isEmpty()) return "";
+        var sb = new StringBuilder();
+        sb.append(System.lineSeparator()).append("Did you mean:");
+        int shown = Math.min(matches.size(), MAX_SUGGESTIONS);
+        for (int i = 0; i < shown; i++) {
+            sb.append(System.lineSeparator()).append(matches.get(i));
+        }
+        if (matches.size() > MAX_SUGGESTIONS) {
+            sb.append(System.lineSeparator()).append("more matches — use ").append(searchTool);
+        }
+        return sb.toString();
+    }
+
+    public static String didYouMeanFailure(String message) {
+        return System.lineSeparator() + "Did you mean: suggestion search failed: " + message;
+    }
+
+    public record ReadMissSuggestion(String appendix, @Nullable RuntimeException searchFailure) {}
+
+    public static ReadMissSuggestion readMissSuggestion(
+            String filePath, String searchTool,
+            BiFunction<String, Integer, List<String>> search,
+            @Nullable Predicate<RuntimeException> additionalCancellation) {
+        var normalized = FileUtils.normalizePath(filePath);
+        var segment = normalized.substring(normalized.lastIndexOf('/') + 1);
+        if (segment.isBlank()) {
+            return new ReadMissSuggestion("", null);
+        }
+        List<String> matches;
+        try {
+            matches = search.apply(segment, MAX_SUGGESTIONS + 1);
+        } catch (RuntimeException e) {
+            if (ExceptionUtil.isCanceled(e)
+                    || (additionalCancellation != null && additionalCancellation.test(e))) {
+                throw e;
+            }
+            return new ReadMissSuggestion(didYouMeanFailure(e.getMessage()), e);
+        }
+        return new ReadMissSuggestion(didYouMean(matches, searchTool), null);
     }
 }

@@ -6,7 +6,7 @@
 
 The plan/dev agent system uses a **two-phase, user-controlled workflow** with optional manual handoff.
 
-> An **orchestration layer** on top of this flow is designed in [Peon-PO (Jon)](po-agent-jon.md): a
+> An **orchestration layer** on top of this flow is designed in [Jon](po-agent-jon.md): a
 > docs-owning agent that drives its own Plan/Dev instances via `jon*` tools with `planComplete` /
 > `planImplemented` completion signals. The one-shot handoff described here stays the standalone path.
 
@@ -14,21 +14,21 @@ The plan/dev agent system uses a **two-phase, user-controlled workflow** with op
 graph LR
     A[User] -->|send| B(AiPlanAgent)
     B -->|saves plan.md| C{handoff button}
-    C -->|click "Give Peon-Dev"| D(AiDevAgent)
+    C -->|click "Give Dev"| D(AiDevAgent)
 ```
 
 ### Flow
 
 1. **Planning phase**: `AiPlanAgent` reads the project context and produces a structured plan in memory or saved to `plan.md`. Temperature: configurable via the plan temperature preference.
 2. **Handoff decision**:
-   - **Manual mode (default)**: A "Give Peon-Dev" button appears when the planning agent's work is complete. User clicks it → control transfers with context (last AI message + plan if saved).
+   - **Manual mode (default)**: A "Give Dev" button appears when the planning agent's work is complete. User clicks it → control transfers with context (last AI message + plan if saved).
 3. **Implementation phase**: `AiDevAgent` receives the plan and implements it.
 
 ### Key Components
 
 | Class | Location | Role |
 |-------|----------|------|
-| `AiPlanAgent` | core/agent/ | Built-in planning agent; hardcoded to handover to Peon-Dev via `handoverTo()` → returns `AiDevAgent.NAME`. Not configurable via AGENT.md. |
+| `AiPlanAgent` | core/agent/ | Built-in planning agent; hardcoded to handover to Dev via `handoverTo()` → returns `AiDevAgent.NAME`. Not configurable via AGENT.md. |
 | `AiDevAgent` | core/agent/ | Built-in implementation agent; receives plan context on handoff. |
 | `CustomAgent` | core/agent/ | User-defined agents with optional `handover: some-agent-name` frontmatter field.
 
@@ -37,7 +37,7 @@ graph LR
 ```java
 // AiPlanAgent.handoverTo() — hardcoded target
 @Override public String handoverTo() {
-    return AiDevAgent.NAME;  // always "peon-dev"
+    return AiDevAgent.NAME;  // always "dev"
 }
 ```
 
@@ -45,7 +45,7 @@ graph LR
 1. The **plan file path with handover instruction** is added to standing orders (governs dev agent's first turn). ✅
 2. The **plan content** itself is added as a `UserMessage` ("chat") to the new handover agent's memory.
 
-Standing orders ensure the plan path + "Handover from Peon-Plan" directive survive any compaction in the dev agent's first turn, while the full plan content provides detailed implementation guidance as payload.
+Standing orders ensure the plan path + "Handover from Plan" directive survive any compaction in the dev agent's first turn, while the full plan content provides detailed implementation guidance as payload.
 
 **When no plan**: Only the last AI message from planning phase is transferred (intentional — avoids bloating dev context with full conversation history).
 

@@ -1,4 +1,4 @@
-# ADR-0023: Jon (Peon-PO) reuses the plan model slot, defaulting to the dev/main model
+# ADR-0023: Jon reuses the plan model slot, defaulting to the dev/main model
 
 **Status** · **Superseded by [ADR-0036](0036-po-own-model-slot.md)** (2026-09-03, umgesetzt in
 Zyklus 3a). Jon besitzt seit 3a einen eigenen `po`-Slot; der Fallback bei leerem Slot ist die
@@ -8,7 +8,7 @@ damit eingetreten. Der Regressionstest heißt jetzt
 Die folgende Beschreibung ist **historisch**.
 
 ## Context
-Jon (Peon-PO) is a distinct agent in the dropdown, but he must not force the user to configure a
+Jon is a distinct agent in the dropdown, but he must not force the user to configure a
 *third* model preference next to Dev (`PREF_MODEL`) and Plan (`PREF_PLAN_MODEL`). Opening Jon **first**
 used to yield "No model configured": `AiPoAgent` inherited the `AiAgent` defaults
 (`getAgentModelName()` → `null`, `setAgentModelName()` → `false` no-op), so the model auto-selected by
@@ -35,4 +35,4 @@ The persistence side matches: `LlmPreferenceInitializer.saveModel` / `saveThinkS
   `PREF_PO_MODEL` slot — a deliberate follow-up, not an accident.
 - No third model preference is introduced; the config surface stays Dev + Plan.
 - Regression covered by `PeonAiServiceTest.test_po_model_uses_plan_slot_and_defaults_to_dev_model`.
-- Realised in [Jon — Peon-PO](../../org.sterl.llmpeon.core/docs/po-agent-jon.md) (feature doc with the BDD rules).
+- Realised in [Jon](../../org.sterl.llmpeon.core/docs/po-agent-jon.md) (feature doc with the BDD rules).

@@ -370,6 +370,21 @@ public class EclipseSearchFilesToolTest extends AbstractIntegrationTest {
         assertContains(result, "Alpha.java");
         assertEquals("Refresh must not run when the first search finds results", 0, refreshCalls[0]);
     }
+// UC-RT-1
+    @Test
+    public void readMissInSelectedProjectSuggestsExistingForeignFile() {
+        var tool = selectedProjectTool();
+        var falsePath = "/" + PeonTestFixture.PROJECT_NAME + "/Other.java";
+        assertFalse("Fixture must not have Other.java in selected project",
+                project.getFile("Other.java").exists());
+        assertTrue("aaa_other must have Other.java",
+                otherProject.getFile("Other.java").exists());
+
+        var sep = System.lineSeparator();
+        var expectedMiss = "No eclipse file found for '" + falsePath + "'." + EclipseUtil.unresolvedHint(falsePath);
+        assertEquals(expectedMiss + sep + "Did you mean:" + sep + "/aaa_other/Other.java",
+                tool.eclipseReadFile(falsePath, null, null));
+    }
 
     private EclipseWorkspaceReadFileTool selectedProjectTool() {
         var tool = new EclipseWorkspaceReadFileTool();

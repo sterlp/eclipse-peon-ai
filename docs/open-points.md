@@ -3,55 +3,23 @@
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.md).
 
-## 2026-11-05 — Phantom-Projekt-Crash-Zyklus (Jon, autonom nach Pauls Freigabe)
+## 2026-11-16 — Befunde aus Pauls erstem Test auf main
 
-- 🔒 **R-PT-8 (Query nennt geschlossenes Projekt)** — Paul 2026-11-05: „gut so, ist ein User
-  Fehler und so sieht er es" — bestätigt, Regel lebt als **R-PT-8/UC-PT-8 ✅** in
-  `org.sterl.llmpeon/docs/plan-tool.md` (gebaut inc-11, Mutanten belegt).
-- 🔒 **R-SEL-4 stale ❌-Flip (2026-11-05)**: UC-SEL-4-Tests existieren seit 2026-09-16
-  (`UserContextTest:279–371`), der ❌ war Doc-Drift — Jon hat auf ✅ geflippt (lint grün, Tests
-  belegen die BDDs). Kein Code-Change.
-
-## 2026-10-31 — Issues vom Reparatur-Zyklus (Paul: „erst aufnehmen, Fix auf Ansage")
-
-- 🔒 **Issue 2 — Default-Sortierung im Dropdown defekt** (gebaut auf `web-factory-goon`): der
-  Fallback griff nur, wenn die Datei gar keine Patterns lieferte (`patterns.isEmpty()`); matcht
-  **kein** Agent irgendein Pattern, gilt jetzt die Default-Ordnung (Jon zuerst, Rest alphabetisch)
-  samt `log.warn` — Regel **R5** in `org.sterl.llmpeon.core/docs/agent-ordering.md`. Pauls eigene
-  `agent-order.txt` wird nicht migriert (Clean Break — er zieht sie selbst auf die neuen Namen).
-- 🔒 **Issue 1 — `NamedAgent` gelöscht** (gebaut auf `web-factory-goon`): der Record trug keine
-  Information mehr — `uiName ≡ getName()` an jeder Produktionsstelle, divergiert nur in
-  Stale-Test-Fixtures. Clean Break ohne Alias und ohne Migration über core → plugin → aifactory:
-  Team-Mitglieder (`AiPoAgent.getTeam()`), `PoDelegateTool`, `AgentsTool`, Header-Widget und
-  Roster-Tests arbeiten direkt auf `AiAgent` + `getName()`. ADR-0025 und `docs/adr/index.md`
-  bleiben bewusst historisch auf `NamedAgent` (Protokoll, keine aktuelle Schnittstelle).
-  Paul 2026-10-31: „richtig".
+- ❓ **Statuszeile `waiting for AI...` verschwindet manchmal bei einem File-Read-Tool** (Paul,
+  nicht immer reproduzierbar). Kandidaten: `AIChatView.java:321/431/819` (Setz-Stellen) gegen den
+  Tool-Render-Pfad; verwandt mit Header-State-Leak und „Live-Status im Retry-Backoff". Erst messen
+  (welches Tool-Event räumt die Zeile ab), dann SOLL.
+- ❓ **Preview-Slaves ohne Env-Block?** Dev hat im R-SEL-6-Zyklus gemessen, dass
+  `agentForPreviewSlot(DEV/PLAN/REVIEW)` kein `Today:`/`user language:` im Static-Kontext hat.
+  `sklaven-kontext-plan.md` sagt, die Sklaven bekommen dieselben Static-Context-Infos. Ungeprüft
+  ist, ob das nur für Preview-Instanzen gilt oder auch für die echten RAM-Sklaven.
+- ❓ **Disk-Plan-Testfixtures (Review P2, Bestand):** `AgentContextComponentTest`/`PeonAiServiceTest`
+  überschreiben ein vorhandenes `overview.md` und löschen es im `finally`; ein nicht leerer
+  `peon-plan`-Ordner lässt `Files.deleteIfExists(planDir)` werfen. Mini-Fix bei nächster Berührung.
 
 ## 2026-10-30 — Namensalignment-Nachzieh-Zyklus (Jon, Nachtzyklus)
 
-- ⏳ **Jons Agent-File lädt jetzt `AGENTS-JON.md` (Clean Break — Jon 2026-10-30, Nachtzyklus).**
-  Der Resolver bietet die Kandidaten aus dem **Display-Namen unverändert** an
-  (`AGENTS-Jon.md`/`agents-jon.md`/`AGENTS-JON.md`) — der `Peon-`-Strip ist ersatzlos weg. Eine
-  bestehende `AGENTS-PO.md` verliert still ihre Wirkung. Entscheidung nach Repo-Regel „Clean break over
-  migration" + ADR-0079: **kein Alias**, Docs/Release-Note/CHANGELOG auf `AGENTS-JON.md` gezogen,
-  Jon-Fall als Test gepinnt (Delta-Inkrement). **Paul bitte bestätigen** — falls du das Alias-
-  Verhalten `Jon → AGENTS-PO.md` willst, sagen (dann Resolver-Änderung + Docs zurück).
-- ⏳ **`AGENTS-PO.md` → `AGENTS-JON.md` liegt uncommittet im Working Tree** (`git mv`, 2026-10-30) —
-  Agenten committen `AGENTS*.md` nie: Paul bitte bestätigen und **selbst** committen. Kein
-  Zwischenzustand mit beiden Dateien.
-- ⏳ **Rest-Ork-/Peon-Namen in älteren SOLL-Docs (Altbestand, Rest-Inventar 2026-10-30):** nach dem
-  Inc-6-Durchzug bleiben ~35 Doc-Dateien mit alten Namen — core/docs u.a. `prompts.md`,
-  `plan-dev-agent-design.md`, `skill-evolution-loop.md`, `async-agent-tools-proposal.md`,
-  `builtin-agent-prompt-tracked.md`, `write-path-validator.md`, `web-tools.md`, `temp-file-tool.md`,
-  `sklaven-kontext-plan.md`, `shell-tool.md`, `search-agent-tool-architektur.md`,
-  `queued-user-messages.md`, `provider.md`, `per-agent-think.md`, `tool-output-disclosure.md`,
-  `tool-result-size.md`, `tagged-results.md`, `review-agent.md`, `codegraph.md`, `mcp.md`,
-  `agent-tool-config.md`, `agent-error-memory.md`, `bounded-caches.md`, `output-trim-service.md`,
-  `context-message-concept.md`; plugin-Docs `default-inheritance.md`, `icons.md`, `plan-tool.md`,
-  `advanced-configuration.md:291`, `project-problems-tool.md`, `workspace-nesting.md`; dazu
-  `agenten-status-im-header-mvp-plan.md` und `docs/adr/**` (Protokolle, bleiben alt). Glossar-Regel:
-  Angleich bei Berührung; ein Massen-Rename braucht Paul (Glossar-Regel 6).
-- ⏳ **P3: SSE-Client-Kopien in den Fabrik-Tests extrahieren (nächster Zyklus).** Fünf Kopien des
+- ❓ **P3: SSE-Client-Kopien in den Fabrik-Tests extrahieren (nächster Zyklus).** Fünf Kopien des
   Live-Test-Client (Delegation-, TeamInternals-, WritePinning-, ChatTurn-Test je eine, plus
   `eventNames()`-Duplikat in `DelegatedAnswerTest.LiveStream`) — Infrastruktur, keine doppelte Szene;
   eigener rein mechanischer Refactor über ~500 Test-Zeilen mit eigenem Gate.
@@ -63,34 +31,11 @@ Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.
 - ❓ **Manuelle Nachweise Agenten-Namen/Origin (Paul):** Browser-Proof Fabrik auf 8099 + Plugin-Harness
   `test-chat.html` („Delegation (Jon · Dev · Jon)“, „AI without origin“) — braucht Pauls Modell-Konfig
   und Augen.
-- 🔒 **Queue-Drain-Race (Jon 2026-10-30, bestätigt + gefixt):** Claim+Enqueue atomar
-  (`claimTurnSlotOrQueue`), Release nur noch mit letztem Queue-Blick
-  (`nextQueuedEntryOrReleaseSlot`); roter Test
-  `AbstractAgentQueueReleaseRaceTest#inputArrivingWhileTheTurnReleasesItsSlotIsAnsweredByThatTurn`.
-  Bewusst offen: Plugin-Seite `queueMessage` (`AIChatView:618-620`) prüft `isWorking()` außerhalb des
-  Fensters — Contract-Verhalten, kein Core-Fix.
-- ⏳ **P1-Variante Cancel-/Fehler-Pfad (nächster Bug-Zyklus, test-first):** das Release nach
+- ❓ **P1-Variante Cancel-/Fehler-Pfad (nächster Bug-Zyklus, test-first):** das Release nach
   `handleAbortAndDrain` (`finally: working.set(false)`) sieht die Queue nicht atomar — ein Input im
   Fenster strandet bis zum nächsten Send. Geringere Severity (der User bricht gerade ab), deshalb nicht
   in diesem Zyklus.
-- ⏳ **P1 Claim-Seite als Monitor-Paar-Invariante akzeptiert (Jon):** per Rendezvous nicht
-  deterministisch erzeugbar; die Release-Seite ist durch den roten Test bewiesen, die Invariante steht in
-  `org.sterl.llmpeon.core/docs/queued-user-messages.md` Rule 10 — Paul zur Rückversicherung.
-- 🔒 **Scaffold heißt `Scaffold` (Jon 2026-10-30).** Der Name zieht **jetzt** mit, nicht in V2 —
-  ADR-0079 verlangt die Rolle ohne Präfix, und die Homepage-Anleitung sagt bereits „Select
-  **Scaffold**". Clean Break: kein Alias, keine Migration (der Agent wird ohne State-Verzeichnis
-  gebaut, es existiert kein `Peon-Scaffold-history.jsonl`). Folge: eigene `agent-order.txt`-Muster
-  auf `^Peon-Scaffold$` bzw. `Peon-.*` matchen nicht mehr.
-- ⏳ **Fehler-Ergebnis einer Delegation erscheint wörtlich als Mitglieder-Zeile** (aifactory
-  open-points) — so gebaut („wie es ist“), andersfall = neuer Core-Mechanismus. unverändert offen.
 
-
-## 2026-10-29 — R-AEM-3 Trigger-Entscheidung (Jon autonom aus Pauls Zweckvorgabe)
-
-- 🔒 **Trigger „nutzlose Message" = blank ODER Message == Cause-Klassenname (JDK-Envelope):** die
-  ursprüngliche reine Blank-Bedingung war nach Messung im Produktionspfad unwirksam (refused kommt
-  als `CompletionException`-Envelope mit bloßem Klassennamen durch). **Paul bestätigt 2026-10-29.**
-  Mid-Stream-`"closed"` und verschachtelte Envelopes bewusst außen (Revisit mit R-CC-7).
 
 ## 2026-10-29 — Neue Regel-Kandidatin: „Wir werfen keine Fehler ohne Message" (Paul)
 
@@ -110,73 +55,21 @@ Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.
   `DefaultCodegraphProbeTest.java` (2026-10-29, 11:52) — im selben Zyklus klären (behalten als
   bewusste Suppress oder Issue fixen; `@SuppressWarnings` nie als Dämpfer gegen echten Befund).
 
-## Release-Doku-Auflösung (2026-10-20) — github-eclipse-repo.md aufgelöst (ADR-0072)
-
-- ⏳ **Compact-Briefing-Schema (compressor.md):** 3 Ergänzungen vorgeschlagen — STANDING-RULES-Slot
-  (Pauls dauerhafte Verhaltensregeln als eigener Block), preserve-Pfade erweitern, memory.md =
-  complement-not-replace (Briefing ergänzt memory.md, ersetzt es nicht). Freigabe Paul steht aus.
-
-
-## 2026-10-23 — Compact-UI: Deferred-Reset für Turn-Compacts (Story 2, Nachtzyklus)
-
-- ⏳ **Turn-Compacts bauen die Chat-View erst beim nächsten Turn-Event neu** (nicht sofort):
-  Da-Dok-Review-F1 zeigte, dass der sofortige Reset bei Pre-Turn-/In-Loop-Compacts die frisch
-  getippte User-Nachricht aus dem Chat fegt (sie ist noch nicht im Memory). Entscheidung von Jon
-  aus dem Regel-Intent abgeleitet (Chat = Abbild des Memorys): Trigger MIT laufendem Turn →
-  DEFERRED (Pending-Reset, Flush am `onCallStart` desselben Agenten), Trigger OHNE Turn (Buttons)
-  → NOW, Sklaven → NONE. `CompactFeedback.resetTiming`, gebaut + gemutiert (Inc 5 `6382e808`).
-  **Rückversicherung:** Paul bestätigt das Deferred-Timing (Smoke-Punkt 3 in memory.md §8) — oder
-  will Sofort-Rebuild mit Re-Append des User-Echos.
 
 ## 2.14.0 (2026-10-19) — Jon-Entscheidungen zur Rückversicherung
 
-- ⏳ **R-CC-19 (Zähler = Provider-Input + Schätzung der angehängten Messages):** von Jon entschieden
-  (Overflow-Klasse, für die R-CC-18 allein nicht reicht). Folge: R-CC-6 ist präzisiert — „Provider-
-  Wert ohne Tilde" gilt nur unverändert; nach `addResult` trägt der Zähler einen geschätzten Anteil
-  und zeigt `~`. **Rückversicherung:** Paul bestätigt Semantik + Tilde, oder wir nehmen
-  `updateTokenCounter` zurück (dann R-CC-18 wieder auf dem alten, blinden Zähler).
 - ⏳ **Codegraph-Windows-Fallback `cmd /c codegraph serve --mcp`:** von Jon entschieden und im
   Factory-Test gepinnt, aber **auf Windows ungetestet** (Maschine = macOS). Bei Pauls nächstem
   Windows-Lauf prüfen: startet der Server ohne absoluten Binary-Pfad?
 
 ## 2.14.1 (2026-10-19) — externes Review TOP 1–3: Jon-Entscheidungen
 
-- ⏳ **Delegations-Compact feuert pro Delegation, nicht pro Turn** ([ADR-0071](adr/0071-compact-policy-owned-by-delegation.md)):
-  Jeder Jon-Call an einen Sklaven (`askDev`, `buildWithDev`, …) compactet ihn, sobald er über 70 % liegt —
-  auch mitten in einer laufenden Story. Das ist Pauls SOLL („vor jeder neuen Aufgabe"), die **Kosten**-Folge
-  ist neu: mehrere Delegationen hintereinander können mehrere Compressor-Calls auslösen. Falls das zu
-  teuer ist: Faktor anheben (eine Konstante in `PoDelegateTool`) oder nur bei einem Themenwechsel
-  compacten. Rückversicherung Paul.
-- ❓ **Test-Fixture-Duplikat (Da-Dok CONCERNS 2, 2026-10-20):** StreamMock/monitor/ProbeTool-Fixture
+- ❓ **Test-Fixture-Duplikat (Review CONCERNS 2, 2026-10-20):** StreamMock/monitor/ProbeTool-Fixture
   in ≥3 core-Testklassen nur namentlich dupliziert (`AbstractAgentPreTurnCompactTest`,
   `AbstractAgentCompactResultTest`, `AiDeveloperAgentTest`). Bagatelle — eigener Micro-Zyklus
   (gemeinsame Test-Fixture im core) oder weiterleben? Jon-Empfehlung: erst wenn die vierte Kopie
   entsteht.
 
-- ⏳ **R-CG-15 neu (Projektwechsel im Monorepo):** Befund **bestätigt** — `CodegraphConnectionService:106`
-  kehrt bei gleichem `workDir` zurück, `State.project` bleibt A, `CodegraphContextItem` mappt weiter A.
-  SOLL geschrieben: Verbindung bleibt, State-Refresh auf B. Nebenwirkung, die Paul kennen sollte:
-  jeder Projektwechsel mit gemeinsamem Index erzeugt **eine neue Chat-Zeile** (Dedup-Key ändert sich);
-  Alternative wäre ein Live-Projekt im Item (dann zwei Wahrheiten: State + Supplier).
-- ⏳ **R-CG-14 Fix-Mechanik präzisiert:** der Reviewer schlug „Adopt und Disconnect über denselben
-  Lock" vor — Jon: **nein**, ein Lock über `service.connect()` lässt Dispose auf einen 5–10-s-Spawn
-  warten. Spezifiziert: Generation + `disposed`-Flag, Prüfung nach dem Connect, Lock nur um den
-  kurzen Zustandswechsel. Ergänzt: eine stale Generation schreibt auch **kein** `setMcpEnabled`
-  (der `finally` in `McpConnectionService.connectServers` würde sonst einen Toggle-OFF überschreiben).
-
-## 2.14.1 (2026-10-19) — Workspace-Nesting: Jon-Entscheidungen zur Rückversicherung
-
-- ⏳ **Ergebnis-Limit schlägt Tiefe (R-WN-1):** Ist das Limit erreicht, wird ein schon gelieferter
-  Duplikat-Eintrag nicht mehr auf die tiefere Sicht umgeschrieben (kein Volldurchlauf nach dem Cap);
-  die Datei zählt weiterhin einmal, das Limit ist benannt. **Von Jon entschieden** (Performance gegen
-  ein Rand-Kosmetikum: der Pfad zeigt dann den Parent, die Datei ist trotzdem nur einmal da).
-  Alternative wäre ein Volldurchlauf nach dem Cap — bei jedem großen Monorepo-Search teuer.
-- ⏳ **„Gleich tiefe Projekte → zuerst gefundener Pfad bleibt" bleibt ungetestet (Da-Dok F1):**
-  der Fall ist nur bei **demselben** Ordner zweier Projekte beobachtbar, und Eclipse lehnt ein zweites
-  Projekt am selben Ordner normalerweise ab (gleicher Disk-Pfad = gleiche Datei; anderer Disk-Pfad =
-  andere Datei, kein Dedup-Fall). Die `!equals`-Zusicherung bleibt als Defensive stehen — sie ist im
-  Test-Workspace nicht rot zu bekommen. **Rückversicherung:** Paul akzeptiert das, oder wir bauen den
-  Guard ab (dann müsste irgendwo belegt sein, dass Eclipse gleiche Projekt-Ordner ausschließt).
 
 ## ❓ Doc-Aufräum-Slice: Belege, Messungen, Vorfälle raus aus den Feature-Docs (Paul 2026-10-19)
 
@@ -187,13 +80,13 @@ Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.
   `// R-…` / `// UC-…`. **Was fliegt:** Commit-Hashes, Surefire-Zahlen, Messreihen,
   Vorfall-Erzählungen, Beleg-Tabellen **und Testnamen im Fließtext** (sie brechen bei jedem Rename).
 - **Stand 2026-10-23 (Docs-Slim-Zyklus):** Hashes, Surefire-/Test-Zahlen, Messwerte und
-  Beleg-Tabellen sind aus allen drei Docs-Bäumen entfernt (Da-Dok-Review: Hash-Grep 0 Treffer).
+  Beleg-Tabellen sind aus allen drei Docs-Bäumen entfernt (Review: Hash-Grep 0 Treffer).
   **Offen:** **Testnamen im Fließtext** (dieser Entscheidung folgend — überall) und Zeilen-Anker
   (`File.java:24`, gleiche Drift-Klasse).
 - **Ablage:** ersatzlos — Evidenz lebt in **Commit-Messages** (je Inkrement 1–2 Zeilen, nur
   tatsächlich gefahrene Gates) + memory-Tools (Paul 2026-10-22: `nachweise/`/`peon-plan/belege`
   verworfen); git hat die Historie.
-- ❓ **Linter-Guard gegen Drift (Da-Dok-Review 2026-10-23):** Evidenz-Muster (Commit-Hashes,
+- ❓ **Linter-Guard gegen Drift (Review 2026-10-23):** Evidenz-Muster (Commit-Hashes,
   Test-Zahlen) als Linter-FindingType oder Gate-Grep über `docs/**`, damit der Bestand nicht
   wieder schleichend wächst. Positiv nachweisen: eine Testzahl in ein teilnehmendes Doc setzen
   ⇒ neue Regel muss rot.
@@ -205,7 +98,7 @@ Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.
 Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 
 - ❓ **Auto-Compact bei Context-Overflow (2026-09-29):** Request überschreitet das Fenster
-  (`exceed_context_size_error`, Da Mek 431005 vs. n_ctx 170240 nach aufgeblähtem Tool-Ergebnis)
+  (`exceed_context_size_error`, Dev 431005 vs. n_ctx 170240 nach aufgeblähtem Tool-Ergebnis)
   → Agent soll **selbst** compacten statt hart zu sterben; aktuell stirbt der Call (bekannter
   Dreiklang aus open-to-discuss.md: Hint-Dedup, ApiRetry auf totem Payload, stille Cancellation).
   Fall 2+3 (Thinka, 811k → 954k): Clear brachte NICHTS → Flut kommt aus der per-Request-Injektion
@@ -222,19 +115,19 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   (ADR-0032) — jede Mutation erzeugt eine frische Vollkopie aller Einträge bis zum Compact. By
   design, skaliert aber schlecht. Eigener Design-Punkt (inkrementeller Snapshot / Dedup /
   Compact-frequenter)?
-- ⏳ **CompactSessionTool kompaktiert `agent.getMemory()`, Loop fährt `req.getMemory()` (Bug B,
+- ❓ **CompactSessionTool kompaktiert `agent.getMemory()`, Loop fährt `req.getMemory()` (Bug B,
   latent, 2026-09-27):** `CompactSessionTool.java:23-29` vs. `ToolService:200`; für Haupt-Agenten
   zufällig dasselbe Objekt (`AbstractAgent.doCall` setzt es per Konvention). Sobald ein echter
   SearchAgent mit compactSession existiert: Compact leert das **falsche** Memory → Summary
   unerreichbar, R-CC-4-Guard blockiert neue Hints → stuck. Optionen: (1) Tool kompaktiert
   `req.getMemory()` (berührt Compact-Ownership), (2) fail-fast im Loop (ehrlicher Fehler).
-- ⏳ **compactSession trotz agent == null exponiert (2026-09-27):** Hint sagt „cannot be compacted",
+- ❓ **compactSession trotz agent == null exponiert (2026-09-27):** Hint sagt „cannot be compacted",
   Tool wirft erst beim Call — `toolSpecifications` lässt es weg bei agent == null. Mit Bug B
   zusammen behandelbar.
 - ❓ **Header: Jon-Context-Größe bleibt „0k estimate" (2026-09-27):** Roster-Refresh ist
   event-getrieben (`AIChatView:336-340` via onTokenUsage) — Turn ohne Provider-Usage feuert nicht.
   SOLL-Frage: Estimate-Pfad zusätzlich in den Roster-Refresh?
-- ⏳ **ApiRetry geteilt über toBuilder (2026-09-27, ADR-0058):** parallele Nested-Calls würden um
+- ❓ **ApiRetry geteilt über toBuilder (2026-09-27, ADR-0058):** parallele Nested-Calls würden um
   das Retry-Guthaben racen; heute keinen, Revisit mit async-agent-tools-proposal.md. Die
   `StreamingBridge` ist seit R-AEM-4 je Aufruf frisch (2026-11-15).
 
@@ -244,7 +137,7 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   nicht in `defById` auf, `:254` überspringt sie im ✅-Check. Mit UC-only `idPattern` sind
   `// R-…`-Testmarker unsichtbar; mit einem Muster, das sie einschließt, werden sie `VERWAIST`.
   Folge: R-only-Docs (`tagged-results.md`, `compact-input-budget.md`, `compact.md`) haben **kein**
-  maschinelles ✅-Gate — Da-Dok-Review ist die einzige Absicherung. Optionen: (a) R-Form als
+  maschinelles ✅-Gate — Review ist die einzige Absicherung. Optionen: (a) R-Form als
   Definition zulassen (Überschriften `#### R-<F>-<n>`, wie bei UC), (b) solche Docs zusätzlich mit
   UC-Use-Cases ausstatten. Ohne Entscheidung bleibt der Linter blind für einen Großteil der Docs.
   *(Nebenbefund 2026-10-18: `codegraph.md` hat `idPrefix: CG` bereits, `mcp.md` keins — beides
@@ -260,7 +153,7 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   die Selektion weiter, nur der Refresh unterblieb. Wenn das bewusst ist: kein Punkt. Wenn nicht:
   der frühe Return muss hinter `setTextSelection`.
 
-## Nachträge zum Compact-Zyklus (R-CC-18, 2026-10-19)
+## Nachträge zum Compact-Zyklus (Tool-Loop-Compact, 2026-10-19)
 
 - ❓ **Estimate vs. gesendetes Payload (2026-10-19, live gemessen):** `compactDev` meldete
   `~18772 (estimate)`, der nächste Delegate-Call ging mit **175555** Tokens raus und starb am
@@ -270,7 +163,7 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   Diagnose-Dreiklang gegen `n_prompt_tokens` des Fehlers stellen. Wenn die Divergenz bleibt, liegt
   sie außerhalb des Zählers (per-Turn-Injektion, Static, Sub-Loop) → zurück in den
   [Context-Overflow-Zyklus](#context-overflow--contentprovider-bug-zyklus-paul-order-2026-10-14--nächster-zyklus).
-- ⏳ **Klassen-Zyklus `compact` ↔ `tool` über die `COMPACT_HINT`-Konstante (2026-10-19):** die neue
+- ❓ **Klassen-Zyklus `compact` ↔ `tool` über die `COMPACT_HINT`-Konstante (2026-10-19):** die neue
   Komponente sitzt in `compact` (richtig) und liest `ToolService.COMPACT_HINT`; `ContextTrimComponent`
   tat das schon vorher. Bewusst nicht mit-gefixt (D6, sonst hätte ein Lösch-Inkrement eine
   Konstante verschoben) — Cleanup-Kandidat: Konstante nach `CompactConstants`, dann ist
@@ -293,7 +186,7 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 - ❓ **Live-Status im Retry-Backoff-Fenster (2026-09-10):** `StreamingBridge.onError` versteckt die
   Statuszeile → 10s…5min Funkstille (User liest „hängt"); SOLL-Idee „retrying in Xs". Verwandt:
   Header-State-Leak.
-- ⏳ `ShellTool.confirmationProvider` non-volatile — pre-existing, harmlos, 1-Wort-Fix bei
+- ❓ `ShellTool.confirmationProvider` non-volatile — pre-existing, harmlos, 1-Wort-Fix bei
   nächster Berührung.
 
 ## ❓ Offene Design-Fragen (Paul)
@@ -304,7 +197,7 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   Planung: Advanced-Feld, Frontmatter-Key `provider`, oder beides. Kontext:
   [model-config-widget.md](../org.sterl.llmpeon/docs/model-config-widget.md) R-MCW-5.
 - **test_project-Fixture SOLL vs. IST (2026-09-27):** [test-setup.md](../org.sterl.llmpeon/docs/test-setup.md) sagt minimal,
-  IST enthält u. a. `pom.xml`/`Dockerfile` (Herkunft unklar, kein Test-Output). Da-Mek-Empfehlung:
+  IST enthält u. a. `pom.xml`/`Dockerfile` (Herkunft unklar, kein Test-Output). Dev-Empfehlung:
   behalten + Doc-SOLL anpassen, README-Zeile ergänzen (Zweck + `peon.test.project`-Override).
 - **buildWithDev-Compact (2026-09-03):** Compact statt Reset bei nennenswertem Kontext (~50 %),
   nur bei neuem Plan. Eigene kleine Story, „da brauchen wir kein Test".
@@ -316,7 +209,7 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   mussten zu Fließtext degradiert werden). Kandidat: ☠️ als Info-Status.
 - **BDD-Test Compact-Hint-Fallback:** Regel gebaut, Paul: „wann anders" — Backlog.
 
-## ⏳ Mini-Cleanups / geparkt
+## Mini-Cleanups / geparkt
 
 - ❓ **Read-Tools-Rollout auf `OutputTrim` (2026-10-17):** `eclipseReadFile`/`diskReadFile` clampt
   Bereiche, aber nicht über die Trim-Komponente (Head/Tail-Disclosure) — Migration = eigenes
@@ -329,7 +222,7 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   die WIP-Änderungen selbst nach kurzem Review (2026-10-17); SOLL klären: Rename bestätigen +
   shell-tool.md R3/Docs nachziehen, oder zurückrollen.
 
-- **Think-BDD-Lücken (a)–(g) (2026-09-27, Da-Dok-Provider-Think-Audit):** (a) Gemini
+- **Think-BDD-Lücken (a)–(g) (2026-09-27, Review-Provider-Think-Audit):** (a) Gemini
   buildModel-Thinking-Branch, (b) OpenAI-Off-Varianten `FALSE`/`No`/` Off `, (c)
   GITHUB_COPILOT/GITHUB_MODELS Request-Params, (d) Anthropic konkret-Level + unknown string,
   (e) LM Studio extra_body-Override, (f) OPEN_AI_OFFICIAL reasoningSummary=DETAILED, (g)
@@ -352,19 +245,17 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 
 ## Sonstiges
 
-- ⏳ **User-Smoke Header-Compact-Buttons:** Optik ✅; ausstehend: Re-Compact-Noop,
-  Disabled-States, Tooltip — nach Merge.
-- ⏳ **AGENTS.md-Ambiguität „Homepage-Doku: Dev-Inkrement vs. PO-Docs-Zyklus"** → Merge-Gate
-  präzisieren (Da-Dok-Empfehlung, Plan §12).
+- ❓ **AGENTS.md-Ambiguität „Homepage-Doku: Dev-Inkrement vs. PO-Docs-Zyklus"** → Merge-Gate
+  präzisieren (Review-Empfehlung, Plan §12).
 
 ## Night-Cycle 4 (2026-10-15) — Nachbefunde
 
-- ⏳ **Cap-Test-Rest-Risiko (Da-Dok CONCERNS 2):** der Cap-Test hängt am Build-Erfolg aller 3
+- ❓ **Cap-Test-Rest-Risiko (Review CONCERNS 2):** der Cap-Test hängt am Build-Erfolg aller 3
   Seed-CUs — liefern nur 2 von 3 CUs Marker (80 < 100), rotet er erneut in degradierten
   Recovery-States. Eskalationspfad = R6-Fallback (b) (direktes Marker-Seeding +
   `eclipseReadProjectProblems`, gleicher Cap-Pfad). Nur melden, wenn er erneut rotet — kein
   präventiver Umbau.
-- ⏳ **Geteilte disk-Tool-Instanzen: mutable `AbstractTool.request` (Da-Dok CONCERNS 5):** Jons
+- ❓ **Geteilte disk-Tool-Instanzen: mutable `AbstractTool.request` (Review CONCERNS 5):** Jons
   po-Registry teilt dieselben disk-Tool-Instanzen mit dem shared-Service; `request` wird pro Call
   gesetzt und im `finally` genullt (`SmartToolExecutor.run:37-58`). Single-Active-Agent: kein
   konkretes Race; bei Pauls **Async-Interface** (parallele Turns) würde ein fremder Request Jons
@@ -384,25 +275,11 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   Preference-Pages injizieren statt globaler Handle. Aufwand: 4 Call-Sites + Test-Fixture-Umbau
   (`clearCurrent()` in 5 Methoden). Jon: reeller Nutzen erst bei mehreren Views — es gibt heute
   genau einen aktiven Chat-View. Entscheidung offen (Paul).
-- ⏳ **`ToolSelection` sealed interface (externes Review, Vorschlag):** `enables(List.of(), x)=false`
+- ❓ **`ToolSelection` sealed interface (externes Review, Vorschlag):** `enables(List.of(), x)=false`
   vs. `nameFilter("")=alle` ist eine implizite Doppelbedeutung von „leer" (absent wird zwar im
   `parseAllowlist` zu null normalisiert, aber der Typ trägt die Unterscheidung nicht). Sealed
   `All`/`Filtered(allow, deny)` würde Sonderregel „nur Negationen" in eine testbare Resolve-Funktion
   ziehen. Gestaltungspunkt, kein Defekt — Revisit, falls ToolPolicy erneut angefasst wird.
-
-## Codegraph-Bau (2026-10-17, autonome Entscheide Jon — Rückversicherung Paul)
-
-- ⏳ **Reserved Name `codegraph` UNBEDINGT reserviert (Q1, Jon-Entscheid a):** der Name `codegraph`
-  ist im User-MCP-Pfad immer reserviert (Filter in `McpConnectionService.connectServers`), auch
-  wenn das Built-in inaktiv ist — manuelle Einträge werden gefiltert (Log-Zeile), Randwirkung: ein
-  bestehender reiner Workaround-Eintrag funktioniert NICHT mehr, sobald diese Version läuft
-  (Workaround stirbt komplett, unabhängig vom Built-in-State). Begründung: Clean Break, Name
-  gehört dem Built-in (Homepage: „Eintrag löschen"), keine State-Kopplung User-Pfad ↔ Built-in.
-  **Paul kann beim Review umwerfen** → dann State-abhängiger Filter (mehr Code, Kopplung).
-- ⏳ **Icon-Visuals (Q2, Jon-Entscheid a):** ON = `codegraph.svg`, OFF = gleiches Icon
-  disabled/gedimmt, ERROR = Platform-Icon `ImageUtil.STOP`; `codegraph_dark.svg` erzeugt Da Mek
-  nach Hammer-Muster (kein neues Design-Asset von Paul nötig — Gegencheck nach Rückkehr möglich).
-
 
 ## Codegraph-Nachtzyklus 5 (2026-10-17) — geparkt
 
@@ -435,7 +312,7 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   MCP-Menge des ToolService des jeweiligen Slot-Agenten × CSV-Filter; Codegraph ist nur auf
   shared + po verbunden. Offen: **welcher Agent/Slot** in Pauls UI, und ob die Soll-Aussage aus
   R-CG-6 („explizite CSV braucht ein `codegraph`-Token") dort überhaupt wählbar ist.
-- ❓ **`McpService.connect()`-Rollback ist testlos** (Da-Dok-Review 2026-10-18): schlägt bei User-MCP
+- ❓ **`McpService.connect()`-Rollback ist testlos** (Review 2026-10-18): schlägt bei User-MCP
   Server #2 fehl, schließt der Owner den neuen Service nicht — die Leak-Freiheit hängt allein an
   `McpService.connect()` (`:87-93`, all-or-nothing: alle Clients werden im catch geschlossen). Kein
   Test pinnt das, und der Seam-Test kann es nicht (Fake überschreibt `connect()`). Testbar würde es
@@ -445,27 +322,15 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 
 
 
-## ⏳ Nachtzyklus 5 (2026-10-16) — Token-Schätzung chars×2/7 → chars/3
-- **Punkt:** Estimator `ChatMessageUtil.charsToTokens` (chars×2/7 ≈ /3.5) unterschätzt systematisch
-  (~110k statt ~120k gemessen). Paul-Idee: /3. Jon: **umgesetzt** — R1 in token-usage.md sagt
-  ohnehin schon „chars / 3", der Code war die Abweichung; zu niedrige Schätzung ist für die
-  Kontext-Anzeige (Compact-Button used/max) die gefährliche Richtung (Overflow-Risiko), zu hoch nur kosmetisch.
-- **Rückversicherung:** Paul hat /3 vorgeschlagen („nicht so wichtig, mehr Info") — Umsetzung im
-  Nachtzyklus autonom; widerspricht Paul, zurück auf ×2/7 (Änderung ist eine Konstante). **Umgesetzt
-  (Open-Q1).**
-
 
 ## 2026-10-24 — last-search-rolling-Zyklus (Nachbefunde)
 
-- ❓ **CapturingMonitor 6× / RecordingToolService 2× dupliziert** (Da-Dok-Review-B4, last-search-rolling):
+- ❓ **CapturingMonitor 6× / RecordingToolService 2× dupliziert** (Review-B4, last-search-rolling):
   gemeinsamer Test-Support im Tool-Test-Package (`CapturingAiMonitor` mit canceled-Flag +
-  `RecordingToolService`) als eigener Micro-Cleanup-Zyklus — Da-Dok-Empfehlung: extrahieren, bewusst
+  `RecordingToolService`) als eigener Micro-Cleanup-Zyklus — Review-Empfehlung: extrahieren, bewusst
   NICHT als Rework des Feature-Inkrements. Verwandt: bestehender ❓ Fixture-Duplikat-Punkt (2026-10-20).
-- ⏳ **Homepage-Update für 2.15.0 steht aus** (webSearch, Compact-Sichtbarkeit, Skill-Roots,
-  last-search-rolling wirkt nur im Agenten — evtl. kurz erwähnen): AGENTS.md verlangt User-Updates
-  im selben Inkrement, der Nachtzyklus hat sie ausgelassen. Nachholen vor/vom Release.
 
-## 2026-10-28 — Bug-Kandidaten aus dem R-CC-18.5-Zyklus (Delegations-Blocker)
+## 2026-10-28 — Bug-Kandidaten aus dem Compact-Zyklus 18.5 (Delegations-Blocker)
 
 - ❓ **Totes MCP-Tool bleibt in der Spec-Liste:** Ist ein MCP-Server nicht erreichbar, bleiben seine
   Tools angeboten — jeder Agent-Turn verbrennt Runden am toten Tool (`Tool failed - check why and
@@ -478,7 +343,7 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 
 ## 2026-11-09 — R18 Skill-Refresh-Hotfix (aifactory, Jon)
 
-- ⏳ **R18-Zusage „eigene Schreib-Änderung wird sofort sichtbar" gilt nur außerhalb der
+- ❓ **R18-Zusage „eigene Schreib-Änderung wird sofort sichtbar" gilt nur außerhalb der
   10-min-Ruhezeit** (skillRead liefert in der Ruhezeit stale Inhalte) — die gepatchte Lösung ist
   bewusst nur ein **Hotfix**. Pauls Idee (2026-11-09): „später erweitern wir die Tools, Skill-Writes
   gehen an den Scaffold, das Refresh kommt ins Tool" — Proper fix = eigenes Tool-Extension-Inkrement

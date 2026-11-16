@@ -15,7 +15,7 @@ Constrain **where an agent may write** without giving it bespoke, agent-specific
 tools (disk + Eclipse workspace) stay shared; each agent contributes a **`WriteValidator`** — the same
 way it contributes a tool filter — that vets the raw path the model passes before any write happens.
 
-This is what keeps **Peon-PO (Jon)** inside `docs/` while reusing the normal write tools. It supersedes
+This is what keeps **Jon** inside `docs/` while reusing the normal write tools. It supersedes
 the "decorator" framing of [ADR-0022](../../docs/adr/0022-write-path-allowlist-decorator.md): the effect is
 identical, but a validator injected at the write tool's path choke-point fits the `@Tool`-reflection
 model better than a wrapping decorator.
@@ -82,7 +82,7 @@ fremde Home-Pfade abgelehnt — Mutations-Nachweis `roots.add(agentsSkillsDir)`)
 
 ### R2 — Default is allow-all
 
-* GIVEN an agent that does not override `getWriteValidator()` (e.g. Peon-Dev)
+* GIVEN an agent that does not override `getWriteValidator()` (e.g. Dev)
   WHEN it calls any write tool
   THEN the write proceeds unchanged.
 

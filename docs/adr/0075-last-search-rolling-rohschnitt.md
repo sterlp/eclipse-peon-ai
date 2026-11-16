@@ -2,7 +2,7 @@
 
 **Status:** Accepted (2026-10-24, Paul — gegen Jons Empfehlung)
 
-**Context:** Der Hot-Block für Da Sniffa (`last-search-rolling`, Regeln in
+**Context:** Der Hot-Block für Search (`last-search-rolling`, Regeln in
 `org.sterl.llmpeon.core/docs/search-agent-tool.md` R-LSR-1…6) braucht eine Trim-Strategie am
 10.000-Zeichen-Cap. Zwei Varianten: ganze Paare droppen (Jons Empfehlung — fragmentfrei, da wir
 das Paar-Format selbst schreiben und Delimiter kennen) vs. roher Char-Schnitt. Pauls

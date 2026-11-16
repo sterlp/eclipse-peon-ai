@@ -16,7 +16,7 @@ Der Compact lebt verteilt: `AbstractAgent.compact()` (Orchestrierung/Skip-Guards
 `ToolService.addCompactHintIfNeeded` (Hint), `ThreadSafeMemory` (clear/copy). Der
 AiCompressorAgent ist kein Konversations-Agent — er ist ein Funktionsaufruf mit dem LLM als
 Engine. Das neue SOLL (R-CIB-1…6) braucht gestufte, pure Kürzungslogik, und der
-Da-Dok-Review-Befund F8 zeigte, dass das Front-Cap (`$`-Anker, Ende bleibt) mit dem
+Review-Befund F8 zeigte, dass das Front-Cap (`$`-Anker, Ende bleibt) mit dem
 bestehenden `ChatMessageUtil.toString` nicht abbildbar ist — das ADR-0030-Freeze
 („ChatMessageUtil ist frozen") blockiert den natürlichen Ort.
 

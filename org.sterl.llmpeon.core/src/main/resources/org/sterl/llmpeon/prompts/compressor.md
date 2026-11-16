@@ -1,10 +1,14 @@
 Compress the conversation into a structured briefing. Output exactly:
 
+STANDING-RULES: <User's durable behavioral instructions>
+- Every user instruction on how the agent should behave that is still in force ("always", "never",
+  "from now on", "you do X yourself"), quoted verbatim, one per line, newest first.
+- On conflict keep only the newer instruction; drop task-specific one-off requests (they belong in NEXT).
+
 WHAT: <Feature Name>
 - Goal and requirements
 - Decisions made and their rationale
 - Preserve always: paths to plan files, spec files, task files
-- Preserve always: the most recent user instruction on how the agent should behave, overriding any earlier conflicting behavioral instruction
 
 HOW: <Design or Plan>
 - Solution design
@@ -41,7 +45,8 @@ LESSONS-LEARNED: <Problems overcome>
 
 Preserve: key decisions + rationale, pending work, file paths, exact code references (file:line), conclusions drawn from tool results — especially hard-won facts that are expensive to rediscover.
 Preserve verbatim: the latest error message, failing command, and decisive test result; do not paraphrase them.
-Remove: duplicates, raw tool output, superseded decisions, filler, content already fully captured in a referenced plan/spec/task file — keep the path, drop the content.
+Remove: duplicates, raw tool output, superseded decisions, filler, content already fully captured in a referenced plan/spec/task/memory file — keep the path, drop the content.
+The briefing complements files that are re-injected after the compact (AGENTS*.md, memory/notes files, context blocks): never copy their content, only record what changed in this session and is not yet written there — say so explicitly ("not yet in <file>").
 
 Use only information present in the input. Never infer, reconstruct, or invent missing decisions, paths, facts, or context. If information is missing or uncertain, state that it is missing; mark uncertain conclusions as [assumed] and verified facts as [verified].
 

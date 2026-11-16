@@ -17,7 +17,7 @@ daraufhin geprüft, **wer es tatsächlich in die Hand bekommt**.
 | D4 | `reportPath` schreibt, aber `isEditTool()` meldet `false`; kein Traversal-Test | `DocsLinterTool.java:40`, `130-149` |
 
 **D2 ist der teuerste.** In der Standard-Konfiguration existierte der Linter für *niemanden* — auch
-nicht für Da Dok, dessen Prompt (`review-agent.md`) ihn beim Review-Start verlangt. Ein Prompt, der
+nicht für Review, dessen Prompt (`review-agent.md`) ihn beim Review-Start verlangt. Ein Prompt, der
 auf ein nicht vorhandenes Tool zeigt, lässt den Agenten halluzinieren oder blockieren, und niemand
 sieht es. Das ist exakt das Fehlermuster, gegen das dieses Werkzeug gebaut wurde: *ein falscher
 Pfad sieht aus wie ein sauberes Ergebnis.*
@@ -43,7 +43,7 @@ werden zu müssen:
 - der Traversal-Angriffspfad auf `reportPath` (genau die Bug-Klasse, die
   [write-path-validator.md](../../org.sterl.llmpeon.core/docs/write-path-validator.md) real hatte — und für die es hier **keinen
   Test** gab),
-- die `WriteValidator`-Kopplung je Agent (Da Dok/Da Thinka brauchten `DENY_ALL`, damit ein
+- die `WriteValidator`-Kopplung je Agent (Review/Plan brauchten `DENY_ALL`, damit ein
   „read-only" Agent nicht doch schreibt),
 - die Inkonsistenz `isEditTool() == false` bei einem schreibenden Tool,
 - `DocsLinterWritePolicyTest` samt seiner vier Tests.
@@ -56,7 +56,7 @@ schreibt **Jon** ihn nach `docs/` — er hat dort Schreibrecht, und dort gehört
 | Fassade | Methoden | Wer |
 |---|---|---|
 | `DocsIdTool` | `nextIds` | **nur Jon** |
-| `DocsLinterTool` | `lintDocs`, `lintDocsAndTests` | Jon · Da Thinka · Da Mek · Da Dok |
+| `DocsLinterTool` | `lintDocs`, `lintDocsAndTests` | Jon · Plan · Dev · Review |
 
 Beide im Package `org.sterl.llmpeon.docslinter`, beide über **einer** Kern-Instanz — ein Feature,
 zwei Sichten. Dass beide dasselbe `workingDir` teilen, ist keine Sorgfaltsfrage, sondern
@@ -70,7 +70,7 @@ Architekturebene, nur um einem Agenten einen Call vorzuenthalten, den er ohnehin
 Trennung, die diesen Zyklus begründet, ist `nextIds`; Prüfen darf jeder. **Der einfachste Schnitt
 gewinnt — verbessern kann man später, falls es je nötig wird.**
 
-**Warum überhaupt trennen:** Die ID-Vergabe ist PO-Hoheit. Vergäbe Da Mek IDs selbst, entstünden sie
+**Warum überhaupt trennen:** Die ID-Vergabe ist PO-Hoheit. Vergäbe Dev IDs selbst, entstünden sie
 zum **Bauzeitpunkt**, während der PO später eine andere ins Doc schreibt — Ergebnis: gleichzeitig
 `VERWAIST` (seine ID) und `UNBELEGT_ERLEDIGT` (die des Docs). Der Linter meldete dann Rauschen statt
 Befund, also den Zustand, gegen den er existiert.
@@ -127,7 +127,7 @@ wiederholbar: Jons Tool-Liste ist hart kuratiert, und eine vergessene Zeile fäl
 - Das Tool ist ohne Einschränkung read-only — keine Write-Policy, kein Traversal-Risiko, kein
   Validator-Setup je Agent.
 - Die Kette der ID-Hoheit ist technisch erzwungen, nicht erbeten:
-  Jon vergibt → Doc → Da Thinka plant → Da Mek kopiert → Da Dok prüft.
+  Jon vergibt → Doc → Plan plant → Dev kopiert → Review prüft.
 - Der Linter funktioniert in der Standard-Konfiguration. Die Prompt-Verträge zeigen nicht mehr ins
   Leere.
 - Ein Test deckt künftig ab, welcher Agent welche Tools sieht — die Lücke, durch die D1 entstand.

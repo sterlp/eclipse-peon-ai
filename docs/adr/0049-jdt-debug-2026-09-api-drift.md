@@ -27,7 +27,7 @@ blieben (diagnose-Sensordaten, `/org.sterl.llmpeon.test/diagnose.txt`).
 ## Consequences
 
 - Neue JDT-Debug-Fakten werden hier nachgetragen, nicht in Features neu aufgemacht.
-- Da Meks Befunde leben zusätzlich im Skill `eclipse-dpe` (Create, 2026-09-21) — dieses ADR ist
+- Devs Befunde leben zusätzlich im Skill `eclipse-dpe` (Create, 2026-09-21) — dieses ADR ist
   die projektfeste Quelle, der Skill der Arbeitswissen-Transport.
 - **Fallstrick, zweimal gelernt:** API-Contract immer im Source/Bytecode der **tatsächlich im Target
   aufgelösten** Generation verifizieren — Plan-§3-Befunde aus älteren Generationen (2026-07) gingen

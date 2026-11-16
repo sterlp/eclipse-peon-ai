@@ -1,6 +1,6 @@
 # ADR-0078 — Origin im Core: `OwnerMonitor` am Turn-Besitzer, `ToolLoopRequest` → `LoopOwner`
 
-**Status:** Accepted (2026-10-29, Paul; 2026-10-30 an den gebauten Mechanismus angepasst — Da-Dok-Review) — löst Teile von [AF-ADR-002](../../aifactory/docs/adr/002-origin-in-core-display-in-factory.md)
+**Status:** Accepted (2026-10-29, Paul; 2026-10-30 an den gebauten Mechanismus angepasst — Review) — löst Teile von AF-ADR-002 (Projekt `/aifactory-parent`, `docs/adr/002-origin-in-core-display-in-factory.md`)
 ab (dort: „Core-Weg bleibt Plugin-Thema" — jetzt Core-Wege für beide Consumer) und setzt
 [agent-origin-proposal](../../proposals/agent-origin-proposal.md) §7a um.
 
@@ -17,7 +17,7 @@ Zeilen. Die Fabrik könnte sie nur durch Parsen von Core-Text unterscheiden — 
 Alternativen verworfen: Decorator nur in `PoDelegateTool` (deckt `AgentsTool`, `SearchAgentTool`-Subloop,
 Compact-Kompressor und Custom Agents nicht — R-WP-4-Loch); Stempeln an 71 Emit-Stellen
 (`onStreamingChunk` bliebe ungelöst); `getAgent()`/`getActiveAgent()` am `AiMonitor`
-(agenten-namen-im-chat.md:33-37 — der aktive Agent bleibt während der Delegation Peon-PO; der Monitor
+(agenten-namen-im-chat.md:33-37 — der aktive Agent bleibt während der Delegation Jon; der Monitor
 ist ein ausgehender Beobachter, kein Service-Locator; `NULL_MONITOR` müsste einen Agenten erfinden).
 
 ## Decision

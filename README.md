@@ -211,10 +211,10 @@ Detailed documentation is available at [peon-ai-4e.sterl.org](https://peon-ai-4e
 - https://utilitytools.net/text/symbols-copy-paste
 
 🪄 📦 🔧
-✅ ❌ 🧩 or 🛠 🎯 or ⚡ 🗜 🐞
+✅ ❌ 🧩 or 🛠 🎯 or ⚡ 🗜 🐞 📜
 🔍 = Search
 🧑‍💻 = Entwickler
-📜 = Script / Source File
+📄 = Script / Source File
 ⚙️ = Konfiguration / Setup
 📝 = Quelltext-Datei
 🛠 = LLM Tools

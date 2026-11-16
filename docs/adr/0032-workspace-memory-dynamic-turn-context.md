@@ -11,7 +11,7 @@ den Cache ohnehin. Umsetzung: Code durch den User.
 
 Das Workspace-Memory liegt als Snapshot im statischen System-Prompt ([ADR-0031](0031-static-context-env-plus-memory.md)).
 Mid-session-Änderungen (auch durch Jon selbst) wirken erst beim nächsten Re-Bake
-(clear/compact/updateConfig/Reload) — und Jons RAM-Sklaven (Da Thinka/Da Mek) sehen neue Einträge
+(clear/compact/updateConfig/Reload) — und Jons RAM-Sklaven (Plan/Dev) sehen neue Einträge
 gar nicht, ohne dass `initStaticContext()` erneut läuft. Der Reload-Callback-Hack
 (PeonAiService.java:170, „TODO this is a bug") existiert genau deshalb. User-Befund: „das Memory
 wird nicht dynamisch gebaut".

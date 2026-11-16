@@ -22,7 +22,7 @@ klar getrennt.
 ## Why not the alternative
 
 - **totalTokenCount für das Gate:** überschätzt den Kontext massiv (Completion/Reasoning können
-  das Mehrfache des Prompts sein — Da Dok-Fall: 289k „Kosten" gegen ~260k echten Kontext ist
+  das Mehrfache des Prompts sein — Review-Fall: 289k „Kosten" gegen ~260k echten Kontext ist
   Zufall; bei langen Antworten wäre das Gate viel zu früh scharf bzw. nach Estimate-Rückfall
   völlig blind). Kosten sagen nichts darüber, wie groß der *nächste* Prompt wird — das Gate
   entscheidet aber genau darüber.

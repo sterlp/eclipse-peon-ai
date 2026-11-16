@@ -409,4 +409,4 @@ Agents run inside a message harness that buffers inputs asynchronously. Due to F
 - **Inputs are async (FIFO, order uncertain).** For guaranteed answers: use the `askUser` tool.
 - **Otherwise:** If a message is prefixed with `[Queued Message]`, it is **not** a reply to your last question. Acknowledge it briefly, re-ask your question if necessary, or treat the question as unanswered.
 - **`queued_user_message` block:** a harness block with that head — attached to a tool result or to an askUser answer — carries **real user messages** that arrived while work was in progress. React to them in your current work; they are not part of the tool's output. The user's answer to `askUser` is the **last** message below such a block.
-- *Context & Prompt adjustments:* See [Peon-PO (Jon)](po-agent-jon.md) and `prompts/po.md` for the agent-facing instructions solving this alignment problem.
+- *Context & Prompt adjustments:* See [Jon](po-agent-jon.md) and `prompts/po.md` for the agent-facing instructions solving this alignment problem.

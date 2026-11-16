@@ -2,7 +2,7 @@
 
 **Status:** Accepted (2026-10-13)
 
-**Context:** Built-in-Agenten (Da Thinka/Da Mek/Da Dok/Da Sniffa…) bekommen ihre Tool-Sichtbarkeit
+**Context:** Built-in-Agenten (Plan/Dev/Review/Search…) bekommen ihre Tool-Sichtbarkeit
 heute aus dem Klassen-Filter (`getToolFilter()`: `isEditTool`-Split, Whitelist-Exceptions) und dem
 Name-Filter (nur MCP). Custom Agents haben `tools:` im AGENT.md-Frontmatter, entschieden über
 `ToolPolicy.enables` (Prefix/`*`, absent = alle). Paul will Tool-Sichtbarkeit pro Agent als

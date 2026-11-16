@@ -31,7 +31,7 @@ public String buildWithDev(@P String prompt, @P String planPath) {
 Ich (Jon) möchte:
 1. **Fire-and-Forget mit Callback** — Ich starte einen Agent, er arbeitet, ich bekomme eine Benachrichtigung wenn er fertig ist
 2. **Queue läuft weiter** — Neue Messages von Paul werden parallel verarbeitet
-3. **Status-Query** — Ich kann den Status abfragen ("Was macht Da Mek gerade?")
+3. **Status-Query** — Ich kann den Status abfragen ("Was macht Dev gerade?")
 
 ### Option A: Two-Phase Tool (Start + Callback)
 
@@ -39,7 +39,7 @@ Ich (Jon) möchte:
 @Tool(name = "startBuildAgent")
 public String startBuildAgent(@P String prompt, @P String planPath) {
     // Startet im Hintergrund, gibt sofort Job-ID zurück
-    // "Da Mek gestartet. Job #42. Siehe onAgentDone für Ergebnis."
+    // "Dev gestartet. Job #42. Siehe onAgentDone für Ergebnis."
 }
 
 // Callback (nicht direkt von Jon aufgerufen — wird automatisch ausgelöst)
@@ -76,11 +76,11 @@ public String getStatus(@P String jobId) {
 public String buildWithDev(@P String prompt, @P String planPath) {
     // Startet async im Hintergrund
     // Ergebnis wird als "synthetische Queue-Message" injiziert
-    return "Da Mek gestartet. Ergebnis folgt als Queue-Message.";
+    return "Dev gestartet. Ergebnis folgt als Queue-Message.";
 }
 
 // Intern: Bei Fertigstellung
-memory.add(UserMessage.from("[Agent-Done] Da Mek: " + result));
+memory.add(UserMessage.from("[Agent-Done] Dev: " + result));
 // → Queue-Verarbeitung pickt es auf, Jon sieht es als nächste Message
 ```
 
@@ -108,7 +108,7 @@ AND das Ergebnis landet später als Queue-Message bei Jon
 ## Offene Fragen
 
 1. **Wie kennt Jon die Job-ID?** (für Status-Query, Cancel)
-2. **Wie viele parallele Jobs?** (Da Mek + Da Thinka gleichzeitig?)
+2. **Wie viele parallele Jobs?** (Dev + Plan gleichzeitig?)
 3. **Cancel-Support?** (`cancelAgent(jobId)`)
 4. **Error-Handling?** (Wie wird ein Fehler an Jon gemeldet?)
 
@@ -116,4 +116,4 @@ AND das Ergebnis landet später als Queue-Message bei Jon
 
 - [Queued User Messages](queued-user-messages.md) — bestehende Queue
 - Queue Message Loss Bug — war das Symptom des sync-Problems (Bug ist behoben)
-- [Peon-PO (Jon)](po-agent-jon.md) — Jons Tools
+- [Jon](po-agent-jon.md) — Jons Tools

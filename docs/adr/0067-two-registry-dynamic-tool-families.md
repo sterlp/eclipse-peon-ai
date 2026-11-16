@@ -4,7 +4,7 @@
 
 ## Context
 
-Jon (Peon-PO) hält seit R2 eine **eigene kuratierte** `ToolService`-Instanz
+Jon hält seit R2 eine **eigene kuratierte** `ToolService`-Instanz
 (`BuildPoAgentComponent:67`, `new ToolService(false)`), damit seine Basistools bewusst gewählt
 bleiben. Die dynamischen Tool-Familien sind daran vorbeigebaut worden:
 
@@ -35,6 +35,6 @@ disk-Writes; damit bleibt die Schreibfläche von Jon auch mit disk-Tools auf Doc
   die dynamischen Familien kommen konfigurationsgetrieben in jede Registry.
 - Neue agent-facing Registries müssen sich künftig an beiden Familien anmelden (Implementierungs-
   Hinweis: Sammlung/Enumeration der Registries statt Copy-Paste-Zweiter Aufruf).
-- Slaves (Da Thinka/Da Mek/Da Dok) sitzen auf dem shared-Service und sind von beiden Fixes
+- Slaves (Plan/Dev/Review) sitzen auf dem shared-Service und sind von beiden Fixes
   unberührt — sie sahen MCP/disk bereits direkt.
 - Nachweis: je Richtung ein Test gegen die po-Registry (Connect/Disconnect, Toggle on/off).

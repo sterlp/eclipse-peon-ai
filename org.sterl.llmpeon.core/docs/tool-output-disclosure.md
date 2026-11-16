@@ -45,7 +45,7 @@ statt byte-Cap → **paginiert** (Snapshot-Cache letzte 16 Seiten — [web-tools
 Disclosure-Zeilen folgen dem bestehenden `AiReponseBuilder`-Muster (eine Stelle, beide
 Such-Tools konsistent).
 
-### R-OD-5 — `eclipseBuildProject` ✅ done (2026-09-24, Paul; Review Da Dok ACCEPTED; **Test-Rework 2026-10-17**)
+### R-OD-5 — `eclipseBuildProject` ✅ done (2026-09-24, Paul; Review ACCEPTED; **Test-Rework 2026-10-17**)
 
 Marker-Output wird auf **100** gecappt (Errors zuerst, dann Warnings) — vorher: unlimitiert
 (`EclipseBuildTool.java:241-254` druckt alle ERROR+WARNING-Marker). Wird der Cap erreicht, nennt
@@ -98,7 +98,7 @@ Historie: 2026-09-30 bis 2026-10-16 war der Wert 2000 mit Muster „N line(s) tr
 bewusst **nicht** an (die Datei ist selbst der Filter — Pendant: Disk-Seite C-EXT-Muster,
 `DiskGrepToolTest.fileTargetBeatsExtensionFilter`) — aber `grepComplete`/`onTool` disclose
 die rohe Extension, als wäre gefiltert worden: die Text/Inhalt-Diskrepanz, die Inc-C-EXT auf
-der Disk-Seite behoben hat (AGENTS: „one behaviour, one implementation", Da-Dok-CONCERN
+der Disk-Seite behoben hat (AGENTS: „one behaviour, one implementation", Review-CONCERN
 2026-10-16, unblocked).
 
 **SOLL (C-EXT-Muster auf den IFile-Zweig):** `effectiveExtension = (Target ist Verzeichnis/
@@ -115,7 +115,7 @@ die rohe Extension.
 → `fileTargetBeatsExtensionFilterInDisclosure` (Plugin-Test-Modul, Pendant zu
 `DiskGrepToolTest.fileTargetBeatsExtensionFilter`)
 
-### R-OD-8 — Tool-Fehler-Meldung nennt Tool, Zeit, Exception-Klasse + Cause-Chain ✅ done (2026-10-24, Paul; Da-Dok CONCERNS aufgelöst F1/F2/F5)
+### R-OD-8 — Tool-Fehler-Meldung nennt Tool, Zeit, Exception-Klasse + Cause-Chain ✅ done (2026-10-24, Paul; Review CONCERNS aufgelöst F1/F2/F5)
 
 Fängt der Tool-Loop eine Tool-Exception (`ToolService.runAllTools`), bekommt `onProblem` heute
 nur `"<Tool> failed: <e.getMessage()> details logged."` — oft wäre das `buildWithDev failed:
@@ -132,7 +132,7 @@ bereits an Log + Tool-Ergebnis (LLM), nur der Mensch sieht die Details nicht.
 - **Wrapper-Glieder entfallen:** ein Kettenglied, das nur seine Cause wiederkäut (Message ist
   die Cause-Message oder das Cause-`toString()` — z. B. der `ToolExecutionException`-Wrapper
   des Tool-Executors), wird nicht als eigenes Glied gerendert — es trägt keine Information
-  (Präzisierung 2026-10-24, Da-Mek-IST-Befund; die Beispielzeile oben gilt damit auch real).
+  (Präzisierung 2026-10-24, Dev-IST-Befund; die Beispielzeile oben gilt damit auch real).
 - **Mehrzeilige Messages:** Whitespace wird normalisiert (einzeilig) und Zeilen im
   Stack-Frame-Muster (`^\s*at …`) werden aus der Message entfernt — der übrige Inhalt bleibt
   vollständig, der Stack flutet den Chat nicht (Präzisierung 2026-10-24).

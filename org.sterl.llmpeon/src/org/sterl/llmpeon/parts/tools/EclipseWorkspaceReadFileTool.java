@@ -20,6 +20,7 @@ import org.eclipse.core.runtime.Platform;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.texteditor.IDocumentProvider;
+import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.ArgsUtil;
@@ -130,11 +131,16 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
             var via = EclipseUtil.resolvedViaNote(filePath, f);
             String result = FileLines.extract(content, startLine, endLine)
                     + (via.isEmpty() ? "" : System.lineSeparator() + System.lineSeparator() + via);
-            onTool("📜 Reading eclipse" + lines + " file " + filePath + " " + StringUtil.charsSuffix(result));
+            onTool("📄 Reading eclipse" + lines + " file " + filePath + " " + StringUtil.charsSuffix(result));
             return result;
         }
         onProblem("No eclipse file found for " + filePath);
-        return "No eclipse file found for '" + filePath + "'." + EclipseUtil.unresolvedHint(filePath);
+        var missText = "No eclipse file found for '" + filePath + "'." + EclipseUtil.unresolvedHint(filePath);
+        var suggestion = AiReponseBuilder.readMissSuggestion(
+                filePath, "eclipseSearchFiles",
+                (segment, limit) -> searchFiles(segment, null, limit).paths(),
+                e -> ExceptionUtil.findCause(e, org.eclipse.core.runtime.OperationCanceledException.class) != null);
+        return missText + suggestion.appendix();
     }
 
     public static final String READ_ECLIPSE_PICTURE_TOOL = "eclipseReadPicture";
@@ -157,21 +163,9 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
         return "No eclipse file found for '" + filePath + "'." + EclipseUtil.unresolvedHint(filePath);
     }
 
-    @Tool("Find any files workspace-wide by name (*, ? wildcard supported). Default file-path finder.")
-    public String eclipseSearchFiles(
-            @P(description = "file name query - only *, ? wildcard is supported.", name = "query")
-            String query,
-            @P(name = "projectName", required = false) 
-            String projectName,
-            @P(description = "max results to return. Default 100, max 500.", required = false, name = "limit") 
-            Integer inLimit) {
+    protected record SearchResult(List<String> paths, String emptySuffix) {}
 
-        ArgsUtil.requireNonBlank(query, "query");
-        if (inLimit == null) inLimit = 100;
-        if (inLimit == 0) inLimit = MAX_LIMIT;
-        final int limit = Math.max(1, Math.min(inLimit, MAX_LIMIT));
-
-        query = FileUtils.normalizePath(query);
+    protected SearchResult searchFiles(String query, String projectName, int limit) {
         final var matcher = StringMatcher.wildCardMatcher(query);
         final Map<String, EclipseUtil.ProjectPathEntry> matches = new LinkedHashMap<>();
 
@@ -197,10 +191,29 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
         }
         var paths = new ArrayList<String>(matches.size());
         for (var entry : matches.values()) paths.add(entry.path());
-        String result = AiReponseBuilder.searchComplete(paths, limit, suffix);
+        return new SearchResult(paths, suffix);
+    }
+
+    @Tool("Find any files workspace-wide by name (*, ? wildcard supported). Default file-path finder.")
+    public String eclipseSearchFiles(
+            @P(description = "file name query - only *, ? wildcard is supported.", name = "query")
+            String query,
+            @P(name = "projectName", required = false) 
+            String projectName,
+            @P(description = "max results to return. Default 100, max 500.", required = false, name = "limit") 
+            Integer inLimit) {
+
+        ArgsUtil.requireNonBlank(query, "query");
+        if (inLimit == null) inLimit = 100;
+        if (inLimit == 0) inLimit = MAX_LIMIT;
+        final int limit = Math.max(1, Math.min(inLimit, MAX_LIMIT));
+
+        query = FileUtils.normalizePath(query);
+        var result = searchFiles(query, projectName, limit);
+        String response = AiReponseBuilder.searchComplete(result.paths(), limit, result.emptySuffix());
         onTool("Search workspace " + StringUtil.trimToEmpty(projectName) + " for " + query 
-                + " returned " + matches.size() + " results." + " " + StringUtil.charsSuffix(result));
-        return result;
+                + " returned " + result.paths().size() + " results." + " " + StringUtil.charsSuffix(response));
+        return response;
     }
 
     private void searchScope(List<IProject> scope, StringMatcher matcher, int limit,

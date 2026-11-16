@@ -4,7 +4,7 @@
 
 **Teilweise umgesetzt, korrigiert 2026-09-24.** Der ursprüngliche Eintrag (2026-08-09)
 behauptete fälschlich „✅ Implemented" inkl. eines `QuestionOrchestrator`, der **nie existiert
-hat** (grep-verifiziert 2026-09-24, Da-Dok-Review R-TC-9). Tatsächlicher Stand:
+hat** (grep-verifiziert 2026-09-24, Review R-TC-9). Tatsächlicher Stand:
 
 - **`ShellApprovalService`** — ✅ umgesetzt erst **2026-09-24** (R-TC-9,
   Zyklus R-TC-6…9), nicht 2026-08-09. Bis dahin saß die komplette Shell-Confirmation-Logik in

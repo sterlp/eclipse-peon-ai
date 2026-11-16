@@ -1,4 +1,4 @@
-# Temp-File-Tool (Da Sniffa für Dateien)
+# Temp-File-Tool (Search für Dateien)
 
 > **Status:** 🚧 Idee (2026-10-16, Paul — Nachtzyklus 5 Nachbereitung) · Verwandt:
 > [output-trim-service.md](output-trim-service.md) (nutzt es später per Komposition) ·

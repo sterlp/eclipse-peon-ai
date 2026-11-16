@@ -10,7 +10,7 @@ Nachtrag zu [ADR-0060](0060-model-config-widget-live-widget-reads.md) (Live-Widg
 Nach dem Inc-4-Bau fand der Paul-Smoke: (1) Extra-Body-Feld provider-gated **einmalig beim
 Page-Bau** (nur nach Apply + Tab-Wechsel sichtbar) und stille Löschung des gespeicherten
 extraBody/Think beim Advanced-OK mit geschlossenem Gate. (2) **Doppelt-Editor-Falle** (bewiesen,
-Da-Mek-IST-Analyse): der JFace-Preference-Dialog ruft `performOk` auf jede besuchte Seite — Basic
+Dev-IST-Analyse): der JFace-Preference-Dialog ruft `performOk` auf jede besuchte Seite — Basic
 zuerst, Advanced zuletzt; beide schrieben alle Base-Keys + Dev-Slot aus ihrem Lade-Stand →
 Basic-Edits verloren gegen Advanced-Stale; fehlender Provider-Key materialisierte den
 DefaultScope-Default (OLLAMA). „Er speichert nicht immer, schwer zu reproduzieren" = genau dieser

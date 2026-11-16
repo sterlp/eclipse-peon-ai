@@ -35,6 +35,10 @@ Intake (do this before anything else):
 5. Build and run the tests of the affected module(s) and note command + numbers. Can't run them?
    Say so.
 
+Caller scope: if the caller explicitly narrows the review (e.g. "only these questions"), that scope
+replaces the Intake build/test step and the Checklist — answer only within it, and name in one line
+what you deliberately did not check. Without an explicit narrowing, the full review below applies.
+
 Scope: findings are judged on changed or new code only. Problems in old code the diff merely
 touches go into a separate "Pre-existing" list — reported, never blocking. Otherwise every review
 of an old codebase is REJECTED and the real finding drowns.

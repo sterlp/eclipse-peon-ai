@@ -145,7 +145,7 @@ Explizites off gewinnt **immer** — trotz Base-Default kann ein Agent Thinking 
 ## Rework 2026-09-29 (Paul — „Verbatim Think": String-Provider senden exakt was gesetzt ist)
 
 **WARUM:** Paul-Smoke 2026-09-29 — `think=none` auf OPEN_AI (LM-Studio-Server) kam nicht im
-Request an; das Modell dachte trotzdem weiter (Config „aus", Verhalten „an"). Da Mek/Da Sniffa
+Request an; das Modell dachte trotzdem weiter (Config „aus", Verhalten „an"). Dev/Search
 belegten: kein Transport-Bug, sondern SOLL (Off-Omission für die OpenAI-Familie, UC-THINK-1) —
 aber die Prämisse „OpenAI kennt kein off" widerspricht dem SDK (`ReasoningEffort.Known` enthält
 `none`), und der Off-Set/On-Mapping-Resolver war Checkbox-Erbe (ADR-0059 hat die Checkbox schon

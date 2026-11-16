@@ -4,7 +4,7 @@ idPrefix: CG
 
 # Codegraph — Built-in-Integration (MCP, Auto-Enable)
 
-> **Status:** ✅ done (2026-10-17, Branch `story/night-5-2026-10-16`, Da-Dok-Review ACCEPTED nach Rework). **2026-10-18 (✅ nach Paul-Smoke):** Kontext auf
+> **Status:** ✅ done (2026-10-17, Branch `story/night-5-2026-10-16`, Review ACCEPTED nach Rework). **2026-10-18 (✅ nach Paul-Smoke):** Kontext auf
 > **ein** `ContextItem` umgebaut (R-CG-7/R-CG-12); Header-Icon 24×24 + gedimmte
 > OFF-Variante. **Architektur-Doc:**
 > [codegraph-architektur.md](codegraph-architektur.md). **ADR:** [ADR-0068](../../docs/adr/0068-codegraph-builtin-connect-path.md).
@@ -30,7 +30,7 @@ Peon den Start **immer** — die Binary wird gesucht, sonst über den PATH des P
 scheitert der Start, ist das ein **Fehler** (ERROR + Tooltip), kein stilles Aus
 (Paul 2026-10-19, [R-CG-2](#r-cg-2--probe-erkennung-und-start-❌-specified-2026-10-19)).
 
-## Fakten (recherchiert 2026-10-17, Da Sniffa)
+## Fakten (recherchiert 2026-10-17, Search)
 
 - MCP-STDIO-Server, Command `codegraph serve --mcp`; Workdir-Abhängigkeit: Server arbeitet im
   Projektverzeichnis (`.codegraph/` liegt dort). langchain4j **1.22.0-beta32** (im Classpath) hat
@@ -350,6 +350,8 @@ THEN wird **nicht** neu verbunden (kein Disconnect/Connect, kein neuer Prozess, 
 Umsetzung: im Churn-Zweig statt `return` ein State-Refresh mit dem bestehenden
 `state.instructions()` — `State.project` heißt „Projekt, für das der Kontext gilt", die Verbindung
 hängt allein an `connectedWorkDir`. Kein neuer Connect, keine zweite Wahrheit im ContextItem.
+Folge (Paul bestätigt 2026-11-16): jeder Projektwechsel mit gemeinsamem Index erzeugt genau eine
+neue Kontext-Zeile im Chat.
 
 ### R-CG-16 — ContextItem nennt die Markdown-Grenze ✅ done (2026-10-23)
 

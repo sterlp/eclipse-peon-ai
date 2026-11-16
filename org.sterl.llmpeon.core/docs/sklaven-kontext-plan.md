@@ -39,7 +39,7 @@ Zwei getrennte Kanäle, sauber nach Lebensdauer getrennt:
   Datum/OS/File-Regeln ändern sich innerhalb der Session nicht → KV-Cache-freundlich als System-Message.
 
 `JonDelegateTool` bleibt **agnostisch** — es injiziert, was der Provider liefert; keine Signatur-
-Änderung nötig. Die Ork-Sklaven bleiben read-only auf all das (wie beim Memory).
+Änderung nötig. Die Sklaven bleiben read-only auf all das (wie beim Memory).
 
 ## Inkremente (einzeln baubar + grün)
 
@@ -99,5 +99,5 @@ zeigt) in den System-Prompt — zentral, nicht pro Prompt-Datei.
   die package-private Kopie in `AiPoAgent` ist entfernt.
 
 **Scope (🔒 Paul 2026-09-16):** Nur Jons Team — Top-Level-Agents (Dev/Plan/Review
-standalone), Custom Agents (Verzeichnisname) und Da Sniffa bleiben bewusst außen vor; Wiederaufnahme
+standalone), Custom Agents (Verzeichnisname) und Search bleiben bewusst außen vor; Wiederaufnahme
 nur auf expliziten Wunsch.

@@ -4,7 +4,7 @@ idPrefix: PT
 
 # PlanTool — Plan-Dateien im Eclipse-Workspace
 
-> **Status:** ✅ done (2026-10-24, Bug-Triage T-8/T-8b; R-PT-2a/3/4 2026-10-24 aus externem Review)   **Code:** `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/tools/PlanTool.java`
+> **Status:** ✅ done (R-PT-3 2026-11-16: Plan in der Projekt-Info statt eigenem ContextItem)   **Code:** `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/tools/PlanTool.java`
 
 ## Ziel
 
@@ -67,20 +67,18 @@ Agent-Wechsel (halb aktivierter Zustand).
   Ursache — kein Throw, kein abgebrochener Agent-Wechsel. (`planRead` analog mit ehrlicher
   „No plan exists"-Antwort + `onProblem`.)
 
-### R-PT-3 — Per-Turn-Plan-Sicht nutzt denselben refreshten Stand ✅ done (2026-10-24, externes Review, Punkt 2)
+### R-PT-3 — Per-Turn-Plan-Sicht nutzt denselben refreshten Stand ✅ done (2026-11-16)
 
-Der reguläre Turn-Pfad hängt den Plan über `AgentContextComponent.appendPlanReference` an — der
-`exists()`-Check dort prüft ohne Refresh, ein per Disk-Tool geschriebener Plan erscheint also
-jeden Turn nicht als „Plan reference"-ContextItem (dieselbe False-Negative-Klasse wie R-PT-2, nur
-im per-Turn-Pfad). **SOLL:** der per-Turn-Pfad nutzt denselben refreshten/exakten Stand wie die
-Query-Pfade (R-PT-2/Nachschärfung) — ein vorhandener Plan ist als Plan-Reference sichtbar,
-unabhängig davon, ob er per Workspace- oder Disk-Tool geschrieben wurde. `AgentContextComponent.
-readPlan` bleibt ohne eigenen Refresh, weil ohne `setPlan` gar nicht gelesen wird (Call-Site
-verifiziert 2026-10-24).
+Der Turn-Kontext nennt einen vorhandenen Plan in der Projekt-Info (Zeile `Plan: …`,
+[user-context.md](user-context.md) R-SEL-6) — mit demselben refreshten/exakten Stand wie die
+Query-Pfade (R-PT-2/Nachschärfung): ein vorhandener Plan ist sichtbar, unabhängig davon, ob er per
+Workspace- oder Disk-Tool geschrieben wurde. Ein eigenes „Plan reference"-ContextItem gibt es nicht.
+`AgentContextComponent.readPlan` bleibt ohne eigenen Refresh, weil ohne `setPlan` gar nicht gelesen
+wird.
 
 #### UC-PT-3 — diskWrittenPlanVisibleInTurnContext ✅
-- GIVEN `peon-plan/overview.md` existiert nur auf Disk WHEN ein Turn startet THEN die
-  Plan-Reference erscheint als ContextItem (kein stilles Fehlen).
+- GIVEN `peon-plan/overview.md` existiert nur auf Disk WHEN ein Turn startet THEN die Projekt-Info
+  nennt den Plan (kein stilles Fehlen).
 
 ### R-PT-4 — Archivierung gibt die Plan-Referenz frei ✅ done (2026-10-24, externes Review, Punkt 2 — IST-Befund verschärft)
 
@@ -104,12 +102,12 @@ behandelt deshalb **leeren Plan-Text wie „kein Plan"** — nie clear + Erfolg 
   der Handoff meldet keinen Erfolg (kein Ghost-Handoff).
 - GIVEN leere `overview.md` WHEN `onHandoff` THEN wie „kein Plan" — der Guard prüft den **rohen
   Dateiinhalt**, nicht die `readPlan()`-Ausgabe (die trägt je Header `Plan: <pfad>` und wäre damit
-  nie blank — Da-Dok F2, 2026-10-24). Das Rendering bleibt auf `readPlan()`, nur die
+  nie blank — Review F2, 2026-10-24). Das Rendering bleibt auf `readPlan()`, nur die
   Handoff-**Entscheidung** liest den Rohtext.
 - Der Chat-Fallback-Zweig (leere letzte AiMessage) wird vom „leer = kein Plan"-Guard **ebenfalls**
-  erfasst — einheitliche Semantik (Da-Dok F3, 2026-10-24).
+  erfasst — einheitliche Semantik (Review F3, 2026-10-24).
 
-### R-PT-5 — Die Projektbindung stellt die Plan-Referenz für den aktiven Plan-Agenten her ✅ done (2026-10-31, Da-Dok-Review Mini-Zyklus)
+### R-PT-5 — Die Projektbindung stellt die Plan-Referenz für den aktiven Plan-Agenten her ✅ done (2026-10-31, Review Mini-Zyklus)
 
 `planRef` ist ein Cache ohne Invariante: `setProject` leert ihn (stale reference — R-PT-4-Prinzip),
 und bislang baute nur die **nächste Agent-Aktivierung** ihn wieder auf. Seit der aktive Agent beim

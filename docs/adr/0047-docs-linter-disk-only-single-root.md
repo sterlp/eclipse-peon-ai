@@ -10,7 +10,7 @@ andere lesende Funktion gilt in diesem Repo die Regel *„One behaviour, one imp
 ein `eclipse*`- und ein `disk*`-Gegenstück, die sich nie unterscheiden dürfen
 ([AGENTS.md](../../AGENTS.md), [eclipse-read-tools.md](../../org.sterl.llmpeon/docs/eclipse-read-tools.md)).
 
-Die naheliegende Lesart wäre also ein Tool-Paar. Die Analyse des IST (Da Mek, 2026-09-15) ergab:
+Die naheliegende Lesart wäre also ein Tool-Paar. Die Analyse des IST (Dev, 2026-09-15) ergab:
 es existiert **kein** gemeinsames Lese-Interface. `FileLines`, `SearchQuery`, `TextFileTypes`,
 `LogExcerpt` sind reine Textprozessoren auf `String`; gewalkt wird doppelt — Eclipse via
 `IResourceVisitor` (`EclipseWorkspaceReadFileTool.java:110`), Disk via `Files.walk`

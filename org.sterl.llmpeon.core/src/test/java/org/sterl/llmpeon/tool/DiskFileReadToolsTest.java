@@ -3,6 +3,8 @@ package org.sterl.llmpeon.tool;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -12,7 +14,10 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -260,7 +265,7 @@ class DiskFileReadToolsTest {
 
         // THEN - the done line starts with the symbol, the return stays untouched
         assertThat(lines).hasSize(1);
-        assertThat(lines.get(0)).startsWith("📜 Reading");
+        assertThat(lines.get(0)).startsWith("📄 Reading");
         assertThat(lines.get(0)).contains("file hello.txt");
         assertThat(lines.get(0)).endsWith(StringUtil.charsSuffix(result));
 
@@ -269,7 +274,7 @@ class DiskFileReadToolsTest {
 
         // THEN
         assertThat(lines).hasSize(2);
-        assertThat(lines.get(1)).startsWith("📜 Reading  from 1 to 1 file hello.txt");
+        assertThat(lines.get(1)).startsWith("📄 Reading  from 1 to 1 file hello.txt");
     }
 
     /** Full request wiring (memory + chatModel are required fields) — the model is never called by this tool. */
@@ -290,5 +295,277 @@ class DiskFileReadToolsTest {
             @Override public void onChatResponse(SimpleMessage m) {}
             @Override public void onTool(String message) { lines.add(message); }
         };
+    }
+
+    // UC-RT-2
+    @Test
+    void missingFileWithoutMatchesHasNoSuggestions() throws IOException {
+        Path neighbor = tempDir.resolve("neighbor.txt");
+        Files.writeString(neighbor, "hello");
+
+        try {
+            tool.diskReadFile("Gibtsnicht.java", 0, 0);
+            fail("Missing IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("File not found"));
+            assertTrue(e.getMessage().contains("Gibtsnicht.java"));
+            assertFalse(e.getMessage().contains("Did you mean:"));
+        }
+
+        try {
+            tool.diskReadFile("nope/neighbor.txt", 0, 0);
+            fail("Missing IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            String msg = e.getMessage();
+            assertTrue(msg.contains("File not found: nope/neighbor.txt also not in " + tempDir));
+            assertTrue(msg.contains("Did you mean:"));
+            assertTrue(msg.contains(neighbor.toAbsolutePath().toString()));
+            assertFalse(msg.contains("hello"));
+        }
+    }
+
+    // UC-RT-3
+    @Test
+    void missingFileSuggestsExactlyThreeDiskPaths() throws IOException {
+        Files.createDirectories(tempDir.resolve("d1"));
+        Files.createDirectories(tempDir.resolve("d2"));
+        Files.createDirectories(tempDir.resolve("d3"));
+        Files.createDirectories(tempDir.resolve("d4"));
+        Path p1 = tempDir.resolve("d1/index.md");
+        Path p2 = tempDir.resolve("d2/index.md");
+        Path p3 = tempDir.resolve("d3/index.md");
+        Path p4 = tempDir.resolve("d4/index.md");
+        Files.writeString(p1, "sentinel-one");
+        Files.writeString(p2, "sentinel-two");
+        Files.writeString(p3, "sentinel-three");
+        Files.writeString(p4, "sentinel-four");
+
+        try {
+            tool.diskReadFile("nope/index.md", 0, 0);
+            fail("Missing IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            String msg = e.getMessage();
+            assertTrue(msg.contains("File not found: nope/index.md also not in " + tempDir));
+            assertTrue(msg.contains("Did you mean:"));
+            assertTrue(msg.contains("more matches — use diskSearchFiles"));
+
+            var lines = msg.lines().toList();
+            int didYouMeanIdx = -1;
+            for (int i = 0; i < lines.size(); i++) {
+                if (lines.get(i).contains("Did you mean:")) { didYouMeanIdx = i; break; }
+            }
+            assertTrue(didYouMeanIdx >= 0);
+            var suggestionLines = new ArrayList<String>();
+            for (int i = didYouMeanIdx + 1; i < lines.size(); i++) {
+                String l = lines.get(i);
+                if (l.contains("more matches — use")) break;
+                suggestionLines.add(l);
+            }
+            assertEquals(3, suggestionLines.size());
+            var fixturePaths = Arrays.asList(
+                    p1.toAbsolutePath().toString(),
+                    p2.toAbsolutePath().toString(),
+                    p3.toAbsolutePath().toString(),
+                    p4.toAbsolutePath().toString());
+            for (String sl : suggestionLines) {
+                assertTrue(fixturePaths.contains(sl), "unexpected path: " + sl);
+            }
+            // at most 3 of 4 fixtures shown; which one is excluded is non-deterministic
+            assertFalse(msg.contains("sentinel"));
+        }
+    }
+
+    @Test
+    void missingFileUsesLastSegmentAndNeverReadsSuggestion() throws IOException {
+        Files.createDirectories(tempDir.resolve("sub"));
+        Path target = tempDir.resolve("sub/target.txt");
+        Files.writeString(target, "TOP SECRET");
+
+        try {
+            tool.diskReadFile("wrong/sub/target.txt", 0, 0);
+            fail("Missing IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            String msg = e.getMessage();
+            assertTrue(msg.contains("wrong/sub/target.txt"));
+            assertTrue(msg.contains("Did you mean:"));
+            assertTrue(msg.contains(target.toAbsolutePath().toString()));
+            assertFalse(msg.contains("TOP SECRET"));
+        }
+
+        try {
+            tool.diskReadFile(tempDir.resolve("WRONG/target.txt").toAbsolutePath().toString(), 0, 0);
+            fail("Missing IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            String msg = e.getMessage();
+            assertTrue(msg.contains("Did you mean:"));
+            assertTrue(msg.contains(target.toAbsolutePath().toString()));
+        }
+
+        try {
+            tool.diskReadFile("WRONG\\target.txt", 0, 0);
+            fail("Missing IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            String msg = e.getMessage();
+            assertTrue(msg.contains("Did you mean:"));
+            assertTrue(msg.contains(target.toAbsolutePath().toString()));
+        }
+    }
+
+    @Test
+    void blankLastSegmentSkipsSuggestionSearch() throws IOException {
+        Files.writeString(tempDir.resolve("real.txt"), "content");
+        var callCount = new AtomicInteger(0);
+        var lastQuery = new String[1];
+        var lastLimit = new int[1];
+        var countTool = new DiskFileReadTool(tempDir) {
+            @Override
+            protected List<String> searchFiles(String query, int limit) {
+                callCount.incrementAndGet();
+                lastQuery[0] = query;
+                lastLimit[0] = limit;
+                return super.searchFiles(query, limit);
+            }
+        };
+
+        try {
+            countTool.diskReadFile("x/", 0, 0);
+            fail("Missing IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("File not found: x/"));
+            assertFalse(e.getMessage().contains("Did you mean:"));
+            assertEquals(0, callCount.get());
+        }
+
+        try {
+            countTool.diskReadFile("/", 0, 0);
+            fail("Missing IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("File not found: /"));
+            assertFalse(e.getMessage().contains("Did you mean:"));
+            assertEquals(0, callCount.get());
+        }
+
+        try {
+            countTool.diskReadFile("x/   ", 0, 0);
+            fail("Missing IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("File not found: x/   "));
+            assertFalse(e.getMessage().contains("Did you mean:"));
+            assertEquals(0, callCount.get());
+        }
+
+        try {
+            countTool.diskReadFile("nope/real.txt", 0, 0);
+            fail("Missing IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("nope/real.txt"));
+            assertTrue(e.getMessage().contains("Did you mean:"));
+            assertEquals(1, callCount.get());
+            assertEquals("real.txt", lastQuery[0]);
+            assertEquals(4, lastLimit[0]);
+        }
+    }
+
+    @Test
+    void missingFileKeepsSearchMatchingSemantics() throws IOException {
+        Files.writeString(tempDir.resolve("MyFile.java"), "");
+        Files.writeString(tempDir.resolve("another_myfile.txt"), "");
+        Files.writeString(tempDir.resolve("Other.txt"), "");
+
+        try {
+            tool.diskReadFile("nope/*File*.java", 0, 0);
+            fail("Missing IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            String msg = e.getMessage();
+            assertTrue(msg.contains("Did you mean:"));
+            assertTrue(msg.contains("MyFile.java"));
+            assertFalse(msg.contains("another_myfile.txt"));
+        }
+
+        try {
+            tool.diskReadFile("x/?nother_myfile.txt", 0, 0);
+            fail("Missing IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            String msg = e.getMessage();
+            assertTrue(msg.contains("Did you mean:"));
+            assertTrue(msg.contains("another_myfile.txt"));
+        }
+
+        try {
+            tool.diskReadFile("x/myfile", 0, 0);
+            fail("Missing IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            String msg = e.getMessage();
+            assertTrue(msg.contains("Did you mean:"));
+            assertTrue(msg.contains("another_myfile.txt"));
+        }
+    }
+
+    @Test
+    void missingFileReportsSuggestionSearchFailure() throws IOException {
+        tool.setWorkingDir(tempDir.resolve("nonexistent"));
+
+        try {
+            tool.diskReadFile("missing.txt", 0, 0);
+            fail("Missing IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            String msg = e.getMessage();
+            assertTrue(msg.contains("File not found: missing.txt"));
+            assertTrue(msg.contains("Did you mean: suggestion search failed: Failed to search in"));
+            Throwable cause = e.getCause();
+            assertNotNull(cause);
+            assertTrue(cause instanceof RuntimeException, "expected RuntimeException, got " + cause.getClass());
+            assertTrue(cause.getMessage().contains("Failed to search in"));
+            Throwable ioCause = cause.getCause();
+            assertNotNull(ioCause);
+            assertTrue(ioCause instanceof IOException);
+        }
+
+        try {
+            tool.diskSearchFiles("*.txt", null);
+            fail("Missing RuntimeException");
+        } catch (RuntimeException e) {
+            assertTrue(e.getMessage().contains("Failed to search in"));
+            assertNotNull(e.getCause());
+            assertTrue(e.getCause() instanceof IOException);
+        }
+    }
+
+    @Test
+    void suggestionSearchCancellationPropagatesUnchanged() throws IOException {
+        Files.writeString(tempDir.resolve("x.java"), "");
+        var directCe = new CancellationException("direct-cancel");
+
+        var cancelTool = new DiskFileReadTool(tempDir) {
+            @Override
+            protected List<String> searchFiles(String query, int limit) {
+                throw directCe;
+            }
+        };
+
+        try {
+            cancelTool.diskReadFile("nope/x.java", 0, 0);
+            fail("Missing CancellationException");
+        } catch (CancellationException e) {
+            assertSame(directCe, e);
+        }
+
+        var nestedCe = new CancellationException("nested-cancel");
+        var wrapped = new RuntimeException("wrap", nestedCe);
+        var wrapTool = new DiskFileReadTool(tempDir) {
+            @Override
+            protected List<String> searchFiles(String query, int limit) {
+                throw wrapped;
+            }
+        };
+
+        try {
+            wrapTool.diskReadFile("nope/x.java", 0, 0);
+            fail("Missing RuntimeException");
+        } catch (RuntimeException e) {
+            assertSame(wrapped, e);
+            assertTrue(e.getCause() instanceof CancellationException);
+            assertSame(nestedCe, e.getCause());
+        }
     }
 }

@@ -3,7 +3,7 @@
 **Status** · Accepted — realised as a validator, not a wrapping decorator (see Decision).
 
 ## Context
-Peon-PO (Jon) must be kept from writing anywhere but the docs, but he should **reuse the existing
+Jon must be kept from writing anywhere but the docs, but he should **reuse the existing
 Eclipse-workspace and disk write tools** rather than get bespoke, Jon-only file tools. "Where may this
 agent write" is a cross-cutting concern — a decorator + config keeps it out of the tools themselves and
 lets other (custom) agents reuse it. It also fits the existing sandbox stance

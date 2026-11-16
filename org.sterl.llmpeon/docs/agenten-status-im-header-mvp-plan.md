@@ -13,7 +13,7 @@ Grund war **kein** Render-Bug, sondern verstreute Zuständigkeit (Bleed):
 
 | Bleed | Wo | Neu |
 | --- | --- | --- |
-| Chip-Name == echter Agenten-Name (`Peon-Plan`/`Peon-Dev`) → Kollision | `onSubAgent`-Kanal | **Ork-Namen** (Da Thinka/Da Mek), eigene Identität — keine Kollision möglich |
+| Chip-Name == echter Agenten-Name (`Plan`/`Dev`) → Kollision | `onSubAgent`-Kanal | abgelöst: ADR-0079 (Anzeigenamen Plan/Dev) |
 | Orchestrierungs-State in der UI, leakt über Wechsel | `AIChatView.workingSubAgents` + `onSubAgent` | **entfällt** — Widget zieht live, hält keinen State |
 | Service baut UI-Records & peekt Tool-Interna | `PeonAiService.getRoster()` → `JonDelegateTool.peek*Slave()` | **Agent besitzt sein Team** (`AiPoAgent.getTeam()`); Service hat **einen** Choke-Point |
 
@@ -24,26 +24,26 @@ routet nur).
 
 ```
 1. GIVEN ich bin im Dev-Mode        WHEN ich auf den PO-Agenten wechsle
-   THEN sehe ich oben drei Einträge: "Da Boss (0k)" · "Da Thinka (0k)" · "Da Mek (0k)"  (kein Ball)
+   THEN sehe ich oben drei Einträge: "Jon (0k)" · "Plan (0k)" · "Dev (0k)"  (kein Ball)
 2. GIVEN irgendein anderer Agent ist aktiv
    THEN zeigt das Status-Widget NICHTS
 3. GIVEN PO-Mode                    WHEN Jon denkt selbst (delegiert gerade nicht)
-   THEN glüht "🟢 Da Boss" (nur der Chef)
-4. GIVEN PO-Mode                    WHEN Jon startet Da Mek
-   THEN glüht "🟢 Da Mek" — Da Boss bleibt ruhig (Blatt-Regel)
-5. WHEN Da Mek zurückkommt
-   THEN glüht Da Boss weiter, solange Jon abschließt; am Ende alle drei ohne Ball
+   THEN glüht "🟢 Jon" (nur der Chef)
+4. GIVEN PO-Mode                    WHEN Jon startet Dev
+   THEN glüht "🟢 Dev" — Jon bleibt ruhig (Blatt-Regel)
+5. WHEN Dev zurückkommt
+   THEN glüht Jon weiter, solange Jon abschließt; am Ende alle drei ohne Ball
 ```
 
 ## Design (beschlossen)
 
 - **`NamedAgent(String uiName, AiAgent agent)`** — schlichter Record (Kern).
-- **`AiPoAgent`** hält `List<NamedAgent>` in fester Reihenfolge (**Da Boss** → Jon selbst (`this`),
-  **Da Thinka** → Peon-Plan, **Da Mek** → Peon-Dev) und gibt sie über **`getTeam()`** heraus. Die
+- **`AiPoAgent`** hält `List<NamedAgent>` in fester Reihenfolge (**Jon** → Jon selbst (`this`),
+  **Plan**, **Dev**) und gibt sie über **`getTeam()`** heraus. Die
   zwei Agenten werden **einmal** erzeugt und von `AiPoAgent` **und** `JonDelegateTool` **geteilt** — die
-  Slave-**Factory-Supplier fallen weg**. Die Ork-/Boss-Namen leben **an einer Stelle** (die `NamedAgent`-
+  Slave-**Factory-Supplier fallen weg**. Die Namen leben **an einer Stelle** (die `NamedAgent`-
   Liste ist die Quelle); `JonDelegateTool` zieht seinen Log-`uiName` aus derselben Quelle statt Literale
-  zu duplizieren (sonst driftet „Da Mek" im Log gegen die Anzeige).
+  zu duplizieren (sonst driftet „Dev" im Log gegen die Anzeige).
 - **`PeonAiService.getStatusAgents()`** — der **eine** `instanceof`-Choke-Point:
   `getActiveAgent() instanceof AiPoAgent po ? po.getTeam() : List.of()`. Nicht im Widget, nicht auf
   dem `AiAgent`-Interface.
@@ -57,13 +57,13 @@ routet nur).
   Widget-Pull. Dieses Monitor-Durchreichen ist der Mechanismus — nicht „aufräumen".
 
 ### Die Blatt-Regel (trivial, pure)
-Da Boss ist der Orchestrator, also darf er **nicht** gleichzeitig mit einem Agenten glühen (sonst „🟢
+Jon ist der Orchestrator, also darf er **nicht** gleichzeitig mit einem Agenten glühen (sonst „🟢
 immer auf Jon"). Regel im Pure-Model:
-- **Sklave** (Da Thinka/Da Mek): `working = agent.isWorking()`.
-- **Da Boss** (erste Zeile): `working = agent.isWorking() && kein Sklave arbeitet`.
+- **Sklave** (Plan/Dev): `working = agent.isWorking()`.
+- **Jon** (erste Zeile): `working = agent.isWorking() && kein Sklave arbeitet`.
 
-Ergebnis: Jon komponiert allein → Da Boss glüht; Jon delegiert an Da Mek → nur Da Mek glüht, Da Boss
-ruhig; Da Mek kommt zurück, Jon schließt ab → Da Boss glüht kurz weiter; fertig → alle drei ruhig.
+Ergebnis: Jon komponiert allein → Jon glüht; Jon delegiert an Dev → nur Dev glüht, Jon
+ruhig; Dev kommt zurück, Jon schließt ab → Jon glüht kurz weiter; fertig → alle drei ruhig.
 
 ## Encapsulation — was wir sauber rausziehen & testen
 
@@ -71,7 +71,7 @@ ruhig; Da Mek kommt zurück, Jon schließt ab → Da Boss glüht kurz weiter; fe
   SWT-frei, **headless testbar** (wie das heutige `AgentRosterModel`), inkl. **Blatt-Regel** (Boss
   glüht nur, wenn kein Sklave arbeitet). Das ist der eigentlich testbare Kern; die SWT-`setText`-Zeile
   im Widget wird **nicht** getestet (wie `TokenHeaderWidget`).
-- **`AiPoAgent.getTeam()`** — testbar: liefert genau [Da Boss(=this), Da Thinka, Da Mek] auf die
+- **`AiPoAgent.getTeam()`** — testbar: liefert genau [Jon(=this), Plan, Dev] auf die
   **geteilten** Sklaven-Instanzen; vor der ersten Delegation 0k/leer.
 - **`PeonAiService.getStatusAgents()`** — testbar: PO aktiv → 2 Einträge; Dev/andere aktiv → leer.
   (Wie alle `PeonAiServiceTest` `assumeTrue`-geskippt headless; die Kern-Logik ist aber der Pure-Mapper
@@ -82,13 +82,13 @@ ruhig; Da Mek kommt zurück, Jon schließt ab → Da Boss glüht kurz weiter; fe
 **Inc 0 — Denken (erledigt):** [ADR-0025](../../docs/adr/0025-po-status-widget-named-agents.md) + dieser Plan.
 
 **Inc 1 — Team im Agenten (nur *hinzufügen*, nichts löschen). ✅ gebaut, grün.**
-`NamedAgent`-Record; `AiPoAgent` bekommt `List<NamedAgent> getTeam()` = [Da Boss(=`this`), Da Thinka,
-Da Mek]. Die zwei Agenten werden **einmal** erzeugt und in `PeonAiService` an `AiPoAgent` **und**
+`NamedAgent`-Record; `AiPoAgent` bekommt `List<NamedAgent> getTeam()` = [Jon(=`this`), Plan,
+Dev]. Die zwei Agenten werden **einmal** erzeugt und in `PeonAiService` an `AiPoAgent` **und**
 `JonDelegateTool` durchgereicht (statt lazy per Factory). `JonDelegateTool` nimmt jetzt die konkreten
 Sklaven; die Factory-Supplier werden **nur intern** überflüssig, bleiben aber samt `peek*Slave()`
 **vorerst stehen** (`peek*Slave()` gibt jetzt einfach das geteilte Feld zurück) — damit das noch
 lebende `PeonAiService.getRoster()`/`HeaderBar` **weiter kompiliert und grün bleibt**. Löschen erst in
-Inc 5. *Test:* `getTeam()` liefert 3 Einträge (Da Boss + 2 Orks) auf die geteilten Instanzen, 0k idle.
+Inc 5. *Test:* `getTeam()` liefert 3 Einträge (Jon + Plan + Dev) auf die geteilten Instanzen, 0k idle.
 
 **Inc 2 — Choke-Point. ✅ gebaut, grün.**
 `PeonAiService.getStatusAgents()` (das eine `instanceof`). *Test:* PO → 3, Dev → 0 (leer).
@@ -96,7 +96,7 @@ Inc 5. *Test:* `getTeam()` liefert 3 Einträge (Da Boss + 2 Orks) auf die geteil
 **Inc 3 — Pure Model (inkl. Blatt-Regel). ✅ gebaut, grün.**
 `AiAgentStatusModel.rows(...)`: Zeilentext `uiName (Xk)`; `working` = Sklave→`isWorking()`, Boss→
 `isWorking() && kein Sklave arbeitet`. *Tests (headless):* alle-idle→kein-Ball · Boss-arbeitet-allein→
-Ball-nur-Boss · Da-Mek-arbeitet→Ball-nur-Da-Mek-Boss-ruhig · leere Liste→keine Zeilen.
+Ball-nur-Jon · Dev-arbeitet→Ball-nur-Dev-Jon-ruhig · leere Liste→keine Zeilen.
 
 **Inc 4 — Widget. ✅ gebaut, grün.**
 `AiAgentStatusWidget` (`Label`, `Supplier<List<NamedAgent>>`, nutzt das Pure-Model) ersetzt

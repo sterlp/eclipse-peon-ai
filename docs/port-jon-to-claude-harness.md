@@ -42,8 +42,7 @@ angehängt — im Claude-Harness ist der Agent-Prompt statisch, darum fest als �
 buildWithDev)" bzw. „Plan-Write-Loop (bei planWithPlanAgent)"-Sektion verankert; die Sparring-Modi
 `talkPlan`/`askDev` lassen die Loop-Sektion einfach aus).
 
-**Namen:** im Claude-Harness kurz — `plan`, `dev`, `review` (+ `scaffold`). Die Peon-Namen (Da Thinka /
-Da Mek / Da Dok) bleiben als Charakter in den Prompts erhalten, der `subagent_type` ist der Kurzname.
+**Namen:** im Claude-Harness kurz — `plan`, `dev`, `review` (+ `scaffold`).
 
 ## Tool-Mapping (Jon ↔ Agent-Tool)
 
@@ -116,7 +115,7 @@ projekt-spezifisch, nicht als „nur in `.mdx`"-Pauschalregel annehmen.
 ## Nacht-Zyklus: Scaffold leitet Agenten/Skills ab
 
 Analog zum **Skill-Evolution-Loop** aus [AGENTS-JON.md](../AGENTS-JON.md): nach Review-Zyklen fällt
-Evidenz an (was fehlte, was zum Raten zwang — Da Dok meldet Skill/Instruction-Gaps, Checklisten-Punkt
+Evidenz an (was fehlte, was zum Raten zwang — Review meldet Skill/Instruction-Gaps, Checklisten-Punkt
 10). Die wird in einem **Ledger** gesammelt (`.agents/skills/wiki/skill-impact.md` bzw. im Port eine
 projektlokale Ledger-Datei).
 

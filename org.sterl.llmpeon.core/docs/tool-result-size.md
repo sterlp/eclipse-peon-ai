@@ -4,7 +4,7 @@ idPrefix: RS
 
 # Tool-Result-Size im onTool — Ergebnisgröße sichtbar machen
 
-> **Status:** ✅ done (2026-09-30, Paul specified; Delta nach Da-Dok-REJECTED). **Anlass:** Context-Overflow — welche Message/Tool-Result den Kontext sprengt, ist im
+> **Status:** ✅ done (2026-09-30, Paul specified; Delta nach Review-REJECTED). **Anlass:** Context-Overflow — welche Message/Tool-Result den Kontext sprengt, ist im
 > Log unsichtbar. Verwandt: [compact.md](compact.md) R-CC-17 (Biggest-Message-Dump),
 > [tool-output-disclosure.md](tool-output-disclosure.md) R-OD-6 (Grep-Zeilen-Cap).
 
@@ -29,7 +29,7 @@ Ergebnisses, das in den LLM-Kontext geht (der Return-String des Tools, nicht UI-
   WHEN done THEN beide Angaben nebeneinander: `(3s) (N chars)`. *(Tests: die verbliebenen
   onTool-Zeilen-Tests der Sub-Agent-Tools; für den Compact deckt R-CT-8 die Coexistenz über die
   uniforme End-Zeile ab — der Alt-Test `subAgentTimingAndCharsCoexist` pinnte die entfallene
-  „Da Scribe done"-Zeile und ist mit R-CT-8 entfallen.)*
+  „Compact done"-Zeile und ist mit R-CT-8 entfallen.)*
 
 ### R-RS-2 — chars, kein Token-Estimate ✅ done
 

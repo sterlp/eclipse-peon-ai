@@ -251,7 +251,7 @@ THEN nichts wird injiziert und keine Exception / kein Status-Eintrag
 > `NamedAgent`-Wrapper ist entfernt (Clean Break), Team-Mitglieder sind die Agenten selbst und ihr
 > `getName()` ist der Anrede-Name. `AgentsMdContextItem.itemsFor(target.getName(), …)` sucht damit
 > direkt `AGENTS-Plan.md` / `AGENTS-Dev.md` / `AGENTS-Review.md` (Case-Varianten inbegriffen,
-> gepinnt in `AgentsMdContextItemTest`). `AGENTS-da-thinka.md` / `AGENTS-da-mek.md` sind Altbestand
+> gepinnt in `AgentsMdContextItemTest`). `AGENTS-plan.md` / `AGENTS-dev.md` sind Altbestand
 > vor ADR-0079.
 
 ## Potenzial zum Aufräumen

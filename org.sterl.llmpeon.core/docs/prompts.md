@@ -31,12 +31,12 @@ and why the split.
 | `po.txt` | `AiPoAgent` (static, class-init) | always — Jon's system prompt | yes | Jon's identity + docs-first methodology |
 | `po-delegation.txt` | `AiPoAgent` (static) | always — appended after the path-white-list line | no | delegation playbook (plan → sign-off → build → review → retro, cycle/branch discipline) |
 | `po-tutorial.txt` | plugin `PeonAiService` | first activation in a session ([po-agent-jon.md](po-agent-jon.md) R4) | — | Jon onboarding message |
-| `developer.txt` | `AiDevAgent` (static) | always — Peon-Dev system prompt (standalone **and** Da Mek) | yes | Dev identity + build method |
+| `developer.txt` | `AiDevAgent` (static) | always — Dev system prompt (standalone **and** slave) | yes | Dev identity + build method |
 | `dev-build-loop.txt` | `PoDelegateTool.buildWithDev` | per build dispatch with a (sticky) planPath | no | build discipline: vertical slices, green gate, git commits, compactSession — never on `askDev` |
-| `planner.txt` | `AiPlanAgent` (static) | always — Peon-Plan system prompt (standalone **and** Da Thinka) | yes | plan identity + planning method |
+| `planner.txt` | `AiPlanAgent` (static) | always — Plan system prompt (standalone **and** slave) | yes | plan identity + planning method |
 | `plan-write-loop.txt` | `PoDelegateTool.planWithPlanAgent` | one-shot standing order per plan dispatch | no | plan-writing discipline (small green increments, plan continuously, ask — never guess) — never on `talkPlan` |
 | `compressor.txt` | `AiCompressorAgent` (static) | every compaction run | no | compaction method |
-| `search-agent.md` | `SearchAgentTool` | per `searchAgent` call (stateless one-shot) | no | Da Sniffa: read-only research agent |
+| `search-agent.md` | `SearchAgentTool` | per `searchAgent` call (stateless one-shot) | no | Search: read-only research agent |
 | `scaffold-agent.txt` | `AiScaffoldAgent` (static) | always — Scaffold system prompt | yes | scaffold identity (config artefacts: agents/skills/commands) |
 | `scaffold-tutorial.txt` | plugin (`PeonAiService` / `AIChatView`) | first activation of Scaffold | — | scaffold onboarding message |
 
@@ -56,5 +56,5 @@ and why the split.
 5. **Shared base** (`default.txt`) — the common behaviour every agent gets, prepended once by the
    loader (including custom-agent bodies).
 
-Related: [Peon-PO (Jon)](po-agent-jon.md) (the Jon prompt files in detail),
+Related: [Jon](po-agent-jon.md) (the Jon prompt files in detail),
 [Sub-agent tool timing](sub-agent-timing.md), [Search Agent Tool](search-agent-tool.md).

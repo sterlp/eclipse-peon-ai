@@ -8,7 +8,7 @@ idPrefix: TR
 > `R-TR-*` bleiben stabil, damit keine Verweise brechen.
 
 > **Status:** ✅ done (2026-10-18, Branch `story/night-5-2026-10-16`,
-> Da-Dok-Review CONCERNS ohne Blocker + Nacharbeit); Typmodell v2 R-TR-10…12 ✅ (2026-11-12, Branch
+> Review CONCERNS ohne Blocker + Nacharbeit); Typmodell v2 R-TR-10…12 ✅ (2026-11-12, Branch
 > `web-factory-5`). **Code:** `agent/model` (`Input`, `UserInput`, `TaggedInput` + Untertypen),
 > `shared/ChatMessageUtil` (einziger Renderer, uncappt), `context/ContextItem`, `compact/ContextTrimComponent`.
 > **Verwandt:** [context-message-concept.md](context-message-concept.md) · [compact.md](compact.md) ·
@@ -33,7 +33,7 @@ komplett entfallen (R-TR-9) — kein head-Matching, keine Inhalts-Deduplizierung
 //-- End <head>
 ```
 
-`head` = Kurzbezeichnung (z. B. `tool call: eclipseReadFile`, `context: memory`, `async result: Da Thinka`).
+`head` = Kurzbezeichnung (z. B. `tool call: eclipseReadFile`, `context: memory`, `async result: Plan`).
 `TaggedInput.INFO` beschreibt das Format und steht **einmal** in der static System-Message.
 
 ## Format-Fakten des Renderers (Bau I1, 2026-10-18)
@@ -307,5 +307,5 @@ Der letzte Satz ist der Kern (Adressat), der Rest erklärt sich aus dem Beispiel
 
 - Async-Tool-Results (Shell!) sind für Paul **wichtiger als async Agents** — eigene Story, `INFO`
   hält dafür nur den Platz frei.
-- Doppel-Tagging: Tool-Results tragen schon ein Symbol (🔍/📜/🗜, [icons.md](../../org.sterl.llmpeon/docs/icons.md)). Symbol =
+- Doppel-Tagging: Tool-Results tragen schon ein Symbol (🔍/📄/🗜, [icons.md](../../org.sterl.llmpeon/docs/icons.md)). Symbol =
   Werkzeug, Tag = Absender — gewollt, aber im Smoke prüfen, ob es nicht redundant wirkt.

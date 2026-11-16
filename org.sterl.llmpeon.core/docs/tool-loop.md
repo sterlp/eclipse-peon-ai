@@ -1,3 +1,7 @@
+---
+idPrefix: TL
+---
+
 # Tool-Loop — nicht-produktive Modell-Antworten recovern
 
 **Technische Heimat:** core `org.sterl.llmpeon.tool` (`ToolService.executeLoop`,

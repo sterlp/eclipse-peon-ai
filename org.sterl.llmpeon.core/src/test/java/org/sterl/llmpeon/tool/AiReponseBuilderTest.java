@@ -2,14 +2,23 @@ package org.sterl.llmpeon.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.shared.GrepHit;
 import org.sterl.llmpeon.shared.SearchQuery;
 import org.sterl.llmpeon.shared.TextFileTypes;
+import org.sterl.llmpeon.streaming.AiCancellationException;
 
 class AiReponseBuilderTest {
 
@@ -325,4 +334,149 @@ class AiReponseBuilderTest {
         assertEquals("showing 100 of 120 markers", lines.get(101));
     }
 
+    // UC-RT-3
+    @Test
+    void didYouMeanFormatsAndCapsOrderedPaths() {
+        var sep = System.lineSeparator();
+        var paths = List.of("/a/one.md", "/b/two.md", "/c/three.md", "/d/four.md", "/e/five.md");
+
+        assertThat(AiReponseBuilder.didYouMean(paths.subList(0, 1), "diskSearchFiles"))
+                .isEqualTo(sep + "Did you mean:" + sep + "/a/one.md");
+
+        assertThat(AiReponseBuilder.didYouMean(paths.subList(0, 2), "diskSearchFiles"))
+                .isEqualTo(sep + "Did you mean:" + sep + "/a/one.md" + sep + "/b/two.md");
+
+        assertThat(AiReponseBuilder.didYouMean(paths.subList(0, 3), "diskSearchFiles"))
+                .isEqualTo(sep + "Did you mean:" + sep + "/a/one.md" + sep + "/b/two.md" + sep + "/c/three.md");
+
+        assertThat(AiReponseBuilder.didYouMean(paths.subList(0, 4), "diskSearchFiles"))
+                .isEqualTo(sep + "Did you mean:" + sep + "/a/one.md" + sep + "/b/two.md" + sep + "/c/three.md"
+                        + sep + "more matches — use diskSearchFiles");
+
+        assertThat(AiReponseBuilder.didYouMean(paths, "diskSearchFiles"))
+                .isEqualTo(sep + "Did you mean:" + sep + "/a/one.md" + sep + "/b/two.md" + sep + "/c/three.md"
+                        + sep + "more matches — use diskSearchFiles");
+
+        assertThat(AiReponseBuilder.didYouMean(paths.subList(0, 4), "eclipseSearchFiles"))
+                .contains("more matches — use eclipseSearchFiles");
+    }
+
+    @Test
+    void didYouMeanOmitsEmptySuggestions() {
+        assertThat(AiReponseBuilder.didYouMean(List.of(), "diskSearchFiles")).isEmpty();
+        assertThat(AiReponseBuilder.didYouMean(List.of("/a/x.java"), "diskSearchFiles")).isNotEmpty();
+    }
+
+    @Test
+    void didYouMeanFormatsSuggestionSearchFailure() {
+        var sep = System.lineSeparator();
+        assertThat(AiReponseBuilder.didYouMeanFailure("something went wrong"))
+                .isEqualTo(sep + "Did you mean: suggestion search failed: something went wrong");
+
+        assertThat(AiReponseBuilder.didYouMeanFailure(null))
+                .isEqualTo(sep + "Did you mean: suggestion search failed: null");
+    }
+
+    @Test
+    void readMissSuggestionPreservesSegmentProbeAndFormatting() {
+        var sep = System.lineSeparator();
+        var probeQuery = new AtomicReference<String>();
+        var probeLimit = new AtomicInteger();
+        var paths = List.of("/a/one.md", "/b/two.md", "/c/three.md", "/d/four.md");
+
+        var r = AiReponseBuilder.readMissSuggestion(
+                "wrong\\RtCap_*.txt", "diskSearchFiles",
+                (q, l) -> { probeQuery.set(q); probeLimit.set(l); return paths; },
+                null);
+        assertEquals("RtCap_*.txt", probeQuery.get());
+        assertEquals(4, probeLimit.get());
+        assertEquals(sep + "Did you mean:" + sep + "/a/one.md" + sep + "/b/two.md" + sep + "/c/three.md"
+                + sep + "more matches — use diskSearchFiles", r.appendix());
+        assertNull(r.searchFailure());
+
+        r = AiReponseBuilder.readMissSuggestion(
+                "wrong/ RtCap_*.txt ", "diskSearchFiles",
+                (q, l) -> { probeQuery.set(q); probeLimit.set(l); return paths; },
+                null);
+        assertEquals(" RtCap_*.txt ", probeQuery.get());
+
+        r = AiReponseBuilder.readMissSuggestion(
+                "wrong/", "diskSearchFiles", (q, l) -> { throw new AssertionError("must not call"); }, null);
+        assertEquals("", r.appendix());
+        assertNull(r.searchFailure());
+
+        r = AiReponseBuilder.readMissSuggestion(
+                "wrong/   ", "diskSearchFiles", (q, l) -> { throw new AssertionError("must not call"); }, null);
+        assertEquals("", r.appendix());
+        assertNull(r.searchFailure());
+
+        r = AiReponseBuilder.readMissSuggestion(
+                "nope/real.txt", "diskSearchFiles", (q, l) -> List.of(), null);
+        assertEquals("", r.appendix());
+        assertNull(r.searchFailure());
+    }
+
+    @Test
+    void readMissSuggestionRetainsSearchFailure() {
+        var sep = System.lineSeparator();
+        var ex = new IllegalStateException("search blocked");
+
+        var r = AiReponseBuilder.readMissSuggestion(
+                "nope/x.txt", "diskSearchFiles", (q, l) -> { throw ex; }, null);
+        assertEquals(sep + "Did you mean: suggestion search failed: search blocked", r.appendix());
+        assertSame(ex, r.searchFailure());
+
+        var nullMsg = new IllegalStateException();
+        r = AiReponseBuilder.readMissSuggestion(
+                "nope/x.txt", "diskSearchFiles", (q, l) -> { throw nullMsg; }, null);
+        assertEquals(sep + "Did you mean: suggestion search failed: null", r.appendix());
+        assertSame(nullMsg, r.searchFailure());
+    }
+
+    @Test
+    void readMissSuggestionPropagatesStandardAndAdditionalCancellation() {
+        var directCe = new CancellationException("direct");
+        assertThrows(CancellationException.class, () ->
+                AiReponseBuilder.readMissSuggestion("nope/x.txt", "s", (q, l) -> { throw directCe; }, null));
+
+        var nestedCe = new CancellationException("nested");
+        var wrappedCe = new RuntimeException("wrap", nestedCe);
+        var thrown = assertThrows(RuntimeException.class, () ->
+                AiReponseBuilder.readMissSuggestion("nope/x.txt", "s", (q, l) -> { throw wrappedCe; }, null));
+        assertSame(wrappedCe, thrown);
+
+        var aiCe = new AiCancellationException("ai", "", "");
+        assertThrows(AiCancellationException.class, () ->
+                AiReponseBuilder.readMissSuggestion("nope/x.txt", "s", (q, l) -> { throw aiCe; }, null));
+
+        var wrappedAiCe = new RuntimeException("wrap", aiCe);
+        thrown = assertThrows(RuntimeException.class, () ->
+                AiReponseBuilder.readMissSuggestion("nope/x.txt", "s", (q, l) -> { throw wrappedAiCe; }, null));
+        assertSame(wrappedAiCe, thrown);
+
+        var normalEx = new RuntimeException("normal");
+        var thrown2 = assertThrows(RuntimeException.class, () ->
+                AiReponseBuilder.readMissSuggestion(
+                        "nope/x.txt", "s", (q, l) -> { throw normalEx; }, e -> true));
+        assertSame(normalEx, thrown2);
+
+        thrown2 = assertThrows(RuntimeException.class, () ->
+                AiReponseBuilder.readMissSuggestion(
+                        "nope/x.txt", "s", (q, l) -> { throw normalEx; }, e -> e == normalEx));
+        assertSame(normalEx, thrown2);
+    }
+
+    @Test
+    void readMissSuggestionDoesNotCatchFormattingFailure() {
+        var formattingEx = new IllegalStateException("formatting boom");
+        var paths = new AbstractList<String>() {
+            @Override public String get(int index) { throw formattingEx; }
+            @Override public int size() { return 1; }
+        };
+
+        var thrown = assertThrows(IllegalStateException.class, () ->
+                AiReponseBuilder.readMissSuggestion(
+                        "nope/x.txt", "diskSearchFiles", (q, l) -> paths, null));
+        assertSame(formattingEx, thrown);
+    }
 }

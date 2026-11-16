@@ -503,16 +503,30 @@ public class EclipseUtil {
         }
     }
     public static String projectInfo(IProject p) {
+        return projectInfo(p, "Project name: ", null);
+    }
+
+    public static String projectInfo(IProject p, String projectTag, @Nullable IFile visiblePlan) {
         final var result = new StringBuilder();
-        result.                             append("Project name: ").append(p.getName()) //
-            .append(System.lineSeparator()).append("Eclipse path: ").append(JdtUtil.pathOf(p)) //
-            .append(System.lineSeparator()).append("Disk path:    ").append(JdtUtil.diskPathOf(p)) //
+        result.append(projectTag).append(p.getName()) //
+            .append(System.lineSeparator()).append("Eclipse path: ").append(JdtUtil.pathOf(p))
+            .append(" → eclipse* tools (all workspace files)") //
+            .append(System.lineSeparator()).append("Disk path: ").append(JdtUtil.diskPathOf(p))
+            .append(" → only disk* and shell workDir; /").append(p.getName())
+            .append("/… is NOT a disk path") //
             .append(System.lineSeparator()).append("Natures:      ").append(projectNatures(p)); //
 
-        var m = findMember(p, "pom.xml");
-        if (m.isPresent()) result.append(System.lineSeparator()).append(JdtUtil.pathOf(m.get()));
-        m = findMember(p, "package.json");
-        if (m.isPresent()) result.append(System.lineSeparator()).append(JdtUtil.pathOf(m.get()));
+        var filePaths = new ArrayList<String>();
+        for (var candidate : List.of("pom.xml", "package.json", "AGENTS.md", "docs/index.md")) {
+            findMember(p, candidate).ifPresent(f -> filePaths.add(JdtUtil.pathOf(f)));
+        }
+        if (!filePaths.isEmpty()) {
+            result.append(System.lineSeparator()).append("Files: ").append(String.join(", ", filePaths));
+        }
+
+        if (visiblePlan != null) {
+            result.append(System.lineSeparator()).append("Plan: ").append(JdtUtil.pathOf(visiblePlan));
+        }
 
         appendNestingLines(result, p);
 

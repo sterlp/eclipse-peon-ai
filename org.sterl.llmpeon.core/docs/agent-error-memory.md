@@ -4,7 +4,7 @@ idPrefix: AEM
 
 # API-Fehler ins Agent-Memory
 
-> **Status:** R-AEM-1…3 ✅ done (2026-09-30, Paul; Delta nach Da-Dok-REJECTED); R-AEM-4 ✅ done (2026-11-15). **Anlass:** Turn stirbt still an API-Fehlern
+> **Status:** R-AEM-1…3 ✅ done (2026-09-30, Paul; Delta nach Review-REJECTED); R-AEM-4 ✅ done (2026-11-15). **Anlass:** Turn stirbt still an API-Fehlern
 > (400 `exceed_context_size_error`) — die History enthält den Abbruch
 > nicht; der Agent (und Paul) wissen beim nächsten Turn nicht, warum Schluss war. Verwandt:
 > [agents-retry.md](agents-retry.md) (ApiRetry — erst nach erschöpftem Retry),
@@ -48,7 +48,7 @@ nicht.
 - GIVEN der Fehler ist bereits im Memory WHEN ein identischer terminaler Fehler auftritt THEN
   keine zweite Kopie.
 
-### R-AEM-3 — Nutzlose Provider-Fehler-Messages nennen URL, Klasse, Ursache ✅ done (2026-10-29, Da-Dok-Review nach REJECTED-Delta; Trigger-Form nach Messung, Paul-Rückversicherung ⏳)
+### R-AEM-3 — Nutzlose Provider-Fehler-Messages nennen URL, Klasse, Ursache ✅ done (2026-10-29, Review nach REJECTED-Delta; Trigger-Form nach Messung, Paul-Rückversicherung ⏳)
 
 Ein Model-API-Connect-Fehler ist in der Chat-PROBLEM-Zeile nicht von einem MCP-Connect-Fehler
 unterscheidbar — die Wrapper-Schichten (JDK-`CompletableFuture`-Umschlag, langchain4j

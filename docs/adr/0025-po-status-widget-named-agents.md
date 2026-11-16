@@ -1,4 +1,4 @@
-# ADR-0025: PO-Status im Header via gezogener `NamedAgent`-Liste; Ork-Sklaven sind eigene Identitäten
+# ADR-0025: PO-Status im Header via gezogener `NamedAgent`-Liste
 
 **Status:** Accepted
 
@@ -8,7 +8,7 @@ Das Header-Feature „Agenten-Status" zeigte Agenten wiederholt **doppelt** (akt
 „Search läuft → Dev doppelt"). Die Wurzel war nicht ein Render-Bug, sondern **Responsibility-Bleed**:
 
 - **Kollidierende Namen.** Der Sub-Agent-Chip-Kanal (`AiMonitor.onSubAgent`) trug Anzeige-Namen, die
-  **identisch** zu echten Roster-Zeilen waren (`"Peon-Plan"`/`"Peon-Dev"`). Ein Chip kollidierte mit
+  **identisch** zu echten Roster-Zeilen waren (`"Plan"`/`"Dev"`). Ein Chip kollidierte mit
   der gleichnamigen Zeile.
 - **Observer-State in der View.** `AIChatView` hielt ein `workingSubAgents`-Set und implementierte
   `onSubAgent` — Orchestrierungs-Zustand in einer reinen UI-Klasse, der über Agenten-Wechsel **leakte**
@@ -22,19 +22,16 @@ View routet nur).
 
 ## Decision
 
-**Der Status wird vom Widget *gezogen* (Pull/MVC), nicht per Observer gepusht — und Jons Sklaven
-bekommen eigene Ork-Identitäten.**
+**Der Status wird vom Widget *gezogen* (Pull/MVC), nicht per Observer gepusht.**
 
-- **Ork-Identität.** Jons zwei RAM-Sklaven heißen nach außen **Da Thinka** (Plan) und **Da Mek** (Dev)
-  — bewusst **verschieden** von den wählbaren Agenten `Peon-Plan`/`Peon-Dev`. Der Ork-Name ist die
-  öffentliche UI-Identität des Sklaven; die Namenskollision verschwindet **by construction**.
+- **Namen:** abgelöst durch [ADR-0079](0079-display-names-without-ork-names.md) — Jons Team heißt Plan/Dev wie die wählbaren Agenten; die Ork-Namen sind entfallen.
 - **Der Agent besitzt sein Team.** `AiPoAgent` hält sein Team als
-  `List<NamedAgent(String uiName, AiAgent agent)>` in fester Reihenfolge — **Da Boss** (Jon selbst),
-  **Da Thinka** (Plan), **Da Mek** (Dev) — und gibt es über `getTeam()` heraus. Die zwei Agenten werden
+  `List<NamedAgent(String uiName, AiAgent agent)>` in fester Reihenfolge — **Jon** (selbst),
+  **Plan**, **Dev** — und gibt es über `getTeam()` heraus. Die zwei Agenten werden
   **einmal erzeugt** und von `AiPoAgent` **und** `JonDelegateTool` geteilt — die Slave-**Factory-
-  Supplier** in `JonDelegateTool` fallen weg (eine Instanz, ein Besitzer). Die Ork-/Boss-Namen sind hier
+  Supplier** in `JonDelegateTool` fallen weg (eine Instanz, ein Besitzer). Die Namen sind hier
   die **einzige Quelle**; `JonDelegateTool` zieht seinen Log-`uiName` daraus statt Literale zu doppeln.
-- **Blatt-Regel für den Boss.** Da Boss ist der Orchestrator und darf nicht gleichzeitig mit einem
+- **Blatt-Regel für den Boss.** Jon ist der Orchestrator und darf nicht gleichzeitig mit einem
   Agenten glühen: `working` = `isWorking() && kein Sklave arbeitet`. So glüht Jon beim eigenen Denken,
   aber während der Delegation trägt der Sklave den Ball (kein „🟢 immer auf Jon"). Die Regel lebt im
   Pure-Model, nicht im Widget.
@@ -54,7 +51,7 @@ bekommen eigene Ork-Identitäten.**
   Observer-Set, kein Zustand über Agenten-Wechsel.
 - Deckt sich wieder mit [ADR-0005](0005-widget-owns-state-view-routes.md); der Responsibility-Bleed ist
   aufgelöst (der Agent besitzt sein Team, das Widget zieht, der Service hat den einen Choke-Point).
-- **MVP-Scope:** Nur Jon zeigt eine Status-Liste (Da Boss + seine zwei Orks); andere Agenten zeigen
+- **MVP-Scope:** Nur Jon zeigt eine Status-Liste (Jon + Plan + Dev); andere Agenten zeigen
   **nichts**. Die frühere „aktiver-Agent-Kontextzeile" und der **Search-Chip** entfallen. `AiMonitor.onSubAgent` bleibt als
   ruhende No-op-Default stehen (kein Konsument mehr), damit Search **später** als eigenes transientes
   Konzept nachrüstbar ist — ohne es erneut auf Agenten-Namen zu legen.

@@ -1,3 +1,7 @@
+---
+idPrefix: RT
+---
+
 # Read Tools (Datei · Grep · Console) — Eclipse **und** Disk
 
 **Ziel:** Die lesenden Eclipse-Tools liefern **vorhersagbar begrenzte** Ausgaben. Ein Agent darf
@@ -204,6 +208,70 @@ genau diese Klausel von R1c (Rest von R1c unverändert, siehe Notiz dort).
 **WEIL:** Paul: „scheinbar sind die aber immer hilfreich" — beim Ganzdatei-Lesen hatte er sie
 wegoptimiert, doch auch danach braucht der Agent Zeilennummern für Folge-Edits. Token-Preis
 (~5–7 Zeichen/Zeile) ist kleiner als ein erneuter Range-Read oder eine falsche Edit-Position.
+
+### R-RT-1 — Datei nicht gefunden: „Did you mean" aus der Suche der eigenen Familie ✅
+
+**SOLL:** Findet `eclipseReadFile` bzw. `diskReadFile` den angegebenen Pfad nicht, bleibt die
+ehrliche Nicht-gefunden-Meldung (inkl. Diagnose-Hint nach
+[workspace-nesting.md](../../org.sterl.llmpeon/docs/workspace-nesting.md) R-WN-5) unverändert. Zusätzlich
+sucht das Tool nach dem **letzten Pfadsegment** (Dateiname) mit der Suche **seiner eigenen
+Familie** und deren heutigem Scope:
+
+- eclipse: wie `eclipseSearchFiles` — zuerst das gewählte Projekt, dann der restliche Workspace
+  ([eclipse-read-tools.md](../../org.sterl.llmpeon/docs/eclipse-read-tools.md) R4)
+- disk: wie `diskSearchFiles` — im workingDir (Plattenpfad des gewählten Projekts)
+
+Nur wenn die Suche Treffer hat, hängt das Tool `Did you mean:` mit den **ersten 3** Treffern an
+(Pfade im Format der eigenen Familie). Ohne Treffer bleibt es bei der Nicht-gefunden-Meldung. Das
+Tool liest nie automatisch einen Treffer — es schlägt nur vor.
+
+Präzisierungen (Jon, 2026-11-16, abgeleitet aus der Ehrlichkeitsregel in `AGENTS.md`):
+
+- Matching wie die Familien-Suche, ohne Sonderfall (`*`/`?` im Segment wirken als Wildcard,
+  ein Name ohne Wildcard ist eine Teilstring-Suche). Leeres oder nur aus Leerzeichen bestehendes
+  Segment → keine Suche, kein Anhang.
+- Gibt es mehr als 3 Treffer, sagt der Anhang das (`more matches — use <searchTool>`), nie still
+  gekappt.
+- Scheitert die Vorschlagssuche selbst, bleibt die Nicht-gefunden-Meldung und der Anhang nennt den
+  Suchfehler — kein stilles „keine Vorschläge". Ein Abbruch durch den User ist kein Suchfehler:
+  er bricht den Tool-Call ab.
+
+Komponenten-Schnitt:
+[read-tools-architektur.md](read-tools-architektur.md).
+
+**WEIL:** Agenten raten Pfade (falsches Modul, fehlendes `src/`, Test-Package = Klassen-Package) und
+brauchen dann einen zweiten Such-Call. Der Vorschlag spart diesen Call, ohne still eine andere Datei
+zu liefern.
+
+#### UC-RT-1 — Fehlgriff im falschen Modul liefert Vorschläge ✅
+
+```gherkin
+Given "/org.sterl.llmpeon/src/org/sterl/llmpeon/context/SimpleContextItem.java" existiert nicht
+  And "SimpleContextItem.java" existiert unter "/org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/context/"
+When ein Agent "eclipseReadFile" mit dem nicht existierenden Pfad aufruft
+Then meldet das Tool, dass der Pfad nicht gefunden wurde
+  And die Meldung enthält "Did you mean:" mit "/org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/context/SimpleContextItem.java"
+  And es wird kein Dateiinhalt geliefert
+```
+
+#### UC-RT-2 — Ohne Treffer kein Vorschlag ✅
+
+```gherkin
+Given weder der Pfad noch eine Datei namens "Gibtsnicht.java" existiert
+When ein Agent "eclipseReadFile" oder "diskReadFile" mit ".../Gibtsnicht.java" aufruft
+Then meldet das Tool, dass der Pfad nicht gefunden wurde
+  And die Meldung enthält kein "Did you mean:"
+```
+
+#### UC-RT-3 — Höchstens drei Vorschläge, auch auf Disk ✅
+
+```gherkin
+Given "index.md" existiert unter dem workingDir an mehr als drei Stellen
+  And der angefragte Pfad "nope/index.md" existiert nicht
+When ein Agent "diskReadFile" mit "nope/index.md" aufruft
+Then enthält die Meldung "Did you mean:" mit genau drei Plattenpfaden
+  And die Meldung nennt, dass es weitere Treffer gibt
+```
 
 ## ℹ️ 2026-10-16 — Grep-Target darf eine einzelne Datei sein (Pauls Fix) — ✅ getestet (DiskGrepToolTest)
 

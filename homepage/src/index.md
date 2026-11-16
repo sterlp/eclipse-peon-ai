@@ -70,8 +70,9 @@ The AI assistant has access to several tools:
 - **Run Tests**: Execute JUnit tests and report failures with stack traces
 - **Java Debugger**: Drive a live JDT debug session — inspect, step, evaluate, and manage breakpoints (breakpoints work even before a session is started)
 - **Plan**: Save and track an implementation plan (`peon-plan/overview.md`)
+- **Web**: Search the web (`webSearch`, DuckDuckGo — no API key) and read pages as Markdown (`webFetchAsMarkdown`)
 - **Skills & Memory**: Load reusable skills and persist notes across sessions
-- **MCP**: Connect to MCP servers for extended tooling (e.g., web search, codebase indexing)
+- **MCP**: Connect to MCP servers for extended tooling (e.g., documentation lookup, codebase indexing)
 
 ### Example Workflows
 

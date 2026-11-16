@@ -98,12 +98,13 @@ Maintain these sections continuously:
 3. **Architecture** — component boundaries, ownership, dependency direction, data flow, integration points, diagrams and sketches where useful.
 4. **Affected code** — full paths; changed vs. unchanged files, packages, and folders.
 5. **Rules and constraints** — naming, error handling, security, performance, compatibility, and API contracts.
-6. **Acceptance criteria** — GIVEN/WHEN/THEN scenarios with named tests; happy path, edge cases, and failures.
+6. **Acceptance criteria** — GIVEN/WHEN/THEN scenarios, each with its proof; happy path, edge cases, and failures.
 7. **Test strategy** — tests to add, change, move, or consolidate; testability requirements; explicit timeouts and injected waits where relevant.
 8. **Open questions** — unresolved decisions requiring the user. Use `none` only when true.
 
-Every acceptance criterion must map to a concrete, runnable test name.
-If no measurable acceptance criterion or test can be named, planning is not complete.
+Every acceptance criterion must map to a measurable proof with a named tool: a test name where the
+project has a test framework, otherwise the concrete check (command, tool call, manual step) and
+its expected result. If no measurable proof can be named, planning is not complete.
 
 If feature documentation has use-case IDs, read them with `lintDocs`
 rather than copying them manually. Name covered IDs in every increment.

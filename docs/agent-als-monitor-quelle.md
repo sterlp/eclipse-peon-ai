@@ -22,7 +22,7 @@ soll Streams pro Agent trennen; **AgentsTool** (WIP) hält eine Map/Liste von Ag
 Einzel-Tool-Calls; langfristig ersetzt `AgentsTool` das `PoDelegateTool` (erst synchron wie heute);
 Ziel: **Custom Agents können auch „Tools" sein** — man könnte sich seinen eigenen Jon bauen.
 
-## Review v2 — REJECTED (Da Dok 2026-10-31, ohne ADRs; vom Jon am IST verifiziert)
+## Review v2 — REJECTED (Review 2026-10-31, ohne ADRs; vom Jon am IST verifiziert)
 
 V2 ist deutlich besser als v1 (null erlaubt löst den R5↔R6-Widerspruch, IST korrigiert, Blast
 Radius ehrlich: ~15 Core-Dateien + 171 Overrides in Tests) — aber drei Blocker bleiben, alle am
@@ -93,4 +93,4 @@ kollidiert damit.
   Identität vs. Anzeigename 🚧
 - [Streaming Display](../org.sterl.llmpeon/docs/streaming-display.md) — R20 (Payload vs. Monitor)
 - [Compact-Lock](../org.sterl.llmpeon.core/docs/compact-lock.md) — UC-CT-14
-- aifactory: [chat.md](../aifactory/docs/chat.md), `SseTurnMonitor`, `ProjectRuntime.authorTable`
+- aifactory (Projekt `/aifactory-parent`): `docs/chat.md`, `SseTurnMonitor`, `ProjectRuntime.authorTable`

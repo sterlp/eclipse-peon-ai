@@ -20,7 +20,7 @@ The system derives the agent name key from the active agent's display name:
   `Dev`/`Plan`/`Review` resolve case-insensitively (see fallback below); `Jon` tries
   `AGENTS-Jon.md`, `agents-jon.md` and `AGENTS-JON.md`.
 - **Custom agents:** the display name is used as-is.
-- **Clean break (2026-10-30):** the former `Peon-` prefix stripping (`Peon-PO` → `PO`) is gone —
+- **Clean break (2026-10-30):** the former `Peon-` prefix stripping (`Jon` → `PO`) is gone —
   an old `AGENTS-PO.md` is no longer loaded for Jon; rename it to `AGENTS-JON.md`. It also means a
   custom agent named `Peon-Dev` is resolved by its display name only: it gets
   `AGENTS-Peon-Dev.md` / `AGENTS-PEON-DEV.md`, never the built-in Dev agent's `AGENTS-DEV.md`.

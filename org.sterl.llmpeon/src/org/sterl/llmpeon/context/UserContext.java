@@ -6,6 +6,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -38,13 +39,20 @@ public class UserContext {
     }
 
     public List<ContextItem> get() {
+        return get(() -> null);
+    }
+
+    public List<ContextItem> get(Supplier<IFile> visiblePlan) {
+        var project = currentProject;
         // R-SEL-2/4: a pure text selection or type goes out even without project or resource.
-        if (currentProject == null && selectedResource == null && !hasTextSelection() && javaType == null) return List.of();
+        if (project == null && selectedResource == null && !hasTextSelection() && javaType == null) return List.of();
 
         var result = new LinkedList<ContextItem>();
-        if (currentProject != null) {
-            var info = PROJECT_TAG + System.lineSeparator() + EclipseUtil.projectInfo(currentProject);
-            result.add(new SimpleContextItem("Project info " + currentProject.getName(), info));
+        if (project != null) {
+            IFile plan = visiblePlan.get();
+            if (plan != null && !project.equals(plan.getProject())) plan = null;
+            var info = EclipseUtil.projectInfo(project, PROJECT_TAG, plan);
+            result.add(new SimpleContextItem("Project info " + project.getName(), info));
         }
         addUserSelection(result);
         synchronized (addOneTimeOrders) {

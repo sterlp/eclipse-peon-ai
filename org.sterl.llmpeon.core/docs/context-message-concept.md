@@ -1,4 +1,4 @@
-## User-Message-Insert-Ordnung (SOLL-Kontrakt, Paul 2026-09-24 — code-verifiziert Da Thinka)
+## User-Message-Insert-Ordnung (SOLL-Kontrakt, Paul 2026-09-24 — code-verifiziert Plan)
 
 Wie eine UserMessage aufgebaut wird (kein Raten mehr, Grundlage für R-CIB-4 in [compact-input-budget.md](compact-input-budget.md)):
 
@@ -47,7 +47,7 @@ neu gebaut, nachdem ich eine Nachricht sende."
   Loop-Request-Path → erst bewerten.
 
 **Entscheidung (User 2026-09-11): Fix gebaut — R-ST4 „System-Message-Rebuild nach In-Loop-Compact" — ✅ done**
-(Da-Thinka-Bewertung: Status quo hat einen echten Divergenz-Fall — Jons Static-Context enthält die
+(Plan-Bewertung: Status quo hat einen echten Divergenz-Fall — Jons Static-Context enthält die
 Plan-Datei; Rest-Turn arbeitet nach Compact mit dem alten Plan-Snapshot, den der Sub-Agent gerade
 geändert hat. `compact()`-Invariante „force rebuild" wird vom Loop bis Turn-Ende ignoriert.
 Turn-Ende erzwingen abgelehnt — bricht den Resume-Flow.)
@@ -364,7 +364,7 @@ ausschließlich als AiMessage in der Memory; der preserve-Text lebt ausschließl
   Tool-Results sind nie leer, das Tool sagt, was passiert ist.
 * Die Compact-Abschlussmeldung bleibt UI-only (`onTool`) und wandert nicht ins Result — seit
   [R-CT-8](compact-lock.md) (2026-10-24) ist das die uniforme End-Zeile `🗜 <Agent> compacted: …`;
-  die alte „Da Scribe done (Xs)"-Zeile ist entfallen.
+  die alte „Compact done (Xs)"-Zeile ist entfallen.
 * Das Re-Add der Pre-Compact-Assistant-Message (ToolService `addResult`) bleibt **bewusst** — das
   Tool-Result braucht seine Assistant-Message mit toolCalls (Message-Contract, issue-87-Repair);
   es ist zugleich die Quelle, in der preserve genau einmal steht.
@@ -393,7 +393,7 @@ SUMMARY-X ins Result ein; `preserveTextKept` pinnt preserve-Count == 1 — die A
 `AiDeveloperAgentTest.test_clear_memory` (EMPTY_PRESERVE-Marker).
 
 **Historisch ✅ done (2026-09-10):** Red-Evidenz: Result trug `SUMMARY-X\nPreserved:\nKEEP-1` →
-Fix: Summary-Return entfernt, `onTool("Da Scribe done…")` unverändert. Zwei Alt-Assertions, die
+Fix: Summary-Return entfernt, `onTool("Compact done…")` unverändert. Zwei Alt-Assertions, die
 den Bug pinnnten, angepasst (`CompactSessionToolTest` delegiert → `doesNotContain`,
 `AiDeveloperAgentTest.test_clear_memory`). — Seither zweimal präzisiert: Result-Marker zuerst
 `Preserved:\n<preserve>` / `Session compacted.`, seit 2026-09-11 `(nothing preserved)` /

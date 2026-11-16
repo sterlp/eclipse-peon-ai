@@ -1,7 +1,7 @@
 # Icons — UI-Rollen & Tool-Output-Symbole
 
 **Status:** 🚧 in Umsetzung — UI-Icons ❌ specified (2026-08-30/31, Night-Cycle C); **Tool-Output-Symbole
-✅ entschieden (2026-10-16, Paul) + Rollout gebaut (S1, S2, Da-Dok ACCEPTED);
+✅ entschieden (2026-10-16, Paul) + Rollout gebaut (S1, S2, Review ACCEPTED);
 S3 (PoDelegate/AgentsTool) offen bis Pauls WIP-Merge.**
 
 ## Zweck
@@ -19,7 +19,7 @@ Token, dann ein Leerzeichen, dann der bestehende Text.
 | Symbol | Operation | LLM sichtbar in | Status |
 |---|---|---|---|
 | 🔍 | Search/Grep | `🔍 grep '…'` / `🔍 disk grep '…'` | ✅ gebaut (Paul + WIP Eclipse-Seite) |
-| 📜 | Read (Datei lesen) — **Scope: exakt `diskReadFile` + `eclipseReadFile`** (List/Console/WebFetch bewusst symbol-frei, Plan §3.6) | `📜 Reading …` | ✅ gebaut (S1, rot-erst core+PDE) |
+| 📄 | Read (Datei lesen) — **Scope: exakt `diskReadFile` + `eclipseReadFile`** (List/Console/WebFetch bewusst symbol-frei, Plan §3.6) | `📄 Reading …` | ✅ gebaut (S1, rot-erst core+PDE) |
 | 🗜 | Compact | Compact-Session (Result + onTool, COMPACTED/SKIPPED/FAILED) + Start-Zeile `🗜 Compressing <Agent>: 3 messages 124 tokens (estimate)` — Name seit R-CT-6 (2026-10-23), eine Implementierung in `CompactFeedback.startLine` | ✅ gebaut (S2); **S3 offen:** PoDelegate/AgentsTool-Compact-Pfade erst nach Pauls WIP-Merge; präexistent: `ToolService:246` „🗜 Compact hint" (R-CC-Ära) |
 
 **Regeln:**
@@ -58,8 +58,9 @@ Token, dann ein Leerzeichen, dann der bestehende Text.
 | 🧩 | zugewiesen | SKILL |
 | 🪄 | zugewiesen | Command |
 | 🔍 | zugewiesen | Tool-Output „Search/Grep" (2026-10-16, Paul) |
-| 📜 | zugewiesen | Tool-Output „Read" (2026-10-16, Paul; Wahl gegen 📝 — 📝 ist Write/Edit-vorbereitet) |
+| 📄 | zugewiesen | Tool-Output „Read" (2026-10-16, Paul; Wahl gegen 📝 — 📝 ist Write/Edit-vorbereitet) |
 | 📦 | reserviert | Custom Agent (Q3) |
+| 📜 | frei | |
 | 🔧 | frei | |
 | 🛠 | frei | (Variante von 🔧) |
 | ✅ | frei | Status-Icon? (Q2) |
@@ -70,7 +71,7 @@ Token, dann ein Leerzeichen, dann der bestehende Text.
 | 📐 | reserviert | Plan (Q1) |
 | 🔨 | reserviert | Dev (Q1) |
 | ✍️ | reserviert | Compact (Q1) |
-| 📝 | frei | Write/Edit-Kandidat (bewusst frei, Paul 2026-10-16: Read = 📜) |
+| 📝 | frei | Write/Edit-Kandidat (bewusst frei, Paul 2026-10-16: Read = 📄) |
 | ⇄ | in Benutzung | Cache-Reads im Token-Header (2c, R5 caching.md) |
 
 ## Typografie-Regeln
@@ -94,7 +95,5 @@ Token, dann ein Leerzeichen, dann der bestehende Text.
 
 ## Umsetzung (SOLL)
 
-- Tool-Output-Symbole: **S1 (📜) + S2 (🗜) gebaut** (Da-Dok ACCEPTED 2026-10-16); S3 = Follow-up
-  nach Pauls WIP-Commit (PoDelegateTool/AgentsTool).
 - UI-Icons (Header/Status-Leiste): eigener Build-Zyklus (UI-Widgets)
   (`AiAgentStatusWidget`/`ActionsBarWidget`-Erweiterung) — NICHT im Symbol-Rollout.

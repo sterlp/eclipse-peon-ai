@@ -87,7 +87,7 @@ davon ab, welches Think-Input gerendert wird (Checkbox / Dropdown / Freitext / a
   `org.sterl.llmpeon.provider`, Interface `LlmProvider`, Factory `LlmProviders` (+ `all()`),
   Helper `ProviderRequestSupport`, Think-Formen als sealed `ThinkSupport`.
 - ~~Provider-Unterstützung Extra-Body pro Provider verifizieren~~ **verifiziert 2026-08-28
-  (langchain4j 1.18.1, Da Mek):** per-request `customParameters` **nur OpenAiStreamingChatModel**
+  (langchain4j 1.18.1, Dev):** per-request `customParameters` **nur OpenAiStreamingChatModel**
   (→ OPEN_AI, LM_STUDIO, GITHUB_COPILOT); **Anthropic nur Build-time** (`customParameters` am
   Builder — Body gehört zur Verbindungs-Identität); **Gemini/Mistral/Ollama/OpenAiOfficial-
   Responses: keine Möglichkeit** (kein Feld, kein Hook) → R3-Wertetabelle: OpenAI-Familie +

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.List;
 
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.FileLines;
@@ -57,7 +58,14 @@ public class DiskFileReadTool extends AbstractTool {
 
         Path resolved = resolve(filePath);
         if (resolved == null || !Files.isRegularFile(resolved)) {
-            throw new IllegalArgumentException("File not found: " + filePath + " also not in " + workingDir);
+            String missText = "File not found: " + filePath + " also not in " + workingDir;
+            var suggestion = AiReponseBuilder.readMissSuggestion(
+                    filePath, "diskSearchFiles", this::searchFiles, null);
+            missText += suggestion.appendix();
+            if (suggestion.searchFailure() != null) {
+                throw new IllegalArgumentException(missText, suggestion.searchFailure());
+            }
+            throw new IllegalArgumentException(missText);
         }
 
         try {
@@ -65,7 +73,7 @@ public class DiskFileReadTool extends AbstractTool {
             if (startLine > 0 && endLine > 0) lines = " from " + startLine + " to " + endLine;
             String content = Files.readString(resolved);
             String result = FileLines.extract(content, startLine, endLine);
-            onTool("📜 Reading " + lines + " file " + filePath + " " + StringUtil.charsSuffix(result));
+            onTool("📄 Reading " + lines + " file " + filePath + " " + StringUtil.charsSuffix(result));
             return result;
         } catch (IOException e) {
             throw new RuntimeException("Failed to read " + filePath, e);
@@ -91,17 +99,7 @@ public class DiskFileReadTool extends AbstractTool {
         if (limit == null) limit = 50;
         ArgsUtil.requireNonBlank(query, "query");
 
-        var matcher = StringMatcher.wildCardMatcher(FileUtils.normalizePath(query));
-        var matches = new ArrayList<String>();
-        try (var walk = Files.walk(workingDir)) {
-            var stream = walk.filter(Files::isRegularFile)
-                .filter(p -> matcher.match(p.getFileName().toString()) 
-                        || matcher.match(FileUtils.normalizePath(p.toAbsolutePath().toString())));
-            if (limit > 0) stream = stream.limit(limit);
-            stream.forEach(p -> matches.add(p.toAbsolutePath().toString()));
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to search in " + workingDir, e);
-        }
+        var matches = searchFiles(query, limit);
 
         String suffix = null;
         if (matches.isEmpty()) {
@@ -110,6 +108,21 @@ public class DiskFileReadTool extends AbstractTool {
         String result = AiReponseBuilder.searchComplete(matches, limit, suffix);
         onTool("Found " + matches.size() + " files in " + workingDir + " for '" + query + "'." + " " + StringUtil.charsSuffix(result));
         return result;
+    }
+
+    protected List<String> searchFiles(String query, int limit) {
+        var matcher = StringMatcher.wildCardMatcher(FileUtils.normalizePath(query));
+        var matches = new ArrayList<String>();
+        try (var walk = Files.walk(workingDir)) {
+            var stream = walk.filter(Files::isRegularFile)
+                .filter(p -> matcher.match(p.getFileName().toString())
+                        || matcher.match(FileUtils.normalizePath(p.toAbsolutePath().toString())));
+            if (limit > 0) stream = stream.limit(limit);
+            stream.forEach(p -> matches.add(p.toAbsolutePath().toString()));
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to search in " + workingDir, e);
+        }
+        return matches;
     }
 
     public static final String LIST_DISK_NAME = "diskListDirectory";

@@ -1,7 +1,7 @@
 # ADR-0058: ToolLoopRequest.toBuilder — Behalten, aber Nested-Requests müssen agent/memory explizit setzen
 
 **Status:** Accepted · **Datum:** 2026-09-27 · **Anlass:** R-CC-15 (org.sterl.llmpeon.core/docs/compact.md) —
-Search-Agent-Loop erbt den Parent-Agenten, Sniffas compactSession clearte Jons Memory.
+Search-Agent-Loop erbt den Parent-Agenten, Search's compactSession clearte Jons Memory.
 
 ## Context
 
@@ -20,7 +20,7 @@ Der Bug: `SearchAgentTool.java:47-51` überschrieb `staticMessages`, `toolFilter
    (Sklaven via `PoDelegateTool:239` → `AbstractAgent:286-297`, Custom Agents) bauen fresh und
    sind korrekt isoliert. Eine explizite Builder-Factory müsste dieselben 7 Felder listen — das
    Risiko „neues Feld wird still geerbt" verschwindet nicht, es zieht sich in den Factory-Body.
-   Bei einer Call-Site lohnt der Umbau nicht (Pauls Lean bestätigt, Da-Mek-Analyse 2026-09-27).
+   Bei einer Call-Site lohnt der Umbau nicht (Pauls Lean bestätigt, Dev-Analyse 2026-09-27).
 2. **Pitfall dokumentiert:** `ToolLoopRequest` trägt am Klassenkopf eine Warnung — `toBuilder()`
    erbt `agent` und `memory`; Nested-Requests MÜSSEN beides explizit setzen (Verweis R-CC-15).
 3. **Sicherheit erbt keine Felder blind:** Alle `getAgent()`-Reader sind null-safe

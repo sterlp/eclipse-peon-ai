@@ -74,7 +74,7 @@ also visible under this path; tools return the most specific project path.
 - **WEIL:** ohne die Zeile wundert sich der Agent über einen Pfad, der nicht die Projektwurzel ist,
   die er im Kopf hat — und über eine Datei, die er „schon gesehen" hat.
 
-## R-WN-4 — Pfad-Vertrag: ein gelieferter Pfad ist wieder lesbar ✅ done (2026-10-24, T-5/I-4, Commits b2d30906; Da-Mek-Messung S1–S5)
+## R-WN-4 — Pfad-Vertrag: ein gelieferter Pfad ist wieder lesbar ✅ done (2026-10-24, T-5/I-4, Commits b2d30906; Dev-Messung S1–S5)
 
 Jedes `eclipse*`-Tool liefert Workspace-Pfade der Form `/projekt/…` (nie Disk, nie relativ), und
 jedes `eclipse*`-Tool, das einen Pfad konsumiert, akzeptiert **jede** Form, die ein `eclipse*`-Tool
@@ -89,7 +89,7 @@ Bei abweichender Auflösung offen gelegt: „resolved via <pfad>".
 ### UC-WN-4 — searchReadRoundTrip ✅ done
 - GIVEN der Aggregator (oder das Projekt, dessen Ordner-Form der Agent hält) ist **geschlossen**,
   die Module darunter offen — die Aggregator-Ordner-Form `/root/mid/leaf/…` ist dann nicht über den
-  Baum auflösbar (S4-Matrix, Da-Mek-Messung 2026-10-24) WHEN `eclipseReadFile` mit diesem Pfad
+  Baum auflösbar (S4-Matrix, Dev-Messung 2026-10-24) WHEN `eclipseReadFile` mit diesem Pfad
   aufgerufen wird THEN die Datei wird über die Disk-Lokation aufgelöst und gelesen, mit Disclosure
   „resolved via <pfad>", wenn die Auflösung von der angefragten Form abweicht.
 

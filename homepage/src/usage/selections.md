@@ -10,7 +10,7 @@ When you work with Peon AI, information about your current workspace is automati
 
 | Element | Source | How It Appears |
 |---------|--------|---------------|
-| **Project** | Active Eclipse project | Project name and path |
+| **Project** | Active Eclipse project | Project name, paths, natures, entry files, nesting, and plan (if present) |
 | **Selected File** | File shown in your editor (or nothing if no file is open) | Full file path |
 | **Text Selection** | Highlighted code/text | Code snippet with line numbers |
 
@@ -51,9 +51,12 @@ Peon AI has two tool families, and they speak different path dialects:
 Every message tells the AI both, so it can pick the right one:
 
 ```
-Project name: my-project
-Eclipse path: /my-project
-Disk path:    /Users/me/dev/my-project
+User selected project: my-project
+Eclipse path: /my-project → eclipse* tools (all workspace files)
+Disk path: /Users/me/dev/my-project → only disk* and shell workDir; /my-project/… is NOT a disk path
+Natures:      java, maven
+Files: /my-project/pom.xml, /my-project/AGENTS.md
+Plan: /my-project/peon-plan/overview.md
 ```
 
 If the two names **differ** — say the project is called `my-project` but lives in
@@ -65,8 +68,10 @@ File not found: /my-project/README.md also not in /Users/me/dev/some-other-folde
 ```
 
 Nothing is broken and nothing is silently read from the wrong place — but the model has to notice
-its mistake and retry, which costs a round trip. The tools deliberately do **not** translate
-workspace paths into disk paths: a project named `docs` or `tmp` would make `/docs/file.md` a valid
+its mistake and retry, which costs a round trip. To shorten that, `diskReadFile` and
+`eclipseReadFile` append up to three `Did you mean:` paths when a file with the same name exists
+elsewhere in their own search scope — they suggest, they never read the other file. The tools
+deliberately do **not** translate workspace paths into disk paths: a project named `docs` or `tmp` would make `/docs/file.md` a valid
 path in *both* dialects, and a guess there could silently open the wrong file.
 
 Matching the two names removes the ambiguity entirely.

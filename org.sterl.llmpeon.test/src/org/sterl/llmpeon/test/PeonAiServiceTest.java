@@ -445,10 +445,8 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         aiService.call("Rückfrage", null);
         streamMock.assertCount(plan, 1);
         streamMock.assertCount("Handover from", 1);
-        // R-TR-3: the plan path is in the handover message AND in the freshly-injected
-        // Plan-Ref block — the start-line dedupKey does not match the handover's bare-path
-        // mention (no false-positive), so the reference is re-injected on the second turn.
-        streamMock.assertCount("peon-plan/overview.md", 2);
+// Count messages, not path mentions: unchanged project info is deduped; the first message retains the handoff and plan.
+        streamMock.assertCount("peon-plan/overview.md", 1);
     }
 
     /**
@@ -1496,7 +1494,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             var jon = svc.getActiveAgent();
             var ctx = jon.getStaticContext();
             assertEquals(1, ctx.size());
-            assertContains(ctx.get(0).render().body(), "eclipse* only; outside workspace"); // Env
+            assertContains(ctx.get(0).render().body(), "user language:"); // Env
 
             // AND: no memory snapshot and no file items in the static context
             var forbidden = List.of(memoryText, "docs/memory.md", "docs/index.md");
@@ -1586,7 +1584,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             // THEN: the new custom agent carries Env in its static context (system prompt) — no memory
             var custom = svc.getAgentService().get("TestAgent").orElseThrow();
             var ctx = custom.getStaticContext();
-            assertContains(ctx.get(0).render().body(), "workspace files -> eclipse* only; outside workspace -> disk* only."); // Env
+            assertContains(ctx.get(0).render().body(), "user language:"); // Env
 
             // AND: the original callback fired AFTER the re-bake
             assertEquals("baked", callbackState.get());
@@ -2033,7 +2031,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
 
             // AND: die System-Message trägt Env, aber KEINEN Memory-Snapshot mehr
             var systemMessage = extractSystemMessage(mockLlmServer.getLastRequestBody());
-            assertContains(systemMessage, "workspace files -> eclipse* only; outside workspace -> disk* only."); // Env
+            assertContains(systemMessage, "user language:"); // Env
             assertFalse("system prompt must not carry the memory snapshot",
                     systemMessage.contains(memoryText));
 
@@ -2043,7 +2041,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                     .filter(r -> r != null)
                     .map(TaggedInput::body)
                     .toList();
-            assertHasMessageWith(devRendered, "workspace files -> eclipse* only; outside workspace -> disk* only."); // Env
+            assertHasMessageWith(devRendered, "user language:"); // Env
             assertHasNoMessageWith(devRendered, memoryText);
         } finally {
             wmt.memoryReset(); // isoliert: Memory nicht in andere Tests/Runs leaken
@@ -2463,13 +2461,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         }
     }
 
-    /**
-     * R-PT-3: GIVEN a plan that exists only on disk WHEN a turn runs through the real service THEN
-     * the plan reference reaches the LLM request — pins the wiring of the refreshed plan supplier
-     * (PeonAiService -> PlanTool.visiblePlan), not just the mechanism in the component.
-     */
-    // R-PT-3
-    // UC-PT-3
+// UC-PT-3
     @Test
     public void diskWrittenPlanVisibleInTurnContextThroughTheService() throws Exception {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
@@ -2479,24 +2471,41 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         var overview = planDir.resolve("overview.md");
         Files.writeString(overview, "# disk written plan\n", StandardCharsets.UTF_8);
         try {
-            // GIVEN the workspace tree does not know the plan
-            assertFalse("fixture must leave the workspace tree stale, otherwise the refresh is not proven here",
+            assertFalse("fixture must leave the workspace tree stale",
                     project.getFile(PlanTool.OVERVIEW_FILE).exists());
 
-            // WHEN
             aiService.call("Ping", null);
 
-            // THEN the turn context carried the plan reference — once, and not from the tree
-            streamMock.assertCount("context: plan /" + PeonTestFixture.PROJECT_NAME + "/"
-                    + PlanTool.OVERVIEW_FILE, 1);
+            var userMessages = streamMock.getLastUserMessagesAsString();
+            var projectBlock = userMessages.stream()
+                    .filter(m -> m.contains("context: Project info " + project.getName()))
+                    .findFirst();
+            assertTrue("project info block expected in payload: " + userMessages,
+                    projectBlock.isPresent());
+            var block = projectBlock.get();
+
+            assertTrue("block must contain Plan line: " + block,
+                    block.contains("Plan: "));
+            assertTrue("block must contain overview.md path: " + block,
+                    block.contains(PlanTool.OVERVIEW_FILE));
+            assertTrue("block must contain project head: " + block,
+                    block.contains(UserContext.PROJECT_TAG + project.getName()));
+
+            assertFalse("no 'context: plan' block allowed: " + userMessages,
+                    userMessages.stream().anyMatch(m -> m.contains("context: plan")));
+            assertFalse("no 'Existing plan found' allowed: " + userMessages,
+                    userMessages.stream().anyMatch(m -> m.contains("Existing plan found")));
+
+            var memory = aiService.getActiveAgent().getMemory().getCopy();
+            var memoryText = memory.stream().map(m -> ChatMessageUtil.toString(m)).toList();
+            assertHasMessageWith(memoryText, "Ok");
         } finally {
             Files.deleteIfExists(overview);
             Files.deleteIfExists(planDir);
             project.getFolder(PlanTool.PLAN_DIR).refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
         }
     }
-
-    // R-ATC-8: the preview target prefers the PO-Team slave (stricter class filter) over the
+// R-ATC-8: the preview target prefers the PO-Team slave (stricter class filter) over the
     // standalone persistent agent, so the preview never claims a tool the agent cannot call.
     @Test
     public void agentForPreviewSlotPrefersPoSlave() {
@@ -2740,14 +2749,66 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                 .toList();
     }
 
-    // --- helpers for the replica tests ------------------------------------------
-    /** Serialisiert den Memory-Stand zu stabilen Strings (byte-stabiler Vergleich). */
     private List<String> snapshotMemory(AiAgent agent) {
         return agent.getMemory().getCopy().stream()
                 .map(m -> ChatMessageUtil.toString(m))
                 .toList();
     }
 
+// UC-SEL-6
+    @Test
+    public void nonScaffoldAgentsStaticContextHasNoFileAccess() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        var agents = aiService.getAgents();
+        assertFalse("agent list must not be empty", agents.isEmpty());
+
+        var jon = agents.stream().filter(a -> a instanceof AiPoAgent).findFirst();
+        var dev = agents.stream().filter(a -> a instanceof AiDevAgent && !(a instanceof AiPoAgent)).findFirst();
+        assertTrue("Jon (PoAgent) must be present", jon.isPresent());
+        assertTrue("Dev agent must be present", dev.isPresent());
+
+        var devSlave = aiService.agentForPreviewSlot(AgentModelConfig.DEV);
+        var planSlave = aiService.agentForPreviewSlot(AgentModelConfig.PLAN);
+        var reviewSlave = aiService.agentForPreviewSlot(AgentModelConfig.REVIEW);
+        assertNotNull("DEV preview slave must exist", devSlave);
+        assertNotNull("PLAN preview slave must exist", planSlave);
+        assertNotNull("REVIEW preview slave must exist", reviewSlave);
+
+        record RoleCheck(String name, AiAgent agent) {}
+        var roles = List.of(
+                new RoleCheck("Jon", jon.get()),
+                new RoleCheck("Dev", dev.get()),
+                new RoleCheck("DEV slave", devSlave),
+                new RoleCheck("PLAN slave", planSlave),
+                new RoleCheck("REVIEW slave", reviewSlave));
+
+        for (var role : roles) {
+            var ctx = role.agent().getStaticContext();
+            assertNotNull("static context must exist for " + role.name(), ctx);
+            assertFalse("static context must not be empty for " + role.name(), ctx.isEmpty());
+
+            var isSlave = role.name().endsWith("slave");
+            for (var item : ctx) {
+                var rendered = item.render();
+                assertNotNull("static item must render for " + role.name(), rendered);
+                var body = rendered.body();
+                assertNotNull("rendered body must not be null for " + role.name(), body);
+
+                assertFalse("must NOT contain FILE ACCESS: " + role.name() + " — body: " + body,
+                        body.contains("FILE ACCESS"));
+
+                if (!isSlave) {
+                    assertTrue("must contain Today: " + role.name() + " — body: " + body,
+                            body.contains("Today:"));
+                    assertTrue("must contain os name: " + role.name() + " — body: " + body,
+                            body.contains("os name:"));
+                    assertTrue("must contain user language: " + role.name() + " — body: " + body,
+                            body.contains("user language:"));
+                }
+            }
+        }
+    }
     private static final ObjectMapper JSON = new ObjectMapper();
 
     /** Extrahiert die System-Message (role=system) aus dem letzten LLM-Request-Body. */

@@ -4,7 +4,7 @@
 
 ## Context
 
-Da Meks Debugger-Tool (CR-4, Copilot-Vergleich) braucht Zugriff auf laufende Debug-Sessions. Zwei
+Devs Debugger-Tool (CR-4, Copilot-Vergleich) braucht Zugriff auf laufende Debug-Sessions. Zwei
 Basis-Optionen: JDT-Debug-Model (Eclipse-Interna, wie die Debug-View) oder DAP (Debug Adapter
 Protocol). Zusätzlich die Frage Confirmations für mutierende Actions.
 
@@ -23,7 +23,7 @@ Protocol). Zusätzlich die Frage Confirmations für mutierende Actions.
 ## Consequences
 
 - `isEditTool() = true`, Registrierung in `SharedToolsComponent` → Plan-/Review-/Search-/ReadOnly-
-  Custom-Agents filtern es automatisch raus (Da-Mek-Wiring, IST-verifiziert).
+  Custom-Agents filtern es automatisch raus (Dev-Wiring, IST-verifiziert).
 - Ohne laufende Session: ehrlicher Fehler mit Start-Hinweis („start debugging in the Debug view
   first") — im E2E-Smoke positiv aufgenommen („hilfreicher als das SOLL").
 - Wer später automatisierte Debug-Tests will (F2-Backlog & Co.), muss gegen dasselbe JDT-Model bauen

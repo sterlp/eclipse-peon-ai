@@ -4,7 +4,7 @@ idPrefix: ATC
 
 # Agent-Tool-Config — Tool-Sichtbarkeit als User-Config
 
-> **Status:** ✅ done (2026-10-14, Da-Dok-Review ACCEPTED-Equivalent, Code+Tests committet) ·
+> **Status:** ✅ done (2026-10-14, Review ACCEPTED-Equivalent, Code+Tests committet) ·
 > **Fachdoc-Mechanismus:** [agent-tool-filter.md](agent-tool-filter.md) (R-TF-* bleibt Owner der
 > Filter-Mechanik) · **verwandt:** [custom-agents-design.md](custom-agents-design.md) ·
 > [advanced-configuration.md](../../org.sterl.llmpeon/docs/advanced-configuration.md) · [scaffold-agent.md](scaffold-agent.md)
@@ -76,8 +76,8 @@ idPrefix: ATC
   anders als die Model-Config, R-DEF).
 - **Advanced-Seite:** Feld je Agent-Slot (Plan, PO, Review, Search) im jeweiligen Agent-Bereich.
   **Compact bekommt KEIN Feld** (🔒 Paul bestätigt, 2026-10-14): `CompactService` baut den
-  Request **ohne Tools** — der kompaktierende Agent (Da Scribe) ruft nie Tools auf; `compactSession`
-  ist Jons Delegate-Tool, nicht Da Scribes Werkzeug. Ein inertes Feld wäre eine Lüge
+Request **ohne Tools** — der kompaktierende Agent (Compact) ruft nie Tools auf; `compactSession`
+ist Jons Delegate-Tool, nicht Compacts Werkzeug. Ein inertes Feld wäre eine Lüge
   („tool must never lie").
 - **Custom Agents:** keine UI, Quelle bleibt das Frontmatter `tools:` — gleiche Semantik, kein
   Write-Back (Paul, 2026-10-13).
@@ -92,15 +92,15 @@ idPrefix: ATC
 ### R-ATC-5 ✅ — Klassen-Filter bleibt UND-verknüpft (UI kann nur einschränken)
 
 - Die Tool-Entscheidung ist die **Schnittmenge** aus Klassen-Filter (`getToolFilter()`:
-  `isEditTool`-Split, Da-Dok-Shell-Whitelist, Sniffa-plan*-Ausschluss) und Name-Filter
+  `isEditTool`-Split, Review-Shell-Whitelist, Search-plan*-Ausschluss) und Name-Filter
   (Tool Allowlist). Der Klassen-Filter bleibt **immer** unberührt — Built-in-Schutz (R-TF-1/2)
   kann vom User nicht wegkonfiguriert werden.
 - **Fazit für den User:** das UI-Feld kann nur **weiter einschränken**, niemals aufmachen.
   Ein Agent mit Built-in-Filter + leerer Allowlist verhält sich exakt wie heute.
-- GIVEN Da Dok (Klassen-Filter ohne Write-Tools) WHEN Allowlist `*` THEN trotzdem keine
+- GIVEN Review (Klassen-Filter ohne Write-Tools) WHEN Allowlist `*` THEN trotzdem keine
   Write-Tools (Schnittmenge)
-- GIVEN Da Sniffa WHEN Allowlist `*` THEN weiterhin plan*-frei
-- GIVEN Mek mit Allowlist `!debugJava*` WHEN Filter THEN Debug-Tools aus, Rest unverändert —
+- GIVEN Search WHEN Allowlist `*` THEN weiterhin plan*-frei
+- GIVEN Dev mit Allowlist `!debugJava*` WHEN Filter THEN Debug-Tools aus, Rest unverändert —
   der Klassen-Filter greift zusätzlich (Schnittmenge)
 
 ### R-ATC-6 ✅ — Name-Filter gilt für ALLE Tools (Built-in + MCP)
@@ -115,7 +115,7 @@ idPrefix: ATC
 - GIVEN MCP-Tool-Name WHEN Filter THEN derselbe Matcher wie Built-in (R-ATC-1, ein Mechanismus)
 
 ### R-ATC-7 ✅ — Where to Store & Wiring (per-Call-Read)
-- **IST-Korrektur (Da-Dok-Verifikation 2026-10-13):** persistente Agenten werden bei Config-Änderung
+- **IST-Korrektur (Review-Verifikation 2026-10-13):** persistente Agenten werden bei Config-Änderung
   **NICHT** neu gebaut — nur Custom Agents via `agentService.refresh`. Der Filter liest den Store
   **per Call** (`configuredModel.getConfig().toolAllowlist(slot)`, Präzedenz Scaffold R6 „Config must
   be re-read per call"); RAM-Sklaven erben den Slot ihres Parent-Typs.
@@ -141,7 +141,7 @@ idPrefix: ATC
   Feldinhalt (alle Quellen, Schnittmenge), read-only
 - GIVEN Allowlist `eclipse` WHEN Preview THEN Liste enthält `eclipse*`-Tools, keine `disk*`-,
   keine `debugJava*` (falls negiert)
-- GIVEN Da Dok WHEN Preview THEN Liste zeigt die Klassen-Filter-Schnittmenge (Shell drin,
+- GIVEN Review WHEN Preview THEN Liste zeigt die Klassen-Filter-Schnittmenge (Shell drin,
   Write-Tools draußen — auch bei `*`)
 
 ### R-ATC-9 ✅ — `!` allein: UI speichert nicht, Matcher macht no-op
@@ -208,8 +208,8 @@ GIVEN Dev-Agent mit `*, !debugJava*` WHEN `toolSpecifications` THEN alle Tools a
 GIVEN Agent ohne Tool-Feld WHEN `toolSpecifications` THEN alle Tools (minus Klassen-Filter bei
 Built-ins).
 
-#### UC-ATC-4 — Da Dok mit `*` bleibt klassen-gefiltert
-GIVEN Da Dok mit `*` WHEN `toolSpecifications` THEN Shell + Review-Tools sichtbar, Write-Tools
+#### UC-ATC-4 — Review mit `*` bleibt klassen-gefiltert
+GIVEN Review mit `*` WHEN `toolSpecifications` THEN Shell + Review-Tools sichtbar, Write-Tools
 unsichtbar (R-TF-1-Schnittmenge).
 
 #### UC-ATC-5 — Dev-Filter erbt nicht
@@ -239,7 +239,7 @@ GIVEN Allowlist `*, !*ReadPicture` WHEN der Matcher `diskReadPicture`, `eclipseR
 | R-ATC-2 | `ToolPolicyTest` — Negation: allow-then-deny, `*, !debugJava*`, nur-Negationen-valide |
 | R-ATC-3 | `ToolPolicyTest` — absent/leer-Normalisierung |
 | R-ATC-4 | `AgentToolConfigTest` (core) — Slots unabhängig, Dev erbt nicht |
-| R-ATC-5 | `PeonAiServiceTest` — Da-Dok/Sniffa-Schnittmenge bei `*` |
+| R-ATC-5 | `PeonAiServiceTest` — Review/Search-Schnittmenge bei `*` |
 | R-ATC-6 | `AgentToolConfigTest` — MCP-Name-Filter über Allowlist |
 | R-ATC-7 | `AgentToolConfigTest` — Store-Key parse/reload, Clean Break |
 | R-ATC-8 | `resolveActiveTools*` (Preview↔Runtime-Äquivalenz) + Dialog-Inhalt = User-Smoke (Paul) |

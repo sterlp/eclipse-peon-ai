@@ -1,6 +1,6 @@
 # Search Agent Tool — Architektur
 
-> Verantwortung, Abgrenzung und Interaktion von `SearchAgentTool` (Da Sniffa) inkl. dem
+> Verantwortung, Abgrenzung und Interaktion von `SearchAgentTool` (Search) inkl. dem
 > rollenden Hot-Kontext `last-search-rolling`. SOLL/Fachliches: [search-agent-tool.md](search-agent-tool.md) ·
 > Trim-Entscheidung: [ADR-0075](../../docs/adr/0075-last-search-rolling-rohschnitt.md).
 

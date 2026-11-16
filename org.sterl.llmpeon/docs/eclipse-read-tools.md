@@ -191,13 +191,8 @@ zählt genau einmal — Treffer einmal, Cap einmal verbraucht.
   → `EclipseGrepToolTest.findsFileWrittenOutsideEclipse`
 - **R7c ✅** GIVEN eine Suche mit Treffern, THEN **kein** Refresh
   → `EclipseGrepToolTest.noRefreshWhenResultsFound`
-- **R7d ❌ specified (Review-Befund 2b-2, User-Freigabe 2026-09-03) — der Refresh bei leerem
+- **R7d ✅ (Review-Befund 2b-2, User-Freigabe 2026-09-03) — der Refresh bei leerem
   Ergebnis trifft nur das gewählte Projekt.**
-
-  **IST:** Der Refresh umfasst **alle** offenen Projekte mit `DEPTH_INFINITE`
-  (`EclipseGrepTool.java:69`, ebenso `eclipseSearchFiles` `EclipseWorkspaceReadFileTool.java:143`).
-  Ein einziger fehlgeschlagener workspace-weiter Grep refresht `langchain4j`, `opencode` und
-  `copilot-for-eclipse` mit.
 
   **SOLL:** Ohne expliziten `path`/`projectName` wird **nur das gewählte Projekt** refresht.
   Mit explizitem Scope wird genau dieser Scope refresht. Ist kein Projekt gewählt, entfällt
@@ -252,10 +247,10 @@ Drei Gründe gegen eine Übersetzung `/project/path` → Disk in den `disk*`-Too
 3. **Familien-Trennung.** `QualifiedPathValidator` hat bei Copy/Rename gerade festgelegt: Disk =
    absolut, Eclipse = `/project/path`. Eine Übersetzung im Read-Pfad verwischt das wieder.
 
-**Der Agent hat die Information ohnehin:** `projectInfo` nennt in **jedem** Turn Projektname,
-Eclipse-Pfad und Disk-Pfad (`EclipseUtil.java:346-358`, via `UserContext`). Im beobachteten Fall hat
-das Modell sie ignoriert — ein LLM-Fehler, kein Werkzeugfehler. Der Fehlerpfad ist self-healing: das
-Modell sieht den Fehler und korrigiert.
+**Der Agent hat die Information ohnehin:** die Projekt-Info nennt in **jedem** Turn Eclipse- und
+Disk-Pfad samt Anweisung, welche Tool-Familie welchen Pfad nimmt ([user-context.md](user-context.md)
+R-SEL-6). Ein Fehlgriff bleibt ein ehrlicher Fehler; `diskReadFile` schlägt dann Treffer vor
+([read-tools.md](../../org.sterl.llmpeon.core/docs/read-tools.md) R-RT-1).
 
 
 ## Nicht im Scope

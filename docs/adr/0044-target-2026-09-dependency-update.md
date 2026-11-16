@@ -37,7 +37,7 @@ Facts (verified against p2 content.xml, 2026-09-09): 2026-03 = {1.3.5, 2.1.1},
 * If a future langchain4j release adds/removes transitive jars, the
   MANIFEST `Bundle-ClassPath` ↔ `lib/` sync must be checked (plan step, not folklore).
 
-## Addendum (2026-09-10, Review Da Dok — MCP semantic change)
+## Addendum (2026-09-10, Review — MCP semantic change)
 
 `langchain4j-mcp` 1.20.0-beta30 removed `HttpMcpTransport` → `McpService` now builds
 `StreamableHttpMcpTransport` for **both** `HTTP` and `HTTP_SSE` (MCP-spec successor, native

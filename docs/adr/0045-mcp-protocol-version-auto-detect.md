@@ -6,7 +6,7 @@
 lib-update auf langchain4j 1.20.0 (McpService → Streamable-HTTP, ADR-0044-Nachtrag): duckduckgo-mcp
 (`uvx`, stdio) verbindet nicht mehr — JSON-RPC `-32022 UNSUPPORTED_PROTOCOL_VERSION`.
 
-Recherche (Da Sniffa, aus Compact-500-Fehlertext gerettet) + `DefaultMcpClient.java:262–320`
+Recherche (Search, aus Compact-500-Fehlertext gerettet) + `DefaultMcpClient.java:262–320`
 (1.20.0, verifiziert gegen lokalen Checkout `/langchain4j-aggregator`):
 
 - leer = Auto-Detect: modern-Probe `server/discover` (`2026-07-28`) zuerst; bei jedem Scheitern
