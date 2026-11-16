@@ -5,6 +5,155 @@ All notable changes to Peon AI are documented here. Format loosely follows
 
 Releases before `2.12.4` are documented via [GitHub Releases](https://github.com/sterlp/eclipse-peon-ai/releases).
 
+## [2.17.3] - 16.11.2026
+
+### Changed
+
+- **The project info is the one place that orients you over paths, entry files and the plan.** It
+  names the Eclipse path (for the `eclipse*` tools), the disk path (for the `disk*` tools and the
+  shell's working directory), the entry files that exist in the project (`pom.xml`, `package.json`,
+  `AGENTS.md`, `docs/index.md`) and the plan path when there is a plan. The separate "Plan reference"
+  context block and the "FILE ACCESS" line are gone — the agent reaches for the right tool family
+  instead of guessing. (`org.sterl.llmpeon`,
+  [org.sterl.llmpeon/docs/user-context.md](org.sterl.llmpeon/docs/user-context.md) R-SEL-6)
+- **The write boundary follows the real location, not the path text.** A write under a dynamic root is
+  allowed only when its resolved location (symlinks followed) lies inside a root — a cloned repo can no
+  longer bring a link like `x -> ~/.ssh` that lets an agent write outside project and temp folder;
+  links inside a root still work. (`llmpeon-core`,
+  [org.sterl.llmpeon.core/docs/write-path-validator.md](org.sterl.llmpeon.core/docs/write-path-validator.md) R7)
+- **Reading a file now shows 📄 instead of 📜** — 📜 is free for scripts and source files again.
+  (`org.sterl.llmpeon`)
+- **Better system prompts**: Compact keeps the user's standing behavioral instructions and stops
+  copying content of files that are re-injected after the compact anyway; Plan needs a measurable
+  proof with a named tool for every acceptance criterion; Review honors an explicitly narrowed order
+  and names in one line what it did not check. (`llmpeon-core` prompts `compressor.md`, `planner.md`,
+  `review-agent.md`)
+
+### Added
+
+- **"Did you mean" when a file is not found.** `eclipseReadFile` and `diskReadFile` append up to three
+  matches for the last path segment, found with the search of their own family, say so when there are
+  more matches, and never read a suggested file by themselves. (`llmpeon-core` / `org.sterl.llmpeon`,
+  [org.sterl.llmpeon.core/docs/read-tools.md](org.sterl.llmpeon.core/docs/read-tools.md) R-RT-1)
+- **Attachments travel with the message queue.** A file or picture sent while the agent is working is
+  no longer lost — the follow-up turn, the turn start and an aborted turn all carry text and
+  attachment. An input with an attachment never merges into the previous one, and an urgent (`!`)
+  input never carries an attachment. (`llmpeon-core`,
+  [org.sterl.llmpeon.core/docs/queued-user-messages.md](org.sterl.llmpeon.core/docs/queued-user-messages.md) Regel 13)
+- **Every lint run shows start, resolved root and duration**, so a long run is visible in the status
+  bar again instead of looking like a hang. (`llmpeon-core`,
+  [org.sterl.llmpeon.core/docs/docs-linter.md](org.sterl.llmpeon.core/docs/docs-linter.md) R-DL-29)
+
+### Fixed
+
+- **A silent AI stream now ends by itself.** The provider deadline (default 3 minutes) applies during
+  streaming too: if no answer, thinking or tool call arrives within it, the call breaks with
+  `AI stream idle for 180 s (timeout)` and is retried like any other timeout, instead of holding the
+  turn and the compact hostage until Stop and a restart. Stop still works within a second even when
+  nothing arrives. (`llmpeon-core`,
+  [org.sterl.llmpeon.core/docs/agent-error-memory.md](org.sterl.llmpeon.core/docs/agent-error-memory.md) R-AEM-4)
+- **Queued messages survive an abort.** A queued input counts as delivered only once it is in the
+  agent's working memory — aborting between take and write keeps it (with its attachments), while a
+  failing history file alone no longer causes a second delivery. (`llmpeon-core`,
+  [org.sterl.llmpeon.core/docs/queued-user-messages.md](org.sterl.llmpeon.core/docs/queued-user-messages.md) Regel 13)
+- **Compact no longer wastes tokens on filler.** AI answers that say exactly "ok" and carry no tool
+  call and no thinking are dropped from the compact input; the conversation itself keeps them, as the
+  provider requires that role sequence. (`llmpeon-core`,
+  [org.sterl.llmpeon.core/docs/compact.md](org.sterl.llmpeon.core/docs/compact.md) R-CC-21)
+- **The docs linter no longer walks foreign trees.** Under every test root it skips `node_modules`,
+  `target`, `bin`, `build`, `out`, `.git`, `.settings` and `.gradle`: a run on the repository root
+  dropped from about three minutes to a fraction of a second. (`llmpeon-core`,
+  [org.sterl.llmpeon.core/docs/docs-linter.md](org.sterl.llmpeon.core/docs/docs-linter.md) R-DL-28)
+
+## [2.17.2] - 16.11.2026
+
+### Added
+
+- **The model selector in the chat follows the active agent.** The action bar shows the model that
+  agent really uses; a typed model is saved for that agent only and only when it truly differs from
+  the shown one. The list is cached per connection (provider, URL, key), so switching agents never
+  refetches it — the refresh button re-lists on demand and keeps the old list if that fails.
+  (`org.sterl.llmpeon`, [org.sterl.llmpeon/docs/model-loading.md](org.sterl.llmpeon/docs/model-loading.md)
+  R-ML4/R-ML5, PR #179 fixing #177)
+
+### Removed
+
+- **The experimental web AI factory (`aifactory/`) is gone.** The Eclipse plugin is the only user
+  interface again; no plugin code depended on it.
+
+### Fixed
+
+- Saving UI state (the remembered active agent) no longer logs a misleading "Set new config", and the
+  model refresh button uses the shared refresh icon instead of a text glyph. (`org.sterl.llmpeon`)
+
+## [2.17.1] - 12.11.2026
+
+### Fixed
+
+- **The chat model selector of 2.17.0 is reverted** — it showed one model for every agent, so a change
+  landed at the wrong agent. The configuration pages were never affected; the selector came back in
+  2.17.2, bound to the active agent (#179). (`org.sterl.llmpeon`)
+
+## [2.17.0] - 10.11.2026
+
+### Added
+
+- **Model dropdown in the chat dialog.** Next to the agent combo: the model list of the current
+  connection, fetched once and cached, with a refresh button; text you type stays in the field and is
+  never switched automatically. Reverted in 2.17.1 and replaced by the per-agent selector in 2.17.2.
+  (`org.sterl.llmpeon`, `ChatModelComboWidget`)
+
+## [2.16.6] - 10.11.2026
+
+### Changed
+
+- **Feature docs follow one BDD shape.** The doc method now prescribes the scenario format — one
+  `gherkin` block per use case, state under `Given` and only the action under `When`, one statement per
+  `And` line, values in quotes, no markup inside the block — so rules and scenarios read and render the
+  same everywhere. Prompt only, no plugin change. (`llmpeon-core` prompt `doc-method.md`)
+
+## [2.16.5] - 10.11.2026
+
+### Changed
+
+- **Skills reload when one cannot be found.** `skillList` reloads from disk, and `skillRead` /
+  `skillReadFile` retry once after a reload (within a ten-minute quiet period) instead of answering
+  "no skill with that name" — a skill you just created works without a restart, and a failing reload is
+  named in the output instead of silently returning an old list. (`llmpeon-core`,
+  [org.sterl.llmpeon.core/docs/project-skills.md](org.sterl.llmpeon.core/docs/project-skills.md))
+- **A canceled agent task reads as canceled, not failed** — the caller gets `Agent canceled by user`
+  plus what the agent produced so far instead of a failure, and a canceled AI call is recognized as a
+  cancellation of its own — the basis for the retry fix below. (`llmpeon-core`)
+
+### Fixed
+
+- **A canceled AI call is no longer retried.** The retry loop stops on a cancellation, which ends the
+  recurring "AI call canceled while waiting to retry" that swallowed whole agent runs.
+  (`llmpeon-core`, `ApiRetry`)
+- **Inserting at the end of a file lands on the last content line.** An `insertLines` call without
+  `afterLine`, or with a line number past the end, no longer inserts behind the file's trailing empty
+  line. (`llmpeon-core`, `FileLines`)
+
+### Notes
+
+- Removed the unused second streaming bridge; Dev, Review, Compact and delegation prompts improved.
+  Most of this cycle went into the experimental web factory, which was removed again in 2.17.2.
+
+## [2.16.4] - 08.11.2026
+
+### Changed
+
+- **Plan mode works from an explicit protocol.** The planner now runs a stated sequence — intake,
+  exploration before any design, an interview protocol that resolves open questions with you first,
+  architecture and design lenses, a plan contract and a quality gate before the plan is handed over —
+  and keeps the saved plan current while the work proceeds. Plans look the same from agent to agent and
+  the questions come before the design, not after it. (`llmpeon-core` prompt `planner.md`)
+
+### Notes
+
+- Repository-internal: the development skills were consolidated (two new Eclipse skills for `IFile`
+  paths and embedded jars, several retired); nothing that ships to users changed.
+
 ## [2.16.3] - 08.11.2026
 
 ### Changed
