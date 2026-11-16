@@ -1,7 +1,11 @@
+---
+idPrefix: BAP
+---
 # Built-in Agent Prompt Override
 
-**Status: 🚧 in design (Paul, 2026-09-06 / geschärft 2026-10-27)** — Richtung entschieden, noch keine
-Rules/BDD. Gilt für **beide Produkte** (Plugin und Web/OAF) — eine Core-Fähigkeit nach GR-3.
+**Status:** V1 (nur der Prompt) ❌ specified (Paul 2026-11-15); V2 (Config aus der Datei) 🚧. Gilt für
+**beide Produkte** (Plugin und Web/OAF) — eine Core-Fähigkeit nach GR-3.
+Technische Heimat: `org.sterl.llmpeon.core` — `org.sterl.llmpeon.agent` (Built-ins) und Agent-Service.
 
 ## Ziel
 
@@ -24,6 +28,82 @@ Format wie Custom Agents heute. Kein Sonderformat, keine Sonderwurst für Built-
 - **Web/OAF:** nur File-Config, der Agenten-Ordner ist Teil des git-sicherbaren Config-Verzeichnisses.
 - **Kein Staleness-Schutz:** wer einen Built-in überschreibt, übernimmt ihn — Verbesserungen am
   eingebauten Prompt erreichen ihn nicht, es gibt keinen Hinweis und kein Merge. Vergleich über git.
+
+## Regeln V1 — der Rumpf ersetzt den eingebauten Prompt (Paul 2026-11-15)
+
+Die Datei hat dasselbe Format wie ein Custom Agent: `agents/<id>/AGENT.md`, YAML-Kopf + Markdown-Rumpf, im
+Konfigurationsverzeichnis (Plugin `~/.peon`, Fabrik ihr Home). Die `<id>` sind die bestehenden Slot-Ids
+`po` (Jon), `plan`, `dev`, `review`, `search`; die Umbenennung `po` → `jon` gehört zu V2.
+
+### R-BAP-1 — Ein Rumpf ersetzt den eingebauten Prompt vollständig ❌
+
+Trägt `agents/<id>/AGENT.md` eines Built-ins einen nicht leeren Rumpf, ist dieser Rumpf der ganze
+Prompt-Text des Agenten: Er ersetzt alle eingebauten Prompt-Dateien des Agenten — bei Jon die drei Teile
+`po.md`, `doc-method.md`, `po-delegation.md`, bei den anderen ihre Prompt-Datei samt vorangestelltem
+`default.md`, wo er davorsteht.
+Was der Core zur Laufzeit erzeugt, bleibt: der Pfad-Scope aus dem Validator
+([write-path-validator.md](write-path-validator.md) R6), der statische Kontext und `AGENTS-<agent>.md`.
+Leerer Rumpf oder keine Datei ⇒ eingebauter Prompt. Eine Änderung wirkt nach dem nächsten Neuladen der
+Agenten-Config, ohne Neustart. Es gibt keinen Staleness-Schutz (siehe oben).
+
+#### UC-BAP-1 — bodyReplacesBuiltinPrompt ❌
+
+```gherkin
+Given "agents/dev/AGENT.md" trägt den Rumpf "Du bist ein Test-Dev."
+When der System-Prompt von Dev gebaut wird
+Then ist der Prompt-Text genau "Du bist ein Test-Dev."
+  And kein Satz aus "developer.md" oder "default.md" ist enthalten
+```
+
+#### UC-BAP-2 — jonBodyReplacesAllThreeParts ❌
+
+```gherkin
+Given "agents/po/AGENT.md" trägt einen Rumpf
+  And Jon schreibt nur in "docs"
+When Jons System-Prompt gebaut wird
+Then enthält er den Rumpf und den Pfad-Scope des Validators
+  And keinen Satz aus "po.md", "doc-method.md" oder "po-delegation.md"
+```
+
+#### UC-BAP-3 — emptyBodyKeepsBuiltinPrompt ❌
+
+```gherkin
+Given "agents/review/AGENT.md" trägt nur einen Kopf und keinen Rumpf
+When der System-Prompt von Review gebaut wird
+Then ist es der eingebaute Prompt
+```
+
+### R-BAP-2 — Der Core liefert den eingebauten Prompt je Id ❌
+
+Der Core stellt den eingebauten Prompt-Text jedes Built-ins je Id bereit — genau den Text, den R-BAP-1
+ersetzt. **WEIL** die Fabrik ihn beim Überschreiben als Startwert zeigt ([Agenten](../../aifactory/docs/agents.md))
+und ein zweiter Text nicht auseinanderlaufen darf.
+
+#### UC-BAP-4 — builtinPromptIsReadable ❌
+
+```gherkin
+Given keine Datei "agents/po/AGENT.md"
+When der eingebaute Prompt der Id "po" gelesen wird
+Then ist er gleich dem Prompt-Text, den Jon ohne Datei nutzt
+```
+
+### R-BAP-3 — Ordner mit der Id eines Built-ins ist ein Override, kein neuer Agent ❌
+
+Ein Agenten-Ordner, dessen Name eine Built-in-Id ist, erzeugt **keinen** Custom Agent: Er überschreibt nur
+Prompt (V1) und Config des Built-ins. Der Agent erscheint genau einmal, mit seinem eingebauten Verhalten
+(Tools, Handover, Schreibgrenze).
+
+#### UC-BAP-5 — builtinIdFolderIsNoCustomAgent ❌
+
+```gherkin
+Given ein Ordner "agents/dev" mit Rumpf
+When die Agenten geladen werden
+Then gibt es genau einen Agenten "Dev"
+  And er nutzt den Rumpf als Prompt und behält seine eingebauten Tools
+```
+
+Plugin: Zum Inkrement gehört ein Abschnitt „Override a built-in agent's prompt" auf der Homepage
+(`homepage/src/setup/custom-agents.md`); eine eigene Oberfläche dafür bekommt das Plugin nicht.
 
 ## Agent-Datei: id · name · description · isTool (Paul 2026-10-27, Ziel V2)
 
@@ -61,8 +141,5 @@ Clean Break (ADR-0079), alte `Peon-*-history.jsonl` lassen sich bei Bedarf umben
 - **`compact`** ist heute ein Config-Slot, kein Agent — bekommt er eine Datei?
 - **id `jon` statt `po`:** Config-Keys `llm.agent.po.*`, `AGENTS-JON.md`-Auflösung, History-Ordner —
   Da Mek prüft vor der Planung, was am alten Namen hängt.
-- **Namenskollision heute:** ein Custom Agent mit dem Namen eines Built-ins überschreibt diesen in
-  `AgentService.reloadAgentConfig` bzw. erscheint doppelt — kein Guard. Mit diesem Feature wird daraus
-  die definierte Regel „Ordner = Built-in-ID ⇒ Override, kein neuer Agent".
 - **V2 berührt** R-ATC-1…4 ([agent-tool-config.md](agent-tool-config.md)), R-DEF-* (Plugin
   default-inheritance.md), R-THINK-10 — beim Entwurf von V2 gegenprüfen.

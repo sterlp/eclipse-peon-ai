@@ -3,7 +3,8 @@
 > **Status:** 🚧 in design (2026-10-16, Nachtzyklus 5 — Jon-Review von Pauls Erstentwurf, **WIP by Paul**,
 > Code untracked unter `org.sterl.llmpeon.core/.../agent/tools/` + `agent/model/`) · Verwandt:
 > [Async Agent Tools Proposal](async-agent-tools-proposal.md) (Option C, Queue-basiert — empfohlen) ·
-> [Tools-Result-Tags (4.1)](#41--toolsresult-tags-huckepack) · [PO-Delegation](po-agent-jon.md)
+> [Tools-Result-Tags (4.1)](#41--toolsresult-tags-huckepack) · [PO-Delegation](po-agent-jon.md) ·
+> **Synchrone Stufe:** [agents-tool.md](agents-tool.md) (Paul 2026-11-13)
 
 ## Entwurf im Überblick (gelesen 2026-10-16)
 

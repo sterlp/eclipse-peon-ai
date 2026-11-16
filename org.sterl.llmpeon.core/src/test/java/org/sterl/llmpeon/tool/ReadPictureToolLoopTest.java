@@ -19,13 +19,13 @@ import org.junit.jupiter.api.io.TempDir;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
-import org.sterl.llmpeon.shared.PictureMessage;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -61,7 +61,11 @@ class ReadPictureToolLoopTest {
                 .startsWith("📷 ").contains("login.png").contains("picture follows in the next user message");
         assertThat(((AiMessage) sent.get(3)).text()).isEqualTo("ok");
         var pictureMessage = (UserMessage) sent.get(4);
-        assertThat(PictureMessage.pathOf(pictureMessage)).endsWith("login.png");
+        var nl = System.lineSeparator();
+        var path = tmp.resolve("login.png").toAbsolutePath().normalize().toString();
+        assertThat(pictureMessage.contents().getFirst()).isEqualTo(TextContent.from(
+                "//-- Start picture: " + path + nl + "added by the picture tool, not typed by the user" + nl
+                + "//-- End picture: " + path));
         assertThat(images(pictureMessage)).hasSize(1);
         assertThat(images(pictureMessage).getFirst().detailLevel()).isEqualTo(ImageContent.DetailLevel.HIGH);
     }

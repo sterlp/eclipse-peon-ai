@@ -4,7 +4,7 @@ idPrefix: AEM
 
 # API-Fehler ins Agent-Memory
 
-> **Status:** ✅ done (2026-09-30, Paul; Delta nach Da-Dok-REJECTED). **Anlass:** Turn stirbt still an API-Fehlern
+> **Status:** R-AEM-1…3 ✅ done (2026-09-30, Paul; Delta nach Da-Dok-REJECTED); R-AEM-4 ✅ done (2026-11-15). **Anlass:** Turn stirbt still an API-Fehlern
 > (400 `exceed_context_size_error`) — die History enthält den Abbruch
 > nicht; der Agent (und Paul) wissen beim nächsten Turn nicht, warum Schluss war. Verwandt:
 > [agents-retry.md](agents-retry.md) (ApiRetry — erst nach erschöpftem Retry),
@@ -99,8 +99,44 @@ entspricht (JDK-Envelope: `CompletionException` mit `getMessage() == cause.getCl
   `getMessage() == Cause-Klassenname` (z. B. `ConnectException` ohne Message) WHEN der Call
   scheitert THEN die Exception wird mit URL + Klasse + Ursache angereichert.
 
+### R-AEM-4 — Ein stiller Stream endet nach der Provider-Frist ✅ (Paul 2026-11-15)
+
+Technische Heimat: `org.sterl.llmpeon.streaming` (`StreamingBridge`).
+
+Die Provider-Frist (`LlmConfig.timeout`, Default 3 min) gilt auch **während** des Streamings: kommt
+seit dem Start des Aufrufs bzw. seit dem letzten Chunk (Antwort, Think oder Tool-Aufruf) innerhalb
+dieser Frist nichts mehr, bricht der Core den Stream ab und der Aufruf scheitert mit einer
+`java.util.concurrent.TimeoutException` als Ursache; die Message nennt die Frist
+(`AI stream idle for 180 s (timeout)`). Der Fehler ist transient wie jeder Timeout
+([agents-retry.md](agents-retry.md)) und, wenn kein Retry mehr greift, terminal nach R-AEM-1. Ein
+Stop wirkt wie bisher innerhalb von einer Sekunde, auch wenn kein Chunk mehr kommt.
+**WEIL** die Frist von langchain4j nur bis zu den Response-Headern wirkt; ein danach stiller Stream
+hielt Turn und Compact für immer fest (Fabrik: Projekt blockiert, nur Stop + Neustart halfen).
+Offen (❓, kein Teil dieses Fixes): die bis dahin gestreamte Teilantwort (Think + Text) ins Memory retten
+— wie die Teilantwort beim Cancel (`AiCancellationException`).
+
+#### UC-AEM-8 — silentStreamTimesOut ✅
+
+```gherkin
+Given die Provider-Frist ist "200 ms"
+  And das Modell liefert die Header und den Chunk "Hal", danach nichts mehr
+When der Agent das Modell aufruft
+Then scheitert der Aufruf nach der Frist mit der Ursache "TimeoutException"
+  And die Message nennt die Frist
+```
+
+#### UC-AEM-9 — activeStreamDoesNotTimeOut ✅
+
+```gherkin
+Given die Provider-Frist ist "200 ms"
+  And das Modell liefert über "600 ms" alle "100 ms" einen Chunk und schließt dann ab
+When der Agent das Modell aufruft
+Then liefert der Aufruf die vollständige Antwort
+```
+
 ## Verifikation
 
 `AiChatView` = SWT-UI — Automatisierung nur soweit die Memory-Logik im Core testbar ist (Dedup,
 Message-Bau); der AiChatView-Wiring wird manuell verifiziert (User-Smoke), wie in UI-Stories
-geübtes Muster.
+geübtes Muster. R-AEM-4 ist vollständig im Core belegt (UC-AEM-8/9 als Test-Marker, Race-Fälle der
+Bridge in eigenen Nebenläufigkeitstests).

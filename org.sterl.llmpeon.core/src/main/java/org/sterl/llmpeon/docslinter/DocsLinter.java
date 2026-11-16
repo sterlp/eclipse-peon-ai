@@ -231,7 +231,7 @@ class DocsLinter {
                 .map(RegexUtils::globToPattern)
                 .toList();
 
-        List<Path> testFiles = discoverFilesByGlobs(resolvedTestRoots, root, resolvedDocRoots, globPatterns);
+        List<Path> testFiles = TestSourceDiscovery.discover(resolvedTestRoots, root, resolvedDocRoots, globPatterns);
 
         TestParser testParser = new TestParser();
         List<TestParser.TestEvidence> allEvidence = new ArrayList<>();
@@ -324,31 +324,6 @@ class DocsLinter {
                 .sorted()
                 .map(ext -> "**/*." + ext)
                 .toList();
-    }
-
-    private List<Path> discoverFilesByGlobs(List<Path> roots, Path projectRoot,
-            List<Path> docRoots, List<Pattern> globPatterns) throws IOException {
-        LinkedHashSet<Path> seen = new LinkedHashSet<>();
-        for (Path searchRoot : roots) {
-            try (Stream<Path> walk = Files.walk(searchRoot)) {
-                walk.filter(Files::isRegularFile).forEach(p -> {
-                    for (Path docRoot : docRoots) {
-                        if (p.startsWith(docRoot)) return;
-                    }
-                    String relativePath = projectRoot.relativize(p).toString().replace('\\', '/');
-                    if (!relativePath.startsWith("/")) relativePath = "/" + relativePath;
-                    for (Pattern globPattern : globPatterns) {
-                        if (globPattern.matcher(relativePath).matches()) {
-                            seen.add(p);
-                            break;
-                        }
-                    }
-                });
-            }
-        }
-        List<Path> files = new ArrayList<>(seen);
-        files.sort(Comparator.comparing(Path::toString));
-        return files;
     }
 
     private List<Path> resolveRoots(Path root, List<String> docRoots) throws IOException {

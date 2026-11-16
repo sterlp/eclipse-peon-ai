@@ -11,7 +11,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import org.jspecify.annotations.NonNull;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.TaggedInput;
 import org.sterl.llmpeon.compact.HandleToolLoopCompactComponent;
 import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.mcp.McpService;
@@ -204,7 +204,7 @@ public class ToolService {
             if (isToolrequest) {
                 stuck = 0; // reset on productive tool use
                 var tR = runAllTools(response, req);
-                req.getMemory().addResult(response, tR, req.drainAfterResults());
+                appendRound(req, response, tR);
                 // R-CC-18: the state-based decision runs after EVERY tool round — over budget the
                 // component compacts directly, in the band it hints (one implementation, ADR-0070)
                 compactHandler.handle(req, hasCompactTool);
@@ -235,6 +235,16 @@ public class ToolService {
         } while (shouldLoop && !req.monitor.isCanceled());
 
         return response;
+    }
+
+    /** queued-user-messages Regel 13, see {@code ThreadSafeMemory.add(ChatMessage, Runnable)}. */
+    private void appendRound(ToolLoopRequest req, ChatResponse response, List<ToolExecutionResultMessage> results) {
+        var ram = new boolean[1];
+        try {
+            req.getMemory().addResult(response, results, req.drainAfterResults(), () -> ram[0] = true);
+        } finally {
+            if (ram[0] && req.getAgent() != null) req.getAgent().queuedInputsCommitted();
+        }
     }
 
     private List<ToolExecutionResultMessage> runAllTools(ChatResponse response, ToolLoopRequest req) {
@@ -282,7 +292,7 @@ public class ToolService {
 
         var at = toolResults.get(target);
         toolResults.set(target, ToolExecutionResultMessage.from(at.id(), at.toolName(),
-                at.text() + TaggedResult.LN + TaggedResult.LN + block));
+                at.text() + TaggedInput.LN + TaggedInput.LN + block));
     }
     
     /** Merges all SystemMessages into one at the front (compatibility with local LLMs). */

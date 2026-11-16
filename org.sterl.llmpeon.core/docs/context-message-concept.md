@@ -2,17 +2,17 @@
 
 Wie eine UserMessage aufgebaut wird (kein Raten mehr, Grundlage für R-CIB-4 in [compact-input-budget.md](compact-input-budget.md)):
 
-- **Turn-Context-Items zuerst, User-Text zuletzt:** `AbstractAgent.doCall:271-274` hängt die
-  Turn-Context-Items (`renderTurnContext`) zuerst in die Contents, der echte User-Text als
-  **letzter** TextContent (`TextContent.from(message)`). Dasselbe Bild bei
-  `ThreadSafeMemory.add` (Join hängt neu hinten an) und beim Compact-Restore
-  (`AbstractAgent.doCompact` — dort Turn-Context und als **letzter** Content der Marker-Block).
-- **Regel:** „Echter User-Text" einer UserMessage = **letzter TextContent**; alles davor ist
-  State (ContextItems). Wer User-Text erkennt (Compact, Darstellung), liest das letzte
-  TextContent — nie den ersten. Der **Compact-Restore** besteht aus **einer** UserMessage: erst die
+- **Reihenfolge Turn-Kontext → Text → Anhänge** ([tagged-results.md](tagged-results.md) R-TR-11):
+  erst die Turn-Context-Items, dann der echte User-Text, danach die Anhänge (`file:`-/`picture:`-Blöcke).
+  Dasselbe Bild bei `ThreadSafeMemory.add` (Join hängt neu hinten an) und beim Compact-Restore (dort
+  Turn-Context und als **letzter** Content der Marker-Block).
+- **Regel:** „Echter User-Text" einer UserMessage = der **ungetaggte** TextContent, der kein Marker
+  (`COMPACT_HINT`, Compact-Marker) ist — erkannt am Tag (R-TR-7), nie an der Position. Getaggte
+  Kontext-Blöcke sind State; `file:`-Blöcke sind Nutzer-Daten und zählen zum User-Anteil (R-TR-12).
+  Der **Compact-Restore** besteht aus **einer** UserMessage: erst die
   Turn-Context-Blöcke, als **letzter** Content der Marker-Block `Session compacted:` + Leerzeile +
   Summary ([compact.md](compact.md) R-CC-9, [ADR-0076](../../docs/adr/0076-compact-reseed-marker-in-user-message.md)).
-  Weil der Marker der letzte TextContent ist, zählt er wie `COMPACT_HINT` und der Queued-Marker als
+  Der Marker zählt wie `COMPACT_HINT` und der Queued-Marker als
   **State**, nie als User-Text — eine Code-Stelle (`ContextTrimComponent.hasRealUserText`) für alle
   drei Marker.
 
@@ -121,9 +121,9 @@ System-Prompt rebuild nach Clear fehlt (KV Cache Invalidate + Rebuild).
 
 ```java
 interface ContextItem {
-    /** Renders the block (TaggedResult); null = nothing to inject → skip.
+    /** Renders the block (ContextInput); null = nothing to inject → skip.
      *  The block text is injected EXACTLY as rendered — no prefix, no suffix. */
-    @Nullable TaggedResult render();
+    @Nullable ContextInput render();
 
     /** "Loading 📋" status label — File-Items: voller Pfad. Default: null (lädt still).
      *  Feuert nur, wenn wirklich etwas injiziert wurde. */
@@ -131,7 +131,7 @@ interface ContextItem {
 
     /**
      * Dedup-Identifier, contains-Check über UserMessages, VOR dem Read:
-     * die exakte Start-Zeile des Blocks (TaggedResult.PREFIX + head).
+     * die exakte Start-Zeile des Blocks (TaggedInput.PREFIX + head).
      * Eine Summary kann den Pfad erwähnen, aber praktisch nie exakt den Block-Start.
      * Default: null → Dedup über den gerenderten Content.
      */
@@ -152,19 +152,19 @@ sichtbar und ist der **einzige** Klassifikationsschlüssel des Compact —
 // Core — Disk-basiert (headless-testbar)
 class DiskFileContextItem implements ContextItem {
     private final Path path;
-    @Override TaggedResult render() {
-        return new TaggedResult("context: " + path, Files.readString(path));
+    @Override ContextInput render() {
+        return new ContextInput("context: " + path, Files.readString(path));
     }
-    @Override String dedupKey() { return TaggedResult.PREFIX + "context: " + path; }
+    @Override String dedupKey() { return TaggedInput.PREFIX + "context: " + path; }
 }
 
 // Plugin — Eclipse-VFS-basiert
 class EclipseFileContextItem implements ContextItem {
     private final String relativePath;
     private final IProject project;
-    @Override TaggedResult render() {
+    @Override ContextInput render() {
         IFile file = project.getFile(relativePath);
-        return new TaggedResult("context: " + file.getFullPath(), new String(file.getContents()));
+        return new ContextInput("context: " + file.getFullPath(), new String(file.getContents()));
     }
 }
 ```

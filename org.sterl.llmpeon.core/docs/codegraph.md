@@ -207,7 +207,7 @@ THEN rendert dasselbe Item **nichts** (`null`) — kein Text, kein Chat-Label.
      sichtbar", R-CG-12) ist damit überholt.
 
 Item-Vertrag (seit 2026-10-18, [tagged-results.md](tagged-results.md) R-TR-3/5):
-- `render()` liefert einen `TaggedResult`-Block (Head `codegraph: <Projekt> <instrMark>`) **nur** im
+- `render()` liefert einen `TaggedInput`-Block (Head `codegraph: <Projekt> <instrMark>`) **nur** im
   Zustand CONNECTED; OFF/ERROR → `null`. Die Instructions reisen im `State` (beim Connect captured) —
   **ein** Supplier, keine zweite Quelle.
 - `label()` = `Codegraph <state> — <Projekt>`; das `📋 Loading …`-Signal feuert nur bei erfolgreicher

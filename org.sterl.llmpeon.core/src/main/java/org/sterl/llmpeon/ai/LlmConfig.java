@@ -63,7 +63,7 @@ public class LlmConfig {
     private final Map<String, String> agentTools = Map.of();
     @NonNull
     @Default
-    private final Duration timeout = Duration.ofMinutes(3);
+    private final Duration timeout = org.sterl.llmpeon.streaming.StreamingBridge.DEFAULT_TIMEOUT;
     @Default
     private final String url = null;
     @Default

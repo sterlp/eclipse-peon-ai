@@ -15,23 +15,13 @@ import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
- * Model selector for the chat dialog's action bar (next to the agent combo): an editable
- * {@link Combo} (R-ML4 — typed text stays, no auto-switch) plus a refresh button.
+ * Model selector for the chat action bar: editable combo + refresh button. Delegates the model-list
+ * lifecycle (fetch, cache, stale-guard) to {@link ModelComboWidget}. Owns the RowLayout look and
+ * commit logic (see {@code docs/model-loading.md} R-ML4, R-ML5).
  *
- * <p>Shows and changes the <b>effective model of the active agent</b> (R-ML5,
- * {@code org.sterl.llmpeon/docs/model-loading.md}): the caller shows an
- * {@link AgentModelSelection} via {@link #show}, the tooltip states where a change goes. Loading
- * the list (fetch Job, cache, refresh fallback, stale-guard, R-ML4 apply) is delegated to
- * {@link ModelComboWidget} — this class only owns the RowLayout look and the commit. The
- * {@code snapshot} supplier is read on the UI thread when a fetch starts and for the stale-guard
- * (R-ML1) and resolves the active agent's connection.</p>
- *
- * <p>A user selection or a focus-out commits the shown text — but only if it really differs from
- * the shown model (case-insensitive, R-ML4), so leaving the field unchanged never saves.
- * Programmatic updates ({@link #show}, list apply) do not commit: SWT fires {@code SWT.Selection}
- * only for user interaction, never for {@code select()}/{@code setText()}/{@code setItems()}.
- * The caller flushes a pending edit with {@link #commitPending()} before it switches the agent
- * (R-ML5 BDD 10) — independent of the platform's FocusOut/Selection order.</p>
+ * <p>SWT: {@code SWT.Selection} fires only for user interaction, never for
+ * {@code select()}/{@code setText()}/{@code setItems()}. FocusOut/Selection order is
+ * platform-dependent — the caller must {@link #commitPending()} before an agent switch.</p>
  */
 public class ChatModelComboWidget {
 
@@ -42,11 +32,11 @@ public class ChatModelComboWidget {
     /** The model last shown by {@link #show} (or committed) — the baseline for "real change". */
     private String shownModel;
 
-    public ChatModelComboWidget(Composite parent, Supplier<FetchSnapshot> snapshot, Consumer<String> onModelSelected) {
+    public ChatModelComboWidget(Composite parent, int width, Supplier<FetchSnapshot> snapshot, Consumer<String> onModelSelected) {
         this.onModelSelected = onModelSelected;
 
         combo = new Combo(parent, SWT.BORDER);
-        combo.setLayoutData(new RowData(200, SWT.DEFAULT));
+        combo.setLayoutData(new RowData(width, SWT.DEFAULT));
         combo.addListener(SWT.Selection, e -> commit());
         combo.addListener(SWT.FocusOut, e -> commit());
 
@@ -57,7 +47,6 @@ public class ChatModelComboWidget {
         loader = new ModelComboWidget(combo, refresh, "chat", snapshot);
     }
 
-    /** Commits the shown text if it differs from the shown model (user selection or focus-out). */
     private void commit() {
         var text = StringUtil.stripToEmpty(combo.getText());
         if (text.equalsIgnoreCase(StringUtil.stripToEmpty(shownModel))) return;
@@ -65,40 +54,33 @@ public class ChatModelComboWidget {
         onModelSelected.accept(text);
     }
 
-    /** Flushes a typed but not yet committed model — call before the agent changes (R-ML5 BDD 10). */
     public void commitPending() {
         if (!combo.isDisposed()) commit();
     }
 
-    /** Shows the selection of the active agent: its effective model and a tooltip naming the save target. */
     public void show(AgentModelSelection selection) {
         setModel(selection.effectiveModel());
         combo.setToolTipText(tooltipFor(selection));
     }
 
-    /** Sets the shown model (null shows as empty) — never commits. */
     public void setModel(String model) {
         shownModel = model;
         loader.setModel(model);
     }
 
-    /** The currently shown model (may be the user's free text). */
     public String getModel() {
         return loader.getModel();
     }
 
-    /** Enable/disable combo and refresh button (e.g. while a request is in flight). */
     public void setEnabled(boolean enabled) {
         combo.setEnabled(enabled);
         refresh.setEnabled(enabled);
     }
 
-    /** Fetches the model list for the active agent's connection. Cached per identity. */
     public void fetchModels() {
         loader.fetchModels();
     }
 
-    /** R-ML5: the tooltip states the effect of a change for the shown agent. */
     public static String tooltipFor(AgentModelSelection selection) {
         var name = selection.agentName();
         return switch (selection.target()) {

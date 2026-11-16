@@ -221,7 +221,7 @@ THEN der laufende Turn beantwortet sie noch (Hand-over), der späte Caller start
 ### 11. Tool-Result-Huckepack für urgent-Einträge ✅ done (2026-10-31 gebaut)
 
 Beim **nächsten Tool-Call** der laufenden Iteration werden **alle** urgent-Einträge gezogen und als
-**ein** `TaggedResult`-Block (head `queued_user_message`, [tagged-results.md](tagged-results.md))
+**ein** `TaggedInput`-Block (head `queued_user_message`, [tagged-results.md](tagged-results.md))
 an das Tool-Result angehängt — huckepack, damit der laufende Turn sie im nächsten Modell-Call sieht,
 ohne die Memory zu berühren.
 
@@ -255,7 +255,7 @@ THEN unverändert — kein Block, keine onTool-Zeile
 
 Nutzt das LLM das `askUser`-Tool (Plugin-only, `AskUserTool` — die Fabrik hat bewusst keines),
 reisen **alle** Queue-Einträge — urgent und normal — im **selben** Tool-Result mit: als
-`queued_user_message`-TaggedResult-Block prepended, **die Antwort des Users als letzte (unterste)
+`queued_user_message`-TaggedInput-Block prepended, **die Antwort des Users als letzte (unterste)
 Nachricht** dahinter. Sie werden dabei endgültig konsumiert — aus diesen Einträgen startet kein
 zusätzlicher Follow-up-Turn.
 
@@ -290,6 +290,82 @@ THEN unverändert — nur die Antwort als Tool-Result
 GIVEN eine offene Frage
 WHEN der User sie cancelt
 THEN Regel 4 (Drain in die Memory) — kein Huckepack, kein Verlust
+```
+
+### 13. Die Queue hält `QueuedInput` — Anhänge reisen mit, dringende Eingaben nie ✅ done (Paul 2026-11-12, gebaut 2026-11-12)
+
+Ein Queue-Eintrag ist ein **`QueuedInput`** = `UserInput` ([tagged-results.md](tagged-results.md) R-TR-11)
++ `queuedAt` + `urgent`. Damit geht ein Anhang, der während eines laufenden Turns geschickt wird, nicht
+verloren: der Follow-up-Turn (Regel 2), der Turn-Start mit Queue-Inhalt und der Drain in die Memory bei
+Abbruch (Regel 4) bauen ihre User-Message aus dem ganzen `UserInput`, nicht nur aus dem Text.
+**Dringende Eingaben (Regel 8) tragen nie Anhänge** (KISS — der Huckepack am Tool-Result kann kein Bild
+tragen). Eine Eingabe **mit** Anhängen ist immer ein **eigener** Eintrag: sie verschmilzt nicht mit dem
+Vorgänger und öffnet kein Batch-Fenster für Nachfolger (Regel 1 gilt nur für reine Text-Eingaben).
+Beim askUser-Huckepack (Regel 12) reisen Text-Anhänge im Block mit; Bild-Anhänge folgen als eigene
+User-Message nach den Results der Runde (R-RP-1).
+**Entnommen ist nicht zugestellt:** ein Eintrag gilt erst als zugestellt, wenn er im Memory steht. Bricht
+der Turn zwischen Entnahme aus der Queue und dem Schreiben ins Memory ab (Pre-Turn-Compact, ein weiteres
+Werkzeug derselben Runde), bleibt er wie ein wartender Eintrag erhalten (Regel 4) — samt Anhängen.
+„Im Memory" heißt im Arbeitsgedächtnis des Agenten: scheitert danach nur das Schreiben der History-Datei,
+gilt der Eintrag als zugestellt und wird nicht ein zweites Mal erhalten. Ein Turn, der seinen Slot schon
+übergeben hat (Regel 10), erhält nichts mehr — was danach entnommen wird, gehört dem nächsten Turn.
+
+```gherkin
+Given Jon ist frei
+  And die Queue hält "schau mal" mit dem Anhang "a.txt"
+When der Turn startet und der Nutzer während des Compacts vor dem Turn auf Stop drückt
+Then steht im Memory eine User-Message mit "schau mal" und dem Block "file: a.txt"
+```
+
+```gherkin
+Given Jon arbeitet
+  And die Queue hält "schau mal" mit dem Anhang "a.txt" und dem Bild "b.png"
+  And askUser hat in dieser Runde die Queue mit der Antwort ausgeliefert
+When ein weiteres Werkzeug derselben Runde abgebrochen wird
+Then steht im Memory eine User-Message mit "schau mal", dem Block "file: a.txt" und dem Bild "b.png"
+```
+
+```gherkin
+Given die Queue hält "schau mal" mit dem Anhang "a.txt"
+  And das Schreiben der History-Datei scheitert
+When der Turn startet und "schau mal" ins Memory geschrieben wird
+Then steht "schau mal" mit dem Block "file: a.txt" genau einmal im Memory
+```
+
+```gherkin
+Given Turn A hat seinen Slot übergeben
+  And Turn B hat "schau mal" mit dem Anhang "a.txt" aus der Queue entnommen
+When Turn A danach abgebrochen wird
+Then erhält Turn A nichts
+  And "schau mal" steht genau einmal im Memory, geschrieben von Turn B
+```
+
+```gherkin
+Given Jon arbeitet
+When der Nutzer "schau mal" mit dem Anhang "a.txt" schickt
+Then steht ein QueuedInput in der Queue, der Text und Anhang trägt
+  And nach dem Turn startet der Follow-up mit genau einer User-Message aus Text und Anhang
+```
+
+```gherkin
+Given Jon arbeitet
+  And der Nutzer hat vor 2 Sekunden "erst das" geschickt
+When der Nutzer "und das" mit dem Anhang "b.png" schickt
+Then stehen zwei Einträge in der Queue
+  And "erst das" wurde nicht mit "und das" verschmolzen
+```
+
+```gherkin
+Given Jon arbeitet
+  And die Queue hält "schau mal" mit dem Anhang "a.txt"
+When der Turn mit einem Fehler abbricht
+Then steht im Memory eine User-Message mit "schau mal" und dem Block "file: a.txt"
+```
+
+```gherkin
+Given eine dringende Eingabe
+When sie eingereiht wird
+Then trägt sie keine Anhänge
 ```
 
 ## Data Flow

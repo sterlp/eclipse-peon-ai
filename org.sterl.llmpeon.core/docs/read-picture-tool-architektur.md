@@ -2,7 +2,7 @@
 
 > **Status:** ✅   **Fachdoc:** [read-picture-tool.md](read-picture-tool.md)   **ADRs:** —
 >
-> **Technische Heimat:** core `org.sterl.llmpeon.shared` (`PictureFile`, `PictureMessage`),
+> **Technische Heimat:** core `org.sterl.llmpeon.shared` (`PictureFile`), `agent/model` (`HarnessInput`),
 > `org.sterl.llmpeon.tool` (`AbstractTool`, `ToolService`, `DiskFileReadTool`),
 > `ThreadSafeMemory`, `ChatMessageUtil`; plugin `EclipseWorkspaceReadFileTool`.
 
@@ -19,8 +19,9 @@
   Sub-Agent-Loop (`toBuilder()`) bekommt eine eigene, teilt sie nie mit dem Parent.
 - **Geteilte Lade-/Prüflogik:** `PictureFile.load(Path)` (Endung, 4-MB-Cap vor dem Lesen, Meldungen
   aus R-RP-2/3; Fehler = Exception → Text-Result durch den bestehenden Executor, keine Bild-Sequenz).
-  `PictureMessage` baut die Bild-User-Message (getaggter Kopf mit Pfad + Bild) **und** liest den Pfad
-  zurück — Bau und Parser in einer Klasse.
+  Die Bild-User-Message baut **ein `HarnessInput` mit Bild über `toContents()`**
+  ([R-TR-10](tagged-results.md), Paul 2026-11-12); das Zurücklesen des Pfads liegt am selben Ort — ein Ort
+  für Bau und Parser.
 - **Tools:** `AbstractTool.attachPicture(Path)` ist der eine Weg für beide Familien;
   `diskReadPicture` / `eclipseReadPicture` lösen nur den Pfad auf (wie ihr Read-Geschwister) und
   delegieren. Keine eigenen Tool-Klassen.
@@ -44,7 +45,7 @@
 sequenceDiagram
     participant L as ToolService.executeLoop
     participant T as diskReadPicture / eclipseReadPicture
-    participant P as PictureFile / PictureMessage
+    participant P as PictureFile
     participant R as ToolLoopRequest
     participant M as ThreadSafeMemory
     L->>T: execute(tool call)
@@ -54,7 +55,7 @@ sequenceDiagram
         T-->>L: Text-Result (Grund), kein Bild
     else ok
         P-->>T: Picture
-        T->>R: appendAfterResults(PictureMessage.of(picture))
+        T->>R: appendAfterResults(UserMessage aus HarnessInput(Bild).toContents())
         T-->>L: "📷 <pfad> (<KB>) — picture follows…"
     end
     Note over L: alle Tool-Calls der Runde ausgeführt

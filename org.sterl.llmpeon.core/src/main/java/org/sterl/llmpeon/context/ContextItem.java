@@ -4,10 +4,10 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.ContextInput;
 
 /**
- * Renders context content into a {@link TaggedResult} block for injection into the
+ * Renders context content into a {@link ContextInput} block for injection into the
  * agent's conversation memory.
  */
 @FunctionalInterface
@@ -32,11 +32,11 @@ public interface ContextItem {
      *         the item is skipped silently, no exception, no loading status.
      */
     @Nullable
-    TaggedResult render();
+    ContextInput render();
 
     /**
      * Deduplication marker checked in the history BEFORE this item is rendered.
-     * @return the block's exact start line ({@code TaggedResult.PREFIX + head}), or {@code null}
+     * @return the block's exact start line ({@code TaggedInput.PREFIX + head}), or {@code null}
      *         to dedupe by rendered content.
      */
     default String dedupKey() {

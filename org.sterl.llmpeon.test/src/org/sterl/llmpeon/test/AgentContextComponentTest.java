@@ -18,7 +18,7 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.junit.Test;
 import org.sterl.llmpeon.agent.AiAgent;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.ContextInput;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.command.CommandService;
@@ -274,7 +274,7 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
     private List<String> renderAll(List<ContextItem> items) {
         return items.stream()
                 .map(i -> {
-                    TaggedResult r = i.render();
+                    ContextInput r = i.render();
                     return r == null ? "" : r.toString();
                 })
                 .toList();

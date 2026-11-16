@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.tool.tools;
 
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.HarnessInput;
+import org.sterl.llmpeon.agent.model.TaggedInput;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
@@ -10,7 +11,7 @@ import org.sterl.llmpeon.shared.StringUtil;
  * <p>Every access is synchronized: one instance belongs to one {@link SearchAgentTool}, hence to one
  * chat view, and all agents of that view reach it — no single-threaded assumption holds here.
  *
- * <p>The block is framed by {@link TaggedResult} like every other block the models are shown, so the
+ * <p>The block is framed by {@link TaggedInput} like every other block the models are shown, so the
  * start/end format has exactly one implementation in the repo.
  */
 final class RollingSearchContext {
@@ -36,8 +37,8 @@ final class RollingSearchContext {
     synchronized String render() {
         if (pairs.isEmpty()) return "";
         var body = new StringBuilder(pairs);
-        body.setLength(body.length() - 1);           // TaggedResult places the newline before its end line
-        if (trimmed) body.append(TaggedResult.LN).append("//(older context dropped to fit cap)");
-        return new TaggedResult("last-search-rolling", body.toString()).toString();
+        body.setLength(body.length() - 1);           // TaggedInput places the newline before its end line
+        if (trimmed) body.append(TaggedInput.LN).append("//(older context dropped to fit cap)");
+        return new HarnessInput("last-search-rolling", body.toString()).toString();
     }
 }

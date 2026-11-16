@@ -6,7 +6,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -19,9 +18,6 @@ final class DocRootDiscovery {
 
     /** directory levels below the scan root a "docs" directory may sit in: docs/, {@code *}/docs/, {@code *}/{@code *}/docs/ */
     static final int MAX_DEPTH = 2;
-
-    static final Set<String> SKIPPED_DIRS = Set.of(
-            "node_modules", "target", "bin", "build", "out", ".git", ".settings", ".gradle");
 
     /**
      * @param roots   root-relative '/'-paths of dirs literally named "docs" with >= 1 .md;
@@ -49,7 +45,7 @@ final class DocRootDiscovery {
         try (Stream<Path> children = Files.list(current)) {
             for (Path child : children.filter(Files::isDirectory).toList()) {
                 var name = child.getFileName().toString();
-                if (SKIPPED_DIRS.contains(name)) {
+                if (ScanDirectoryPolicy.isExcluded(child)) {
                     continue;
                 }
                 if ("docs".equals(name)) {

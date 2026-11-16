@@ -32,7 +32,7 @@ class UserMessageQueueTest {
 
         // THEN - all joined into single entry with newlines, total well under 300
         assertThat(queue.size()).isEqualTo(1);
-        assertThat(queue.pollNext().text())
+        assertThat(queue.pollNext().input().text())
                 .isEqualTo("Hello" + System.lineSeparator() + "world" + System.lineSeparator() + "how are you?");
     }
 
@@ -50,7 +50,7 @@ class UserMessageQueueTest {
 
         // THEN - all joined together (timer reset on "second" allowed "third" to merge)
         assertThat(queue.size()).isEqualTo(1);
-        String joined = queue.pollNext().text();
+        String joined = queue.pollNext().input().text();
         assertThat(joined).contains("first", "second", "third");
         assertThat(joined).doesNotContain(" first ", " second ", " third "); // newline joiner, not space
     }
@@ -67,8 +67,8 @@ class UserMessageQueueTest {
 
         // THEN - starts a new separate entry
         assertThat(queue.size()).isEqualTo(2);
-        assertThat(queue.pollNext().text()).isEqualTo("message one");
-        assertThat(queue.pollNext().text()).isEqualTo("message two");
+        assertThat(queue.pollNext().input().text()).isEqualTo("message one");
+        assertThat(queue.pollNext().input().text()).isEqualTo("message two");
     }
 
     @Test
@@ -86,10 +86,10 @@ class UserMessageQueueTest {
 
         // THEN - first two joined, third is separate (length includes newline chars)
         assertThat(queue.size()).isEqualTo(2);
-        String first = queue.pollNext().text();
+        String first = queue.pollNext().input().text();
         int nlLen = System.lineSeparator().length();
         assertThat(first.length()).isEqualTo(120 + nlLen + 120);
-        assertThat(queue.pollNext().text()).isEqualTo("c".repeat(120));
+        assertThat(queue.pollNext().input().text()).isEqualTo("c".repeat(120));
     }
 
     @Test
@@ -113,7 +113,7 @@ class UserMessageQueueTest {
         var queue = new UserMessageQueue(200);
 
         // WHEN/THEN - nothing added, returns false
-        assertThat(queue.add(null)).isFalse();
+        assertThat(queue.add((String) null)).isFalse();
         assertThat(queue.add("")).isFalse();
         assertThat(queue.add("   ")).isFalse();
         assertThat(queue.size()).isEqualTo(0);
@@ -132,9 +132,9 @@ class UserMessageQueueTest {
         queue.add("third");
 
         // WHEN/THEN - consumed individually in FIFO order
-        assertThat(queue.pollNext().text()).isEqualTo("first");
-        assertThat(queue.pollNext().text()).isEqualTo("second");
-        assertThat(queue.pollNext().text()).isEqualTo("third");
+        assertThat(queue.pollNext().input().text()).isEqualTo("first");
+        assertThat(queue.pollNext().input().text()).isEqualTo("second");
+        assertThat(queue.pollNext().input().text()).isEqualTo("third");
         assertThat(queue.pollNext()).isNull();
     }
 
@@ -258,8 +258,8 @@ class UserMessageQueueTest {
 
         // THEN - the normal lane joined as usual, the urgent entry stayed on its own lane
         assertThat(queue.size()).isEqualTo(2);
-        assertThat(queue.drainUrgent()).extracting(e -> e.text()).containsExactly("u1");
-        assertThat(queue.pollNext().text()).isEqualTo("n1" + System.lineSeparator() + "n2");
+        assertThat(queue.drainUrgent()).extracting(e -> e.input().text()).containsExactly("u1");
+        assertThat(queue.pollNext().input().text()).isEqualTo("n1" + System.lineSeparator() + "n2");
     }
 
     @Test
@@ -272,7 +272,7 @@ class UserMessageQueueTest {
         queue.addUrgent("u2");
 
         // THEN - two entries, insertion order, nothing merged (R11 delivers them one per line)
-        assertThat(queue.drainUrgent()).extracting(e -> e.text()).containsExactly("u1", "u2");
+        assertThat(queue.drainUrgent()).extracting(e -> e.input().text()).containsExactly("u1", "u2");
     }
 
     @Test
@@ -281,7 +281,7 @@ class UserMessageQueueTest {
         var queue = new UserMessageQueue(200, new MutableClock());
 
         // WHEN
-        queue.addUrgent(null);
+        queue.addUrgent((String) null);
         queue.addUrgent("   ");
 
         // THEN
@@ -306,9 +306,9 @@ class UserMessageQueueTest {
         // THEN - the urgent message neither joined nor extended the burst window: the late normal
         // message still starts its own entry (D6)
         assertThat(queue.size()).isEqualTo(3);
-        assertThat(queue.pollNext().text()).isEqualTo("n1");
-        assertThat(queue.pollNext().text()).isEqualTo("u1");
-        assertThat(queue.pollNext().text()).isEqualTo("n2");
+        assertThat(queue.pollNext().input().text()).isEqualTo("n1");
+        assertThat(queue.pollNext().input().text()).isEqualTo("u1");
+        assertThat(queue.pollNext().input().text()).isEqualTo("n2");
     }
 
     @Test
@@ -321,15 +321,15 @@ class UserMessageQueueTest {
         queue.add("n-late");
 
         // WHEN/THEN - FIFO over both lanes: urgent only gets there earlier, it never jumps (R8.3)
-        assertThat(queue.pollNext().text()).isEqualTo("u-early");
-        assertThat(queue.pollNext().text()).isEqualTo("n-late");
+        assertThat(queue.pollNext().input().text()).isEqualTo("u-early");
+        assertThat(queue.pollNext().input().text()).isEqualTo("n-late");
 
         // AND - the reverse direction holds as well
         queue.add("n-early");
         clock.advance(10);
         queue.addUrgent("u-late");
-        assertThat(queue.pollNext().text()).isEqualTo("n-early");
-        assertThat(queue.pollNext().text()).isEqualTo("u-late");
+        assertThat(queue.pollNext().input().text()).isEqualTo("n-early");
+        assertThat(queue.pollNext().input().text()).isEqualTo("u-late");
     }
 
     @Test
@@ -340,8 +340,8 @@ class UserMessageQueueTest {
         queue.add("n1");
 
         // WHEN/THEN - stable order, normal lane first (D5)
-        assertThat(queue.pollNext().text()).isEqualTo("n1");
-        assertThat(queue.pollNext().text()).isEqualTo("u1");
+        assertThat(queue.pollNext().input().text()).isEqualTo("n1");
+        assertThat(queue.pollNext().input().text()).isEqualTo("u1");
     }
 
     @Test
@@ -359,8 +359,8 @@ class UserMessageQueueTest {
         var entries = queue.drainAllEntries();
 
         // THEN - ONE entry per queued message (no merging), ordered across lanes, queue empty
-        assertThat(entries).extracting(e -> e.text()).containsExactly("n1", "u1", "n2");
-        assertThat(entries).extracting(e -> e.queuedAt()).containsExactly(
+        assertThat(entries).extracting(e -> e.input().text()).containsExactly("n1", "u1", "n2");
+        assertThat(entries).extracting(e -> e.queuedAt().toEpochMilli()).containsExactly(
                 BASE_EPOCH_MS, BASE_EPOCH_MS + 10, BASE_EPOCH_MS + 20);
         assertThat(queue.size()).isZero();
     }
@@ -373,11 +373,11 @@ class UserMessageQueueTest {
         queue.addUrgent("u1");
 
         // WHEN
-        assertThat(queue.drainUrgent()).extracting(e -> e.text()).containsExactly("u1");
+        assertThat(queue.drainUrgent()).extracting(e -> e.input().text()).containsExactly("u1");
 
         // THEN - the normal entry is still there to be answered as a follow-up
         assertThat(queue.size()).isEqualTo(1);
-        assertThat(queue.pollNext().text()).isEqualTo("n1");
+        assertThat(queue.pollNext().input().text()).isEqualTo("n1");
     }
 
     @Test
@@ -430,8 +430,8 @@ class UserMessageQueueTest {
 
         // THEN - the merged entry keeps the FIRST entry's queuedAt
         var entry = queue.pollNext();
-        assertThat(entry.text()).isEqualTo("first" + System.lineSeparator() + "second");
-        assertThat(entry.queuedAt()).isEqualTo(clock.millis());
+        assertThat(entry.input().text()).isEqualTo("first" + System.lineSeparator() + "second");
+        assertThat(entry.queuedAt().toEpochMilli()).isEqualTo(clock.millis());
     }
 
     @Test
@@ -447,8 +447,8 @@ class UserMessageQueueTest {
 
         // THEN - two entries; the second is stamped with the LATER time
         assertThat(queue.size()).isEqualTo(2);
-        assertThat(queue.pollNext().queuedAt()).isEqualTo(BASE_EPOCH_MS);
-        assertThat(queue.pollNext().queuedAt()).isEqualTo(BASE_EPOCH_MS + 150);
+        assertThat(queue.pollNext().queuedAt().toEpochMilli()).isEqualTo(BASE_EPOCH_MS);
+        assertThat(queue.pollNext().queuedAt().toEpochMilli()).isEqualTo(BASE_EPOCH_MS + 150);
     }
 
     @Test

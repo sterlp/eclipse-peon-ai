@@ -7,7 +7,8 @@ idPrefix: DL
 > **Status:** ✅ done (2026-09-15) — R-DL-1…16 gebaut, drei Reviews bestanden. Nachzyklen:
 > `reportPath` gestrichen (echt read-only), Tool-Split `DocsIdTool`/`DocsLinterTool`, raus aus dem
 > Disk-Gate, Tool-Matrix je Agent getestet; 2026-09-19 R-DL-18…20; 2026-09-21 R-DL-21/22
-> (Textblock-Belege, manuell-Marker).
+> (Textblock-Belege, manuell-Marker). 2026-11-13 R-DL-28/29
+> (Test-Scan ohne fremde Bäume; Start/Root/Dauer sichtbar, Paul).
 > **Ziel:** Ein falsches `✅` maschinell unmöglich machen: jeder als erledigt markierte Use-Case
 > muss durch einen Test belegt sein, der die ID des Use-Case trägt.
 
@@ -665,6 +666,75 @@ Minimal gebaut (Paul): eine Zeile pro langem Doc im Report, ein Test.
 GIVEN ein Doc **ohne** `idPrefix` mit 1001 Zeilen und ein Doc mit `idPrefix` und genau 1000 Zeilen
 WHEN `lintDocs` läuft THEN steht genau **ein** Hinweis `ZU_LANG` mit Datei und Zeilenzahl 1001 im
 Report, und `findings` ist 0.
+
+### R-DL-28 — Der Test-Scan betritt keine fremden Bäume ✅ (Paul 2026-11-13)
+
+Unter jedem Test-Root (auch dem Default `.`) überspringt der Test-Scan dieselben fremden Bäume wie die
+Doc-Discovery (R-DL-26: `node_modules`, `target`, `bin`, `build`, `out`, `.git`, `.settings`,
+`.gradle`) — **eine** Liste an **einem** Ort für beide Scans. Ein ausdrücklich genannter Test-Root wird
+selbst immer gescannt; übersprungen werden nur fremde Bäume **unter** ihm.
+
+> **WEIL** (Paul 2026-11-13, gemessen): ein Lauf auf dem Repo-Root ohne `testRoots` las 22 480
+> Dateien, 95 % davon aus `node_modules`, und dauerte gut drei Minuten; mit expliziten Roots 0,2 s.
+
+#### UC-DL-101 — node_modules unter dem Default-Testroot wird nicht gelesen ✅
+
+```gherkin
+Given ein Root mit "src/a.test.ts" mit der Zeile "// UC-XX-1"
+  And "node_modules/lib/b.test.ts" mit der Zeile "// UC-XX-2"
+  And "target/c.java" mit der Zeile "// UC-XX-3"
+When "lintDocsAndTests" ohne "testRoots" läuft
+Then zählt der Scan genau 1 Test-Quelldatei
+  And nur "UC-XX-1" gilt als Testbeleg
+```
+
+#### UC-DL-102 — Ein ausdrücklich genannter Test-Root wird gescannt ✅
+
+```gherkin
+Given ein Root mit "build/gen/d.test.ts" mit der Zeile "// UC-XX-4"
+When "lintDocsAndTests" mit "testRoots" = "build/gen" läuft
+Then zählt der Scan genau 1 Test-Quelldatei
+  And "UC-XX-4" gilt als Testbeleg
+```
+
+### R-DL-29 — Ein Lint-Lauf zeigt Start, Root und Dauer ✅ (Paul 2026-11-13)
+
+Jeder Lauf von `lintDocs`, `lintDocsAndTests` und `nextIds` meldet per `onTool` **zwei** Zeilen: beim
+**Start** Tool-Name und aufgelösten Root, am **Ende** die bisherige Zahlenzeile (R-DL-20) plus die
+Laufzeit; `nextIds` gleicht keine Tests ab und nennt deshalb nur die Doc-Anzahl (UC-DL-105). Die
+Start-Zeile ist die zweite Meldung je Lauf und geht R-DL-20 („eine Zeile") vor; die Laufzeit ist
+Lauf-Metadatum und fällt nicht unter die Determinismus-Zusage des Reports. Der Report nennt im Kopf den aufgelösten Root und die Laufzeit. Die Statuszeile bleibt
+kompakt, nie der Vollreport (R-DL-20).
+
+> **WEIL** (Paul 2026-11-13): ein langer Lauf war im Live-Status nicht zu sehen, weil die einzige
+> Meldung erst am Ende kam; ohne Root und Dauer war nicht prüfbar, was gescannt wurde und was es kostete.
+
+#### UC-DL-103 — Start-Zeile nennt Tool und Root ✅
+
+```gherkin
+Given ein Root "repo"
+When "lintDocsAndTests" startet
+Then feuert "onTool" vor dem Scan eine Zeile mit "lintDocsAndTests" und dem Root "repo"
+```
+
+#### UC-DL-104 — End-Zeile und Report nennen die Laufzeit ✅
+
+```gherkin
+Given ein beliebiger Lint-Lauf
+When er endet
+Then enthält die End-Zeile von "onTool" Doc-Anzahl, Befundzahl und die Laufzeit
+  And der Report-Kopf nennt den aufgelösten Root und die Laufzeit
+```
+
+#### UC-DL-105 — nextIds meldet Doc-Anzahl und Laufzeit, ohne Befundzahl ✅
+
+```gherkin
+Given ein beliebiger "nextIds"-Lauf
+When er endet
+Then enthält die End-Zeile von "onTool" Doc-Anzahl und Laufzeit, aber keine Befundzahl
+  And der Report-Kopf nennt den aufgelösten Root und die Laufzeit
+```
+
 
 
 ### R-DL-16 — `nextIds` ist zustandslos; vergeben ist erst, was gespeichert im Doc steht ✅ done

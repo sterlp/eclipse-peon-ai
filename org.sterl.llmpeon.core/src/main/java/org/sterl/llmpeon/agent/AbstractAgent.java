@@ -5,7 +5,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -13,7 +12,9 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.QueuedInput;
+import org.sterl.llmpeon.agent.model.TaggedInput;
+import org.sterl.llmpeon.agent.model.UserInput;
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.compact.CompactConstants;
@@ -38,9 +39,7 @@ import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.Getter;
@@ -72,6 +71,8 @@ public abstract class AbstractAgent implements AiAgent {
      */
     private List<ContextItem> staticContext;
     private Supplier<List<ContextItem>> turnContextSupplier;
+    private final UserMessageBuilder messageBuilder = new UserMessageBuilder();
+    private final QueuedMessageDelivery delivery = new QueuedMessageDelivery();
 
     protected AbstractAgent(ConfiguredChatModel configuredModel, ToolService toolService) {
         this(configuredModel, toolService, new ThreadSafeMemory());
@@ -210,7 +211,12 @@ public abstract class AbstractAgent implements AiAgent {
      */
     @Override
     public boolean queueMessage(String msg) {
-        return messageQueue.add(msg);
+        return queueMessage(UserInput.of(msg));
+    }
+
+    @Override
+    public boolean queueMessage(UserInput input) {
+        return messageQueue.add(input);
     }
 
     /**
@@ -225,37 +231,35 @@ public abstract class AbstractAgent implements AiAgent {
         }
     }
 
-    /**
-     * Rule 11: the urgent lane of this agent's queue, for the round's tool result.
-     */
+    /** Rule 11: the urgent lane for the round's tool result (urgent entries never carry attachments, Rule 13). */
     @Override
     public List<String> takeUrgentMessages(AiMonitor monitor) {
-        return take(monitor, messageQueue::drainUrgent);
+        return takeInputs(monitor, messageQueue::drainUrgent).stream().map(UserInput::text).toList();
     }
 
-    /**
-     * Rule 12: BOTH lanes, for the {@code askUser} answer. Ordered by insertion time across lanes.
-     */
+    /** Rule 12, legacy text form; refuses before draining when attachments wait — see {@link #takeAllInputs}. */
     @Override
     public List<String> takeAllMessages(AiMonitor monitor) {
-        return take(monitor, messageQueue::drainAllEntries);
+        synchronized (messageQueue) {
+            if (messageQueue.hasAttachments()) throw new IllegalStateException("queued attachments cannot be taken as plain text");
+            return takeAllInputs(monitor).stream().map(UserInput::text).toList();
+        }
     }
 
-    /**
-     * Drain + disclosure are <b>one</b> step under the queue's monitor — a consumption that is not
-     * visible is exactly the silent injection the rules forbid, and a drain outside that monitor
-     * would race the turn-slot hand-over (Rule 10). One implementation for both lanes, so the two
-     * consumption channels cannot drift in ordering, disclosure or finality.
-     */
-    private List<String> take(AiMonitor monitor, Supplier<List<UserMessageQueue.QueuedMessage>> lane) {
-        var mon = AiMonitor.nullSafety(monitor);
-        synchronized (messageQueue) {
-            var entries = lane.get();
-            for (var entry : entries) {
-                mon.onTool(QueuedUserMessages.readingLine(messageQueue, entry));
-            }
-            return entries.stream().map(entry -> QueuedUserMessages.bodyLine(messageQueue, entry)).toList();
-        }
+    /** Rule 12/13: BOTH lanes, ordered by insertion time, attachments intact, text disclosure-formatted. */
+    @Override
+    public List<UserInput> takeAllInputs(AiMonitor monitor) {
+        return takeInputs(monitor, messageQueue::drainAllEntries);
+    }
+
+    /** Rule 13: the tool round's results are in the memory — what its tools took is delivered. */
+    @Override
+    public void queuedInputsCommitted() {
+        delivery.commitRound(messageQueue);
+    }
+
+    private List<UserInput> takeInputs(AiMonitor monitor, Supplier<List<QueuedInput>> lane) {
+        return delivery.takeInputs(messageQueue, monitor, lane);
     }
 
     /** Test seam: swap the queue (fixed {@code Clock} for Rule 9 Queued-At tests). Package-private.
@@ -287,53 +291,48 @@ public abstract class AbstractAgent implements AiAgent {
 
     @Override
     public ChatResponse call(String initialMessage, AiMonitor monitor) {
+        return call(UserInput.of(initialMessage), monitor);
+    }
+
+    @Override
+    public ChatResponse call(UserInput initial, AiMonitor monitor) {
         monitor = stamped(monitor);
         // Self-enforcing slot claim, atomic with the enqueue under the queue's monitor — contract and
         // boundary (claim side): Rule 10, org.sterl.llmpeon.core/docs/queued-user-messages.md
-        boolean acquired = claimTurnSlotOrQueue(initialMessage);
+        boolean acquired = claimTurnSlotOrQueue(initial);
         if (acquired) turnStart = Instant.now(clock);
         boolean slotReleased = false; // the loop's hand-over may already have released it
         try {
             if (!acquired) return null;
 
-            var stillQueued = messageQueue.drainAll();
-            String next;
-            if (stillQueued == null) {
-                next = initialMessage;
-            } else if (StringUtil.hasValue(initialMessage)) {
-                // Join path: queued payload + initial — no time here (Rule 9 shows it only on the marker)
-                next = stillQueued.text() + System.lineSeparator() + initialMessage;
-            } else {
-                // Follow-up (null initial): the queue IS the payload — mark like in-loop pollNext
-                next = queuedMarker(stillQueued);
+            ChatResponse lastResponse = null;
+            try {
+                // taken is not delivered (Rule 13): the delivery keeps every taken input until it is in the memory
+                var next = delivery.startInput(messageQueue, initial);
+                do {
+                    lastResponse = doCall(next, monitor);
+                    var polled = delivery.pollNext(messageQueue);
+                    if (polled == null && lastResponse != null && !monitor.isCanceled()) {
+                        // nothing polled and the turn is over: hand the slot over — under the queue's
+                        // monitor, so an input that arrived since the poll stays ours to answer
+                        polled = nextQueuedEntryOrReleaseSlot();
+                        slotReleased = polled == null;
+                    }
+                    if (polled != null) {
+                        monitor.onTool(QueuedUserMessages.readingLine(messageQueue, polled));
+                        next = QueuedUserMessages.followUp(messageQueue, polled);
+                    } else {
+                        next = null;
+                    }
+                } while (next != null && lastResponse != null && !monitor.isCanceled());
+            } catch (Exception e) {
+                delivery.preserveOnAbort(messageQueue, memory, monitor);
+                throw e;
             }
 
-            ChatResponse lastResponse = null;
-            do {
-                try {
-                    lastResponse = doCall(next, monitor);
-                } catch (Exception e) {
-                    handleAbortAndDrain(monitor);
-                    throw e;
-                }
-                var queued = messageQueue.pollNext();
-                if (queued == null && lastResponse != null && !monitor.isCanceled()) {
-                    // nothing polled and the turn is over: hand the slot over — under the queue's
-                    // monitor, so an input that arrived since the poll stays ours to answer
-                    queued = nextQueuedEntryOrReleaseSlot();
-                    slotReleased = queued == null;
-                }
-                if (queued != null) {
-                    monitor.onTool(QueuedUserMessages.readingLine(messageQueue, queued));
-                    next = queuedMarker(queued);
-                } else {
-                    next = null;
-                }
-            } while (next != null && lastResponse != null && !monitor.isCanceled());
-
-            // Drain remaining queue on cancellation exit from loop
-            if (monitor.isCanceled()) {
-                handleAbortAndDrain(monitor);
+            // Cancellation exit from the loop: keep what no turn answered (Rule 4/13)
+            if (!slotReleased && monitor.isCanceled()) {
+                delivery.preserveOnAbort(messageQueue, memory, monitor);
             }
 
             return lastResponse;
@@ -352,10 +351,10 @@ public abstract class AbstractAgent implements AiAgent {
      *
      * @return true if the caller owns the slot; false if the input is queued for the running turn
      */
-    private boolean claimTurnSlotOrQueue(String initialMessage) {
+    private boolean claimTurnSlotOrQueue(UserInput initial) {
         synchronized (messageQueue) {
             if (working.compareAndSet(false, true)) return true;
-            messageQueue.add(initialMessage); // already running: that turn answers it
+            messageQueue.add(initial); // already running: that turn answers it
             return false;
         }
     }
@@ -372,22 +371,11 @@ public abstract class AbstractAgent implements AiAgent {
      *
      * @return the entry this turn still has to answer; {@code null} means the slot was released
      */
-    private UserMessageQueue.QueuedMessage nextQueuedEntryOrReleaseSlot() {
+    private QueuedInput nextQueuedEntryOrReleaseSlot() {
         synchronized (messageQueue) {
-            var entry = messageQueue.pollNext();
+            var entry = delivery.pollNext(messageQueue);
             if (entry == null) working.set(false);
             return entry;
-        }
-    }
-
-    /** Drain remaining queued messages into memory on abort/error. */
-    private void handleAbortAndDrain(AiMonitor monitor) {
-        int preservedCount = messageQueue.size();
-        var preserved = messageQueue.drainAll();
-        if (preserved != null) {
-            // Abort drain = memory payload — no time (Rule 9 shows it only on the onTool line + marker)
-            memory.add(UserMessage.from(preserved.text()));
-            monitor.onTool(preservedCount + " queued message(s) preserved for your next request.");
         }
     }
 
@@ -404,63 +392,33 @@ public abstract class AbstractAgent implements AiAgent {
         return messageQueue.size();
     }
 
-    /**
-     * Rule 9 LLM marker — rendered by {@link QueuedUserMessages}, the single home of the format,
-     * so the payload marker and the disclosure line of an entry can never disagree.
-     */
-    private String queuedMarker(UserMessageQueue.QueuedMessage entry) {
-        return QueuedUserMessages.marker(messageQueue, entry);
+    /** Turn-scoped context (idempotent via contains-check) plus the user's input as the turn's one message. */
+    private void addTurnMessage(UserInput input, AiMonitor monitor, Runnable ramAdded) {
+        messageBuilder.build(messageBuilder.contextInputs(memory, turnContextSupplier, monitor), input)
+                .ifPresent(m -> memory.add(m, ramAdded));
     }
 
     /** Execute a single LLM+tool turn for the given message. */
-    protected ChatResponse doCall(String message, AiMonitor monitor) {
+    protected ChatResponse doCall(UserInput input, AiMonitor monitor) {
         var preTurn = preTurnCompact(monitor); // R-CC-20.2: over 95 % of the raw budget, before the fresh message enters
         // Inject turn-scoped context on every turn (idempotent via contains-check)
-        var userMessages = renderTurnContext(memory, turnContextSupplier, monitor);
-
-        if (StringUtil.hasValue(message)) userMessages.add(TextContent.from(message));
-        if (!userMessages.isEmpty()) addMessage(UserMessage.from(userMessages));
+        delivery.commitTurn(messageQueue, ram -> addTurnMessage(input, monitor, ram));
         // R-CT-7: the pre-turn compact is announced only after the memory add — a listener rebuilding
         // the UI from the memory then sees summary + fresh message (UC-CT-16).
         if (preTurn != null) announce(monitor, preTurn);
-        monitor.onCallStart(message);
+        monitor.onCallStart(input.text());
 
         var start = Instant.now();
         var staticMessages = buildStaticMessages(monitor);
-        var response = toolService.executeLoop(
-                ToolLoopRequest.builder()
-                    .memory(memory)
-                    .chatModel(configuredModel)
-                    .staticMessages(staticMessages)
-                    .monitor(monitor)
-                    .toolFilter(getToolFilter())
-                    .toolNameFilter(getToolNameFilter())
-                    .writeValidator(getWriteValidator())
-                    .owner(LoopOwner.of(this, base -> getConfig()))
-                    .turnStart(turnStart)
-                    .build()
-                );
+        var response = executeLoop(staticMessages, monitor);
 
         var duration = Duration.between(start, Instant.now());
         monitor.onCallCompleted(response, duration);
         return response;
     }
     
-    /** Execute a single LLM+tool turn for the given message. */
-    protected ChatResponse asyncCall(String message, AiMonitor monitor) {
-        var preTurn = preTurnCompact(monitor); // R-CC-20.2: over 95 % of the raw budget, before the fresh message enters
-        // Inject turn-scoped context on every turn (idempotent via contains-check)
-        var userMessages = renderTurnContext(memory, turnContextSupplier, monitor);
-
-        if (StringUtil.hasValue(message)) userMessages.add(TextContent.from(message));
-        if (!userMessages.isEmpty()) addMessage(UserMessage.from(userMessages));
-        // R-CT-7: the pre-turn compact is announced only after the memory add — a listener rebuilding
-        // the UI from the memory then sees summary + fresh message (UC-CT-16).
-        if (preTurn != null) announce(monitor, preTurn);
-        monitor.onCallStart(message);
-
-        var staticMessages = buildStaticMessages(monitor);
-        var response = toolService.executeLoop(
+    private ChatResponse executeLoop(List<ChatMessage> staticMessages, AiMonitor monitor) {
+        return toolService.executeLoop(
                 ToolLoopRequest.builder()
                     .memory(memory)
                     .chatModel(configuredModel)
@@ -473,6 +431,20 @@ public abstract class AbstractAgent implements AiAgent {
                     .turnStart(turnStart)
                     .build()
                 );
+    }
+
+    /** Execute a single LLM+tool turn for the given message. */
+    protected ChatResponse asyncCall(String message, AiMonitor monitor) {
+        var preTurn = preTurnCompact(monitor); // R-CC-20.2: over 95 % of the raw budget, before the fresh message enters
+        // Inject turn-scoped context on every turn (idempotent via contains-check)
+        addTurnMessage(UserInput.of(message), monitor, () -> {});
+        // R-CT-7: the pre-turn compact is announced only after the memory add — a listener rebuilding
+        // the UI from the memory then sees summary + fresh message (UC-CT-16).
+        if (preTurn != null) announce(monitor, preTurn);
+        monitor.onCallStart(message);
+
+        var staticMessages = buildStaticMessages(monitor);
+        var response = executeLoop(staticMessages, monitor);
 
         return response;
     }
@@ -594,16 +566,14 @@ public abstract class AbstractAgent implements AiAgent {
             memory.clear();
             this.systemMessage = null;
             // Restore turn-scoped context
-            var data = renderTurnContext(memory, turnContextSupplier, monitor);
             // DON'T use addResult -> as the totalTokenUsed is from the compressor here which is to large
             // we only take the compacted new message!
             // and we remove the thinking, if any, from the result
             // Ensure memory starts with a user message (many LLMs require this)
-            data.add(TextContent.from(CompactConstants.REINSERT_MARKER
-                    + System.lineSeparator() + System.lineSeparator()
-                    + result.summary())
-            );
-            memory.add(UserMessage.from(data));
+            messageBuilder.build(messageBuilder.contextInputs(memory, turnContextSupplier, monitor),
+                    UserInput.of(CompactConstants.REINSERT_MARKER
+                            + System.lineSeparator() + System.lineSeparator() + result.summary()))
+                    .ifPresent(memory::add);
             return result;
         } finally {
             compacting = false;
@@ -629,7 +599,7 @@ public abstract class AbstractAgent implements AiAgent {
     @Override
     public void clear() {
         memory.clear();
-        messageQueue.clear();
+        delivery.clear(messageQueue);
         this.systemMessage = null; // TODO test needed - AI forgot this reset case
     }
 
@@ -659,7 +629,7 @@ public abstract class AbstractAgent implements AiAgent {
     /**
      * Builds the full system prompt by appending the rendered persistent context items
      * (body-only) to the agent's base system prompt, plus the harness-block format info
-     * ({@link TaggedResult#INFO}) exactly once (R-TR-6) — every agent can see tagged blocks.
+     * ({@link TaggedInput#INFO}) exactly once (R-TR-6) — every agent can see tagged blocks.
      * Cached until invalidated (e.g. after compact).
      */
     private String buildSystemPrompt(AiMonitor monitor) {
@@ -677,39 +647,8 @@ public abstract class AbstractAgent implements AiAgent {
                 }
             }
         }
-        prompt = prompt + System.lineSeparator() + System.lineSeparator() + TaggedResult.INFO;
+        prompt = prompt + System.lineSeparator() + System.lineSeparator() + TaggedInput.INFO;
         this.systemMessage = prompt;
         return prompt;
-    }
-
-    /**
-     * Restore turn-scoped context into memory after compact, skipping duplicates.
-     * Keyed items ({@link ContextItem#dedupKey()}) are deduped by key BEFORE rendering;
-     * unkeyed items fall back to rendered-content dedup.
-     */
-    static List<Content> renderTurnContext(
-            ThreadSafeMemory memory,
-            Supplier<List<ContextItem>> turnContextSupplier, 
-            AiMonitor monitor) {
-
-        var result = new LinkedList<Content>();
-
-        if (turnContextSupplier == null) return result;
-        var items = turnContextSupplier.get();
-        if (items == null || items.isEmpty()) return result ;
-
-        for (var item : items) {
-            var key = item.dedupKey();
-            if (key == null || !memory.containsUserMessage(key)) {
-                var rendered = item.render();
-                if (rendered == null) continue;
-                if (memory.containsMessage(rendered.toString())) continue;
-                if (StringUtil.hasValue(item.label())) {
-                    monitor.onTool("📋 Loading " + item.label());
-                }
-                result.add(TextContent.from(rendered.toString()));
-            }
-        }
-        return result;
     }
 }

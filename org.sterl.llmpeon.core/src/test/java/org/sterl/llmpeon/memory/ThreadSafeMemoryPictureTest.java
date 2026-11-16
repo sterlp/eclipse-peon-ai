@@ -10,12 +10,13 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.AbstractMemoryFileTest;
 import org.sterl.llmpeon.shared.Picture;
-import org.sterl.llmpeon.shared.PictureMessage;
+import org.sterl.llmpeon.shared.PictureFixtures;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -26,8 +27,8 @@ class ThreadSafeMemoryPictureTest extends AbstractMemoryFileTest {
     void twoPicturesGetOneUserMessageEachBehindAllResults() {
         // GIVEN
         var memory = new ThreadSafeMemory();
-        var img1 = PictureMessage.of(new Picture(tmp.resolve("a.png").toString(), "image/png", "AAAA", 4));
-        var img2 = PictureMessage.of(new Picture(tmp.resolve("b.png").toString(), "image/png", "BBBB", 4));
+        var img1 = PictureFixtures.of(new Picture(tmp.resolve("a.png").toString(), "image/png", "AAAA", 4));
+        var img2 = PictureFixtures.of(new Picture(tmp.resolve("b.png").toString(), "image/png", "BBBB", 4));
 
         // WHEN
         memory.addResult(response(), results(), List.of(img1, img2));
@@ -59,7 +60,7 @@ class ThreadSafeMemoryPictureTest extends AbstractMemoryFileTest {
         var store = new FileAgentHistoryStore(dir.resolve("history.jsonl"));
         var memory = new ThreadSafeMemory(store);
         var picture = new Picture(tmp.resolve("ui/login.png").toString(), "image/png", "iVBORw0KGgo=", 8);
-        memory.addResult(response(), results(), List.of(PictureMessage.of(picture)));
+        memory.addResult(response(), results(), List.of(PictureFixtures.of(picture)));
 
         // WHEN — restore into a new memory
         var restored = new ThreadSafeMemory(new FileAgentHistoryStore(dir.resolve("history.jsonl"))).getCopy();
@@ -72,7 +73,11 @@ class ThreadSafeMemoryPictureTest extends AbstractMemoryFileTest {
         assertThat(image.getFirst().image().mimeType()).isEqualTo("image/png");
         assertThat(image.getFirst().detailLevel()).isEqualTo(ImageContent.DetailLevel.HIGH);
 
-        assertThat(PictureMessage.pathOf((UserMessage) restored.getLast())).isEqualTo(picture.displayPath());
+        var nl = System.lineSeparator();
+        var path = tmp.resolve("ui/login.png").toString();
+        assertThat(((UserMessage) restored.getLast()).contents().getFirst()).isEqualTo(TextContent.from(
+                "//-- Start picture: " + path + nl + "added by the picture tool, not typed by the user" + nl
+                + "//-- End picture: " + path));
     }
 
     private static List<ImageContent> images(ChatMessage m) {

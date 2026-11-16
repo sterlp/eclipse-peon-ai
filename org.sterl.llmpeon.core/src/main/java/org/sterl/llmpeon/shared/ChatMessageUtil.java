@@ -6,7 +6,7 @@ import java.util.List;
 
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.TaggedInput;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -134,7 +134,7 @@ public class ChatMessageUtil {
     }
 
     /**
-     * Converts a ChatMessage to a unique collection of strings, keeps {@link TaggedResult}
+     * Converts a ChatMessage to a unique collection of strings, keeps {@link TaggedInput}
      * as is and adds tags for any other message. Entries carry NO trailing line separator.
      *
      * <p>CUSTOM messages are always ignored; every other type is rendered UNCAPPED (R-TR-8 —
@@ -151,10 +151,12 @@ public class ChatMessageUtil {
             result.add(SYSTEM_PREFIX + sm.text());
         } else {
             if (msg instanceof UserMessage um) {
-                for (var c : um.contents()) {
+                var contents = um.contents();
+                for (int i = 0; i < contents.size(); i++) {
+                    var c = contents.get(i);
                     if (c instanceof TextContent tc) result.add(tagged(tc.text(), t));
                     else if (c instanceof ImageContent) {
-                        result.add(PICTURE_PLACEHOLDER_PREFIX + PictureMessage.pathOf(um) + "]");
+                        result.add(PICTURE_PLACEHOLDER_PREFIX + pictureNameBefore(contents, i) + "]");
                     }
                 }
 
@@ -185,12 +187,20 @@ public class ChatMessageUtil {
         return result;
     }
     
+    /** A picture belongs to the head DIRECTLY before it (R-RP-4) — never an earlier head. */
+    private static String pictureNameBefore(List<Content> contents, int imageIndex) {
+        if (imageIndex > 0 && contents.get(imageIndex - 1) instanceof TextContent head) {
+            return TaggedInput.pictureNameOf(head.text()).orElse("unknown");
+        }
+        return "unknown";
+    }
+
     /**
-     * @returns build the correct info tag for a {@link ChatMessage} content taking {@link TaggedResult} in 
+     * @returns build the correct info tag for a {@link ChatMessage} content taking {@link TaggedInput} in 
      */
     private static String messageTag(String msg, ChatMessageType type) {
         if (StringUtil.hasNoValue(msg)) return "";
-        if (TaggedResult.isTagged(msg)) return "";
+        if (TaggedInput.isTagged(msg)) return "";
         return type + ":" + System.lineSeparator();
     }
     

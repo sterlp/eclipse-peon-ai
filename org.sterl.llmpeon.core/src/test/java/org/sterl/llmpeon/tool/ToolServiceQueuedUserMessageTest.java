@@ -18,7 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.agent.AgentQueueSeam;
 import org.sterl.llmpeon.agent.AiDevAgent;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.TaggedInput;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
@@ -51,7 +51,7 @@ class ToolServiceQueuedUserMessageTest {
 
     private static final long AT_1432 = Instant.parse("2026-09-23T14:32:00Z").toEpochMilli();
     private static final String OUTPUT = "tool-output";
-    private static final String LN = TaggedResult.LN;
+    private static final String LN = TaggedInput.LN;
 
     private final ToolService service = new ToolService(false); // only the fake tool below
     private final List<ChatRequest> sent = new ArrayList<>();
@@ -84,10 +84,10 @@ class ToolServiceQueuedUserMessageTest {
         var results = toolResults(sent.get(1).messages());
         assertThat(results).hasSize(2);
         assertThat(results.getFirst().text()).isEqualTo(OUTPUT + LN + LN
-                + TaggedResult.PREFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE + LN
+                + TaggedInput.PREFIX + TaggedInput.TAG_QUEUED_USER_MESSAGE + LN
                 + "(queued 14:32): u1" + LN
                 + "(queued 14:32): u2" + LN
-                + TaggedResult.SUFFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE);
+                + TaggedInput.SUFFIX + TaggedInput.TAG_QUEUED_USER_MESSAGE);
         // AND — exactly ONE result of the iteration carries it, not every tool (R11) …
         assertThat(results.get(1).text()).isEqualTo(OUTPUT);
         // AND — the memory keeps the very same payload …
@@ -117,7 +117,7 @@ class ToolServiceQueuedUserMessageTest {
                 .allSatisfy(result -> assertThat(result.text()).isEqualTo(OUTPUT));
         // AND — and no disclosure line for a delivery that never happened.
         assertThat(sent.get(1).messages())
-                .noneMatch(m -> ChatMessageUtil.toString(m).contains(TaggedResult.TAG_QUEUED_USER_MESSAGE));
+                .noneMatch(m -> ChatMessageUtil.toString(m).contains(TaggedInput.TAG_QUEUED_USER_MESSAGE));
         assertThat(toolLines).noneMatch(line -> line.startsWith("Reading queued User message:"));
     }
 
@@ -143,7 +143,7 @@ class ToolServiceQueuedUserMessageTest {
 
         // THEN — delivered with the round …
         assertThat(toolResults(agent.getMemory().getCopy()).getFirst().text())
-                .contains(TaggedResult.PREFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE)
+                .contains(TaggedInput.PREFIX + TaggedInput.TAG_QUEUED_USER_MESSAGE)
                 .contains("(queued 14:32): bitte abbrechen");
         // AND — never again as the turn-end follow-up marker: the entry is gone, no double delivery …
         assertThat(agent.getMemory().getCopy())
@@ -167,11 +167,11 @@ class ToolServiceQueuedUserMessageTest {
         // THEN — the block is embedded BEHIND the tool output, so the result is no pure block …
         var result = toolResults(sent.get(1).messages()).getFirst().text();
         assertThat(result).startsWith(OUTPUT)
-                .contains(TaggedResult.PREFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE)
-                .endsWith(TaggedResult.SUFFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE);
+                .contains(TaggedInput.PREFIX + TaggedInput.TAG_QUEUED_USER_MESSAGE)
+                .endsWith(TaggedInput.SUFFIX + TaggedInput.TAG_QUEUED_USER_MESSAGE);
         // AND — which is what keeps it in the compact input (R-TR-2; the trim behaviour itself is
         // pinned by ContextTrimComponentTest#embeddedBlockInToolResultIsNotDropped).
-        assertThat(TaggedResult.isTagged(result)).isFalse();
+        assertThat(TaggedInput.isTagged(result)).isFalse();
     }
 
     @Test
@@ -223,9 +223,9 @@ class ToolServiceQueuedUserMessageTest {
         var results = toolResults(sent.get(1).messages());
         assertThat(results).hasSize(2);
         assertThat(results.get(1).text()).isEqualTo(OUTPUT + LN + LN
-                + TaggedResult.PREFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE + LN
+                + TaggedInput.PREFIX + TaggedInput.TAG_QUEUED_USER_MESSAGE + LN
                 + "(queued 14:32): bitte abbrechen" + LN
-                + TaggedResult.SUFFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE);
+                + TaggedInput.SUFFIX + TaggedInput.TAG_QUEUED_USER_MESSAGE);
         // AND — the askUser result stayed exactly as the tool built it: one block, answer as last line …
         assertThat(results.getFirst().text()).isEqualTo(askUserResultForm());
         // AND — delivered once, so the follow-up turn has nothing left to repeat …

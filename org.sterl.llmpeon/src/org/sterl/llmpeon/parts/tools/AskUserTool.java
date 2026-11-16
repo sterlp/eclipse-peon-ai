@@ -6,8 +6,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import org.sterl.llmpeon.agent.model.TaggedResult;
-import org.sterl.llmpeon.queuedmessages.QueuedUserMessages;
+import org.sterl.llmpeon.agent.QueuedMessageDelivery;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -24,6 +23,8 @@ public class AskUserTool extends AbstractEclipseTool {
     public interface QuestionPresenter {
         void show(String question, List<String> answers, Consumer<String> onAnswer);
     }
+
+    private static final QueuedMessageDelivery DELIVERY = new QueuedMessageDelivery();
 
     private final QuestionPresenter presenter;
 
@@ -68,16 +69,9 @@ public class AskUserTool extends AbstractEclipseTool {
         return withQueuedMessages(answer.get());
     }
 
-    /**
-     * Rule 12: all queue entries of the running turn ride with the answer — the
-     * {@code queued_user_message} block prepended, the answer kept as the LAST line, as ONE text
-     * (multi-content tool results break {@code text()} and with it the compact/render path). The
-     * drain is the agent's, under the queue's monitor, and final: these entries start no follow-up
-     * turn. An agent-less call (a direct unit call) has no queue and returns the plain answer.
-     */
+    /** Rule 12/13: everything queued rides with the answer — see {@link QueuedMessageDelivery}. */
     private String withQueuedMessages(String answer) {
         if (request == null || request.getAgent() == null) return answer;
-        var block = QueuedUserMessages.block(request.getAgent().takeAllMessages(monitor));
-        return block == null ? answer : block + TaggedResult.LN + answer;
+        return DELIVERY.prependToAnswer(request.getAgent(), monitor, answer, request::appendAfterResults);
     }
 }

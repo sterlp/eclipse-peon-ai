@@ -301,8 +301,9 @@ Doppeltester gestrichen/merged.
 Sklaven bauen fresh (`PoDelegateTool:239` → `AbstractAgent:286-297` mit `.agent(this)` = Sklave) —
 keine weitere Lücke. toBuilder bleibt (implizite Vererbung von 7 Feldern ist der Vorteil; eine
 Factory verschiebt das Risiko nur in den Factory-Body). Nebenbefund (eigener Punkt, s.
-open-points): stateful `StreamingBridge`/`ApiRetry` werden via toBuilder geteilt — parallele
-Nested-Calls würden sich bewerfen (sequenziell harmlos).
+open-points): stateful `ApiRetry` wird via toBuilder geteilt — parallele Nested-Calls würden sich
+bewerfen (sequenziell harmlos). Die `StreamingBridge` entsteht je Aufruf frisch
+([agent-error-memory.md](agent-error-memory.md) R-AEM-4).
 
 **Root Cause (verifiziert, Paul markiert die Stelle):** `SearchAgentTool.java:47-51` baut den
 Nested-Request per `this.request.toBuilder()` und überschreibt `staticMessages`, `toolFilter`,
@@ -555,6 +556,35 @@ allein heilt sie nicht, weil es den veralteten Wert liest.
   WHEN `addResult` läuft THEN bleibt der Fallback Estimate über die **ganze** Memory (kein
   Doppelzählen der bereits geschätzten Messages).
   *(Test: `ThreadSafeMemoryInputTokenCountTest#estimateFallbackDoesNotDoubleCount`)*
+
+### R-CC-21 — Leere „ok"-Antworten gehen nicht in den Compact ✅ done (Paul 2026-11-13)
+
+Beim Aufbereiten des Compact-Inputs entfällt jede KI-Antwort, deren Text genau „ok" ist und die
+weder Tool-Aufrufe noch Thinking trägt. Das Memory selbst bleibt unverändert — die Antwort hält dort
+die vom Provider verlangte Rollenfolge. **WEIL:** das Memory fügt solche Antworten als Füller ein
+(vor Nachreichungen einer Tool-Runde, nach einem Tool-Result ohne KI-Antwort); für die
+Zusammenfassung tragen sie nichts, auch ein echtes „ok" des Modells nicht — eine Markierung wäre
+für alte Histories wirkungslos.
+
+#### UC-CC-3 — compactInputSkipsBareOk ✅
+
+```gherkin
+Given das Memory enthält "USER: lies a.txt", eine KI-Antwort mit Tool-Aufruf, das Tool-Result, eine KI-Antwort "ok" und "USER: weiter"
+When der Compact seinen Input aufbereitet
+Then enthält der Input die Blöcke für "lies a.txt", den Tool-Aufruf, das Tool-Result und "weiter"
+  And der Input enthält keinen Block "AI:" mit dem Text "ok"
+  And das Memory enthält die KI-Antwort "ok" weiterhin
+```
+
+#### UC-CC-4 — compactInputKeepsOkWithContent ✅
+
+```gherkin
+Given das Memory enthält eine KI-Antwort "ok" mit Thinking "prüfe Pfad"
+  And eine KI-Antwort "ok, erledigt"
+When der Compact seinen Input aufbereitet
+Then enthält der Input beide KI-Antworten
+```
+
 
 ## Info (2026-09-25, Paul — „China API leak", nur notiert, kein Bau)
 

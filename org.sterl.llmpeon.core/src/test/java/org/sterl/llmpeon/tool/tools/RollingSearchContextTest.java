@@ -7,7 +7,7 @@ import java.util.concurrent.CountDownLatch;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.TaggedInput;
 
 /**
  * R-LSR-1…6 (org.sterl.llmpeon.core/docs/search-agent-tool.md § Rolling Search Context): the rolling
@@ -17,7 +17,7 @@ import org.sterl.llmpeon.agent.model.TaggedResult;
  */
 class RollingSearchContextTest {
 
-    /** Framing comes from {@link TaggedResult}; the disclosure word is the documented R-LSR-4 text. */
+    /** Framing comes from {@link TaggedInput}; the disclosure word is the documented R-LSR-4 text. */
     private static final String HEAD = "last-search-rolling";
     private static final String DISCLOSURE = "//(older context dropped to fit cap)";
 
@@ -30,8 +30,8 @@ class RollingSearchContextTest {
 
     /** The pair content of a rendered block — everything the cap counts, decoration cut away. */
     private static String pairContent(String block, boolean cut) {
-        var head = TaggedResult.PREFIX + HEAD + TaggedResult.LN;
-        var tail = (cut ? DISCLOSURE + TaggedResult.LN : "") + TaggedResult.SUFFIX + HEAD;
+        var head = TaggedInput.PREFIX + HEAD + TaggedInput.LN;
+        var tail = (cut ? DISCLOSURE + TaggedInput.LN : "") + TaggedInput.SUFFIX + HEAD;
         return block.substring(head.length(), block.length() - tail.length());
     }
 
@@ -57,11 +57,11 @@ class RollingSearchContextTest {
 
         // THEN — both pairs, in append order, framed by the block headers
         var block = ctx.render();
-        assertThat(block).startsWith(TaggedResult.PREFIX + HEAD + TaggedResult.LN)
-                .endsWith(TaggedResult.LN + TaggedResult.SUFFIX + HEAD);
+        assertThat(block).startsWith(TaggedInput.PREFIX + HEAD + TaggedInput.LN)
+                .endsWith(TaggedInput.LN + TaggedInput.SUFFIX + HEAD);
         // the pair's own newline is the only one before the end line — a second would mean a blank line;
         // literal \n\n too, because the body newlines stay LF even where the framing follows the platform
-        assertThat(block).doesNotContain(TaggedResult.LN + TaggedResult.LN, "\n\n");
+        assertThat(block).doesNotContain(TaggedInput.LN + TaggedInput.LN, "\n\n");
         assertThat(block).contains("Frage: q1\nAntwort: a1\n", "Frage: q2\nAntwort: a2\n");
         assertThat(block.indexOf("Frage: q1")).isLessThan(block.indexOf("Frage: q2"));
     }

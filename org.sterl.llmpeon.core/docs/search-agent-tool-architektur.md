@@ -60,7 +60,7 @@ sequenceDiagram
 ## Abgrenzung
 
 - **Kein ContextItem:** der Sub-Loop hat die ContextItem-Mechanik nicht (`agent(null)`, frisches
-  Memory) — der Block ist eine Static Message mit TaggedResult-ähnlichem Header, erklärt in
+  Memory) — der Block ist eine Static Message mit TaggedInput-ähnlichem Header, erklärt in
   `prompts/search-agent.md`.
 - **Kein Memory-Kontakt:** `ThreadSafeMemory` bleibt frisch je Aufruf (R3); der Parent-Memory wird
   nie angetastet.

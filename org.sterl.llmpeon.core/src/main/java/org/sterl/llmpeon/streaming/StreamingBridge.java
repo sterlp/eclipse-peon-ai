@@ -1,10 +1,12 @@
 package org.sterl.llmpeon.streaming;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.sterl.llmpeon.exception.ExceptionUtil;
@@ -29,23 +31,21 @@ import dev.langchain4j.model.chat.response.StreamingHandle;
 /**
  * Bridges langchain4j streaming to the blocking {@link AiMonitor} contract.
  * <p>
- * One instance is reused across all tool-loop iterations of a request. The bridge knows no turn:
+ * A fresh instance is created per call (and per retry). The bridge knows no turn:
  * the caller passes the agent-owned turn start (R20) to every {@link #call}, and each call resets
  * the per-call state (latch, refs, timing).
  * <p>
- * Timing: three {@link Timer}s track the prompt phase (reset+start per call, stopped at the
- * first partial), the think phase (reset+start per call, stopped at the first thinking) and the
- * token phase (started at the first partial, stopped at completion). Chunks carry the
- * stamped {@code tokenPhaseStart}, never the live timers.
+ * Timing: three {@link Timer}s track the prompt, think and token phases.
+ * Chunks carry the stamped {@code tokenPhaseStart}, never the live timers.
  * <p>
- * Cancel: every partial callback checks {@link AiMonitor#isCanceled()} and calls
- * {@link StreamingHandle#cancel()} immediately when true.
- * 
- * Maybe replaced by {@link AsyncStreamingBridge}.
+ * Cancel takes precedence over idle timeout.
  */
 public class StreamingBridge implements StreamingChatResponseHandler {
 
+    public static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(3);
+
     private final Clock clock;
+    private final long timeoutMillis;
     private volatile Instant startedAt;
 
     private final Timer ppTimer;
@@ -53,41 +53,61 @@ public class StreamingBridge implements StreamingChatResponseHandler {
     private final Timer thinkTimer;
     private volatile long tokenPhaseStart;
 
+    // Terminal outcome — null = pending, set exactly once per call
+    private sealed interface Outcome {}
+    private record Completed(ChatResponse response) implements Outcome {}
+    private record Failed(Throwable error) implements Outcome {}
+    private record Canceled(AiCancellationException error) implements Outcome {}
+    private record TimedOut(RuntimeException error) implements Outcome {}
+
+    // State guarded by stateLock
+    private final Object stateLock = new Object();
+    private long lastChunkAtMillis;
+    private AtomicReference<Outcome> outcomeRef;
+
+    private volatile CountDownLatch latch;
+    private volatile AtomicReference<StreamingHandle> handleRef;
+    private volatile AiMonitor monitor;
+
+    private final StringBuilder partialResponse = new StringBuilder();
+    private final StringBuilder partialThink = new StringBuilder();
+
     public StreamingBridge() {
-        this(Clock.systemUTC());
+        this(Clock.systemUTC(), DEFAULT_TIMEOUT);
+    }
+
+    public StreamingBridge(Duration timeout) {
+        this(Clock.systemUTC(), timeout);
     }
 
     StreamingBridge(Clock clock) {
+        this(clock, DEFAULT_TIMEOUT);
+    }
+
+    StreamingBridge(Clock clock, Duration timeout) {
+        if (timeout == null) throw new NullPointerException("timeout must not be null");
+        if (timeout.isNegative() || timeout.isZero()) throw new IllegalArgumentException("timeout must be positive: " + timeout);
         this.clock = clock;
+        long ms = timeout.toMillis();
+        long remainderNanos = timeout.toNanos() - ms * 1_000_000L;
+        this.timeoutMillis = Math.addExact(ms, remainderNanos == 0 ? 0 : 1);
         this.ppTimer = new Timer(clock);
         this.tokenTimer = new Timer(clock);
         this.thinkTimer = new Timer(clock);
     }
 
     // Per-call state — reset at the top of each call()
-    private volatile CountDownLatch latch;
-    private volatile AtomicReference<ChatResponse> responseRef;
-    private volatile AtomicReference<Throwable> errorRef;
-    private volatile AtomicReference<StreamingHandle> handleRef;
-    private volatile AiMonitor monitor;
-    
-    private final StringBuilder partialResponse = new StringBuilder();
-    private final StringBuilder partialThink = new StringBuilder();
 
     /**
-     * Executes one streaming LLM call and blocks until complete or error.
-     * {@code startedAt} is the caller's (agent-owned) turn start, shown in every chunk of this call.
-     * 
-     * @throws CancellationException if canceled
+     * Executes one streaming LLM call and blocks until complete, error, cancel, or idle timeout.
+     * {@code startedAt} is the caller's (agent-owned) turn start.
      */
     public ChatResponse call(StreamingChatModel model, ChatRequest request, AiMonitor monitor, Instant startedAt) {
         this.startedAt = startedAt;
         this.latch = new CountDownLatch(1);
-        this.responseRef = new AtomicReference<>();
-        this.errorRef = new AtomicReference<>();
+        this.outcomeRef = new AtomicReference<>();
         this.handleRef = new AtomicReference<>();
         this.monitor = AiMonitor.nullSafety(monitor);
-        // Per-call timing: prompt and think phases start now; the token phase starts at the first partial.
         this.ppTimer.reset();
         this.ppTimer.start();
         this.thinkTimer.reset();
@@ -96,48 +116,131 @@ public class StreamingBridge implements StreamingChatResponseHandler {
         this.tokenPhaseStart = 0;
         this.partialResponse.setLength(0);
         this.partialThink.setLength(0);
+        synchronized (stateLock) {
+            this.lastChunkAtMillis = clock.millis();
+        }
 
         this.monitor.onStreamingChunk(new OnPartialAiResponse(Type.START, null, startedAt, tokenPhaseStart));
 
-
-        Throwable error = null;
         try {
             model.chat(request, this);
 
-            while (!latch.await(1000, TimeUnit.MILLISECONDS)) {
-                cancelAndRelease(handleRef.get());
+            while (!awaitCompletion(computeWaitMillis())) {
+                if (checkStopOrTimeout()) break;
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            synchronized (stateLock) {
+                if (outcomeRef.get() == null) {
+                    var msg = "AI thread interrupted (user or harness)";
+                    outcomeRef.compareAndSet(null,
+                            new Canceled(new AiCancellationException(msg,
+                                    partialThink.toString(), partialResponse.toString())));
+                }
+            }
             StreamingHandle h = handleRef.get();
-            if (h != null) h.cancel();
-            errorRef.compareAndSet(null,
-                    new AiCancellationException("AI thread interrupted (user or harness)", 
-                            partialThink.toString(), partialResponse.toString()));
+            if (h != null) {
+                try { h.cancel(); } catch (Exception ignored) { }
+            }
         } catch (Exception e) {
-            error = ExceptionUtil.unwrap(e);
+            var unwrapped = ExceptionUtil.unwrap(e);
+            synchronized (stateLock) {
+                if (outcomeRef.get() == null) {
+                    outcomeRef.compareAndSet(null,
+                            unwrapped instanceof RuntimeException re
+                                    ? new Failed(re) : new Failed(new RuntimeException(unwrapped)));
+                }
+            }
         } finally {
             latch.countDown();
         }
 
-        error = errorRef.get() == null ? error : errorRef.get();
-        if (error != null) {
-            // if we are canceled - and have a response use it
-            if (ExceptionUtil.isCanceled(error) && responseRef.get() != null) return responseRef.get();
-            if (error instanceof RuntimeException ex) throw ex;
-            throw new RuntimeException(error);
+        Outcome outcome = outcomeRef.get();
+        if (outcome instanceof Completed c) return c.response();
+        if (outcome instanceof Canceled c) throw c.error();
+        if (outcome instanceof TimedOut t) throw t.error();
+        if (outcome instanceof Failed f) {
+            if (f.error() instanceof RuntimeException re) throw re;
+            throw new RuntimeException(f.error());
         }
-        return responseRef.get();
+        // pending with no outcome — should not happen, but guard
+        throw new IllegalStateException("StreamingBridge call completed without outcome");
+    }
+
+    private long computeWaitMillis() {
+        long elapsed;
+        synchronized (stateLock) {
+            elapsed = clock.millis() - lastChunkAtMillis;
+        }
+        long remaining = timeoutMillis - elapsed;
+        if (remaining <= 0) return 1;
+        return Math.min(1000, remaining);
+    }
+
+    /**
+     * Checks stop (cancel) first, then idle timeout. Both claim the outcome atomically.
+     * @return true if the loop should exit
+     */
+    private boolean checkStopOrTimeout() {
+        // Stop check — cancel wins over timeout
+        if (monitor.isCanceled()) {
+            synchronized (stateLock) {
+                if (outcomeRef.get() != null) return true;
+                var msg = "AI call canceled by user ...";
+                outcomeRef.compareAndSet(null,
+                        new Canceled(new AiCancellationException(msg,
+                                partialThink.toString(), partialResponse.toString())));
+            }
+            // Cancel transport after outcome is published
+            StreamingHandle h = handleRef.get();
+            if (h != null) {
+                try { h.cancel(); } catch (Exception ignored) { }
+            }
+            latch.countDown();
+            return true;
+        }
+
+        // Idle timeout check
+        synchronized (stateLock) {
+            if (outcomeRef.get() != null) return true;
+            long idle = clock.millis() - lastChunkAtMillis;
+            if (idle < timeoutMillis) return false;
+            var message = formatTimeout(timeoutMillis);
+            outcomeRef.compareAndSet(null,
+                    new TimedOut(new RuntimeException(message, new TimeoutException(message))));
+        }
+        StreamingHandle h = handleRef.get();
+        if (h != null) {
+            try { h.cancel(); } catch (Exception ignored) { }
+        }
+        latch.countDown();
+        return true;
+    }
+
+    static String formatTimeout(long timeoutMillis) {
+        if (timeoutMillis < 1000) {
+            return "AI stream idle for " + timeoutMillis + " ms (timeout)";
+        }
+        double seconds = timeoutMillis / 1000.0;
+        if (seconds == Math.floor(seconds)) {
+            return "AI stream idle for " + ((long) seconds) + " s (timeout)";
+        }
+        return "AI stream idle for " + seconds + " s (timeout)";
+    }
+
+    /** Records chunk activity. Called under stateLock from partial entry. */
+    private void markActivityLocked() {
+        lastChunkAtMillis = clock.millis();
+    }
+
+    boolean awaitCompletion(long waitMillis) throws InterruptedException {
+        return latch.await(waitMillis, TimeUnit.MILLISECONDS);
     }
 
     // -------------------------------------------------------------------------
-    // StreamingChatResponseHandler — partial callbacks with cancel guard
+    // StreamingChatResponseHandler — partial callbacks
     // -------------------------------------------------------------------------
 
-    /**
-     * Stamps the token-phase start on the first partial of any type, starts the token timer and
-     * stops the prompt-phase timer. Subsequent partials are no-ops.
-     */
     private void onFirstPartial() {
         if (tokenPhaseStart == 0) {
             tokenPhaseStart = clock.millis();
@@ -148,52 +251,98 @@ public class StreamingBridge implements StreamingChatResponseHandler {
 
     @Override
     public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
-        handleRef.compareAndSet(null, context.streamingHandle());
-        if (cancelAndRelease(context.streamingHandle())) return;
-        onFirstPartial();
-        this.partialResponse.append(partialResponse.text());
+        // Capture handle and activity under lock, then check pending
+        StreamingHandle handle;
+        synchronized (stateLock) {
+            if (outcomeRef.get() != null) return;
+            handleRef.compareAndSet(null, context.streamingHandle());
+            handle = context.streamingHandle();
+            markActivityLocked();
+        }
+        // External call: check cancel (never under lock)
+        if (monitor.isCanceled()) {
+            claimCancel(handle);
+            return;
+        }
+        // Re-check pending after external call
+        synchronized (stateLock) {
+            if (outcomeRef.get() != null) return;
+            onFirstPartial();
+            this.partialResponse.append(partialResponse.text());
+        }
         monitor.onStreamingChunk(new OnPartialAiResponse(Type.ANSWER, partialResponse.text(), startedAt, tokenPhaseStart));
     }
 
     @Override
     public void onPartialThinking(PartialThinking partialThinking, PartialThinkingContext context) {
-        handleRef.compareAndSet(null, context.streamingHandle());
-        if (cancelAndRelease(context.streamingHandle())) return;
-        onFirstPartial();
-        thinkTimer.stop();
-        this.partialThink.append(partialThinking.text());
+        StreamingHandle handle;
+        synchronized (stateLock) {
+            if (outcomeRef.get() != null) return;
+            handleRef.compareAndSet(null, context.streamingHandle());
+            handle = context.streamingHandle();
+            markActivityLocked();
+        }
+        if (monitor.isCanceled()) {
+            claimCancel(handle);
+            return;
+        }
+        synchronized (stateLock) {
+            if (outcomeRef.get() != null) return;
+            onFirstPartial();
+            thinkTimer.stop();
+            this.partialThink.append(partialThinking.text());
+        }
         monitor.onStreamingChunk(new OnPartialAiResponse(Type.THINK, partialThinking.text(), startedAt, tokenPhaseStart));
     }
 
     @Override
     public void onPartialToolCall(PartialToolCall partialToolCall, PartialToolCallContext context) {
-        handleRef.compareAndSet(null, context.streamingHandle());
-        if (cancelAndRelease(context.streamingHandle())) return;
-        onFirstPartial();
-        // The tool name repeats in every callback; only the argument delta carries new tokens (D5).
+        StreamingHandle handle;
+        synchronized (stateLock) {
+            if (outcomeRef.get() != null) return;
+            handleRef.compareAndSet(null, context.streamingHandle());
+            handle = context.streamingHandle();
+            markActivityLocked();
+        }
+        if (monitor.isCanceled()) {
+            claimCancel(handle);
+            return;
+        }
+        synchronized (stateLock) {
+            if (outcomeRef.get() != null) return;
+            onFirstPartial();
+        }
         monitor.onStreamingChunk(new OnPartialAiResponse(Type.TOOL, partialToolCall.partialArguments(), startedAt, tokenPhaseStart));
     }
 
-    private boolean cancelAndRelease(StreamingHandle handle) {
-        if (!monitor.isCanceled()) return false;
-        if (handle != null) handle.cancel();
-        errorRef.compareAndSet(null, 
-                new AiCancellationException(partialThink.toString(), partialResponse.toString()));
+    /** Claims a Canceled outcome and cancels transport. Called outside stateLock. */
+    private void claimCancel(StreamingHandle handle) {
+        synchronized (stateLock) {
+            if (outcomeRef.get() != null) return;
+            var msg = "AI call canceled by user ...";
+            outcomeRef.compareAndSet(null,
+                    new Canceled(new AiCancellationException(msg,
+                            partialThink.toString(), partialResponse.toString())));
+        }
+        if (handle != null) {
+            try { handle.cancel(); } catch (Exception ignored) { }
+        }
         latch.countDown();
-        return true;
     }
 
     // -------------------------------------------------------------------------
-    // Terminal callbacks — release the latch
+    // Terminal callbacks — atomically claim outcome
     // -------------------------------------------------------------------------
 
     @Override
     public void onCompleteResponse(ChatResponse completeResponse) {
+        synchronized (stateLock) {
+            if (outcomeRef.get() != null) return;
+            outcomeRef.compareAndSet(null, new Completed(completeResponse));
+        }
+        // Only the winner reports END and usage
         this.tokenTimer.stop();
         this.monitor.onStreamingChunk(new OnPartialAiResponse(Type.END, null, startedAt, tokenPhaseStart));
-        responseRef.set(completeResponse);
-        // Single accumulation trigger for the whole app (main loop, search sub-agent, compaction).
-        // Only real provider usage — no estimate. See docs/adr/0004-session-token-accounting.md.
         var usage = ChatMessageUtil.tokenUsage(completeResponse);
         if (usage != null) this.monitor.onTokenUsage(usage);
         latch.countDown();
@@ -201,10 +350,11 @@ public class StreamingBridge implements StreamingChatResponseHandler {
 
     @Override
     public void onError(Throwable error) {
+        synchronized (stateLock) {
+            if (outcomeRef.get() != null) return;
+            outcomeRef.compareAndSet(null, new Failed(error));
+        }
         this.monitor.onStreamingChunk(new OnPartialAiResponse(Type.END, null, startedAt, tokenPhaseStart));
-        // first setter wins: a cancel stored a CancellationException before the provider's
-        // post-cancel onError — overwriting it would make callers retry a stopped call
-        errorRef.compareAndSet(null, error);
         latch.countDown();
     }
 

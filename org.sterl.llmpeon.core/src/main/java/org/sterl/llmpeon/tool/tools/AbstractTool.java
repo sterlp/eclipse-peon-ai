@@ -4,13 +4,16 @@ import java.nio.file.Path;
 
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.PictureFile;
-import org.sterl.llmpeon.shared.PictureMessage;
+import org.sterl.llmpeon.agent.UserMessageBuilder;
+import org.sterl.llmpeon.agent.model.HarnessInput;
 import org.sterl.llmpeon.tool.SmartTool;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 
 public class AbstractTool implements SmartTool {
 
     protected AiMonitor monitor = AiMonitor.NULL_MONITOR;
+    private static final UserMessageBuilder MESSAGES = new UserMessageBuilder();
+
     protected ToolLoopRequest request;
 
     protected void onTool(String m) {
@@ -49,7 +52,7 @@ public class AbstractTool implements SmartTool {
         if (request == null) {
             throw new IllegalStateException("no tool loop request — a picture cannot be attached to the next round");
         }
-        request.appendAfterResults(PictureMessage.of(picture));
+        request.appendAfterResults(MESSAGES.from(new HarnessInput(picture)));
         onTool("📷 " + picture.displayPath() + " (" + picture.kb() + ")");
         return picture.resultText();
     }

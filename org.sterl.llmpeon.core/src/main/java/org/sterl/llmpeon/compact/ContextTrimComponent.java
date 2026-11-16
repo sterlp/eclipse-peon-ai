@@ -7,14 +7,14 @@ import java.util.List;
 import java.util.Locale;
 
 import org.jspecify.annotations.Nullable;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.TaggedInput;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
-import org.sterl.llmpeon.shared.PictureMessage;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolService;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -62,6 +62,7 @@ public class ContextTrimComponent {
         int nonEmpty = 0;
         int contextBlocksDropped = 0;
         for (var m : messages) {
+            if (isBareOk(m)) continue; // R-CC-21 (docs/compact.md): filler, never counted nor rendered
             var drop = dropBlocks(ChatMessageUtil.extractMessages(m));
             contextBlocksDropped += drop.dropped();
             var render = String.join(System.lineSeparator(), drop.kept());
@@ -127,12 +128,19 @@ public class ContextTrimComponent {
     /** The R-TR-9/ADR-0030 drop: pure context blocks are counted (K), SYSTEM blocks stay silent. */
     private record BlockDrop(List<String> kept, int dropped) {}
 
+    private static boolean isBareOk(ChatMessage m) {
+        return m instanceof AiMessage ai && "ok".equals(ai.text())
+                && !ai.hasToolExecutionRequests() && StringUtil.hasNoValue(ai.thinking());
+    }
+
     private static BlockDrop dropBlocks(Collection<String> blocks) {
         var kept = new ArrayList<String>();
         int dropped = 0;
         for (var b : blocks) {
             if (b.startsWith(ChatMessageUtil.SYSTEM_PREFIX)) continue;
-            if (TaggedResult.isTagged(b)) { dropped++; continue; }
+            // R-TR-12: a user's file attachment never comes back after the compact — it is no context block
+            if (TaggedInput.kindOf(b) == TaggedInput.Kind.FILE) { kept.add(b); continue; }
+            if (TaggedInput.isTagged(b)) { dropped++; continue; }
             kept.add(b);
         }
         return new BlockDrop(List.copyOf(kept), dropped);
@@ -155,8 +163,8 @@ public class ContextTrimComponent {
         var m = e.message();
         if (m instanceof UserMessage um) {
             // The last real user message stays full; earlier user messages are state-only
-            // (everything but the last TextContent — context-message-concept.md).
-            return m == lastRealUser ? e.uncapped() : renderStateOnly(um, e.blocks());
+            // (file blocks and picture placeholders — R-CIB-4.1).
+            return m == lastRealUser ? e.uncapped() : renderStateOnly(e.blocks());
         }
         var blocks = new ArrayList<String>(e.blocks().size());
         for (var b : e.blocks()) {
@@ -206,18 +214,15 @@ public class ContextTrimComponent {
         return ChatMessageUtil.estimateTokens(String.join(System.lineSeparator(), renders(capped)));
     }
 
-    /** State-only render of a user message: everything but the last TextContent (the real user
-     *  text) — the entries run through the SAME drop pipeline (pure blocks fly out, R-TR-9; the
-     *  count was already taken on the full message). Empty when nothing but real text is left. */
-    private static String renderStateOnly(UserMessage um, List<String> blocks) {
-        var texts = um.contents().stream().filter(c -> c instanceof TextContent).toList();
+    /** State-only render of a user message: what the user attached survives — {@code file:} blocks
+     *  (R-TR-12) and picture placeholders (R-RP-4), both matched on tag/prefix (R-TR-7). Real user
+     *  text, markers and their summaries fall out; pure context blocks already flew out (R-TR-9). */
+    private static String renderStateOnly(List<String> blocks) {
         var parts = new ArrayList<String>();
-        if (texts.size() > 1) {
-            parts.addAll(dropBlocks(ChatMessageUtil.extractMessages(UserMessage.from(texts.subList(0, texts.size() - 1)))).kept());
+        for (var b : blocks) {
+            if (b.startsWith(ChatMessageUtil.PICTURE_PLACEHOLDER_PREFIX)
+                    || TaggedInput.kindOf(b) == TaggedInput.Kind.FILE) parts.add(b);
         }
-        // picture placeholders are blocks of extractMessages, not TextContent — they carry the
-        // "a picture was seen" fact into the summary (R-RP-4); matched on the prefix (R-TR-7)
-        for (var b : blocks) if (b.startsWith(ChatMessageUtil.PICTURE_PLACEHOLDER_PREFIX)) parts.add(b);
         return String.join(System.lineSeparator(), parts);
     }
 
@@ -231,8 +236,8 @@ public class ContextTrimComponent {
     }
 
     /**
-     * Real user text = the LAST TextContent of a UserMessage (context-message-concept.md —
-     * turn-context items first, the user text last). Compact hint, queued marker and reinsert
+     * Real user text = ANY untagged TextContent that is no marker (context-message-concept.md,
+     * R-TR-11) — recognised by tag, never by position. Compact hint, queued marker and reinsert
      * marker are state, referenced via their named constants (ADR-0056.4) — never literals.
      * The reinsert case is live production, not history only: since ADR-0076 the compact's single
      * re-seed message ends on the marker block, so it never claims the "last real user message"
@@ -240,14 +245,15 @@ public class ContextTrimComponent {
      * (org.sterl.llmpeon.core/docs/compact.md R-CC-9).
      */
     private static boolean hasRealUserText(UserMessage um) {
-        var texts = um.contents().stream().filter(c -> c instanceof TextContent).map(c -> (TextContent) c).toList();
-        if (texts.isEmpty()) return false;
-        var last = texts.get(texts.size() - 1).text();
-        if (last == null) return false;
-        return !last.startsWith(ToolService.COMPACT_HINT)
-                && !last.startsWith(UserMessageQueue.QUEUED_MARKER_PREFIX)
-                && !last.startsWith(CompactConstants.REINSERT_MARKER)
-                && !PictureMessage.isHead(last);
+        return um.contents().stream()
+                .anyMatch(c -> c instanceof TextContent tc && isRealUserText(tc.text()));
+    }
+
+    private static boolean isRealUserText(String text) {
+        if (StringUtil.hasNoValue(text) || TaggedInput.isTagged(text)) return false;
+        return !text.startsWith(ToolService.COMPACT_HINT)
+                && !text.startsWith(UserMessageQueue.QUEUED_MARKER_PREFIX)
+                && !text.startsWith(CompactConstants.REINSERT_MARKER);
     }
 
     /**

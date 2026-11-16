@@ -22,7 +22,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.sterl.llmpeon.StreamMock;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.ContextInput;
+import org.sterl.llmpeon.agent.model.TaggedInput;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -345,7 +346,7 @@ class AbstractAgentTest {
         });
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
         var content = new AtomicReference<>("old context");
-        agent.setStaticContext(List.of((ContextItem) () -> new TaggedResult("context", content.get())));
+        agent.setStaticContext(List.of((ContextItem) () -> new ContextInput("context", content.get())));
 
         // WHEN — call 1 builds the system prompt with the old content
         agent.call("first", monitor -> {});
@@ -748,7 +749,7 @@ class AbstractAgentTest {
         agent.queueMessage("q1");
 
         // WHEN
-        agent.call(null, monitor -> {});
+        agent.call((String) null, monitor -> {});
 
         // THEN — the drained queue becomes the payload, marked like the in-loop pollNext
         List<String> userTexts = extractUserTexts(agent.getMemory().getCopy());
@@ -993,7 +994,7 @@ class AbstractAgentTest {
         var renderCount = new AtomicInteger();
         agent.setStaticContext(List.of((ContextItem) () -> {
             renderCount.incrementAndGet();
-            return new TaggedResult("context", "persistent context");
+            return new ContextInput("context", "persistent context");
         }));
 
         agent.call("test", monitor -> {});
@@ -1291,11 +1292,11 @@ class AbstractAgentTest {
         AtomicInteger renderCount = new AtomicInteger();
         AtomicReference<String> content = new AtomicReference<>("memory v1");
         ContextItem keyed = new ContextItem() {
-            @Override public TaggedResult render() {
+            @Override public ContextInput render() {
                 renderCount.incrementAndGet();
-                return new TaggedResult("context: C:/x/memory.md", content.get());
+                return new ContextInput("context: C:/x/memory.md", content.get());
             }
-            @Override public String dedupKey() { return TaggedResult.PREFIX + "context: C:/x/memory.md"; }
+            @Override public String dedupKey() { return TaggedInput.PREFIX + "context: C:/x/memory.md"; }
         };
         agent.setTurnContextSupplier(() -> List.of(keyed));
 
@@ -1326,11 +1327,11 @@ class AbstractAgentTest {
 
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
         ContextItem keyed = new ContextItem() {
-            @Override public TaggedResult render() {
-                return new TaggedResult("context: /proj/docs/memory.md", "memory content");
+            @Override public ContextInput render() {
+                return new ContextInput("context: /proj/docs/memory.md", "memory content");
             }
             @Override public String label() { return "/proj/docs/memory.md"; }
-            @Override public String dedupKey() { return TaggedResult.PREFIX + "context: /proj/docs/memory.md"; }
+            @Override public String dedupKey() { return TaggedInput.PREFIX + "context: /proj/docs/memory.md"; }
         };
         agent.setTurnContextSupplier(() -> List.of(keyed));
 
@@ -1361,9 +1362,9 @@ class AbstractAgentTest {
 
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
         ContextItem missing = new ContextItem() {
-            @Override public TaggedResult render() { return null; }
+            @Override public ContextInput render() { return null; }
             @Override public String label() { return "/proj/docs/missing.md"; }
-            @Override public String dedupKey() { return TaggedResult.PREFIX + "context: /proj/docs/missing.md"; }
+            @Override public String dedupKey() { return TaggedInput.PREFIX + "context: /proj/docs/missing.md"; }
         };
         agent.setTurnContextSupplier(() -> List.of(missing));
 
@@ -1394,16 +1395,16 @@ class AbstractAgentTest {
 
         AtomicInteger renderCount = new AtomicInteger();
         ContextItem keyed = new ContextItem() {
-            @Override public TaggedResult render() {
+            @Override public ContextInput render() {
                 renderCount.incrementAndGet();
-                return new TaggedResult("context: /proj/docs/memory.md", "file content body");
+                return new ContextInput("context: /proj/docs/memory.md", "file content body");
             }
-            @Override public String dedupKey() { return TaggedResult.PREFIX + "context: /proj/docs/memory.md"; }
+            @Override public String dedupKey() { return TaggedInput.PREFIX + "context: /proj/docs/memory.md"; }
         };
 
         // Pre-add the block to memory (already injected before)
         agent.addMessage(UserMessage.from(
-                new TaggedResult("context: /proj/docs/memory.md", "file content body").toString()));
+                new ContextInput("context: /proj/docs/memory.md", "file content body").toString()));
         agent.setTurnContextSupplier(() -> List.of(keyed));
 
         // WHEN — a turn runs restoreTurnContext without clearing memory
@@ -1428,11 +1429,11 @@ class AbstractAgentTest {
 
         AtomicInteger renderCount = new AtomicInteger();
         ContextItem keyed = new ContextItem() {
-            @Override public TaggedResult render() {
+            @Override public ContextInput render() {
                 renderCount.incrementAndGet();
-                return new TaggedResult("context: C:/x/memory.md", "file content body");
+                return new ContextInput("context: C:/x/memory.md", "file content body");
             }
-            @Override public String dedupKey() { return TaggedResult.PREFIX + "context: C:/x/memory.md"; }
+            @Override public String dedupKey() { return TaggedInput.PREFIX + "context: C:/x/memory.md"; }
         };
 
         // GIVEN — history only mentions the bare path (e.g. a Compact message), no exact header
@@ -1461,10 +1462,10 @@ class AbstractAgentTest {
 
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
         ContextItem keyed = new ContextItem() {
-            @Override public TaggedResult render() {
-                return new TaggedResult("context: /proj/docs/memory.md", "file content body");
+            @Override public ContextInput render() {
+                return new ContextInput("context: /proj/docs/memory.md", "file content body");
             }
-            @Override public String dedupKey() { return TaggedResult.PREFIX + "context: /proj/docs/memory.md"; }
+            @Override public String dedupKey() { return TaggedInput.PREFIX + "context: /proj/docs/memory.md"; }
         };
         agent.setTurnContextSupplier(() -> List.of(keyed));
 
@@ -1492,10 +1493,10 @@ class AbstractAgentTest {
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
         AtomicReference<String> key = new AtomicReference<>("/projA/docs/memory.md");
         ContextItem keyed = new ContextItem() {
-            @Override public TaggedResult render() {
-                return new TaggedResult("context: " + key.get(), "file content body");
+            @Override public ContextInput render() {
+                return new ContextInput("context: " + key.get(), "file content body");
             }
-            @Override public String dedupKey() { return TaggedResult.PREFIX + "context: " + key.get(); }
+            @Override public String dedupKey() { return TaggedInput.PREFIX + "context: " + key.get(); }
         };
         agent.setTurnContextSupplier(() -> List.of(keyed));
 
@@ -1544,10 +1545,10 @@ class AbstractAgentTest {
         var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
                 .aiMessage(AiMessage.aiMessage("OK")).build());
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
-        var block = new TaggedResult("context: /proj/docs/memory.md", "memory content");
+        var block = new ContextInput("context: /proj/docs/memory.md", "memory content");
         ContextItem keyed = new ContextItem() {
-            @Override public TaggedResult render() { return block; }
-            @Override public String dedupKey() { return TaggedResult.PREFIX + "context: /proj/docs/memory.md"; }
+            @Override public ContextInput render() { return block; }
+            @Override public String dedupKey() { return TaggedInput.PREFIX + "context: /proj/docs/memory.md"; }
         };
         agent.setTurnContextSupplier(() -> List.of(keyed));
 
@@ -1571,11 +1572,11 @@ class AbstractAgentTest {
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
         AtomicInteger renderCount = new AtomicInteger();
         ContextItem keyed = new ContextItem() {
-            @Override public TaggedResult render() {
+            @Override public ContextInput render() {
                 renderCount.incrementAndGet();
-                return new TaggedResult("context: /proj/docs/memory.md", "memory content");
+                return new ContextInput("context: /proj/docs/memory.md", "memory content");
             }
-            @Override public String dedupKey() { return TaggedResult.PREFIX + "context: /proj/docs/memory.md"; }
+            @Override public String dedupKey() { return TaggedInput.PREFIX + "context: /proj/docs/memory.md"; }
         };
         agent.setTurnContextSupplier(() -> List.of(keyed));
 
@@ -1617,9 +1618,9 @@ class AbstractAgentTest {
 
         // THEN — INFO exactly once; the static item renders body-only (no block header of its own)
         var prompt = systemMessageOf(sent.get(0));
-        assertThat(countOccurrences(prompt, TaggedResult.INFO)).isOne();
+        assertThat(countOccurrences(prompt, TaggedInput.INFO)).isOne();
         assertThat(prompt).contains("env body text");
-        assertThat(prompt).doesNotContain(TaggedResult.PREFIX + "context: Static env info");
+        assertThat(prompt).doesNotContain(TaggedInput.PREFIX + "context: Static env info");
     }
 
     // R-TR-6
@@ -1646,7 +1647,7 @@ class AbstractAgentTest {
 
         // THEN — the rebuilt prompt carries INFO exactly once again
         var prompt = systemMessageOf(sent.get(sent.size() - 1));
-        assertThat(countOccurrences(prompt, TaggedResult.INFO)).isOne();
+        assertThat(countOccurrences(prompt, TaggedInput.INFO)).isOne();
 
     }
 }

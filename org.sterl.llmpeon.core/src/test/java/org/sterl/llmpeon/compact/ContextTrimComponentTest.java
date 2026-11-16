@@ -6,11 +6,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.ContextInput;
+import org.sterl.llmpeon.agent.model.TaggedInput;
+import org.sterl.llmpeon.agent.model.TextAttachment;
 import org.sterl.llmpeon.model.CompactResult.Stage;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.Picture;
-import org.sterl.llmpeon.shared.PictureMessage;
+import org.sterl.llmpeon.shared.PictureFixtures;
 import org.sterl.llmpeon.tool.ToolService;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -117,7 +119,7 @@ class ContextTrimComponentTest {
         // GIVEN — an earlier user message with a turn-context item FIRST and the real text LAST,
         // plus a later real user message (so the earlier one is NOT the last real user)
         var earlier = UserMessage.from(List.of(
-                TextContent.from("FILE: /src/Foo.java"),
+                TextContent.from(new TextAttachment("Foo.java", "FILE: /src/Foo.java").toString()),
                 TextContent.from("please fix the bug")));
         var messages = List.<ChatMessage>of(earlier, ai("ok", "T".repeat(15000)), user("current question"));
 
@@ -340,7 +342,7 @@ class ContextTrimComponentTest {
         var nl = System.lineSeparator();
         var messages = List.<ChatMessage>of(
                 UserMessage.from(List.of(
-                        TextContent.from("project rule: keep it small"),
+                        TextContent.from(new TextAttachment("rules.md", "project rule: keep it small").toString()),
                         TextContent.from(CompactConstants.REINSERT_MARKER + nl + nl + "OLD SUMMARY THAT MUST GO"))),
                 ai("a", "T".repeat(15000)));
 
@@ -362,7 +364,7 @@ class ContextTrimComponentTest {
     void pureContextBlockIsDroppedAndCounted() {
         // GIVEN — a user message with a pure context block and the real text as separate TextContents
         var nl = System.lineSeparator();
-        var block = TaggedResult.PREFIX + "context: x" + nl + "block-body" + nl + TaggedResult.SUFFIX + "context: x";
+        var block = TaggedInput.PREFIX + "context: x" + nl + "block-body" + nl + TaggedInput.SUFFIX + "context: x";
         var messages = List.<ChatMessage>of(
                 UserMessage.from(List.of(TextContent.from(block), TextContent.from("fix it"))),
                 ai("ok"));
@@ -372,7 +374,7 @@ class ContextTrimComponentTest {
 
         // THEN — the block flew out before the compact input (count-only disclosure, R-TR-9):
         // gone from the input, the real text stays full, K = 1 is named
-        assertThat(outcome.input()).doesNotContain(TaggedResult.PREFIX).doesNotContain("block-body");
+        assertThat(outcome.input()).doesNotContain(TaggedInput.PREFIX).doesNotContain("block-body");
         assertThat(outcome.input()).contains("USER:" + nl + "fix it");
         assertThat(outcome.contextBlocksDropped()).isEqualTo(1);
         assertThat(outcome.input()).endsWith("session truncated" + nl + "context blocks dropped: 1");
@@ -383,7 +385,7 @@ class ContextTrimComponentTest {
     void droppedBlocksDisclosedEvenBudgetOff() {
         // GIVEN — the budget is off (≤ 0) and one pure context block
         var nl = System.lineSeparator();
-        var block = TaggedResult.PREFIX + "context: y" + nl + "y-body" + nl + TaggedResult.SUFFIX + "context: y";
+        var block = TaggedInput.PREFIX + "context: y" + nl + "y-body" + nl + TaggedInput.SUFFIX + "context: y";
         var messages = List.<ChatMessage>of(UserMessage.from(block), user("q"));
 
         // WHEN
@@ -402,7 +404,7 @@ class ContextTrimComponentTest {
     void embeddedBlockInToolResultIsNotDropped() {
         // GIVEN — a tool result whose text is a sender line plus an embedded tagged block
         var nl = System.lineSeparator();
-        var block = TaggedResult.PREFIX + "async" + nl + "async-body" + nl + TaggedResult.SUFFIX + "async";
+        var block = TaggedInput.PREFIX + "async" + nl + "async-body" + nl + TaggedInput.SUFFIX + "async";
         var messages = List.<ChatMessage>of(toolResult("shell", "sender-line" + nl + block), user("q"));
 
         // WHEN
@@ -411,7 +413,7 @@ class ContextTrimComponentTest {
         // THEN — the tool result is not a pure block (the first line decides, R-TR-2): it stays whole
         assertThat(outcome.contextBlocksDropped()).isZero();
         assertThat(outcome.input()).contains("TOOL RESULT:").contains("sender-line")
-                .contains(TaggedResult.SUFFIX + "async");
+                .contains(TaggedInput.SUFFIX + "async");
     }
 
     // R-TR-7
@@ -436,7 +438,7 @@ class ContextTrimComponentTest {
     void perMessageStage_sizesCapAgainstKLine_staysWithinBudget() {
         // GIVEN — a pure context block and a 12k tool result; stage 1 (4k tokens) and stage 2
         // (2k tokens) both exceed the 1500-token budget, so the per-message stage wins
-        var block = new TaggedResult("codegraph: peon-ai #a1b2", "cg-body").toString();
+        var block = new ContextInput("codegraph: peon-ai #a1b2", "cg-body").toString();
         var messages = List.<ChatMessage>of(UserMessage.from(block), toolResult("codegraph", "R".repeat(12000)));
 
         // WHEN
@@ -447,7 +449,7 @@ class ContextTrimComponentTest {
         // (mutation: drop the K line from the perMessageCap disclosure → estimate 1509 > 1500)
         assertThat(outcome.stage()).isEqualTo(Stage.PER_MESSAGE);
         assertThat(outcome.contextBlocksDropped()).isEqualTo(1);
-        assertThat(outcome.input()).doesNotContain("cg-body").doesNotContain(TaggedResult.PREFIX);
+        assertThat(outcome.input()).doesNotContain("cg-body").doesNotContain(TaggedInput.PREFIX);
         assertThat(outcome.input()).endsWith("context blocks dropped: 1");
         assertThat(outcome.estimateAfter()).isLessThanOrEqualTo(1500);
     }
@@ -473,7 +475,7 @@ class ContextTrimComponentTest {
     @Test
     void pictureMessageDoesNotStealTheLastRealUserSlot() {
         // GIVEN — the real question, a long thinking turn and a picture message after it; budget fits stage 1
-        var picture = PictureMessage.of(new Picture("/work/a.png", "image/png", "AAAA", 4));
+        var picture = PictureFixtures.of(new Picture("/work/a.png", "image/png", "AAAA", 4));
         var messages = List.<ChatMessage>of(user("real-question " + "B".repeat(2000)), ai("a", "T".repeat(15000)), picture);
 
         // WHEN
@@ -488,8 +490,8 @@ class ContextTrimComponentTest {
     @Test
     void picturePlaceholdersSurviveTheStageCut() {
         // GIVEN — same shape, two pictures; the budget forces stage 1 (state-only render of earlier user messages)
-        var a = PictureMessage.of(new Picture("/work/a.png", "image/png", "AAAA", 4));
-        var b = PictureMessage.of(new Picture("/work/b.png", "image/png", "BBBB", 4));
+        var a = PictureFixtures.of(new Picture("/work/a.png", "image/png", "AAAA", 4));
+        var b = PictureFixtures.of(new Picture("/work/b.png", "image/png", "BBBB", 4));
         var messages = List.<ChatMessage>of(user("real-question " + "B".repeat(2000)), ai("a", "T".repeat(15000)), a, b);
 
         // WHEN

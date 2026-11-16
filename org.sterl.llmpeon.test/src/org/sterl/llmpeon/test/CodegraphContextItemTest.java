@@ -13,7 +13,7 @@ import java.util.List;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IPath;
 import org.junit.Test;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.TaggedInput;
 import org.sterl.llmpeon.parts.ai.CodegraphConnectionService.Kind;
 import org.sterl.llmpeon.parts.ai.CodegraphConnectionService.State;
 import org.sterl.llmpeon.parts.ai.CodegraphContextItem;
@@ -56,7 +56,7 @@ public class CodegraphContextItemTest {
         var b = item(state(Kind.CONNECTED, "INSTR"));
         assertEquals("same state → same key", a.dedupKey(), b.dedupKey());
         assertEquals("key is the exact block start line",
-                TaggedResult.PREFIX + a.render().head(), a.dedupKey());
+                TaggedInput.PREFIX + a.render().head(), a.dedupKey());
 
         assertNull("OFF renders nothing → no key", item(state(Kind.OFF, null)).dedupKey());
         assertNotEquals("project change → new key", a.dedupKey(),

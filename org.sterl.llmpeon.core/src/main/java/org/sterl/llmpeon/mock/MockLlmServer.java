@@ -509,6 +509,20 @@ public class MockLlmServer {
                             capturedMessages.add(extractUserMessageFromArray(contentNode));
                         }
                     }
+                    case "assistant" -> {
+                        var toolCalls = msg.path("tool_calls");
+                        if (toolCalls.isArray() && !toolCalls.isEmpty()) {
+                            var requests = new ArrayList<ToolExecutionRequest>();
+                            for (var tc : toolCalls) {
+                                requests.add(ToolExecutionRequest.builder()
+                                        .id(tc.path("id").asText())
+                                        .name(tc.path("function").path("name").asText())
+                                        .arguments(tc.path("function").path("arguments").asText())
+                                        .build());
+                            }
+                            capturedMessages.add(AiMessage.from(requests));
+                        }
+                    }
                     case "tool" -> {
                         String text = contentNode.isTextual() ? contentNode.asText() : extractTextFromArray(contentNode);
                         capturedMessages.add(new ToolExecutionResultMessage(

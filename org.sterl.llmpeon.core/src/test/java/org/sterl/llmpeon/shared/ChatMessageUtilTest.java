@@ -3,7 +3,8 @@ package org.sterl.llmpeon.shared;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.HarnessInput;
+import org.sterl.llmpeon.agent.model.TaggedInput;
 
 import java.util.List;
 
@@ -74,12 +75,12 @@ class ChatMessageUtilTest {
     @Test
     void taggedResultRendersSymmetricBlock() {
         // WHEN a tagged result is rendered
-        String rendered = new TaggedResult("h", "b").toString();
+        String rendered = new HarnessInput("h", "b").toString();
 
         // THEN — the end line carries the head (symmetric block, no trailing line separator)
-        assertThat(rendered).isEqualTo(TaggedResult.PREFIX + "h" + TaggedResult.LN + "b" + TaggedResult.LN + TaggedResult.SUFFIX + "h");
+        assertThat(rendered).isEqualTo(TaggedInput.PREFIX + "h" + TaggedInput.LN + "b" + TaggedInput.LN + TaggedInput.SUFFIX + "h");
         // AND — the render is detected as a pure tagged block
-        assertThat(TaggedResult.isTagged(rendered)).isTrue();
+        assertThat(TaggedInput.isTagged(rendered)).isTrue();
     }
 
     // R-TR-2
@@ -87,7 +88,7 @@ class ChatMessageUtilTest {
     void pureTaggedBlockContentGetsNoHeader() {
         // GIVEN — a user message whose single TextContent is a pure tagged block
         var nl = System.lineSeparator();
-        var block = TaggedResult.PREFIX + "ctx" + nl + "block-body" + nl + TaggedResult.SUFFIX + "ctx";
+        var block = TaggedInput.PREFIX + "ctx" + nl + "block-body" + nl + TaggedInput.SUFFIX + "ctx";
 
         // WHEN rendered
         String out = ChatMessageUtil.toString(UserMessage.from(block));
@@ -102,7 +103,7 @@ class ChatMessageUtilTest {
     void blockEmbeddedInToolResultIsNotPureAndKeepsItsHeader() {
         // GIVEN — a tool result whose text is a sender line plus an embedded tagged block
         var nl = System.lineSeparator();
-        var block = TaggedResult.PREFIX + "async" + nl + "async-body" + nl + TaggedResult.SUFFIX + "async";
+        var block = TaggedInput.PREFIX + "async" + nl + "async-body" + nl + TaggedInput.SUFFIX + "async";
         var msg = ToolExecutionResultMessage.from("id", "shell", "sender-line" + nl + block);
 
         // WHEN rendered
@@ -117,7 +118,7 @@ class ChatMessageUtilTest {
     void multiContentUserMessageRendersOneEntryPerTextContent() {
         // GIVEN — a user message with a tagged block and real text as SEPARATE TextContents (D5)
         var nl = System.lineSeparator();
-        var block = TaggedResult.PREFIX + "ctx" + nl + "block-body" + nl + TaggedResult.SUFFIX + "ctx";
+        var block = TaggedInput.PREFIX + "ctx" + nl + "block-body" + nl + TaggedInput.SUFFIX + "ctx";
         var msg = UserMessage.from(List.of(TextContent.from(block), TextContent.from("fix it")));
 
         // WHEN extracted
@@ -134,7 +135,7 @@ class ChatMessageUtilTest {
     void emptyBodyBlockIsPureAndGetsNoHeader() {
         // GIVEN — a block with an empty body (Start line, blank line, End line)
         var nl = System.lineSeparator();
-        var block = TaggedResult.PREFIX + "h" + nl + nl + TaggedResult.SUFFIX + "h";
+        var block = TaggedInput.PREFIX + "h" + nl + nl + TaggedInput.SUFFIX + "h";
 
         // WHEN rendered as a user message
         String out = ChatMessageUtil.toString(UserMessage.from(block));
@@ -149,13 +150,13 @@ class ChatMessageUtilTest {
     void singleLineStartWithoutEndIsNotTagged() {
         // GIVEN — one line starting with the prefix, no end line
         // WHEN checked
-        boolean tagged = TaggedResult.isTagged(TaggedResult.PREFIX + "x");
+        boolean tagged = TaggedInput.isTagged(TaggedInput.PREFIX + "x");
 
         // THEN — no block (a block needs a first AND a last line)
         assertThat(tagged).isFalse();
         // AND — null and empty are never tagged
-        assertThat(TaggedResult.isTagged(null)).isFalse();
-        assertThat(TaggedResult.isTagged("")).isFalse();
+        assertThat(TaggedInput.isTagged(null)).isFalse();
+        assertThat(TaggedInput.isTagged("")).isFalse();
     }
 
     // R-TR-2
@@ -163,7 +164,7 @@ class ChatMessageUtilTest {
     void startWithoutSuffixLastLineIsNotTagged() {
         // GIVEN — text starting with the prefix whose last line is not the suffix
         // WHEN checked
-        boolean tagged = TaggedResult.isTagged(TaggedResult.PREFIX + "x" + TaggedResult.LN + "body" + TaggedResult.LN + "no end");
+        boolean tagged = TaggedInput.isTagged(TaggedInput.PREFIX + "x" + TaggedInput.LN + "body" + TaggedInput.LN + "no end");
 
         // THEN — not a pure block (the last line decides, not an endsWith over the whole text)
         assertThat(tagged).isFalse();
@@ -173,13 +174,13 @@ class ChatMessageUtilTest {
     @Test
     void innerEndLineDoesNotBreakPurity() {
         // GIVEN — a block whose BODY contains a line that itself starts with the suffix
-        var block = TaggedResult.PREFIX + "h" + TaggedResult.LN
-                + TaggedResult.SUFFIX + "fake" + TaggedResult.LN
-                + "real body" + TaggedResult.LN
-                + TaggedResult.SUFFIX + "h";
+        var block = TaggedInput.PREFIX + "h" + TaggedInput.LN
+                + TaggedInput.SUFFIX + "fake" + TaggedInput.LN
+                + "real body" + TaggedInput.LN
+                + TaggedInput.SUFFIX + "h";
 
         // WHEN checked — the first and the last line decide
-        boolean tagged = TaggedResult.isTagged(block);
+        boolean tagged = TaggedInput.isTagged(block);
 
         // THEN — still a pure block
         assertThat(tagged).isTrue();

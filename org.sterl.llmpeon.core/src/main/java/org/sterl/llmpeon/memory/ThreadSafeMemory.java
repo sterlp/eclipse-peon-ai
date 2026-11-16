@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -111,6 +112,16 @@ public class ThreadSafeMemory {
      * https://developers.openai.com/api/docs/guides/function-calling
      */
     public synchronized ThreadSafeMemory add(ChatMessage message) {
+        return add(message, () -> {});
+    }
+
+    /**
+     * Like {@link #add(ChatMessage)}; {@code ramAdded} runs right after the RAM changed and before the
+     * history write — which may still fail (queued-user-messages Regel 13). It runs under this monitor:
+     * it must not throw and only set a flag.
+     */
+    public synchronized ThreadSafeMemory add(ChatMessage message, Runnable ramAdded) {
+        Objects.requireNonNull(ramAdded);
         totalTokenUsed += ChatMessageUtil.estimateTokens(List.of(message));
         tokenIsEstimate = true;
 
@@ -118,6 +129,7 @@ public class ThreadSafeMemory {
                 && (!memory.isEmpty() && memory.getLast() instanceof UserMessage lum)) {
             memory.removeLast();
             memory.add(ChatMessageUtil.join(lum, num));
+            ramAdded.run();
             persist(new ArrayList<>(memory));
         } else if (message instanceof UserMessage num 
                 && (!memory.isEmpty() && memory.getLast() instanceof ToolExecutionResultMessage tR)) {
@@ -127,9 +139,11 @@ public class ThreadSafeMemory {
                     tR.id(), tR.toolName(), num);
             var toAdd = List.of(AiMessage.from("ok"), num);
             memory.addAll(toAdd);
+            ramAdded.run();
             append(toAdd);
         } else {
             memory.add(message);
+            ramAdded.run();
             append(message);
         }
         return this;
@@ -230,6 +244,13 @@ public class ThreadSafeMemory {
      */
     public synchronized void addResult(ChatResponse response, List<ToolExecutionResultMessage> toolResult,
             List<UserMessage> followUps) {
+        addResult(response, toolResult, followUps, () -> {});
+    }
+
+    /** Like the three-argument form; {@code ramAdded} as in {@link #add(ChatMessage, Runnable)}. */
+    public synchronized void addResult(ChatResponse response, List<ToolExecutionResultMessage> toolResult,
+            List<UserMessage> followUps, Runnable ramAdded) {
+        Objects.requireNonNull(ramAdded);
         var appended = new ArrayList<ChatMessage>();
         var aiMessage = response.aiMessage();
         appended.add(aiMessage);
@@ -240,6 +261,7 @@ public class ThreadSafeMemory {
             appended.add(followUp);
         }
         memory.addAll(appended);
+        ramAdded.run();
         if (providerUsageStale) {
             // R-CC-18 (D3): this response's provider value describes the PRE-compact context —
             // keep the small post-compact estimate; lastProviderInputTokens stays cleared

@@ -5,7 +5,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assume.assumeTrue;
 
 import org.junit.Test;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.TaggedInput;
 import org.sterl.llmpeon.context.EclipseFileContextItem;
 import org.sterl.llmpeon.shared.FileLines;
 
@@ -27,7 +27,7 @@ public class EclipseFileContextItemTest extends AbstractIntegrationTest {
         var item = new EclipseFileContextItem("docs/test-memory.md", () -> project);
 
         // THEN — dedup key is the block's exact start line
-        assertEquals(TaggedResult.PREFIX + "context: " + workspacePath, item.dedupKey());
+        assertEquals(TaggedInput.PREFIX + "context: " + workspacePath, item.dedupKey());
         assertEquals(workspacePath, item.label());
         // AND — the render body is the line-numbered content
         assertEquals(FileLines.format("memory content"), item.render().body());

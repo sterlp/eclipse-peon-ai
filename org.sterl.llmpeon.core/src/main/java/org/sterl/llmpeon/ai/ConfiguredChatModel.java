@@ -46,7 +46,7 @@ public class ConfiguredChatModel {
      * R20: caller-provided turn start. Stand-alone calls use {@link Instant#now()}.
      */
     public ChatResponse callBlocking(ChatRequest req, AgentConfig agent, AiMonitor monitor, Instant startedAt) {
-        return new StreamingBridge().call(modelFor(agent), req, monitor, startedAt);
+        return new StreamingBridge(config.getTimeout()).call(modelFor(agent), req, monitor, startedAt);
     }
     
     public StreamingChatModel getChatModel() {

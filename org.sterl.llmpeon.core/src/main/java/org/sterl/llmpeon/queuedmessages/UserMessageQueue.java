@@ -9,6 +9,10 @@ import java.util.Deque;
 import java.util.List;
 import java.util.stream.Stream;
 
+import org.sterl.llmpeon.agent.model.QueuedInput;
+import org.sterl.llmpeon.agent.model.UserInput;
+import org.sterl.llmpeon.shared.StringUtil;
+
 /**
  * The follow-up inputs a user sends while an agent is still working.
  * <p>
@@ -23,7 +27,7 @@ import java.util.stream.Stream;
  * {@link #drainAll()}, {@link #drainAllEntries()}, {@link #size()}) sees both by insertion time —
  * the urgent lane only gets there earlier, it never jumps the queue (R8.3). Same millisecond is
  * resolved in favour of the normal lane; an exact sequence counter is not worth pinning
- * {@link QueuedMessage} to one.
+ * {@link QueuedInput} to one.
  */
 public class UserMessageQueue {
 
@@ -33,13 +37,13 @@ public class UserMessageQueue {
      */
     public static final String QUEUED_MARKER_PREFIX = "[Queued Message] ";
 
-    /** A queued message: its text plus the instant it was queued (Rule 9 Queued-At Disclosure). */
+    /** Legacy text view of a drained queue (joined text + first time); no attachments — see {@link #drainAll()}. */
     public record QueuedMessage(String text, long queuedAt) {}
 
     private static final DateTimeFormatter HHMM = DateTimeFormatter.ofPattern("HH:mm");
 
-    private final Deque<QueuedMessage> queue = new ArrayDeque<>();
-    private final Deque<QueuedMessage> urgent = new ArrayDeque<>();
+    private final Deque<QueuedInput> queue = new ArrayDeque<>();
+    private final Deque<QueuedInput> urgent = new ArrayDeque<>();
     /** Batch window of the NORMAL lane only — an urgent entry neither joins it nor resets it (R8.2). */
     private volatile long batchStartTime = 0;
     private final long batchWindowMs;
@@ -59,62 +63,71 @@ public class UserMessageQueue {
         this.clock = clock;
     }
 
+    public synchronized boolean add(String message) {
+        return add(UserInput.of(message));
+    }
+
     /**
-     * Add a message to the normal lane, optionally merging with the last entry within the sliding window.
+     * Add an input to the normal lane, optionally merging a plain-text input with the last plain-text
+     * entry within the sliding window. An input with attachments is always an entry of its own and a
+     * batch barrier: it joins no predecessor and no successor joins it (Rule 13).
      * @return true if a new queue entry was created, false if silently merged into existing batch
      */
-    public synchronized boolean add(String message) {
-        if (message == null || message.isBlank()) return false;
+    public synchronized boolean add(UserInput input) {
+        boolean plain = input.attachments().isEmpty();
+        if (plain && StringUtil.hasNoValue(input.text())) return false;
         long now = clock.millis();
 
-        boolean startNewBatch = queue.isEmpty() || (now - batchStartTime > batchWindowMs);
-        String combined = message;
-        long queuedAt = now;
-
-        // Allow merging even for longer incoming messages, as long as capacity permits
-        if (!startNewBatch) {
-            QueuedMessage last = queue.removeLast();
+        var last = queue.peekLast();
+        boolean mayJoin = plain && last != null && last.input().attachments().isEmpty()
+                && now - batchStartTime <= batchWindowMs;
+        if (mayJoin) {
             String sep = System.lineSeparator();
-            int newLen = last.text().length() + sep.length() + message.length();
-            if (newLen <= 300) {
-                combined = last.text() + sep + message;
-                queuedAt = last.queuedAt(); // burst-join keeps the FIRST entry's time (Rule 9)
-                startNewBatch = false; // explicitly merged
-            } else {
-                queue.addLast(last); // cap exceeded, restore & add separate
-                startNewBatch = true; // explicitly mark as new entry
+            // Allow merging even for longer incoming messages, as long as capacity permits
+            if (last.input().text().length() + sep.length() + input.text().length() <= 300) {
+                queue.removeLast();
+                // burst-join keeps the FIRST entry's time (Rule 9)
+                queue.addLast(new QueuedInput(UserInput.of(last.input().text() + sep + input.text()),
+                        last.queuedAt(), false));
+                batchStartTime = now; // sliding window reset
+                return false;
             }
         }
-
-        queue.addLast(new QueuedMessage(combined, queuedAt));
+        queue.addLast(new QueuedInput(input, Instant.ofEpochMilli(now), false));
         batchStartTime = now; // sliding window reset
-        return startNewBatch; // true if new entry created, false if silently joined
+        return true;
+    }
+
+    public synchronized void addUrgent(String message) {
+        addUrgent(UserInput.of(message));
     }
 
     /**
      * Add a {@code !}-message to the urgent lane (R8): one entry per call, never joined, and the
      * normal lane's batch window is left alone — otherwise an urgent message would split a burst.
-     * Blank input is consumed as a no-op (R8.6).
+     * Blank input is consumed as a no-op (R8.6). Attachments are rejected — also on blank text,
+     * and before anything is mutated (Rule 13).
      */
-    public synchronized void addUrgent(String message) {
-        if (message == null || message.isBlank()) return;
-        urgent.addLast(new QueuedMessage(message, clock.millis()));
+    public synchronized void addUrgent(UserInput input) {
+        var entry = new QueuedInput(input, Instant.ofEpochMilli(clock.millis()), true);
+        if (StringUtil.hasNoValue(input.text())) return;
+        urgent.addLast(entry);
     }
 
     /**
      * Take the whole urgent lane in insertion order (R11 hands all of it to one tool result).
      * The normal lane and its batch window are untouched.
      */
-    public synchronized List<QueuedMessage> drainUrgent() {
+    public synchronized List<QueuedInput> drainUrgent() {
         return drain(urgent);
     }
 
     /**
      * Take BOTH lanes as separate entries, ordered by insertion time across lanes (R12: one line per
-     * entry). Contrast {@link #drainAll()}, which merges into a single payload text.
+     * entry), attachments intact. Contrast {@link #drainAll()}, the text-only legacy projection.
      */
-    public synchronized List<QueuedMessage> drainAllEntries() {
-        var entries = bothLanes().sorted(Comparator.comparingLong(QueuedMessage::queuedAt)).toList();
+    public synchronized List<QueuedInput> drainAllEntries() {
+        var entries = byTime();
         queue.clear();
         urgent.clear();
         batchStartTime = 0;
@@ -122,38 +135,57 @@ public class UserMessageQueue {
     }
 
     /** Poll the earliest entry of either lane — the urgent lane never jumps the order (R8.3). */
-    public synchronized QueuedMessage pollNext() {
+    public synchronized QueuedInput pollNext() {
         if (urgent.isEmpty()) return queue.pollFirst();
         if (queue.isEmpty()) return urgent.pollFirst();
         // <= keeps the normal lane first on a timestamp tie (stable order, no sequence counter)
-        return queue.peekFirst().queuedAt() <= urgent.peekFirst().queuedAt()
+        return queue.peekFirst().queuedAt().compareTo(urgent.peekFirst().queuedAt()) <= 0
                 ? queue.pollFirst() : urgent.pollFirst();
     }
 
+    /**
+     * Legacy text projection: joins both lanes into one text. Refuses before draining when an entry
+     * carries attachments — they would be lost silently; typed consumers use {@link #drainAllEntries()}.
+     */
     public synchronized QueuedMessage drainAll() {
-        var texts = bothLanes().sorted(Comparator.comparingLong(QueuedMessage::queuedAt)).toList();
+        var texts = byTime();
         if (texts.isEmpty()) return null;
+        if (hasAttachments()) {
+            throw new IllegalStateException("queued attachments cannot be drained as plain text");
+        }
         // Burst-join shows the FIRST entry's time (Rule 9)
-        long firstQueuedAt = texts.get(0).queuedAt();
+        long firstQueuedAt = texts.get(0).queuedAt().toEpochMilli();
         String combined = String.join(System.lineSeparator(),
-                texts.stream().map(QueuedMessage::text).toList());
+                texts.stream().map(e -> e.input().text()).toList());
         queue.clear();
         urgent.clear();
         batchStartTime = 0;
         return new QueuedMessage(combined, firstQueuedAt);
     }
 
+    public synchronized boolean hasAttachments() {
+        return bothLanes().anyMatch(e -> !e.input().attachments().isEmpty());
+    }
+
     /** Renders a stored {@code queuedAt} as {@code HH:mm} in this queue's clock zone (Rule 9). */
+    public String queuedLabel(Instant queuedAt) {
+        return queuedAt.atZone(clock.getZone()).format(HHMM);
+    }
+
     public String queuedLabel(long queuedAt) {
-        return Instant.ofEpochMilli(queuedAt).atZone(clock.getZone()).format(HHMM);
+        return queuedLabel(Instant.ofEpochMilli(queuedAt));
     }
 
     public synchronized int size() { return queue.size() + urgent.size(); }
     public synchronized void clear() { queue.clear(); urgent.clear(); batchStartTime = 0; }
 
-    private Stream<QueuedMessage> bothLanes() { return Stream.concat(queue.stream(), urgent.stream()); }
+    private List<QueuedInput> byTime() {
+        return bothLanes().sorted(Comparator.comparing(QueuedInput::queuedAt)).toList();
+    }
 
-    private static List<QueuedMessage> drain(Deque<QueuedMessage> lane) {
+    private Stream<QueuedInput> bothLanes() { return Stream.concat(queue.stream(), urgent.stream()); }
+
+    private static List<QueuedInput> drain(Deque<QueuedInput> lane) {
         var taken = List.copyOf(lane);
         lane.clear();
         return taken;

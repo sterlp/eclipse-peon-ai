@@ -365,6 +365,7 @@ class DocsLinterToolTest {
         writeModuleDoc("module.md", doc("R-DL-2 Module Rule", "UC-DL-2"));
 
         // WHEN a default run and a run with all discovered roots explicit are compared
+        tool = new DocsLinterTool(rootDir, () -> 0L);
         String auto = tool.lintDocs(null, null, null);
         String explicit = tool.lintDocs(null, List.of("docs", "mod/docs"), null);
 
@@ -461,6 +462,7 @@ class DocsLinterToolTest {
         Files.writeString(rootDir.resolve("src/test/java/Test.java"), "// UC-DL-1\nvoid testIt() {}");
 
         var monitor = new CapturingMonitor();
+        tool = new DocsLinterTool(rootDir, steppingClock());
         tool.withToolRequest(requestWith(monitor));
 
         // WHEN lintDocsAndTests runs
@@ -471,7 +473,8 @@ class DocsLinterToolTest {
         assertThat(output).contains("UNBELEGT_ERLEDIGT UC-DL-2");
         // R-RS-1: the status line ends with the exact size of the returned summary
         assertThat(monitor.toolMessages).containsExactly(
-                "lintDocsAndTests: 1 docs, 1 findings (1 UNBELEGT_ERLEDIGT)" + " " + StringUtil.charsSuffix(output));
+                "lintDocsAndTests: starting (root: " + rootDir.toAbsolutePath().normalize() + ")",
+                "lintDocsAndTests: 1 docs, 1 findings (1 UNBELEGT_ERLEDIGT), 37 ms " + StringUtil.charsSuffix(output));
     }
 
     // --- UC-DL-63: zero findings omit the kappa clause ---
@@ -489,6 +492,7 @@ class DocsLinterToolTest {
                 """);
 
         var monitor = new CapturingMonitor();
+        tool = new DocsLinterTool(rootDir, steppingClock());
         tool.withToolRequest(requestWith(monitor));
 
         // WHEN lintDocs runs on a clean fixture
@@ -497,7 +501,9 @@ class DocsLinterToolTest {
         // THEN the onTool line shows 0 findings without a kappa clause
         assertThat(output).contains("findings: 0");
         // R-RS-1: the status line ends with the exact size of the returned summary
-        assertThat(monitor.toolMessages).containsExactly("lintDocs: 1 docs, 0 findings" + " " + StringUtil.charsSuffix(output));
+        assertThat(monitor.toolMessages).containsExactly(
+                "lintDocs: starting (root: " + rootDir.toAbsolutePath().normalize() + ")",
+                "lintDocs: 1 docs, 0 findings, 37 ms " + StringUtil.charsSuffix(output));
     }
 
     // UC-DL-100
@@ -516,6 +522,13 @@ class DocsLinterToolTest {
             assertThat(output.split("ZU_LANG", -1)).hasSize(2);
             assertThat(output).contains("findings: 0");
         }
+    }
+
+    /** nanos 0 then 37_999_999: exactly 37 ms after flooring. */
+    private static java.util.function.LongSupplier steppingClock() {
+        long[] values = { 0L, 37_999_999L };
+        int[] i = { 0 };
+        return () -> values[Math.min(i[0]++, 1)];
     }
 
     private ToolLoopRequest requestWith(AiMonitor monitor) {

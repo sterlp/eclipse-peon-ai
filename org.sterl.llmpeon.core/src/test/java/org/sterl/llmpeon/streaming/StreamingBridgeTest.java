@@ -13,10 +13,23 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.sterl.llmpeon.ai.ConfiguredChatModel;
+import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.exception.ExceptionUtil;
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.OnPartialAiResponse;
+import org.sterl.llmpeon.streaming.ApiRetry;
+import org.sterl.llmpeon.streaming.StreamingBridge;
+import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -32,18 +45,12 @@ import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
+import dev.langchain4j.model.output.TokenUsage;
 
-/**
- * The bridge knows no turn (R20): {@code startedAt} is what the caller passes — the agent owns the
- * turn start, so the UI "working since Xs" does not jump on a tool-loop call or a compact. The
- * per-call {@code tokenPhaseStart} and the three {@link org.sterl.llmpeon.shared.Timer}s must reset
- * per call. See org.sterl.llmpeon/docs/streaming-display.md.
- */
 class StreamingBridgeTest {
 
     static final Instant T0 = Instant.parse("2026-09-04T10:00:00Z");
 
-    /** Fixed clock the test can advance between the two calls of one turn. */
     static final class MutableClock extends Clock {
         private Instant instant = T0;
         void advance(Duration d) { instant = instant.plus(d); }
@@ -52,7 +59,6 @@ class StreamingBridgeTest {
         @Override public Instant instant() { return instant; }
     }
 
-    /** Records the START chunk's startedAt of each call. */
     static final class StartRecorder implements AiMonitor {
         final List<Instant> starts = new ArrayList<>();
         @Override public void onChatResponse(SimpleMessage m) {}
@@ -61,7 +67,6 @@ class StreamingBridgeTest {
         }
     }
 
-    /** Records every chunk of every call, in order. */
     static final class ChunkRecorder implements AiMonitor {
         final List<OnPartialAiResponse> chunks = new ArrayList<>();
         @Override public void onChatResponse(SimpleMessage m) {}
@@ -69,13 +74,11 @@ class StreamingBridgeTest {
     }
 
     // -------------------------------------------------------------------------
-    // Tests
+    // Existing tests — unchanged
     // -------------------------------------------------------------------------
 
-    // R20
     @Test
     void startedAtIsWhatTheCallerPasses() {
-        // GIVEN — a bridge whose own clock runs hours away from the turn start the caller owns
         var clock = new MutableClock();
         var bridge = new StreamingBridge(clock);
         var model = completeModel();
@@ -83,15 +86,12 @@ class StreamingBridgeTest {
         var request = new ChatRequest.Builder().messages(UserMessage.from("hi")).build();
         var turnStart = T0.minus(Duration.ofDays(1));
 
-        // WHEN — two calls of one turn an hour apart, the caller passing its turn start each time
         bridge.call(model, request, monitor, turnStart);
         clock.advance(Duration.ofHours(1));
         bridge.call(model, request, monitor, turnStart);
-        // AND — a call of another turn
         var otherTurn = T0.minus(Duration.ofDays(2));
         bridge.call(model, request, monitor, otherTurn);
 
-        // THEN — every START chunk shows exactly what the caller passed, never the bridge's clock
         assertThat(monitor.starts).containsExactly(turnStart, turnStart, otherTurn);
     }
 
@@ -103,7 +103,6 @@ class StreamingBridgeTest {
 
         bridge.call(answerModel(clock, Duration.ZERO, Duration.ZERO), request("hi"), monitor, T0);
 
-        // THEN the START chunk is first and its token phase has not started yet
         assertThat(monitor.chunks.get(0).type()).isEqualTo(OnPartialAiResponse.Type.START);
         assertThat(monitor.chunks.get(0).tokenPhaseStart()).isZero();
     }
@@ -114,11 +113,9 @@ class StreamingBridgeTest {
         var bridge = new StreamingBridge(clock);
         var monitor = new ChunkRecorder();
 
-        // WHEN the call starts one hour after the turn began (turn start T0 handed in explicitly)
         clock.advance(Duration.ofHours(1));
         bridge.call(answerModel(clock, Duration.ZERO, Duration.ZERO), request("hi"), monitor, T0);
 
-        // THEN the partial's tokenPhaseStart is the call start (T0+1h), NOT the turn start (T0)
         var partial = monitor.chunks.get(1);
         assertThat(partial.type()).isEqualTo(OnPartialAiResponse.Type.ANSWER);
         assertThat(partial.startedAt()).isEqualTo(T0);
@@ -132,14 +129,12 @@ class StreamingBridgeTest {
         var bridge = new StreamingBridge(clock);
         var monitor = new ChunkRecorder();
 
-        // WHEN the same bridge runs two calls an hour apart
         bridge.call(answerModel(clock, Duration.ZERO, Duration.ZERO), request("hi"), monitor, T0);
         long first = monitor.chunks.get(1).tokenPhaseStart();
         clock.advance(Duration.ofHours(1));
         bridge.call(answerModel(clock, Duration.ZERO, Duration.ZERO), request("hi"), monitor, T0);
         long second = monitor.chunks.get(4).tokenPhaseStart();
 
-        // THEN each call stamped its own call start — call 2's is not call 1's
         assertThat(second).isNotEqualTo(first);
         assertThat(second).isEqualTo(first + Duration.ofHours(1).toMillis());
     }
@@ -150,15 +145,12 @@ class StreamingBridgeTest {
         var bridge = new StreamingBridge(clock);
         var monitor = new ChunkRecorder();
 
-        // WHEN a call streams a 30s prompt phase then a 20s token phase
         bridge.call(answerModel(clock, Duration.ofSeconds(30), Duration.ofSeconds(20)), request("hi"), monitor, T0);
 
-        // THEN the prompt timer froze at 30s and the token timer at 20s, both stopped
         assertThat(bridge.ppTimer().millis()).isEqualTo(30_000);
         assertThat(bridge.ppTimer().running()).isFalse();
         assertThat(bridge.tokenTimer().millis()).isEqualTo(20_000);
         assertThat(bridge.tokenTimer().running()).isFalse();
-        // tokenPhaseStart was stamped at the first partial (T0 + 30s)
         assertThat(monitor.chunks.get(1).tokenPhaseStart()).isEqualTo(clock.millis() - 20_000);
     }
 
@@ -168,12 +160,10 @@ class StreamingBridgeTest {
         var bridge = new StreamingBridge(clock);
         var monitor = new ChunkRecorder();
 
-        // WHEN call 1 has a 30s prompt phase, then call 2 (an hour later) has a 10s prompt phase
         bridge.call(answerModel(clock, Duration.ofSeconds(30), Duration.ofSeconds(20)), request("hi"), monitor, T0);
         clock.advance(Duration.ofHours(1));
         bridge.call(answerModel(clock, Duration.ofSeconds(10), Duration.ofSeconds(5)), request("hi"), monitor, T0);
 
-        // THEN the prompt timer reflects only call 2's 10s — not call 1's 30s, not accumulated
         assertThat(bridge.ppTimer().millis()).isEqualTo(10_000);
     }
 
@@ -183,10 +173,8 @@ class StreamingBridgeTest {
         var bridge = new StreamingBridge(clock);
         var monitor = new ChunkRecorder();
 
-        // WHEN the model emits a thinking partial after a 15s prompt phase
         bridge.call(thinkModel(clock, Duration.ofSeconds(15), Duration.ofSeconds(10)), request("hi"), monitor, T0);
 
-        // THEN the think timer froze at 15s (call start → first thinking) and stopped
         assertThat(bridge.thinkTimer().millis()).isEqualTo(15_000);
         assertThat(bridge.thinkTimer().running()).isFalse();
     }
@@ -197,10 +185,8 @@ class StreamingBridgeTest {
         var bridge = new StreamingBridge(clock);
         var monitor = new ChunkRecorder();
 
-        // WHEN a call streams an answer without any thinking
         bridge.call(answerModel(clock, Duration.ofSeconds(5), Duration.ofSeconds(5)), request("hi"), monitor, T0);
 
-        // THEN the think timer was never stopped
         assertThat(bridge.thinkTimer().running()).isTrue();
     }
 
@@ -212,20 +198,13 @@ class StreamingBridgeTest {
 
         bridge.call(toolModel(clock, Duration.ZERO, Duration.ZERO), request("hi"), monitor, T0);
 
-        // THEN the TOOL chunk carries the argument delta, not the repeated tool name
         var tool = monitor.chunks.get(1);
         assertThat(tool.type()).isEqualTo(OnPartialAiResponse.Type.TOOL);
         assertThat(tool.value()).isEqualTo("{\"q\":\"hi\"}");
     }
 
-    /**
-     * Bug proof: onError's blind errorRef.set overwrote the stored CancellationException with a
-     * post-cancel provider error (→ ApiRetry retried a stopped call, docs/memory #21) — fixed via compareAndSet, inc-1 8b2431e.
-     */
     @Test
     void bug_onErrorAfterCancelMasksCancellation() {
-        // GIVEN — an already-canceled monitor and a model that fires a partial (→ cancel path
-        // stores CancellationException) then the provider's post-cancel error
         var monitor = new AiMonitor() {
             @Override public void onChatResponse(SimpleMessage m) {}
             @Override public boolean isCanceled() { return true; }
@@ -240,13 +219,273 @@ class StreamingBridgeTest {
         }).when(cm).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
         var bridge = new StreamingBridge(new MutableClock());
 
-        // WHEN + THEN — the documented contract: a canceled call surfaces as CancellationException
         assertThatThrownBy(() -> bridge.call(cm, request("hi"), monitor, T0))
                 .isInstanceOf(AiCancellationException.class);
     }
 
     // -------------------------------------------------------------------------
-    // Model mocks — fire partial callbacks synchronously on the calling thread
+    // UC-AEM-8 — idle timeout
+    // -------------------------------------------------------------------------
+
+    enum Uc8Input { TOOL_LOOP, CALL_BLOCKING }
+
+    // UC-AEM-8
+    @ParameterizedTest
+    @EnumSource(Uc8Input.class)
+    @Timeout(value = 2, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+    void silentStreamTimesOut(Uc8Input input) {
+        var model = mock(StreamingChatModel.class);
+        var cancelCount = new AtomicInteger();
+        doAnswer(inv -> {
+            var h = inv.getArgument(1, StreamingChatResponseHandler.class);
+            var handle = mock(StreamingHandle.class);
+            doAnswer(c -> { cancelCount.incrementAndGet(); return null; }).when(handle).cancel();
+            h.onPartialResponse(new PartialResponse("first"), new PartialResponseContext(handle));
+            return null;
+        }).when(model).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+
+        var config = LlmConfig.builder().providerType(org.sterl.llmpeon.ai.AiProvider.OPEN_AI).model("test").timeout(Duration.ofMillis(200)).build();
+
+        Throwable thrown = null;
+        if (input == Uc8Input.CALL_BLOCKING) {
+            var chatModel = new ConfiguredChatModel(config, model);
+            try {
+                chatModel.callBlocking(new ChatRequest.Builder().messages(UserMessage.from("hi")).build(), null, AiMonitor.NULL_MONITOR, Instant.now());
+            } catch (Throwable t) { thrown = t; }
+        } else {
+            var chatModel = new ConfiguredChatModel(config, model);
+            var memory = new ThreadSafeMemory();
+            memory.add(UserMessage.from("hi"));
+            var request = ToolLoopRequest.builder().memory(memory).chatModel(chatModel).build();
+            try {
+                request.call(new ChatRequest.Builder().messages(UserMessage.from("hi")).build());
+            } catch (Throwable t) { thrown = t; }
+        }
+
+        assertThat(thrown).isInstanceOf(RuntimeException.class);
+        assertThat(thrown).hasMessage("AI stream idle for 200 ms (timeout)");
+        assertThat(thrown.getCause()).isInstanceOf(TimeoutException.class);
+        assertThat(ExceptionUtil.isCanceled(thrown)).isFalse();
+        assertThat(cancelCount.get()).isEqualTo(1);
+    }
+
+    // -------------------------------------------------------------------------
+    // UC-AEM-9 — active stream does not time out
+    // -------------------------------------------------------------------------
+
+    // UC-AEM-9
+    @ParameterizedTest
+    @EnumSource(value = OnPartialAiResponse.Type.class, names = {"ANSWER", "THINK", "TOOL"})
+    @Timeout(value = 2, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+    void activeStreamDoesNotTimeOut(OnPartialAiResponse.Type chunkType) {
+
+        var clock = new MutableClock();
+        var monitor = new ChunkRecorder();
+        var handlerRef = new AtomicReference<StreamingChatResponseHandler>();
+        var handle = mock(StreamingHandle.class);
+        var cancelCount = new AtomicInteger();
+        doAnswer(c -> { cancelCount.incrementAndGet(); return null; }).when(handle).cancel();
+
+        var model = mock(StreamingChatModel.class);
+        doAnswer(inv -> {
+            handlerRef.set(inv.getArgument(1, StreamingChatResponseHandler.class));
+            return null;
+        }).when(model).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+
+        var bridge = new StreamingBridge(clock, Duration.ofMillis(200)) {
+            private int poll = 0;
+            @Override
+            boolean awaitCompletion(long waitMillis) {
+                poll++;
+                var h = handlerRef.get();
+                if (poll <= 3) {
+                    // Each poll: advance 100 ms, fire two chunks of the given type
+                    clock.advance(Duration.ofMillis(100));
+                    fireChunk(h, chunkType, handle, "c" + poll + "a");
+                    clock.advance(Duration.ofMillis(100));
+                    fireChunk(h, chunkType, handle, "c" + poll + "b");
+                    assertThat(waitMillis).isEqualTo(200);
+                    return false;
+                }
+                // poll 4: complete
+                clock.advance(Duration.ofMillis(50));
+                h.onCompleteResponse(ChatResponse.builder().aiMessage(AiMessage.from("done")).build());
+                return true;
+            }
+        };
+
+        var result = bridge.call(model, request("hi"), monitor, T0);
+
+        assertThat(result.aiMessage().text()).isEqualTo("done");
+        assertThat(monitor.chunks).hasSize(8); // START + 6 partials + END
+        for (int i = 1; i <= 6; i++) {
+            assertThat(monitor.chunks.get(i).type()).isEqualTo(chunkType);
+        }
+        assertThat(monitor.chunks.get(7).type()).isEqualTo(OnPartialAiResponse.Type.END);
+        assertThat(cancelCount.get()).isZero();
+    }
+
+    private void fireChunk(StreamingChatResponseHandler h, OnPartialAiResponse.Type type, StreamingHandle handle, String text) {
+        switch (type) {
+            case ANSWER -> h.onPartialResponse(new PartialResponse(text), new PartialResponseContext(handle));
+            case THINK -> h.onPartialThinking(new PartialThinking(text), new PartialThinkingContext(handle));
+            case TOOL -> h.onPartialToolCall(
+                    PartialToolCall.builder().name("s").partialArguments("{\"t\":\"" + text + "\"}").build(),
+                    new PartialToolCallContext(handle));
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // B4 — fractional timeout rounds up
+    // -------------------------------------------------------------------------
+
+    @Test
+    @Timeout(value = 2, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+    void fractionalTimeoutRoundsUp() {
+        // Verify rounding directly: 1.5 ms → 2 ms
+        var bridge = new StreamingBridge(Duration.ofNanos(1_500_000));
+        // timeoutMillis is private — tested via behaviour
+
+        var clock = new MutableClock();
+        var model = mock(StreamingChatModel.class);
+        doAnswer(inv -> { return null; }).when(model).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+
+        var waitVals = new ArrayList<Long>();
+        var bridge2 = new StreamingBridge(clock, Duration.ofNanos(1_500_000)) {
+            @Override
+            boolean awaitCompletion(long waitMillis) {
+                waitVals.add(waitMillis);
+                clock.advance(Duration.ofMillis(1));
+                return false;
+            }
+        };
+
+        Throwable thrown = null;
+        try {
+            bridge2.call(model, request("hi"), AiMonitor.NULL_MONITOR, T0);
+        } catch (Throwable t) { thrown = t; }
+
+        assertThat(thrown).isInstanceOf(RuntimeException.class);
+        assertThat(thrown).hasMessage("AI stream idle for 2 ms (timeout)");
+        assertThat(thrown.getCause()).isInstanceOf(TimeoutException.class);
+        assertThat(waitVals.get(0)).isEqualTo(2); // initial budget must be 2 ms (rounded up from 1.5)
+    }
+
+    // -------------------------------------------------------------------------
+    // Stop before the idle deadline stays a cancellation
+    // -------------------------------------------------------------------------
+
+    @Test
+    @Timeout(value = 2, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+    void stopBeforeIdleDeadlineRemainsCancellation() {
+        var clock = new MutableClock();
+        var monitorCanceled = new AtomicReference<Boolean>(false);
+        var monitor = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public boolean isCanceled() { return monitorCanceled.get(); }
+        };
+        var model = mock(StreamingChatModel.class);
+        doAnswer(inv -> { return null; }).when(model).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+
+        var bridge = new StreamingBridge(clock, Duration.ofMillis(500)) {
+            @Override
+            boolean awaitCompletion(long waitMillis) {
+                clock.advance(Duration.ofMillis(100));
+                monitorCanceled.set(true);
+                return false;
+            }
+        };
+
+        Throwable thrown = null;
+        try {
+            bridge.call(model, request("hi"), monitor, T0);
+        } catch (Throwable t) { thrown = t; }
+
+        assertThat(thrown).isInstanceOf(AiCancellationException.class);
+    }
+
+    // -------------------------------------------------------------------------
+    // Old callbacks of a timed-out attempt never reach the retry
+    // -------------------------------------------------------------------------
+
+    @Test
+    @Timeout(value = 2, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+    void idleTimeoutRetryIgnoresOldCallbacks() {
+        var callCount = new AtomicInteger();
+        var oldHandler = new AtomicReference<StreamingChatResponseHandler>();
+        var secondCallStarted = new AtomicReference<Boolean>(false);
+        var model = mock(StreamingChatModel.class);
+        var firstHandle = mock(StreamingHandle.class);
+        doAnswer(inv -> {
+            int call = callCount.incrementAndGet();
+            var h = inv.getArgument(1, StreamingChatResponseHandler.class);
+            if (call == 1) {
+                oldHandler.set(h);
+                h.onPartialResponse(new PartialResponse("ghost"), new PartialResponseContext(firstHandle));
+                // Fire onError(CancellationException) synchronously from cancel
+                doAnswer(c -> {
+                    h.onError(new java.util.concurrent.CancellationException());
+                    return null;
+                }).when(firstHandle).cancel();
+                return null; // no terminal callback — hangs
+            }
+            // Second call: mark started, then fire old callbacks on the OLD handler, then own completion
+            secondCallStarted.set(true);
+            var oldH = oldHandler.get();
+            oldH.onPartialResponse(new PartialResponse("ghost2"), new PartialResponseContext(mock(StreamingHandle.class)));
+            oldH.onError(new RuntimeException("ghost error"));
+            oldH.onCompleteResponse(ChatResponse.builder()
+                    .aiMessage(AiMessage.from("ghost-done"))
+                    .tokenUsage(new TokenUsage(999, 999, 999))
+                    .build());
+            // Now own completion
+            var handle = mock(StreamingHandle.class);
+            h.onPartialResponse(new PartialResponse("real"), new PartialResponseContext(handle));
+            h.onCompleteResponse(ChatResponse.builder()
+                    .aiMessage(AiMessage.from("done"))
+                    .tokenUsage(new TokenUsage(10, 5, 15))
+                    .build());
+            return null;
+        }).when(model).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+
+        var config = LlmConfig.builder().providerType(org.sterl.llmpeon.ai.AiProvider.OPEN_AI).model("test").timeout(Duration.ofMillis(200)).build();
+        var chatModel = new ConfiguredChatModel(config, model);
+        var memory = new ThreadSafeMemory();
+        memory.add(UserMessage.from("hi"));
+
+        var usageMonitor = new AtomicInteger();
+        var ghostChunks = new ArrayList<String>();
+        var chunkRecorder = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onStreamingChunk(OnPartialAiResponse r) {
+                if (r.value() != null && secondCallStarted.get()) ghostChunks.add(r.value());
+            }
+            @Override public void onTokenUsage(TokenUsage usage) { usageMonitor.addAndGet(usage.totalTokenCount()); }
+        };
+
+        var retry = new ApiRetry(100);
+        retry.call(chunkRecorder, () -> ChatResponse.builder().aiMessage(AiMessage.from("pre")).build());
+
+        var request = ToolLoopRequest.builder()
+                .memory(memory)
+                .chatModel(chatModel)
+                .monitor(chunkRecorder)
+                .retry(retry)
+                .build();
+
+        // The model's second call sets secondCallStarted before firing old callbacks
+        var result = request.call(new ChatRequest.Builder().messages(UserMessage.from("hi")).build());
+
+        assertThat(result.aiMessage().text()).isEqualTo("done");
+        assertThat(callCount.get()).isEqualTo(2);
+        assertThat(usageMonitor.get()).isEqualTo(15);
+        // No ghost chunks from old handler leaked into the second call
+        var ghostCount = ghostChunks.stream().filter(v -> v.contains("ghost")).count();
+        assertThat(ghostCount).as("ghost chunks from old handler leaked").isZero();
+    }
+
+    // -------------------------------------------------------------------------
+    // Model mocks
     // -------------------------------------------------------------------------
 
     private ChatRequest request(String text) {

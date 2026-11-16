@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Timeout;
 import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.agent.model.QueuedInput;
 import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
@@ -120,7 +121,7 @@ class AbstractAgentQueueReleaseRaceTest {
         }
 
         @Override
-        public QueuedMessage pollNext() {
+        public QueuedInput pollNext() {
             var entry = super.pollNext();
             if (entry == null && armed.compareAndSet(true, false)) {
                 releaseWindowOpen.set(true);

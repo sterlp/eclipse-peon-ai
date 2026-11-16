@@ -3,9 +3,12 @@ package org.sterl.llmpeon.docslinter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Objects;
+import java.util.function.LongSupplier;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.QualifiedPathValidator;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.tools.AbstractTool;
@@ -21,12 +24,20 @@ public class DocsLinterTool extends AbstractTool {
             "regex that FULL-matches UC ids (e.g. UC-PP-\\d+); full-match, not a prefix";
 
     private volatile Path workingDir;
+    private final LongSupplier nanoTime;
 
     public DocsLinterTool(Path workingDir) {
-        setWorkingDir(workingDir);
+        this(workingDir, System::nanoTime);
     }
 
     public DocsLinterTool(String workingDir) {
+        this.nanoTime = System::nanoTime;
+        setWorkingDir(workingDir);
+    }
+
+    // test seam: an injectable monotonic clock (R-DL-29)
+    DocsLinterTool(Path workingDir, LongSupplier nanoTime) {
+        this.nanoTime = Objects.requireNonNull(nanoTime, "nanoTime");
         setWorkingDir(workingDir);
     }
 
@@ -55,19 +66,22 @@ public class DocsLinterTool extends AbstractTool {
             @P(required = false, name = "idPattern", description = ID_PATTERN_DESCRIPTION) String idPattern) {
 
         Path effectiveRoot = resolveRoot(root);
+        DocsLintReportRenderer renderer = new DocsLintReportRenderer();
+        long start = nanoTime.getAsLong();
+        onTool(renderer.startLine("lintDocs", effectiveRoot));
         var resolved = resolveDocRoots(effectiveRoot, docRoots);
         Pattern pattern = compilePattern(idPattern);
 
         validateChildRoots(effectiveRoot, resolved.roots());
 
         DocsLinter linter = new DocsLinter();
-        DocsLintReportRenderer renderer = new DocsLintReportRenderer();
         try {
             DocsLintResult result = resolved.fallbackWithMissingDefault()
                     ? emptyDocsResult()
                     : linter.lint(effectiveRoot, resolved.roots(), pattern);
-            String summary = renderer.summary(result, resolved.disclosure());
-            onTool(renderer.statusLine("lintDocs", result) + " " + StringUtil.charsSuffix(summary));
+            long ms = elapsedMillis(start);
+            String summary = renderer.summary(result, resolved.disclosure(), effectiveRoot, ms);
+            onTool(renderer.statusLine("lintDocs", result, ms) + " " + StringUtil.charsSuffix(summary));
             return summary;
         } catch (IOException e) {
             throw new RuntimeException("Failed to lint docs: " + e.getMessage(), e);
@@ -83,6 +97,9 @@ public class DocsLinterTool extends AbstractTool {
             @P(required = false, name = "idPattern", description = ID_PATTERN_DESCRIPTION) String idPattern) {
 
         Path effectiveRoot = resolveRoot(root);
+        DocsLintReportRenderer renderer = new DocsLintReportRenderer();
+        long start = nanoTime.getAsLong();
+        onTool(renderer.startLine("lintDocsAndTests", effectiveRoot));
         var resolved = resolveDocRoots(effectiveRoot, docRoots);
         Pattern pattern = compilePattern(idPattern);
 
@@ -92,14 +109,14 @@ public class DocsLinterTool extends AbstractTool {
         }
 
         DocsLinter linter = new DocsLinter();
-        DocsLintReportRenderer renderer = new DocsLintReportRenderer();
         try {
             DocsLintResult result = resolved.fallbackWithMissingDefault()
                     ? emptyDocsResult()
                     : linter.lintWithTests(
                             effectiveRoot, resolved.roots(), testRoots, testGlobs, pattern);
-            String summary = renderer.summary(result, resolved.disclosure());
-            onTool(renderer.statusLine("lintDocsAndTests", result) + " " + StringUtil.charsSuffix(summary));
+            long ms = elapsedMillis(start);
+            String summary = renderer.summary(result, resolved.disclosure(), effectiveRoot, ms);
+            onTool(renderer.statusLine("lintDocsAndTests", result, ms) + " " + StringUtil.charsSuffix(summary));
             return summary;
         } catch (IOException e) {
             throw new RuntimeException("Failed to lint docs and tests: " + e.getMessage(), e);
@@ -108,8 +125,17 @@ public class DocsLinterTool extends AbstractTool {
 
     // Delegation target for DocsIdTool — deliberately not exposed as a tool here.
     String nextIds(String root, List<String> docRoots, String prefix) {
+        return nextIds(root, docRoots, prefix, monitor);
+    }
+
+    // R-DL-29: the facade's own call monitor — never the shared core instance's state.
+    String nextIds(String root, List<String> docRoots, String prefix, AiMonitor callMonitor) {
+        AiMonitor out = AiMonitor.nullSafety(callMonitor);
 
         Path effectiveRoot = resolveRoot(root);
+        DocsLintReportRenderer renderer = new DocsLintReportRenderer();
+        long start = nanoTime.getAsLong();
+        out.onTool(renderer.startLine("nextIds", effectiveRoot));
         var resolved = resolveDocRoots(effectiveRoot, docRoots);
         Pattern pattern = Pattern.compile(DEFAULT_ID_PATTERN);
         validateChildRoots(effectiveRoot, resolved.roots());
@@ -124,7 +150,10 @@ public class DocsLinterTool extends AbstractTool {
             NextIdsResult result = resolved.fallbackWithMissingDefault()
                     ? new NextIdsResult(List.of(), 0, 0, List.of())
                     : linter.nextIds(effectiveRoot, resolved.roots(), pattern, prefix);
-            return formatNextIds(result, resolved.disclosure());
+            long ms = elapsedMillis(start);
+            String report = formatNextIds(result, resolved.disclosure(), effectiveRoot, ms);
+            out.onTool(renderer.statusLine("nextIds", result, ms) + " " + StringUtil.charsSuffix(report));
+            return report;
         } catch (IOException e) {
             throw new RuntimeException("Failed to compute next IDs: " + e.getMessage(), e);
         }
@@ -163,11 +192,15 @@ public class DocsLinterTool extends AbstractTool {
         return new DocsLintResult(List.of(), List.of(), List.of(), List.of(), 0);
     }
 
-    private String formatNextIds(NextIdsResult result, String docRootsLine) {
+    private long elapsedMillis(long startNanos) {
+        return (nanoTime.getAsLong() - startNanos) / 1_000_000L;
+    }
+
+    private String formatNextIds(NextIdsResult result, String docRootsLine, Path root, long elapsedMillis) {
         var renderer = new DocsLintReportRenderer();
         StringBuilder sb = new StringBuilder();
         sb.append(renderer.docScanSummary(
-                result.lintedDocCount(), result.skippedDocCount(), docRootsLine));
+                result.lintedDocCount(), result.skippedDocCount(), docRootsLine, root, elapsedMillis));
         for (var r : result.nextIds()) {
             sb.append("\n");
             if (!r.occupied()) {

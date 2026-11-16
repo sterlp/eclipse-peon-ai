@@ -9,7 +9,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.TaggedInput;
 import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
 
 /**
@@ -74,7 +74,7 @@ public class WorkspaceMemoryToolTest {
         // THEN
         assertNotNull(d1);
         assertTrue("key must be the block start line: " + d1,
-                d1.startsWith(TaggedResult.PREFIX + "workspace-memory#"));
+                d1.startsWith(TaggedInput.PREFIX + "workspace-memory#"));
         assertNotEquals(d1, d2);
 
         // AND: unchanged entries -> same key again (no duplicate on next turn)

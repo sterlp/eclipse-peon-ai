@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.docslinter;
 
+import java.nio.file.Path;
 import java.util.List;
 
 class DocsLintReportRenderer {
@@ -24,11 +25,25 @@ class DocsLintReportRenderer {
         return sb.toString();
     }
 
+    /** R-DL-29: root and duration directly after the complete Scanned line. */
+    String docScanSummary(int lintedDocCount, int skippedDocCount, String docRootsLine,
+            Path root, long elapsedMillis) {
+        return docScanSummary(lintedDocCount, skippedDocCount, docRootsLine) + runMetadata(root, elapsedMillis);
+    }
+
+    private static String runMetadata(Path root, long elapsedMillis) {
+        return "\nRoot: " + root + "\nDuration: " + elapsedMillis + " ms";
+    }
+
     String summary(DocsLintResult result) {
         return summary(result, null);
     }
 
     String summary(DocsLintResult result, String docRootsLine) {
+        return summary(result, docRootsLine, null, 0);
+    }
+
+    String summary(DocsLintResult result, String docRootsLine, Path root, long elapsedMillis) {
         StringBuilder sb = new StringBuilder();
         sb.append(docScanSummary(result.lintedDocs().size(), result.skippedDocs().size(), docRootsLine));
 
@@ -37,6 +52,9 @@ class DocsLintReportRenderer {
             sb.append(result.testSourceFilesWithEvidenceCount()).append(" carrying UC ids");
         } else {
             sb.append("; tests: not read");
+        }
+        if (root != null) {
+            sb.append(runMetadata(root, elapsedMillis));
         }
 
         if (!result.sourceRoots().isEmpty()) {
@@ -93,6 +111,18 @@ class DocsLintReportRenderer {
      * {@code lintDocs: 3 docs, 2 findings (1 UNBELEGT_ERLEDIGT)}.
      * The kappa clause appears only for non-zero counts; the full report stays in the return value.
      */
+    String statusLine(String toolName, DocsLintResult r, long elapsedMillis) {
+        return statusLine(toolName, r) + ", " + elapsedMillis + " ms";
+    }
+
+    String statusLine(String toolName, NextIdsResult r, long elapsedMillis) {
+        return toolName + ": " + r.docFileCount() + " docs, " + elapsedMillis + " ms";
+    }
+
+    String startLine(String toolName, Path root) {
+        return toolName + ": starting (root: " + root + ")";
+    }
+
     String statusLine(String toolName, DocsLintResult r) {
         StringBuilder sb = new StringBuilder();
         sb.append(toolName).append(": ").append(r.docFileCount()).append(" docs, ");

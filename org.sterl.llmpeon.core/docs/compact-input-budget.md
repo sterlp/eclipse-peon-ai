@@ -88,12 +88,12 @@ jeder Stufe. Gilt **nur im Compacter** — der Live-Context an das LLM wird nich
    klassifizieren über dieses Präfix, nicht über den Message-Typ
    ([tagged-results.md](tagged-results.md) R-TR-7). Gleichzeitig: vom Textcontent der
    User-Messages nur die **letzte mit echtem User-Text** — frühere User-Messages sind nur
-   „State" (gleiche Semantik wie die Chat-Darstellung). **Echter User-Text = letzter
-   TextContent** der UserMessage — code-verifiziert (Plan 2026-09-24): Turn-Context-Items
-   werden **zuerst** angehängt, der echte User-Text **zuletzt** (`AbstractAgent.doCall:271-274`,
-   `ThreadSafeMemory.add:73-77`, Compact-Restore `AbstractAgent:320-326`); Pauls Erst-These
-   „erster TextContent" war am Code falsch herum und wurde korrigiert. Die Insert-Ordnung ist
-   damit eine Regel — kein Raten mehr ([context-message-concept.md](context-message-concept.md)).
+   „State" (gleiche Semantik wie die Chat-Darstellung). **Echter User-Text = der ungetaggte
+   TextContent** der UserMessage, erkannt am Tag, nie an der Position
+   ([context-message-concept.md](context-message-concept.md), [tagged-results.md](tagged-results.md)
+   R-TR-11). **`file:`-Blöcke** (R-TR-12) bleiben in **jeder** User-Message erhalten, auch in
+   früheren — ein Anhang kommt nie wieder; Bilder werden Platzhalter. Der Cap der Endstufe gilt für
+   sie wie für alles andere.
    **Ausgeschlossen von „letzte":** `COMPACT_HINT`, Queued-Marker, System-Nachrichten —
    Hint/Marker werden als **Konstanten** referenziert (nie verstreute String-Literale), damit
    der Ausschluss robust bleibt (Review F1: der Hint liegt real als UserMessage in der Memory).
@@ -153,7 +153,7 @@ gegen die der Endstufen-Cap gerechnet wird).
 GIVEN History unter Budget (estimate ≤ autoCompactAfter)
 WHEN der Compressor baut seinen Input
 THEN keine Message wird gekürzt
-AND reine Context-Blöcke (TaggedResult, [tagged-results.md](tagged-results.md) R-TR-9) sind entfernt
+AND reine Context-Blöcke (TaggedInput, [tagged-results.md](tagged-results.md) R-TR-9) sind entfernt
 AND die Zahl der entfernten Blöcke steht als eigene Zeile `context blocks dropped: K` am Ende
 AND der Input enthält alle übrigen Messages vollständig inkl. Thinking
 AND kein "session truncated"-Hinweis (ohne Kürzung; ohne Blöcke auch keine K-Zeile)
@@ -168,7 +168,7 @@ AND es gibt nur das Entry-Log
 GIVEN estimate > autoCompactAfter, Stufe 1 reicht (Re-Estimate ≤ Budget)
 WHEN Stufe 1 läuft
 THEN Thinking ist auf 9000 Zeichen gecappt, Front-Cap mit $-Anker — das Ende (Konklusion) bleibt
-AND die letzte User-Message mit echtem User-Text (LETZTER TextContent) ist voll, frühere nur State
+AND die letzte User-Message mit echtem User-Text (ungetaggter TextContent, samt file:-Blöcken) ist voll, frühere nur State
     (State = alles außer dem echten Text; ihre Context-Blöcke sind zu diesem Zeitpunkt bereits als K
     gedroppt, [tagged-results.md](tagged-results.md) R-TR-9)
 AND die letzte User-Message ist NICHT der COMPACT_HINT / Queued-Marker (Konstanten-Ausschluss)

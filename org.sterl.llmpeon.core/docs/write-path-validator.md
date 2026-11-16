@@ -1,3 +1,6 @@
+---
+idPrefix: WPV
+---
 # Write-Path Validator
 
 **2026-09-04 (✅ done):** Pfad-Normalisierung vor Glob-Match (Bug-Hunt #9) — Traversal-Bypass
@@ -115,7 +118,7 @@ wenn sie über Wrapper gelaufen ist (Future/UI-Thread, `ToolExecutionException`,
   WHEN der Tool-Aufruf darauf wartet
   THEN nennt der Fehler das Timeout — „Timeout" wird nur bei einem echten Timeout behauptet.
 
-### R6 — Der Pfad-Scope im Prompt stammt aus dem Validator ❌
+### R6 — Der Pfad-Scope im Prompt stammt aus dem Validator ✅
 
 Wer den Scope erzwingt, formuliert ihn auch. Sonst sagen Prompt und Prüfung zwei verschiedene Dinge:
 die Factory erlaubt den Projekt-Root, der Prompt behauptet „nur `docs/`" — der Agent schränkt sich
@@ -133,9 +136,42 @@ noch** `getWriteValidator().pathScopePrompt()` ein.
 * GIVEN ein Agent, dessen Validator keinen Scope formuliert (Default `ALLOW_ALL`) WHEN sein Prompt
   gebaut wird THEN kommt kein Scope-Absatz hinzu — Plugin-Agenten bleiben unverändert.
 
+### R7 — Die Schreibgrenze gilt für den realen Ort, nicht für den Pfadtext ✅ (Paul 2026-11-15)
+
+Ein Schreibziel unter dynamischen Roots ist nur erlaubt, wenn sein **realer** Ort (Symlinks aufgelöst)
+unter dem **realen** Ort einer Root liegt. Existiert das Ziel noch nicht, zählt der reale Ort des nächsten
+existierenden Vorfahren plus der Rest des Pfads — dasselbe gilt für eine Root, die noch nicht existiert
+(z. B. Skills-Ordner vor der ersten Anlage). Ein Link innerhalb einer Root auf ein Ziel innerhalb
+bleibt erlaubt. **WEIL** ein geklontes Repo einen Link wie `x -> ~/.ssh` mitbringen kann; die rein
+textuelle Prüfung ließ Agenten dann außerhalb von Projekt und TMP schreiben (Plugin und Fabrik).
+Bewusst außerhalb: ein Link, der zwischen Prüfung und Schreiben getauscht wird (TOCTOU).
+
+#### UC-WPV-1 — writeThroughSymlinkOutsideRootRejected ✅
+
+```gherkin
+Given eine Root "projekt" und ein Ordner "draußen" mit der Datei "secret.txt" und dem Inhalt "alt"
+  And "projekt/link" ist ein Verzeichnis-Link auf "draußen"
+  And "projekt/datei-link" ist ein Datei-Link auf "draußen/secret.txt"
+When der Agent nach "projekt/link/secret.txt", "projekt/link/neu.txt" und "projekt/datei-link" schreibt
+Then wird jeder Write als Tool-Fehler abgelehnt
+  And "draußen/secret.txt" enthält weiter "alt"
+  And in "draußen" entsteht keine neue Datei
+```
+
+#### UC-WPV-2 — writeThroughSymlinkInsideRootAllowed ✅
+
+```gherkin
+Given eine Root "projekt" mit dem Ordner "projekt/src"
+  And "projekt/kurz" ist ein Verzeichnis-Link auf "projekt/src"
+When der Agent nach "projekt/kurz/a.txt" schreibt
+Then gelingt der Write
+  And "projekt/src/a.txt" existiert
+```
+
 ## Notes
 
 - Same mechanism for disk and Eclipse: both validate the **normalized** model-supplied path string, so the
-  check is project-agnostic (no `IProject` needed to decide "allowed or not").
+  check is project-agnostic (no `IProject` needed to decide "allowed or not"). Root-based validators
+  additionally check the **real** location (R7).
 - Glob base nuance (from ADR-0022): matched against the normalized path, `*/docs/*` covers `docs` at depth
   while `*.md` covers any Markdown file; further base refinement when the pattern set becomes configurable.

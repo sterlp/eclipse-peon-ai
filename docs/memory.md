@@ -1,7 +1,12 @@
 # Open Ends / Memory — Session-Zwischenstand
 
 > Zwischenstand, kein Protokoll: Erledigtes fliegt raus.
-> **Branch `web-factory-4`** (Paul, 2026-11-09). `web-factory-mvp` ist als #170 gemergt.
+> **Branch `web-factory-5`** (Stand 2026-11-12; #173 dort NICHT enthalten). `web-factory-mvp` ist als #170 gemergt.
+>
+> **#173 Model-Select (main `5dc254dd`, Autor Demmtop):** SOLL-Ersatz für R-ML5 mit Paul geklärt
+> (Combo folgt aktivem Agenten) → `peon-plan/ticket-173-chat-model-select-soll.md` als
+> Ticket-Anhang für den Autor. Offen: Revert auf main ja/nein · R-ML5 in `model-loading.md`
+> nachziehen, sobald #173 im Branch ist (heute nicht im Workspace).
 > Lokal ungepusht (Push 403, Git-Account `PaulNetze`): Merge main `7c270466` + Skill-Sync-Commits.
 > Paul überträgt per `peon-plan/web-factory-4-skill-sync.patch` auf den anderen Rechner
 > (dort erst `git merge origin/main`, dann `git am`).

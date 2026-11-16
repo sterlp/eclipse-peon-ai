@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
+import org.sterl.llmpeon.agent.model.UserInput;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
@@ -23,6 +24,16 @@ public interface AiAgent {
 
     @Nullable
     ChatResponse call(String message, AiMonitor monitor);
+
+    /**
+     * The typed entrance: text and attachments as ONE turn input (R-TR-11). No default that drops the
+     * attachments — an agent that only knows text must say so.
+     * @throws UnsupportedOperationException for agents implementing only {@link #call(String, AiMonitor)}
+     */
+    @Nullable
+    default ChatResponse call(UserInput input, AiMonitor monitor) {
+        throw new UnsupportedOperationException(getClass().getName() + " does not accept typed user input");
+    }
     
     //@NotNull
     //ChatResponse asyncCall(String message, AiMonitor monitor);
@@ -148,6 +159,11 @@ public interface AiAgent {
         return false;
     }
 
+    /** Typed twin of {@link #queueMessage(String)}; attachments are never dropped silently. */
+    default boolean queueMessage(UserInput input) {
+        throw new UnsupportedOperationException(getClass().getName() + " does not accept typed user input");
+    }
+
     /**
      * Queue a {@code !}-override message while the agent is working (queued-user-messages rule 8):
      * an urgent entry in the agent's queue — own lane, never batched with normal entries, no memory
@@ -176,6 +192,23 @@ public interface AiAgent {
      */
     default List<String> takeAllMessages(AiMonitor monitor) {
         return List.of();
+    }
+
+    /**
+     * Like {@link #takeAllMessages(AiMonitor)} but lossless (queued-user-messages rule 13): per entry
+     * one input whose text is already disclosure-formatted ({@code (queued HH:mm): <text>}) and whose
+     * attachments are the original ones. Default empty for agents without a queue.
+     */
+    default List<UserInput> takeAllInputs(AiMonitor monitor) {
+        return List.of();
+    }
+
+    /**
+     * Taken is not delivered (queued-user-messages rule 13): the tool layer calls this once the
+     * round's results are in the memory; until then what the round's tools took stays preserved on
+     * an abort. Default no-op for agents without a queue.
+     */
+    default void queuedInputsCommitted() {
     }
 
 

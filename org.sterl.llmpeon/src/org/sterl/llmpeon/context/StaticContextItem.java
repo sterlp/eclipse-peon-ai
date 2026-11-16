@@ -2,16 +2,16 @@ package org.sterl.llmpeon.context;
 
 import java.time.LocalDate;
 
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.ContextInput;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
 import org.sterl.llmpeon.shared.LineSeparatorUtil;
 
 public class StaticContextItem implements ContextItem {
 
     @Override
-    public TaggedResult render() {
+    public ContextInput render() {
         var ls = System.lineSeparator() + "- ";
-        return new TaggedResult("env", "Today: " + LocalDate.now()
+        return new ContextInput("env", "Today: " + LocalDate.now()
         + " — APIs and libraries may have changed since your training cutoff. "
         + "Don't rely only on internal API knowledge — explore base classes and libs if possible with e.g. using "
         + EclipseCodeNavigationTool.GET_TYPE_SOURCE + " for java projects."

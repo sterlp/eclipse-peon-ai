@@ -31,7 +31,8 @@ import lombok.NonNull;
 
 /**
  * Command object for {@link ToolService#executeLoop(ToolLoopRequest)}.
- * Required fields: {@code memory} and {@code model}. The {@code bridge} has a default value.
+ * Required fields: {@code memory} and {@code model}. The {@code bridge} is an optional test override;
+ * production creates a fresh {@link StreamingBridge} per call and retry.
  * All other fields have sensible defaults.
  *
  * <p><b>WARNING (R-CC-15):</b> {@code toBuilder()} inherits <b>every</b> field of the source request —
@@ -59,7 +60,8 @@ public class ToolLoopRequest {
     private final ConfiguredChatModel chatModel;
 
     @Default
-    private final StreamingBridge bridge = new StreamingBridge();
+    @Nullable
+    private final StreamingBridge bridge = null;
 
     /** R20: the agent-owned turn start time. Default keeps stand-alone calls (tests, voice) working. */
     @Default
@@ -145,7 +147,10 @@ public class ToolLoopRequest {
     
     public ChatResponse call(ChatRequest chatRequest) {
         try {
-            return retry.call(monitor, () -> bridge.call(chatModel.modelFor(getAgentConfig()), chatRequest, monitor, turnStart));
+            return retry.call(monitor, () -> {
+                var b = bridge != null ? bridge : new StreamingBridge(getConfig().getTimeout());
+                return b.call(chatModel.modelFor(getAgentConfig()), chatRequest, monitor, turnStart);
+            });
         } catch (RuntimeException e) {
             // R-AEM-3: a cancel is never an error, and a useful message is never enriched twice.
             if (ExceptionUtil.isCanceled(e) || !hasUselessMessage(e)) throw e;

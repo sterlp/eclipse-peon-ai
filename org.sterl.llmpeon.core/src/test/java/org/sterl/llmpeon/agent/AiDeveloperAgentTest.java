@@ -18,7 +18,8 @@ import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.ContextInput;
+import org.sterl.llmpeon.agent.model.TaggedInput;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.compact.CompactFeedback;
@@ -277,7 +278,7 @@ public class AiDeveloperAgentTest {
     void test_inLoopCompact_systemMessageIsRebuilt() {
         // GIVEN — a ContextItem whose render() returns a version counter (SOLL R-ST4)
         var version = new AtomicInteger(0);
-        subject.setStaticContext(List.of(() -> new TaggedResult("context", "CTX-VERSION-" + version.incrementAndGet())));
+        subject.setStaticContext(List.of(() -> new ContextInput("context", "CTX-VERSION-" + version.incrementAndGet())));
         for (int i = 0; i < 5; i++) {
             subject.addMessage(UserMessage.from("Foo " + i));
             subject.addMessage(AiMessage.from("Bar " + i));
@@ -329,17 +330,17 @@ public class AiDeveloperAgentTest {
                 new SimpleContextItem("We are all doomed!"),
                 new ContextItem() {
                     @Override
-                    public String dedupKey() { return TaggedResult.PREFIX + "context: foo/path/bar.txt"; }
+                    public String dedupKey() { return TaggedInput.PREFIX + "context: foo/path/bar.txt"; }
                     @Override
-                    public TaggedResult render() {
-                        return new TaggedResult("context: foo/path/bar.txt", "some nice file text");
+                    public ContextInput render() {
+                        return new ContextInput("context: foo/path/bar.txt", "some nice file text");
                     }
                 },
                 new ContextItem() {
                     @Override
-                    public String dedupKey() { return TaggedResult.PREFIX + "context: foo/null.txt"; }
+                    public String dedupKey() { return TaggedInput.PREFIX + "context: foo/null.txt"; }
                     @Override
-                    public TaggedResult render() { return null; }
+                    public ContextInput render() { return null; }
                 }
             )
         );
@@ -426,8 +427,8 @@ public class AiDeveloperAgentTest {
         });
         
         // WHEN
-        subject.call(null, null);
-        subject.call(null, null);
+        subject.call((String) null, null);
+        subject.call((String) null, null);
 
         // THEN
         verify(cm, times(2)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));

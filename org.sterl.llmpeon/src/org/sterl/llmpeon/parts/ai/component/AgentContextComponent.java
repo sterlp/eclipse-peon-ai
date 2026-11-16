@@ -10,7 +10,8 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.Platform;
 import org.sterl.llmpeon.agent.AiAgent;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.ContextInput;
+import org.sterl.llmpeon.agent.model.TaggedInput;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.context.AgentsMdContextItem;
 import org.sterl.llmpeon.context.ContextItem;
@@ -235,12 +236,12 @@ public class AgentContextComponent {
             @Override
             public String dedupKey() {
                 if (!visible.exists()) return null;
-                return TaggedResult.PREFIX + "context: plan " + JdtUtil.pathOf(visible);
+                return TaggedInput.PREFIX + "context: plan " + JdtUtil.pathOf(visible);
             }
             @Override
-            public TaggedResult render() {
+            public ContextInput render() {
                 if (!visible.exists()) return null;
-                return new TaggedResult("context: plan " + JdtUtil.pathOf(visible),
+                return new ContextInput("context: plan " + JdtUtil.pathOf(visible),
                         "Existing plan found: " + JdtUtil.pathOf(visible));
             };
         });

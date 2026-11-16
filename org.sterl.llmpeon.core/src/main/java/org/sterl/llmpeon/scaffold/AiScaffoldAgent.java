@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
+import org.sterl.llmpeon.agent.model.UserInput;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.shared.AiMonitor;
@@ -76,12 +77,12 @@ public class AiScaffoldAgent extends org.sterl.llmpeon.agent.AbstractAgent {
     }
 
     @Override
-    public ChatResponse call(String message, AiMonitor monitor) {
+    public ChatResponse call(UserInput input, AiMonitor monitor) {
         var configDir = configuredModel.getConfig().getConfigDir();
         diskFileReadTool.setWorkingDir(configDir);
         diskFileWriteTool.setWorkingDir(configDir);
         diskGrepTool.setWorkingDir(configDir);
-        return super.call(message, monitor);
+        return super.call(input, monitor);
     }
 
     public void addTool(SmartTool toolObject) {

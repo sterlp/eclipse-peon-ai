@@ -11,6 +11,7 @@ import java.util.Base64;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.AbstractMemoryFileTest;
 
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 
 class PictureFileTest extends AbstractMemoryFileTest {
@@ -67,11 +68,14 @@ class PictureFileTest extends AbstractMemoryFileTest {
 
         // WHEN
         var picture = PictureFile.load(disk, "/proj/a.png");
-        var message = PictureMessage.of(picture);
+        var message = PictureFixtures.of(picture);
 
         // THEN
         assertThat(picture.resultText()).contains("/proj/a.png").doesNotContain(diskPath);
-        assertThat(PictureMessage.pathOf(message)).isEqualTo("/proj/a.png");
+        var nl = System.lineSeparator();
+        assertThat(message.contents().getFirst()).isEqualTo(TextContent.from(
+                "//-- Start picture: /proj/a.png" + nl + "added by the picture tool, not typed by the user" + nl
+                + "//-- End picture: /proj/a.png"));
         var placeholder = ChatMessageUtil.toString((UserMessage) message);
         assertThat(placeholder).contains("[picture removed for compact: /proj/a.png]").doesNotContain("unique-7f3a");
     }

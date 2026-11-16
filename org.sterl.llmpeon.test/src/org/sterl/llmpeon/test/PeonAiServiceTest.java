@@ -33,7 +33,7 @@ import org.osgi.service.prefs.BackingStoreException;
 import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.TaggedInput;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.AiReviewAgent;
 import org.sterl.llmpeon.ai.AgentModelConfig;
@@ -1501,7 +1501,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             // AND: no memory snapshot and no file items in the static context
             var forbidden = List.of(memoryText, "docs/memory.md", "docs/index.md");
             var rendered = ctx.stream().map(ContextItem::render).filter(r -> r != null)
-                    .map(TaggedResult::body).toList();
+                    .map(TaggedInput::body).toList();
             forbidden.forEach(f -> assertHasNoMessageWith(rendered, f));
 
             // AND: the slaves get a COPY of Jon's context + exactly one name item (R-N1), leak-free
@@ -1531,7 +1531,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         assertContains(nameItem, "Your name is " + uiName);
         assertContains(nameItem, AiPoAgent.AGENT_MODE);
         var rendered = slaveContext.stream().map(ContextItem::render).filter(r -> r != null)
-                .map(TaggedResult::body).toList();
+                .map(TaggedInput::body).toList();
         forbidden.forEach(f -> assertHasNoMessageWith(rendered, f));
     }
     /**
@@ -2041,7 +2041,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             var devRendered = delegate.getDevSlave().getStaticContext().stream()
                     .map(ContextItem::render)
                     .filter(r -> r != null)
-                    .map(TaggedResult::body)
+                    .map(TaggedInput::body)
                     .toList();
             assertHasMessageWith(devRendered, "workspace files -> eclipse* only; outside workspace -> disk* only."); // Env
             assertHasNoMessageWith(devRendered, memoryText);
@@ -2175,7 +2175,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             svc.getSharedToolService().getTool(WorkspaceMemoryTool.class).orElseThrow().memoryAdd(e2);
             mockLlmServer.queueResponse(AiMessage.aiMessage("compressed again"));
             svc.getActiveAgent().getMemory().add(UserMessage.from("turn after change"));
-            svc.getActiveAgent().call(null, null);
+            svc.getActiveAgent().call((String) null, null);
 
             // THEN: neue Message mit E2 (neuer Hash) AND alte Message mit E1 noch vorhanden
             var memory = svc.getActiveAgent().getMemory().getCopy();

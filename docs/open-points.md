@@ -234,9 +234,9 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 - ❓ **Header: Jon-Context-Größe bleibt „0k estimate" (2026-09-27):** Roster-Refresh ist
   event-getrieben (`AIChatView:336-340` via onTokenUsage) — Turn ohne Provider-Usage feuert nicht.
   SOLL-Frage: Estimate-Pfad zusätzlich in den Roster-Refresh?
-- ⏳ **StreamingBridge/ApiRetry geteilt über toBuilder (2026-09-27, ADR-0058):** parallele
-  Nested-Calls würden um latch/responseRef racen; heute keinen, Revisit mit
-  async-agent-tools-proposal.md.
+- ⏳ **ApiRetry geteilt über toBuilder (2026-09-27, ADR-0058):** parallele Nested-Calls würden um
+  das Retry-Guthaben racen; heute keinen, Revisit mit async-agent-tools-proposal.md. Die
+  `StreamingBridge` ist seit R-AEM-4 je Aufruf frisch (2026-11-15).
 
 ## Tagged Results — Nachträge (Zyklus 2026-10-18)
 

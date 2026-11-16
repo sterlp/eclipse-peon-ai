@@ -12,7 +12,7 @@ import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.Picture;
-import org.sterl.llmpeon.shared.PictureMessage;
+import org.sterl.llmpeon.shared.PictureFixtures;
 import org.sterl.llmpeon.tool.ToolService;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -37,7 +37,7 @@ class PictureCompactTest {
         var agent = new AiDevAgent(new ConfiguredChatModel(LlmConfig.builder().model("mock").build(), cm), new ToolService());
         agent.addMessage(UserMessage.from("look at the login"));
         agent.addMessage(AiMessage.from("ok"));
-        agent.addMessage(PictureMessage.of(new Picture(PATH, "image/png", BASE64, 16)));
+        agent.addMessage(PictureFixtures.of(new Picture(PATH, "image/png", BASE64, 16)));
 
         // WHEN
         var result = agent.compact(AiMonitor.NULL_MONITOR);
@@ -56,7 +56,7 @@ class PictureCompactTest {
     // UC-RP-5
     @Test
     void estimateCountsAPictureAs1600Tokens() {
-        var picture = PictureMessage.of(new Picture(PATH, "image/png", BASE64, 16));
+        var picture = PictureFixtures.of(new Picture(PATH, "image/png", BASE64, 16));
 
         assertThat(ChatMessageUtil.estimateTokens(List.<ChatMessage>of(picture))).isGreaterThanOrEqualTo(1600);
     }

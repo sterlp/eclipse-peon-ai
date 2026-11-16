@@ -12,7 +12,7 @@ import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 import org.junit.Test;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.TaggedInput;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.tools.AskUserTool;
 import org.sterl.llmpeon.poagent.AiPoAgent;
@@ -40,9 +40,9 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
  */
 public class AskUserToolQueuedMessagesTest extends AbstractUnitTest {
 
-    private static final String LN = TaggedResult.LN;
-    private static final String HEAD = TaggedResult.PREFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE;
-    private static final String FOOT = TaggedResult.SUFFIX + TaggedResult.TAG_QUEUED_USER_MESSAGE;
+    private static final String LN = TaggedInput.LN;
+    private static final String HEAD = TaggedInput.PREFIX + TaggedInput.TAG_QUEUED_USER_MESSAGE;
+    private static final String FOOT = TaggedInput.SUFFIX + TaggedInput.TAG_QUEUED_USER_MESSAGE;
 
     private final List<String> toolLines = new ArrayList<>();
     private final AiMonitor monitor = new AiMonitor() {

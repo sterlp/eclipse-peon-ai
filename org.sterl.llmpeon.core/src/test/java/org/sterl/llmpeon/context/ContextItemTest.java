@@ -8,7 +8,8 @@ import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.ContextInput;
+import org.sterl.llmpeon.agent.model.TaggedInput;
 
 class ContextItemTest {
 
@@ -67,7 +68,7 @@ class ContextItemTest {
 
         DiskFileContextItem item = new DiskFileContextItem(file);
 
-        assertThat(item.dedupKey()).isEqualTo(TaggedResult.PREFIX + "context: " + item.label());
+        assertThat(item.dedupKey()).isEqualTo(TaggedInput.PREFIX + "context: " + item.label());
     }
 
     @Test
@@ -79,14 +80,14 @@ class ContextItemTest {
 
     @Test
     void label_defaultReturnsNull() {
-        ContextItem item = () -> new TaggedResult("context", "content");
+        ContextItem item = () -> new ContextInput("context", "content");
         assertThat(item.label()).isNull();
     }
 
     @Test
     void label_overrideReturnsCustomValue() {
         ContextItem item = new ContextItem() {
-            @Override public TaggedResult render() { return new TaggedResult("context", "content"); }
+            @Override public ContextInput render() { return new ContextInput("context", "content"); }
             @Override public String label() { return "my-label"; }
         };
         assertThat(item.label()).isEqualTo("my-label");

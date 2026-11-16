@@ -112,7 +112,7 @@ Pro Aufruf wird der Block als **eigene Static Message** mit `//-- Start last-sea
 in den Sub-Loop gegeben — der Sub-Loop hat keine ContextItem-Mechanik (`agent(null)`, frisches
 Memory, R3). **Leerer Block → keine Injektion** (exakt das bisherige Verhalten, keine Regression).
 `search-agent.md` erklärt den Block in einer Zeile, damit das getaggte Format beim
-Suchmodell nicht unerklärt bleibt (Sub-Loops sehen kein TaggedResult-INFO).
+Suchmodell nicht unerklärt bleibt (Sub-Loops sehen kein TaggedInput-INFO).
 
 #### UC-LSR-5 — subLoopSeesRollingBlockAsStaticMessage ✅
 - GIVEN Hot-Block nicht leer WHEN `searchAgent` läuft THEN die System Messages enthalten den

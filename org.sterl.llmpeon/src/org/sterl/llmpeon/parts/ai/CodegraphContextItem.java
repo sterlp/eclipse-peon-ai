@@ -3,7 +3,8 @@ package org.sterl.llmpeon.parts.ai;
 import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.ContextInput;
+import org.sterl.llmpeon.agent.model.TaggedInput;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 
@@ -62,7 +63,7 @@ public class CodegraphContextItem implements ContextItem {
     public String dedupKey() {
         var s = state.get();
         if (s == null || s.kind() != CodegraphConnectionService.Kind.CONNECTED) return null;
-        return TaggedResult.PREFIX + head(s);
+        return TaggedInput.PREFIX + head(s);
     }
 
     /**
@@ -72,10 +73,10 @@ public class CodegraphContextItem implements ContextItem {
      */
     @Override
     @Nullable
-    public TaggedResult render() {
+    public ContextInput render() {
         var s = state.get();
         if (s == null || s.kind() != CodegraphConnectionService.Kind.CONNECTED) return null;
-        return new TaggedResult(head(s), renderBody(s));
+        return new ContextInput(head(s), renderBody(s));
     }
 
     /** Block head ({@code codegraph: <project> <instrMark>}); the mark is length + hash of the instructions. */

@@ -6,7 +6,8 @@ import java.util.function.Supplier;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.jspecify.annotations.Nullable;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.ContextInput;
+import org.sterl.llmpeon.agent.model.TaggedInput;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.FileLines;
@@ -40,15 +41,15 @@ public class EclipseFileContextItem implements ContextItem {
     public String dedupKey() {
         String key = label();
         if (key == null) return null;
-        return TaggedResult.PREFIX + "context: " + key;
+        return TaggedInput.PREFIX + "context: " + key;
     }
 
     @Override
     @Nullable
-    public TaggedResult render() {
+    public ContextInput render() {
         var file = exists();
         if (file == null) return null;
-        return new TaggedResult("context: " + JdtUtil.pathOf(file), FileLines.format(IoUtils.readString(file), 1));
+        return new ContextInput("context: " + JdtUtil.pathOf(file), FileLines.format(IoUtils.readString(file), 1));
     }
 
     @Nullable

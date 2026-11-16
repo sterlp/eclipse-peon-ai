@@ -98,7 +98,7 @@ class AbstractAgentPreTurnCompactTest {
         agent.queueMessage("queued follow-up");
 
         // WHEN — the queued message runs as its own turn (null initial)
-        agent.call(null, monitor);
+        agent.call((String) null, monitor);
 
         // THEN — the same pre-turn check fired (the compressor ran once) …
         assertThat(compactCalls.get()).isEqualTo(1);

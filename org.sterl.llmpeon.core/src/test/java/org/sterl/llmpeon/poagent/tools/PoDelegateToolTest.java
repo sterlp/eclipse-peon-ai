@@ -292,7 +292,7 @@ class PoDelegateToolTest {
         when(slave.getName()).thenReturn("Peon-Dev");
         when(slave.getMemory()).thenReturn(memory);
         when(slave.tokenContextUsedInPercent()).thenReturn(0);
-        when(slave.call(any(), any())).thenReturn(ChatResponse.builder()
+        when(slave.call((String) any(), any())).thenReturn(ChatResponse.builder()
                 .aiMessage(AiMessage.from("SLAVE REPLY")).build());
         doAnswer(inv -> {
             compactCalls.incrementAndGet();

@@ -7,7 +7,8 @@ import java.nio.file.Path;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.ContextInput;
+import org.sterl.llmpeon.agent.model.TaggedInput;
 
 @RequiredArgsConstructor
 @EqualsAndHashCode(of = "path")
@@ -17,10 +18,10 @@ public class DiskFileContextItem implements ContextItem {
     private final Path path;
 
     @Override
-    public TaggedResult render() {
+    public ContextInput render() {
         try {
             if (Files.isRegularFile(path)) {
-                return new TaggedResult(head(), Files.readString(path));
+                return new ContextInput(head(), Files.readString(path));
             } else {
                 log.debug("Context file not present, skipping: {}", path);
                 return null;
@@ -33,7 +34,7 @@ public class DiskFileContextItem implements ContextItem {
 
     @Override
     public String dedupKey() {
-        return TaggedResult.PREFIX + head();
+        return TaggedInput.PREFIX + head();
     }
 
     @Override

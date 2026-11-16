@@ -25,6 +25,7 @@ import org.sterl.llmpeon.agent.AgentModelSelection;
 import org.sterl.llmpeon.agent.AgentModelSelection.Target;
 import org.sterl.llmpeon.ai.ModelListCache;
 import org.sterl.llmpeon.parts.config.widgets.ModelComboWidget;
+import org.sterl.llmpeon.parts.widget.ActionsBarWidget;
 import org.sterl.llmpeon.parts.widget.ChatModelComboWidget;
 
 /**
@@ -308,7 +309,7 @@ public class ChatModelComboWidgetTest extends AbstractSwtUiTest {
     private BuiltWidget newWidget(String model, List<String> committed) {
         var parent = new Composite(shell, SWT.NONE);
         parent.setLayout(new RowLayout(SWT.HORIZONTAL));
-        var widget = new ChatModelComboWidget(parent,
+        var widget = new ChatModelComboWidget(parent, ActionsBarWidget.COMBO_WIDTH,
                 () -> ModelComboWidget.baseSnapshot(mockLlmServer.newConfig(model)), committed::add);
         widget.setModel(model); // like AIChatView.applyConfig
         return new BuiltWidget(parent, widget);

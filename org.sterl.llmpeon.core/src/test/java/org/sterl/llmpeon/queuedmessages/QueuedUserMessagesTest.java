@@ -8,7 +8,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
-import org.sterl.llmpeon.agent.model.TaggedResult;
+import org.sterl.llmpeon.agent.model.TaggedInput;
 
 /**
  * Rule 9 Queued-At Disclosure: the payload marker and the disclosure line of one entry carry the
@@ -75,10 +75,10 @@ class QueuedUserMessagesTest {
 
         // THEN - one block, both lines inside, start and end line carry the same head (R-TR-1)
         assertThat(block.toString()).isEqualTo(
-                TaggedResult.PREFIX + "queued_user_message" + TaggedResult.LN
-                        + "(queued 14:32): u1" + TaggedResult.LN
-                        + "(queued 14:32): u2" + TaggedResult.LN
-                        + TaggedResult.SUFFIX + "queued_user_message");
+                TaggedInput.PREFIX + "queued_user_message" + TaggedInput.LN
+                        + "(queued 14:32): u1" + TaggedInput.LN
+                        + "(queued 14:32): u2" + TaggedInput.LN
+                        + TaggedInput.SUFFIX + "queued_user_message");
     }
 
     /** An empty lane must leave a tool result untouched — never an empty block. */

@@ -27,6 +27,6 @@ public final class DocsIdTool extends AbstractTool {
             @P(required = false, name = "docRoots") List<String> docRoots,
             @P(required = false, name = "prefix") String prefix) {
 
-        return core.nextIds(root, docRoots, prefix);
+        return core.nextIds(root, docRoots, prefix, monitor);
     }
 }

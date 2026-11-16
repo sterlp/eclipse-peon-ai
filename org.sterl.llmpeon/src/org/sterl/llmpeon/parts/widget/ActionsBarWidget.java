@@ -21,12 +21,15 @@ import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
- * Action bar below the user input. RowLayout (wrapping) with agent selector, model selector of
- * the active agent (R-ML5), Clear, and conditional controls.
+ * Action bar below the user input: RowLayout (wrapping) with agent selector, model selector,
+ * Clear, and conditional controls. Model selection delegates to {@link ChatModelComboWidget}
+ * (see {@code docs/model-loading.md} R-ML5).
  */
 public class ActionsBarWidget extends Composite {
 
-    private Button btnClear;
+    public static final int COMBO_WIDTH = 120;
+
+    private final Button btnClear;
     private Button btnImplement;
     private final Button btnCompact;
     private final Button btnSync;
@@ -34,9 +37,8 @@ public class ActionsBarWidget extends Composite {
     private final ChatModelComboWidget modelCombo;
 
     private volatile boolean working = false;
-    /** R-ML5: false for agents without an own model (e.g. Scaffold) — the selector stays disabled. */
     private boolean modelSelectable = true;
-    private List<AiAgent> agents = new ArrayList<>();
+    private final List<AiAgent> agents = new ArrayList<>();
     
     private final Color colorWarning;
     private final Color colorError;
@@ -73,16 +75,15 @@ public class ActionsBarWidget extends Composite {
         setLayout(rowLayout);
 
         buildAgentCombo(onAgentChange);
-        modelCombo = new ChatModelComboWidget(this, modelSnapshot, onModelChange);
+        modelCombo = new ChatModelComboWidget(this, COMBO_WIDTH, modelSnapshot, onModelChange);
 
         btnCompact = new Button(this, SWT.PUSH);
         buildCompact(onCompress);
         
         btnSync = new Button(this, SWT.PUSH);
-        buildBtnCync(onReload);
+        buildBtnSync(onReload);
 
         btnClear = new Button(this, SWT.PUSH);
-        //btnClear.setText("Clear");
         btnClear.setImage(ImageUtil.loadImage(this, ImageUtil.CLEAR));
         btnClear.setToolTipText("Clear conversation context");
         btnClear.addListener(SWT.Selection, e -> onClear.run());
@@ -107,22 +108,22 @@ public class ActionsBarWidget extends Composite {
         btnImplement.addListener(SWT.Selection, e -> onImplement.run());
     }
     
-    private void buildBtnCync(Runnable onReload) {
+    private void buildBtnSync(Runnable onReload) {
         btnSync.setImage(ImageUtil.loadImage(this, ImageUtil.Icon.REFRESH));
         btnSync.setToolTipText("Reload chat");
         btnSync.addListener(SWT.Selection, e -> onReload.run());
     }
 
-    private void buildAgentCombo(Consumer<AiAgent> onModeChange) {
+    private void buildAgentCombo(Consumer<AiAgent> onAgentChange) {
         agentCombo = new Combo(this, SWT.READ_ONLY);
-        agentCombo.setLayoutData(new RowData(120, SWT.DEFAULT));
+        agentCombo.setLayoutData(new RowData(COMBO_WIDTH, SWT.DEFAULT));
         rebuildAgentItems();
         agentCombo.select(0);
         agentCombo.setToolTipText("Select an Agent");
         agentCombo.addListener(SWT.Selection, e -> {
             var agent = this.agents.get(agentCombo.getSelectionIndex());
-            onModeChange.accept(agent);
-            applyImplAutonomousVisibility(agent.handoverTo());
+            onAgentChange.accept(agent);
+            updateHandoffVisibility(agent.handoverTo());
         });
     }
 
@@ -167,19 +168,16 @@ public class ActionsBarWidget extends Composite {
         agentCombo.select(restore);
     }
 
-    /** R-ML5: shows the model selection of the active agent (model, tooltip, selectable). */
     public void showModel(AgentModelSelection selection) {
         modelCombo.show(selection);
         modelSelectable = selection.selectable();
         modelCombo.setEnabled(!working && modelSelectable);
     }
 
-    /** R-ML5 BDD 10: saves a typed, not yet committed model for the current agent — before an agent switch. */
     public void commitPendingModel() {
         modelCombo.commitPending();
     }
 
-    /** Fetches the model list of the active agent's connection (view open, agent switch). Cached per identity. */
     public void fetchModels() {
         modelCombo.fetchModels();
     }
@@ -202,22 +200,22 @@ public class ActionsBarWidget extends Composite {
     public void updateModeUI(AiAgent agent) {
         var index= this.agents.indexOf(agent);
         agentCombo.select(index);
-        applyImplAutonomousVisibility(agent.handoverTo());
+        updateHandoffVisibility(agent.handoverTo());
     }
 
-    private void applyImplAutonomousVisibility(String handOver) {
-        boolean hashandOver = handOver != null;
-        if (hashandOver) {
-            btnImplement.setText("Handoff → " + handOver);
-            btnImplement.setToolTipText("Handover the plan or last AI message to " + handOver);
+    private void updateHandoffVisibility(String handoffTarget) {
+        boolean hasHandoffTarget = handoffTarget != null;
+        if (hasHandoffTarget) {
+            btnImplement.setText("Handoff → " + handoffTarget);
+            btnImplement.setToolTipText("Handover the plan or last AI message to " + handoffTarget);
             btnImplement.setEnabled(true);
         } else {
             btnImplement.setEnabled(false);
         }
 
-        if (btnImplement.getVisible() != hashandOver) {
-            ((RowData) btnImplement.getLayoutData()).exclude = !hashandOver;
-            btnImplement.setVisible(hashandOver);
+        if (btnImplement.getVisible() != hasHandoffTarget) {
+            ((RowData) btnImplement.getLayoutData()).exclude = !hasHandoffTarget;
+            btnImplement.setVisible(hasHandoffTarget);
             layout(true, true);
             getParent().layout(new Control[]{this});
         }
