@@ -1,6 +1,6 @@
 ---
 name: eclipse-preferences
-description: Eclipse JFace preference-page patterns — live widget reads instead of store reads, coupled fields (provider → think form), one key = one page for multi-page dialogs, and the parts/config/widgets overview.
+description: Eclipse widget-state patterns for JFace preference pages AND chat widgets — live widget reads instead of store reads, coupled fields (provider → think form), one key = one page for multi-page dialogs, deferred-commit controls (flush pending input before every programmatic refresh), and the parts/config/widgets overview.
 ---
 
 # Preference pages — read widget state, not the store (verified 2026-09-28, model-config-widget cycle)
@@ -88,3 +88,24 @@ Reference tests: `org.sterl.llmpeon.test` — `ModelConfigWidgetTest` (live read
 - **Rule: one key = one editor/page (single owner, ADR-0063).** If the same configuration must be visible
   on multiple pages, exactly one page writes the shared keys — the others are display-only or write nothing
   (performOk = slot loop only). Proof test: `AiAdvancedPreferenceViewTest.performOkWritesOnlySlotKeys`.
+
+## 6. Deferred-commit widgets — flush before every programmatic refresh (verified 2026-11-20, model-select #173 revert + #179 review)
+
+Applies beyond preference pages: any control that commits typed input only on focus-out/selection
+(editable combo, text field) **and** is refreshed by another code path (`show()`, `setItems()`, a
+page's `load(values)`, `refreshModelSelector()`). Same failure class as §1 — the widget owns the
+state, and a path that bypasses it loses it.
+
+- **Which paths must flush is a SOLL decision; where they flush is not.** Once the feature doc says
+  input must survive a refresh, the flush (`commitPending()` — save-if-dirty, then re-read) belongs
+  in the **refresh entry point itself**, not in one convenient caller: a flush at the agent-change
+  site leaves config-apply, Reload, Handoff and submit overwriting what the user just typed.
+- **Doc duty:** the feature doc enumerates **all** refresh paths *and* the send/submit path, and says
+  per path whether it flushes — a path nobody listed is silent data loss the moment someone adds a
+  caller. The chat model combo lists its refresh paths in
+  `org.sterl.llmpeon/docs/model-loading.md` but not the per-path flush decision — exactly the gap
+  this section is about.
+- **Validation test:** type text → trigger **each** refresh path → assert the typed value was
+  committed before the list was replaced. One test per path; a test for the flush alone
+  (`ChatModelComboWidgetTest.commitPendingFlushesTypedTextOnce`) says nothing about its callers.
+

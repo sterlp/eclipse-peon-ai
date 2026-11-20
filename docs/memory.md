@@ -1,41 +1,38 @@
 # Open Ends / Memory — Session-Zwischenstand
 
 > Zwischenstand, kein Protokoll: Erledigtes fliegt raus.
-> Arbeit läuft auf **main** (Stand 2026-11-16); Paul committet/released selbst.
->
-> **#173 Model-Select (main `5dc254dd`, Autor Demmtop):** SOLL-Ersatz für R-ML5 mit Paul geklärt
-> (Combo folgt aktivem Agenten) → `peon-plan/ticket-173-chat-model-select-soll.md` als
-> Ticket-Anhang für den Autor. Offen: Revert auf main ja/nein · R-ML5 in `model-loading.md`
-> nachziehen, sobald #173 im Branch ist (heute nicht im Workspace).
-> Lokal ungepusht (Push 403, Git-Account `PaulNetze`): Merge main `7c270466` + Skill-Sync-Commits.
-> Paul überträgt per `peon-plan/web-factory-4-skill-sync.patch` auf den anderen Rechner
-> (dort erst `git merge origin/main`, dann `git am`).
+> Arbeit läuft auf **main** (== `origin/main`, `9c872afe`); Paul committet und released selbst.
 
-## Stand 2026-11-16
+## Stand 2026-11-20
 
 - Kein laufender Zyklus. R-SEL-6, R-PT-3, R-RT-1 ✅ — Release durch Paul.
-- ⏳-Sweep 2026-11-16 erledigt: einziger ⏳ = Codegraph-Windows-Fallback (Paul testet bei
-  Windows-Lauf); technische Notizen auf ❓ Backlog. Uncommittet (Paul): compressor.md,
-  AGENTS-JON.md, Ork-Rename in docs/**, Homepage index.md + setup/agents.md.
+- Working Tree (Jon, uncommittet): `.agents/skills/eclipse-preferences/SKILL.md` (neu §6
+  „Deferred-commit widgets — flush before every programmatic refresh") + `wiki/skill-impact.md`
+  (Ledger-Zeile).
 - **AI Factory lebt im eigenen Projekt `/aifactory-parent`** — `llmpeon-parent/aifactory/` = Reste.
 
-## Bekannte Lint-Altlasten (Bestand, nicht R-RT-1)
+## Offen für Paul (je eine Frage / Bestätigung)
 
-- Voll-Lint: ~260 `VERWAIST` R-*-Marker (Linter kennt R-Definitionen nicht → open-points ❓
-  „R-*-Regeln haben kein Linter-Gate"), `DOPPELT_DEFINIERT`/`PRAEFIX_*` in tool-confirmation,
-  default-inheritance/model-config-widget, compact-architektur; `UNBELEGT` UC-BAP-1…5, UC-CT-3/5;
-  `UC_OHNE_REGEL` UC-WPV-1/2. Kandidat für einen Lint-Aufräumzyklus.
+1. ❓ **Flush der offenen Modell-Combo-Eingabe:** nur vor dem Agentenwechsel (heutiges SOLL und
+   Code, ein Aufrufer `AIChatView.java:502`) oder vor **jedem** `refreshModelSelector()`
+   (`442/483/505/538/545` = Config-Apply, Reload, Handoff)? Jon-Empfehlung: jeder Pfad → dann
+   `R-ML5` in `model-loading.md` je Pfad präzisieren und einen Test je Pfad.
+2. ❓ Altbestand Reparatur-Zyklus: Edit-Tool-Falle (upstream melden?), manuelle Nachweise.
+3. ❓ Status-Bug „waiting for AI... verschwindet bei File-Read" → open-points.md, erst messen.
 
 ## Beobachtete Tool-Probleme
+
 - Ungeklärt (nicht gefixt): Insert-Meldung „newContent required" am Dateiende und ReplaceLines
   „fügt ein" — erst messen.
 - PDE-Einzellauf `EclipseWorkspaceWriteFileToolTest` lief einmal in 5-min-Timeout (nach mehreren
   PDE-Läufen), danach grün — erst bei Wiederholung untersuchen.
 
-## Offen für Paul (je eine Frage / Bestätigung)
+## Bekannte Lint-Altlasten (Bestand)
 
-1. ❓ Altbestand Reparatur-Zyklus: Edit-Tool-Falle (upstream melden?), manuelle Nachweise.
-2. ❓ Status-Bug „waiting for AI... verschwindet bei File-Read" → open-points.md, erst messen.
+- Voll-Lint: ~260 `VERWAIST` R-*-Marker (Linter kennt R-Definitionen nicht → open-points ❓
+  „R-*-Regeln haben kein Linter-Gate"), `DOPPELT_DEFINIERT`/`PRAEFIX_*` in tool-confirmation,
+  default-inheritance/model-config-widget, compact-architektur; `UNBELEGT` UC-BAP-1…5, UC-CT-3/5;
+  `UC_OHNE_REGEL` UC-WPV-1/2. Kandidat für einen Lint-Aufräumzyklus.
 
 ## Backlog (nicht gestartet)
 
@@ -53,11 +50,12 @@
 
 ## Notizen
 
-- Agentennamen: Jon (PO), Plan, Dev, Review — Ork-Namen nur noch als Synonym im Glossar.
-- System-Prompts generisch; Übersicht `core/docs/system-prompts.md`.
-- Commit: EXPLIZITE Pfadliste; Pauls WIP nie (`AGENTS*.md` Root, `peon-plan/**`, `README.md`,
-  `ai-e2e-test/**`, `bugs/**`, `homepage/**` nur auf Ansage).
-- Lint: `docRoots`/`testRoots` weglassen = Auto-Discovery; `findings:`-Zeile melden; `idPattern`
-  **mit** `[a-z]?`; Überschriften in Notiz-Docs nie mit einer Regel-ID beginnen.
-- JUnit `@Timeout`-Falle: Daemon-Probe-Muster statt `@Timeout`.
-- Eclipse-Plugin-Tests: `eclipseBuildProject` vor JUnit-Lauf; nach core-Änderung Reactor-Route A.
+- Commit: EXPLIZITE Pfadliste; Pauls WIP nie (`AGENTS*.md` Root, `README.md`, `ai-e2e-test/**`,
+  `bugs/**`, `homepage/**` nur auf Ansage); `peon-plan/**` ist ungepinnt und wird bewusst leer
+  gehalten.
+- Lint-Konvention: `docRoots`/`testRoots` weglassen = Auto-Discovery; echte `findings:`-Zeile
+  melden; `idPattern` UC-only **mit** `[a-z]?`; Überschriften in Notiz-Docs nie mit einer Regel-ID.
+- Agentennamen Jon (PO) · Plan · Dev · Review — Ork-Namen nur Synonym im Glossar; Übersicht der
+  System-Prompts `core/docs/system-prompts.md`, Prompt-Edits macht Jon selbst.
+- Build/Test- und SWT-Fallen stehen in den Skills (`peon-build-test`, `eclipse-dpe`,
+  `eclipse-preferences`), nicht hier.
