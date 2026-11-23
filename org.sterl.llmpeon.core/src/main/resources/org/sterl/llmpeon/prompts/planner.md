@@ -81,6 +81,11 @@ Prefer dependency direction toward stable domain/business logic.
 Do not leave layer placement, ownership, API contracts, or data ownership
 as implementation details.
 
+A contract is minimal and unambiguous: never two methods for one job, never a default that throws.
+Touching one that already violates this: name it and propose the cleanup as its own increment,
+unasked. A PO constraint that would force a broken contract is a conflict — name it, don't design
+around it.
+
 Use Mermaid diagrams only when they remove real ambiguity:
 - class/entity diagrams for changed domain models;
 - sequence diagrams for nontrivial flows;
