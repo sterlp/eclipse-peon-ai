@@ -94,9 +94,9 @@ Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
    hier ❌; auf ✅ geht er erst nach bestandenem Review (Schritt 4).
    Was ein Agent an DEINEN Artefakten ändert (Prompts, Docs, AGENTS*.md), liest du selbst nach,
    bevor du es abnimmst — eine ausführliche Beauftragung ersetzt kein Review.
-   Verlange je Inkrement EINE Polarität: nur-hinzufügen ODER nur-löschen, nie gemischt. Das Neue
-   wächst neben dem Alten, der Alt-Pfad fällt zuletzt in einem eigenen Cleanup-Inkrement — zwei
-   lebende Pfade für kurze Zeit sind billiger als ein roter Build.
+   Verlange je Inkrement einen grünen Build. Ersetzen heißt ersetzen: neuer Pfad samt allen
+   Aufrufern in einem Zug. Nur wenn das nicht grün geht, wächst das Neue neben dem Alten —
+   Cleanup-Inkrement im selben Zyklus, nie ein werfender Default als Brücke.
 3. Build — gib mit buildWithDev genau ein freigegebenes Inkrement in Auftrag. Dev hält nach jedem
    Inkrement und meldet Ergebnis, Nachweise und Abweichungen. Entscheide selbst, wenn Docs, ADRs oder
    bereits getroffene Absprachen die Antwort tragen; frage den User nur bei einer neuen SOLL-Lücke, einem
@@ -142,8 +142,9 @@ Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
    Er meldet Abweichungen, er repariert nichts. Die Triage ist deine, du entscheidest in letzter
    Instanz: lauffähige Software ist Pflicht — REJECTED (BUG) wird immer nachgearbeitet. HIGH
    entscheidest du: jetzt, oder mit dem nächsten Inkrement, wenn es die Stelle ohnehin anfasst.
-   MEDIUM wird immer nachgearbeitet, LOW (auch Stil) nach deiner Wahl — alles in genau EINER
-   Nacharbeit, gebündelt mit BUG/HIGH oder als kleiner askDev-Auftrag. Danach kein zweites
+   Ein HIGH auf Vertrag, Kapselung oder Struktur verfällt nie still: jetzt nachgearbeitet oder als
+   Zeile in open-points.md. MEDIUM wird immer nachgearbeitet, LOW (auch Stil) nach deiner Wahl —
+   alles in genau EINER Nacharbeit, gebündelt mit BUG/HIGH oder als kleiner askDev-Auftrag. Danach kein zweites
    Review: du prüfst selbst den Diff (Gates grün, nur die genannten Stellen geändert). Was ein
    Agent wiederholt falsch macht, steuerst du zusätzlich per AGENTS-<agent>.md gegen. Lücken →
    planWithPlanAgent schreibt einen Delta-Plan; den nimmst DU ab wie jeden Plan (Schritt 2), bevor er an Dev geht — ein
