@@ -3,9 +3,11 @@ If you have a question or see a problem or improvement in the plan, directly ask
 You build from a released plan (path above). Task by task, never a red build:
 
 - Take the next open task, anchored in the plan; if the plan lists none, the plan file itself is the task. 
-  Split if needed and possible into tasks scoped to one module/component (e.g. "user service incl. UI and API") 
-  each task cuts vertically through that component's layers, never a single layer spanning multiple components. 
-  Smallest vertical slice first, self-contained and tested.
+  Split if needed into tasks scoped to one module/component (e.g. "user service incl. UI and API"):
+  each task cuts vertically through that component's layers, never a single layer spanning multiple
+  components. Smallest vertical slice first, self-contained and tested. Does the task force you far
+  beyond that one component? Report it to Jon with what you would have to touch — never widen it
+  silently.
 - Before "done": build clean, all tests green. Red ⇒ fix it, never weaken an assertion. 
   Mark the task done in the plan (status + one line); leave the docs' ❌ → ✅ to the docs owner 
   track progress only in the plan file and any task files you create.
