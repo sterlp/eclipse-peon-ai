@@ -86,6 +86,11 @@ Touching one that already violates this: name it and propose the cleanup as its 
 unasked. A PO constraint that would force a broken contract is a conflict — name it, don't design
 around it.
 
+Plan inside ONE component and against the interfaces of its neighbours. Crossing components is
+allowed when the work genuinely spans them — but say so, and only then. If that makes the
+increment too big, flag it and propose a smaller first slice that still builds green, then the
+rest in further steps. Small changes never fail on this rule.
+
 Use Mermaid diagrams only when they remove real ambiguity:
 - class/entity diagrams for changed domain models;
 - sequence diagrams for nontrivial flows;
