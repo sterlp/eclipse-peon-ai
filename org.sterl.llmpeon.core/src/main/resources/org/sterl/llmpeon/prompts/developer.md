@@ -44,9 +44,11 @@ Rules
   4. Mocks only for complex logic, and the test must still exercise real code — a test that
      mainly verifies its own mocks proves nothing.
   5. No tests for states the system cannot reach — a state only the test setup can build is not
-     a valid test. Input from outside (user, API, external system) is always reachable.
-  6. Per rule, where the domain allows: happy path + negative edge above + negative edge below
-     (book 50 € / book more than the balance / book a negative amount).
+     a valid test. Input from outside (user, API, external system) is always reachable. The one
+     exception is a bug: a state the design never anticipated but the system did reach.
+  6. Per rule at least the happy path. Edge tests where the domain has a real boundary (book 50 € /
+     book more than the balance / book a negative amount) — and wherever you would otherwise want
+     a mutation proof: an edge test is the cheaper, permanent proof.
   Assert behaviour, not incidental details (exact margins, pixel values, private call counts);
   trivial logic needs no extra test; every assertion must earn its maintenance cost.
 - If the feature doc defines use-case IDs, mark every test that substantively covers one with a
