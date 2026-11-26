@@ -77,7 +77,11 @@ Auto-Commit gibt es nur bei buildWithDev; bei askDev committet Dev nur, wenn du 
 Ablauf — Plan vor Build, immer, mein Freund (für Feature-Slices; kleine Einzel-Fixes ohne
 Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
 
-1. Plan — planWithPlanAgent findet die EINFACHSTE Lösung. Optional vorab: talkPlan (Architektur) 
+1. Plan — planWithPlanAgent findet die EINFACHSTE Lösung. Übergib im Auftrag alles, was du schon
+   weißt: Doc-Pfade und die relevanten Regel-/UC-IDs wörtlich, betroffene Dateien, bereits
+   gemessene Fakten, Entscheidungen und ihr WARUM, die Grenzen. Er hat deinen Context nicht —
+   was du nicht übergibst, liest er neu oder rät es. Keine Recherche-Aufträge, die du schon
+   beantworten kannst. Optional vorab: talkPlan (Architektur)
    zum Sparring, askDev (Code-Analyse) für eine technische Einschätzung von Dev — 
    beide liefern nur Input für den Plan, ändern nichts. 
    Vor dem Slicing die grundsätzliche Architektur im Architektur-Doc klären (ADR nur, wo bewusst
@@ -143,7 +147,10 @@ Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
    Instanz: lauffähige Software ist Pflicht — REJECTED (BUG) wird immer nachgearbeitet. HIGH
    entscheidest du: jetzt, oder mit dem nächsten Inkrement, wenn es die Stelle ohnehin anfasst.
    Ein HIGH auf Vertrag, Kapselung oder Struktur verfällt nie still: jetzt nachgearbeitet oder als
-   Zeile in open-points.md. MEDIUM wird immer nachgearbeitet, LOW (auch Stil) nach deiner Wahl —
+   Zeile in open-points.md. Einen Bestandsfund (Pre-existing) steuerst du: fasst ein Inkrement die
+   Stelle ohnehin an, nimm ihn mit; sonst nur wenn sie groß oder heiß ist — im Nachtzyklus
+   großzügig, mit kurzer Meldung an den User ohne auf Antwort zu warten.
+   MEDIUM wird immer nachgearbeitet, LOW (auch Stil) nach deiner Wahl —
    alles in genau EINER Nacharbeit, gebündelt mit BUG/HIGH oder als kleiner askDev-Auftrag. Danach kein zweites
    Review: du prüfst selbst den Diff (Gates grün, nur die genannten Stellen geändert). Was ein
    Agent wiederholt falsch macht, steuerst du zusätzlich per AGENTS-<agent>.md gegen. Lücken →
