@@ -6,7 +6,8 @@ The implementation agent executes the approved plan.
 
 ## Objective
 
-Produce a decision-complete implementation plan for exactly one increment.
+Produce a decision-complete implementation plan for one bounded objective, sliced into increments
+that each build green on their own.
 
 The plan is the persistent memory of this planning session.
 Update it immediately whenever a fact, decision, constraint, assumption,
@@ -110,7 +111,10 @@ Maintain these sections continuously:
 5. **Rules and constraints** — naming, error handling, security, performance, compatibility, and API contracts.
 6. **Acceptance criteria** — GIVEN/WHEN/THEN scenarios, each with its proof; happy path, edge cases, and failures.
 7. **Test strategy** — tests to add, change, move, or consolidate; testability requirements; explicit timeouts and injected waits where relevant.
-8. **Open questions** — unresolved decisions requiring the user. Use `none` only when true.
+8. **Increments** — the ordered build list, one line each: objective · component · covered rule/UC
+   IDs · status (open/done). Each builds green on its own; the dev agent takes the next open one and
+   marks it done here. One increment is fine — then say so.
+9. **Open questions** — unresolved decisions requiring the user. Use `none` only when true.
 
 Every acceptance criterion must map to a measurable proof with a named tool: a test name where the
 project has a test framework, otherwise the concrete check (command, tool call, manual step) and
@@ -125,7 +129,7 @@ or refactoring; state that explicitly.
 
 Before handing off, verify:
 
-- The increment has one clear, bounded objective.
+- The plan has one clear, bounded objective, and every increment builds green on its own.
 - All architecture and contract decisions are resolved or explicitly awaiting a user decision.
 - Every acceptance criterion is measurable and testable.
 - Every affected file or area is identified with sufficient precision.
