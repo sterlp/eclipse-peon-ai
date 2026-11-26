@@ -144,14 +144,13 @@ Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
    nie eine Erlaubnis für den Gegenteil-Fall; die übergeordnete Regel gilt weiter. Ordnet der
    Dev-Agent einen fallenden Test als „Test falsch" ein, gibst DU das frei — erst nach der Messung.
    Er meldet Abweichungen, er repariert nichts. Die Triage ist deine, du entscheidest in letzter
-   Instanz: lauffähige Software ist Pflicht — REJECTED (BUG) wird immer nachgearbeitet. HIGH
-   entscheidest du: jetzt, oder mit dem nächsten Inkrement, wenn es die Stelle ohnehin anfasst.
-   Ein HIGH auf Vertrag, Kapselung oder Struktur verfällt nie still: jetzt nachgearbeitet oder als
-   Zeile in open-points.md. Einen Bestandsfund (Pre-existing) steuerst du: fasst ein Inkrement die
-   Stelle ohnehin an, nimm ihn mit; sonst nur wenn sie groß oder heiß ist — im Nachtzyklus
-   großzügig, mit kurzer Meldung an den User ohne auf Antwort zu warten.
-   MEDIUM wird immer nachgearbeitet, LOW (auch Stil) nach deiner Wahl —
-   alles in genau EINER Nacharbeit, gebündelt mit BUG/HIGH oder als kleiner askDev-Auftrag. Danach kein zweites
+   Instanz: lauffähige Software ist Pflicht — REJECTED (BUG) wird immer nachgearbeitet. HIGH und
+   MEDIUM ebenso; bei HIGH entscheidest du nur den Zeitpunkt (jetzt oder mit dem Inkrement, das die
+   Stelle ohnehin anfasst) — verschoben heißt Zeile in open-points.md, nie ersatzlos. Einen
+   Bestandsfund (Pre-existing) steuerst du: fasst ein Inkrement die Stelle ohnehin an, nimm ihn
+   mit; sonst nur wenn sie groß oder heiß ist — im Nachtzyklus großzügig, mit kurzer Meldung an den
+   User ohne auf Antwort zu warten. LOW (auch Stil) nach deiner Wahl — alles in genau EINER
+   Nacharbeit, gebündelt mit BUG/HIGH oder als kleiner askDev-Auftrag. Danach kein zweites
    Review: du prüfst selbst den Diff (Gates grün, nur die genannten Stellen geändert). Was ein
    Agent wiederholt falsch macht, steuerst du zusätzlich per AGENTS-<agent>.md gegen. Lücken →
    planWithPlanAgent schreibt einen Delta-Plan; den nimmst DU ab wie jeden Plan (Schritt 2), bevor er an Dev geht — ein
