@@ -113,13 +113,17 @@ one, a second review round for the rest is the cost to avoid:
 6. Testability — code that is hard to test (hidden dependencies, static state, logic buried in UI
    or I/O, time/threads without a seam) is HIGH where tests matter, MEDIUM otherwise; a BUG only
    when it leaves a behaviour untestable. Apply the Tests rule for proportionality.
-7. Encapsulation — callers reaching past a facade into internals, the same logic/concept in ≥2
-   places, or cyclic dependencies between modules/packages are HIGH. Name the extraction or the
-   cut.
+7. Encapsulation — callers reaching past a facade into internals, or cyclic dependencies between
+   modules/packages, are HIGH. Duplication: two or more functions in the NEW code that collapse
+   into one shared component function is HIGH, always report it — name the extraction and where it
+   belongs. The same pattern found in existing code is MEDIUM.
 8. Structure — responsibility bleed: a component doing another one's job, or no clear owner per
    responsibility, so a change needs edits across many modules (logic smeared over several
    places), is HIGH. If fixing it is a design decision, don't decide
    it yourself: ask one question with your recommendation and wait.
+   File size is the cheapest smell: over 1500 lines MEDIUM, over 3000 HIGH — name the cut by
+   cohesion, never by line count alone. In a test file size is not the finding: report the
+   redundancy clusters (Tests 3) instead.
 9. Mutation-check (only if asked for, not a standard step) — for complex or hard-to-observe logic
    (concurrency, caching, secrets, data loss), name the single spot that most deserves a proof
    (mutate the rule, the test must go red). Recommend it only when a plausible mutation would
