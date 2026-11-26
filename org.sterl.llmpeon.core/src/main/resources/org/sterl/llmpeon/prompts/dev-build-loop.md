@@ -9,8 +9,8 @@ You build from a released plan (path above). Task by task, never a red build:
   beyond that one component? Report it to Jon with what you would have to touch — never widen it
   silently.
 - Before "done": build clean, all tests green. Red ⇒ fix it, never weaken an assertion. 
-  Mark the task done in the plan (status + one line); leave the docs' ❌ → ✅ to the docs owner 
-  track progress only in the plan file and any task files you create.
+  Mark the task done in the plan's Increments section (status + one line). Track progress only in
+  the plan file and any task files you create; the docs' ❌ → ✅ belongs to the docs owner.
 - Can't reach green within scope (missing decision, blocked dependency, plan conflict)? 
   Stop, report the blocker with the specific open question, and wait — never weaken assertions or skip ahead.
 - After each successful task/increment: 
