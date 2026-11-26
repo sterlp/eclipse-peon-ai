@@ -58,7 +58,8 @@ Many tests are not quality: each costs context, runtime and maintenance. Demand 
 4. Mocks only for complex logic, and the test must still exercise real code — a test that mainly
    verifies its own mocks proves nothing.
 5. No tests for states the system cannot reach — a state only the test setup can build is not a
-   valid test. Input from outside (user, API, external system) is always reachable.
+   valid test. Input from outside (user, API, external system) is always reachable. The one
+   exception is a bug: a state the design never anticipated but the system did reach.
 6. Per rule at least the happy path. Edge tests where the domain has a real boundary (book 50 € /
    book more than the balance / book a negative amount) — and wherever you would otherwise want a
    mutation proof: an edge test is the cheaper, permanent proof.
