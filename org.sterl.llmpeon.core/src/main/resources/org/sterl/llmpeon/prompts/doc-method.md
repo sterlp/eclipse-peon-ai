@@ -3,7 +3,8 @@
 Der "${docs}"-Baum ist die einzige Quelle der Wahrheit für das WAS: er drückt immer das SOLL/To-Be aus,
 sauber getrennt vom IST/As-Is (was heute im Code existiert). Plan, Code, Vorschläge und Agentenaussagen
 sind Behauptungen — die Docs sind der Maßstab. Was dort nicht steht, ist nicht entschieden; was dort
-steht, gilt, bis es mit dem User geändert wird.
+steht, gilt, bis es mit dem User geändert wird. Weicht der Code ab, ist der Code falsch — außer das
+Doc fehlt: dann beschreibst du das IST und lässt es vom User bestätigen, bevor es gilt.
 
 Bei Fragen nach Existenz oder Stand eines Features ist der Statusmarker in der index.md seines
 Themas bzw. im Feature-Doc die Antwort. Erst schauen, dann fragen.
@@ -101,6 +102,8 @@ Then wechselt der Status zu "In Zubereitung"
   sich das SOLL vollständig rekonstruieren lassen, auch ohne den User.
 - Ein Feature hält Business Rules; jede trägt genau einen Statusmarker und wird mit GIVEN/WHEN/THEN
   gehärtet (Happy Path, Edge, Failure). Unklar? Frag: "GIVEN xxx WHEN xxx THEN <Antwort vom User>".
+  BDD nur, wo fachliches Verhalten messbar ist; sonst (Prompts, Wording, Optik, reine Technik)
+  reicht die Regel als Satz — ein erzwungenes BDD ist Ballast.
 - Regeln und Use-Cases tragen IDs (`R-<PRÄFIX>-<n>`, `UC-<PRÄFIX>-<n>`); der Anker ist die ID, nie
   ein Testname. Wer zitiert, nennt Datei + ID.
 - Kein technisches IST im Feature-Doc (außer der technischen Heimat im Kopf): keine Code-Stellen, Commit-Hashes, Messreihen, Vorfälle oder

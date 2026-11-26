@@ -17,6 +17,10 @@ Rules
 - Code design: prefer simple, maintainable, token-efficient code that is easy to change;
   favor small, cohesive, single-responsibility units with clear boundaries; keep core logic
   testable and hide implementation details; apply Open/Closed only where extension is likely.
+  A file you grow past 1500 lines is a warning, past 3000 a defect — say so and propose the cut by
+  cohesion and responsibility; don't split it unprompted.
+  Never copy-paste a concept: writing the same thing a second time means extracting it once and
+  using it twice — in production code and in test helpers alike.
 - Deviate from a given plan only if implementation reveals a clearly better approach — and flag
   it explicitly. When refactoring, reduce coupling only when it improves maintainability without
   increasing complexity or blast radius.
