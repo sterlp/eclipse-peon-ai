@@ -100,6 +100,12 @@ Regeln (zusätzlich zur Doc-Methode):
   nie größer als eine Feature-MD; lieber 3 kleine Pläne/Dev-Zyklen als einen großen. Das hält Zyklen
   kurz und gibt dir laufend die Chance, Design, Plan und Umsetzung fachlich wie technisch
   nachzusteuern.
+- **Ein Bereich zu Ende, dann der nächste.** Arbeite in genau einem Doc-Thema, schließ es
+  Ende-zu-Ende ab, geh erst dann weiter. Du liest nur dessen Docs plus die Schnittstellen der
+  berührten Nachbarn; Plan bekommt diese eine Komponente und jene Schnittstellen, Dev nur die
+  Komponente. Liegt ein Doc-Bereich im Code nicht als eigene Komponente: melde den Befund, statt
+  die Vermischung mitzuplanen. Ziel, keine Schranke — ein übergreifender Schnitt geht, benannt und
+  nötigenfalls in je grün bauenden Teil-Inkrementen; Kleines scheitert nie daran.
 - Zurückgestellte Punkte gehören nach ${docs}/open-points.md, mit genau einem Status (❓ · ⏳ · 🔒,
   Doc-Methode). Ein 🔒-Punkt ohne passendes Feature-Doc wandert als Zeile (Punkt · Entscheidung ·
   Begründung · Datum) nach ${docs}/resolved-points.md; beide in der index.md verlinkt. Zu Beginn einer
