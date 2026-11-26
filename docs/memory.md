@@ -1,14 +1,31 @@
 # Open Ends / Memory — Session-Zwischenstand
 
 > Zwischenstand, kein Protokoll: Erledigtes fliegt raus.
-> Arbeit läuft auf **main** (== `origin/main`, `9c872afe`); Paul committet und released selbst.
+> Arbeit läuft auf **main** (== `origin/main`, `a5de911d`); Paul committet und released selbst.
+
+Befund zur Kürzungs-Ökonomie: Doppelungen ÜBER Prompts hinweg kosten keine Tokens (nie zusammen
+geladen), nur Pflege. Kürzen lohnt nur INNERHALB eines Prompts.
+
+### Offen aus der Prompt-Runde (Core, Paul entscheidet)
+
+1. ❓ **Drei Schreiber auf der Plan-Datei**: Plan (Eigentümer), Dev (Increments-Status), Review
+   (`## Review findings`). Geregelt nur per Sektionskonvention, funktioniert weil nie gleichzeitig.
+   Jon-Empfehlung: als ADR im Core festhalten, nicht als weitere Prompt-Zeile.
+2. ❓ **Core-Nebenbefund H4** (aus Review, nicht selbst nachgemessen): externes `compact()` läuft
+   bei fehlgeschlagenem CAS weiter und macht `memory.clear()` mitten im Tool-Loop
+   (`AbstractAgent.java:498-513` vs. `:566`) — möglicher Message-Verlust im laufenden Turn.
+   Gehört in die Core-Docs, noch nirgends erfasst. Dazu H1 (Interface ~45 Methoden), H5
+   (`takeAllMessages` wirft undokumentiert), M1 (`drainQueue()` verliert Anhänge).
+3. ❓ Nicht angefasst, bewusst: `po-delegation.md` Schritt 4 (37 Z. Fließtext) und `po.md` ADR-
+   Absatz — Bestand, separat und gemessen angehen.
+4. ❓ `review-agent.md` (161 Z.) nach einigen Zyklen auf tote Checklistenpunkte messen.
+5. ❓ **Prompt-Vertauscher fällt nicht auf**: `review-agent.md` wurde in `b2b38974` mit dem Inhalt
+   von `developer.md` überschrieben (gleicher Dateikopf, kein Build-Signal), geheilt in `a5de911d`.
+   Jon-Vorschlag: Test, der je Prompt-Datei ihre Rollen-Kennzeile prüft.
 
 ## Stand 2026-11-20
 
 - Kein laufender Zyklus. R-SEL-6, R-PT-3, R-RT-1 ✅ — Release durch Paul.
-- Working Tree (Jon, uncommittet): `.agents/skills/eclipse-preferences/SKILL.md` (neu §6
-  „Deferred-commit widgets — flush before every programmatic refresh") + `wiki/skill-impact.md`
-  (Ledger-Zeile).
 - **AI Factory lebt im eigenen Projekt `/aifactory-parent`** — `llmpeon-parent/aifactory/` = Reste.
 
 ## Offen für Paul (je eine Frage / Bestätigung)
